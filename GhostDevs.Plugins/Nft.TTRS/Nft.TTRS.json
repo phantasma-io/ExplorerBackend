@@ -1,0 +1,7 @@
+{
+    "PluginConfiguration": {
+        "enabled": true,
+        "startDelay": 60,
+        "runInterval": 30
+    }
+}

@@ -1,0 +1,6 @@
+{
+    "PluginConfiguration": {
+        "enabled": true,
+        "runInterval": 600
+    }
+}

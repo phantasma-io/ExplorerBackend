@@ -1,0 +1,108 @@
+{
+    "Kestrel": {
+      "Endpoints": {
+        "Http": {
+          "Url": "http://0.0.0.0:8000/"
+        },
+        "Https": {
+          "Url": "https://0.0.0.0:8001/",
+          "Certificate": {
+            "Path": "../cert.pfx",
+            "Password": ""
+          }
+        }
+      }
+    },
+    "DatabaseConfiguration": {
+        "Nfts":
+            {
+                "Host": "localhost",
+                "Database": "explorer-backend",
+                "Username": "postgres",
+                "Password": "masterkey"
+            },
+        "ApiCache":
+            {
+                "Host": "localhost",
+                "Database": "explorer-backend-api-cache",
+                "Username": "postgres",
+                "Password": "masterkey"
+            }
+    },
+    "ApiServiceConfiguration": {
+    },
+    "FetcherServiceConfiguration": {
+        "Chains": [
+            {
+                "Name": "main"
+            }
+        ],
+        "Tokens": [
+            {
+                "Chain": "main",
+                "Contract": "SOUL",
+                "Symbol": "SOUL"
+            },
+            {
+                "Chain": "main",
+                "Contract": "KCAL",
+                "Symbol": "KCAL"
+            },
+            {
+                "Chain": "main",
+                "Contract": "GOATI",
+                "Symbol": "GOATI"
+            },
+            {
+                "Chain": "main",
+                "Contract": "MKNI",
+                "Symbol": "MKNI"
+            },
+            {
+                "Chain": "main",
+                "Contract": "GHOST",
+                "Symbol": "GHOST"
+            },
+            {
+                "Chain": "main",
+                "Contract": "CROWN",
+                "Symbol": "CROWN"
+            },
+            {
+                "Chain": "main",
+                "Contract": "SEM",
+                "Symbol": "SEM"
+            },
+            {
+                "Chain": "main",
+                "Contract": "NOMI",
+                "Symbol": "NOMI"
+            },
+            {
+                "Chain": "main",
+                "Contract": "NEO",
+                "Symbol": "NEO"
+            },
+            {
+                "Chain": "main",
+                "Contract": "GAS",
+                "Symbol": "GAS"
+            },
+            {
+                "Chain": "main",
+                "Contract": "ETH",
+                "Symbol": "ETH"
+            },
+            {
+                "Chain": "main",
+                "Contract": "USDC",
+                "Symbol": "USDC"
+            },
+            {
+                "Chain": "main",
+                "Contract": "DYT",
+                "Symbol": "DYT"
+            }
+        ]
+    }
+}

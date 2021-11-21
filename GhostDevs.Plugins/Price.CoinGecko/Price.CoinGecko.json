@@ -1,0 +1,8 @@
+{
+    "PluginConfiguration": {
+        "enabled": true,
+        "startDelay": 60,
+        "runInterval": 600,
+        "startDate": "01.09.2019"
+    }
+}
