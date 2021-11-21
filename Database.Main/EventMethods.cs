@@ -11,7 +11,7 @@ namespace Database.Main
         // Checks if "Events" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static Event Upsert(MainDatabaseContext databaseContext,
+        public static Event Upsert(MainDbContext databaseContext,
             out bool newEventCreated,
             Nft nft,
             Int64 timestampUnixSeconds,
@@ -130,7 +130,7 @@ namespace Database.Main
 
             return evnt;
         }
-        public static void UpdateOnEventMerge(MainDatabaseContext databaseContext, int id, int eventKindId, int sourceAddressId, bool hidden)
+        public static void UpdateOnEventMerge(MainDbContext databaseContext, int id, int eventKindId, int sourceAddressId, bool hidden)
         {
             var evnt = databaseContext.Events.Where(x => x.ID == id).Single();
 
@@ -140,7 +140,7 @@ namespace Database.Main
 
             evnt.DM_UNIX_SECONDS = UnixSeconds.Now();
         }
-        public static void DeleteByNftId(MainDatabaseContext databaseContext, int nftId, bool saveChanges = true)
+        public static void DeleteByNftId(MainDbContext databaseContext, int nftId, bool saveChanges = true)
         {
             var tokenEvents = databaseContext.Events.Where(x => x.NftId == nftId);
             foreach (var tokenEvent in tokenEvents)

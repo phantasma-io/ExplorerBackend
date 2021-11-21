@@ -10,7 +10,7 @@ namespace Database.Main
         // Checks if "Nfts" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static Nft Upsert(MainDatabaseContext databaseContext,
+        public static Nft Upsert(MainDbContext databaseContext,
             out bool newNftCreated,
             int chainId,
             string tokenId,
@@ -42,11 +42,11 @@ namespace Database.Main
 
             return entry;
         }
-        public static Nft Get(MainDatabaseContext databaseContext, int chainId, int contractId, string tokenId)
+        public static Nft Get(MainDbContext databaseContext, int chainId, int contractId, string tokenId)
         {
             return databaseContext.Nfts.Where(x => x.ChainId == chainId && x.ContractId == contractId && x.TOKEN_ID == tokenId).FirstOrDefault();
         }
-        public static void Delete(MainDatabaseContext databaseContext, int id, bool saveChanges = true)
+        public static void Delete(MainDbContext databaseContext, int id, bool saveChanges = true)
         {
             var nft = databaseContext.Nfts.Where(x => x.ID == id).FirstOrDefault();
             if (nft != null)
@@ -56,7 +56,7 @@ namespace Database.Main
                 databaseContext.SaveChanges();
         }
         private static readonly string ownershipProcessingLock = "ownershipProcessingLock";
-        public static void ProcessOwnershipChange(MainDatabaseContext databaseContext, int chainId, Nft nft, Int64 timestampUnixSeconds, string toAddress, bool saveChanges = true)
+        public static void ProcessOwnershipChange(MainDbContext databaseContext, int chainId, Nft nft, Int64 timestampUnixSeconds, string toAddress, bool saveChanges = true)
         {
             // This is our original logic based on ownership change timestamp.
             // We update ownership only if event is newer,

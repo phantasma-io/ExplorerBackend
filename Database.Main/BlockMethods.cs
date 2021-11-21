@@ -11,7 +11,7 @@ namespace Database.Main
         // Checks if "Blocks" table has entry with given chain id and height,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static Block Upsert(MainDatabaseContext databaseContext, int chainId, System.Numerics.BigInteger height, Int64 timestampUnixSeconds, bool saveChanges = true)
+        public static Block Upsert(MainDbContext databaseContext, int chainId, System.Numerics.BigInteger height, Int64 timestampUnixSeconds, bool saveChanges = true)
         {
             var entry = databaseContext.Blocks.Where(x => x.ChainId == chainId && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds && x.HEIGHT == height.ToString()).FirstOrDefault();
 
@@ -37,17 +37,17 @@ namespace Database.Main
             return entry;
         }
 
-        public static Block Get(MainDatabaseContext databaseContext, int dbBlockId)
+        public static Block Get(MainDbContext databaseContext, int dbBlockId)
         {
             return databaseContext.Blocks.Where(x => x.ID == dbBlockId).FirstOrDefault();
         }
         
-        public static Block GetByHeight(MainDatabaseContext databaseContext, int chainId, BigInteger height)
+        public static Block GetByHeight(MainDbContext databaseContext, int chainId, BigInteger height)
         {
             return databaseContext.Blocks.Where(x => x.ChainId == chainId && x.HEIGHT == height.ToString()).FirstOrDefault();
         }
         
-        public static async Task<Block> GetByHeightAsync(MainDatabaseContext databaseContext, int chainId, BigInteger height)
+        public static async Task<Block> GetByHeightAsync(MainDbContext databaseContext, int chainId, BigInteger height)
         {
             return await databaseContext.Blocks.AsQueryable().Where(x => x.ChainId == chainId && x.HEIGHT == height.ToString()).FirstOrDefaultAsync();
         }

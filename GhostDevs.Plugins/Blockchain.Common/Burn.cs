@@ -15,7 +15,7 @@ namespace GhostDevs.Blockchain
             var markedEventCount = 0;
             var markedNftCount = 0;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 int[] chainIds =
                     {

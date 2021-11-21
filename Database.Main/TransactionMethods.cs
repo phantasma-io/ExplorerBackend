@@ -19,7 +19,7 @@ namespace Database.Main
         // Checks if "Transactions" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static Transaction Upsert(MainDatabaseContext databaseContext, Block block, int txIndex, string hash, bool saveChanges = true)
+        public static Transaction Upsert(MainDbContext databaseContext, Block block, int txIndex, string hash, bool saveChanges = true)
         {
             ContractMethods.Drop0x(ref hash);
 

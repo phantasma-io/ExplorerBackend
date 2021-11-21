@@ -56,7 +56,7 @@ namespace GhostDevs.Nft
 
         public static void Init()
         {
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 ChainId = ChainMethods.GetId(databaseContext, "Phantasma");
                 ContractId = ContractMethods.GetId(databaseContext, ChainId, "TTRS");
@@ -76,7 +76,7 @@ namespace GhostDevs.Nft
             DateTime startTime = DateTime.Now;
             int updatedNftsCount = 0;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 databaseContext.ChangeTracker.AutoDetectChangesEnabled = false;
 
@@ -109,7 +109,7 @@ namespace GhostDevs.Nft
                                     // we don't use them on database resync.
                                     if (item != null)
                                     {
-                                        using (var databaseApiCacheContext = new Database.ApiCache.ApiCacheDatabaseContext())
+                                        using (var databaseApiCacheContext = new Database.ApiCache.ApiCacheDbContext())
                                         {
                                             Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, "main", "TTRS", nft.TOKEN_ID, JsonDocument.Parse(item.ToJsonString()), null, true);
                                         }
@@ -155,7 +155,7 @@ namespace GhostDevs.Nft
 
             List<string> ids = null;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 // Select TOKEN_IDs which have no corresponding OFFCHAIN_API_RESPONSE -> they should be loaded.
                 // Also check that series != null - to avoid troubles first we deal with chain api, then with offchain api.
@@ -189,7 +189,7 @@ namespace GhostDevs.Nft
             for (var i = 0; i < 1000; i += 1)
             {
                 string id;
-                using (var databaseContext = new MainDatabaseContext())
+                using (var databaseContext = new MainDbContext())
                 {
                     // Select TOKEN_IDs which have no corresponding OFFCHAIN_API_RESPONSE -> they should be loaded.
                     // Also check that series != null - to avoid troubles first we deal with chain api, then with offchain api.
@@ -219,12 +219,12 @@ namespace GhostDevs.Nft
 
                 var metaJsonDocument = JsonDocument.Parse(meta[metadataKey].ToJsonString());
 
-                using (var databaseApiCacheContext = new Database.ApiCache.ApiCacheDatabaseContext())
+                using (var databaseApiCacheContext = new Database.ApiCache.ApiCacheDbContext())
                 {
                     Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, "main", "GAME", id, metaJsonDocument, null, true);
                 }
 
-                using (var databaseContext = new Database.Main.MainDatabaseContext())
+                using (var databaseContext = new Database.Main.MainDbContext())
                 {
                     Database.Main.Nft nft = NftMethods.Get(databaseContext, ChainId, GameContractId, id);
                     nft.OFFCHAIN_API_RESPONSE = metaJsonDocument;

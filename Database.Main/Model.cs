@@ -11,7 +11,7 @@ using System.Text.Json;
 
 namespace Database.Main
 {
-    public class MainDatabaseContext : DbContext
+    public class MainDbContext : DbContext
     {
         // Keeping DB configs on same level as "bin" folder.
         // If path contains "Database.Main" - it means we are running database update.

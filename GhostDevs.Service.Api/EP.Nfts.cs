@@ -31,7 +31,7 @@ namespace GhostDevs.Service
             long totalResults = 0;
             ApiResults.Nft[] nftsArray = null;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 try
                 {

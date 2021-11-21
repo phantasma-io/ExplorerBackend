@@ -16,7 +16,7 @@ namespace GhostDevs.Blockchain
 
             int updatedTokensCount;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 var tokens = databaseContext.Tokens.Where(x => x.ChainId == ChainId && x.FUNGIBLE == null).ToList();
 

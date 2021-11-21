@@ -11,7 +11,7 @@ namespace GhostDevs.Blockchain
         // Max events to be processed during one call.
         private static readonly int maxEventUsdPricesProcessedPerSession = 1000;
 
-        private int EventUsdPricesFillForArray(MainDatabaseContext databaseContext, Event[] events, TokenMethods.TokenPrice[] todaysTokenPrices)
+        private int EventUsdPricesFillForArray(MainDbContext databaseContext, Event[] events, TokenMethods.TokenPrice[] todaysTokenPrices)
         {
             var pricesProcessed = 0;
 
@@ -43,7 +43,7 @@ namespace GhostDevs.Blockchain
 
             var pricesProcessed = 0;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 var todaysTokenPrices = TokenMethods.GetPrices(databaseContext, "USD");
 

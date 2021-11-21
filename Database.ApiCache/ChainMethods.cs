@@ -8,7 +8,7 @@ namespace Database.ApiCache
         // Checks if "Chains" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static int Upsert(ApiCacheDatabaseContext databaseContext, string shortName)
+        public static int Upsert(ApiCacheDbContext databaseContext, string shortName)
         {
             if (string.IsNullOrEmpty(shortName))
                 throw new System.ArgumentException("Argument cannot be null or empty.", "shortName");
@@ -56,7 +56,7 @@ namespace Database.ApiCache
             return chainId;
         }
 
-        public static int GetId(ApiCacheDatabaseContext databaseContext, string shortName)
+        public static int GetId(ApiCacheDbContext databaseContext, string shortName)
         {
             if (string.IsNullOrEmpty(shortName))
                 throw new System.ArgumentException("Argument cannot be null or empty.", "shortName");

@@ -68,7 +68,7 @@ namespace GhostDevs.Service
 
             Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, optional: false).Build().GetSection("FetcherServiceConfiguration"));
 
-            using (var Database = new MainDatabaseContext())
+            using (var Database = new MainDbContext())
             {
 
                 PostgreSQLConnector pgConnection = null;

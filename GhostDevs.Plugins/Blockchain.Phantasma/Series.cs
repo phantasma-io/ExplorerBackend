@@ -18,7 +18,7 @@ namespace GhostDevs.Blockchain
             int updatedSeriesCount = 0;
 
             // Initializing supply etc.
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 // First we get symbols that has uninitialized series.
                 var serieses = databaseContext.Serieses.Where(x => x.Contract.ChainId == ChainId && (x.SeriesMode == null || x.Nfts.Count() > x.CURRENT_SUPPLY) && x.SERIES_ID != null).ToList();

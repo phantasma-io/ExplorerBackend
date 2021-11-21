@@ -48,7 +48,7 @@ namespace Database.Main
         // Checks if "Contracts" table has entry with given hash,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static int Upsert(MainDatabaseContext databaseContext, string name, int chain, string hash
+        public static int Upsert(MainDbContext databaseContext, string name, int chain, string hash
                 , string symbol)
         {
             Drop0x(ref hash);
@@ -74,7 +74,7 @@ namespace Database.Main
 
             return contractId;
         }
-        public static Contract Get(MainDatabaseContext databaseContext, int chainId, string hash, bool ignoreCase = false)
+        public static Contract Get(MainDbContext databaseContext, int chainId, string hash, bool ignoreCase = false)
         {
             Drop0x(ref hash);
 
@@ -83,7 +83,7 @@ namespace Database.Main
             else
                 return databaseContext.Contracts.Where(x => x.ChainId == chainId && x.HASH == hash).FirstOrDefault();
         }
-        public static int GetId(MainDatabaseContext databaseContext, int chainId, string hash, bool ignoreCase = false)
+        public static int GetId(MainDbContext databaseContext, int chainId, string hash, bool ignoreCase = false)
         {
             var contract = Get(databaseContext, chainId, hash, ignoreCase);
 

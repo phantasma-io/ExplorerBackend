@@ -7,7 +7,7 @@ namespace Database.Main
     {
         // Checks if table has entry with given Nft/key pair,
         // and adds new entry, if there's no entry available.
-        public static void Upsert(MainDatabaseContext databaseContext, Event infusionEvent, Nft nft, string key, string value)
+        public static void Upsert(MainDbContext databaseContext, Event infusionEvent, Nft nft, string key, string value)
         {
             // Trying to get token.
             var token = TokenMethods.Get(databaseContext, infusionEvent.ChainId, infusionEvent.InfusedSymbol.SYMBOL);

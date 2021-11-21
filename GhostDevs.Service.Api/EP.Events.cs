@@ -39,7 +39,7 @@ namespace GhostDevs.Service
             long totalResults = 0;
             ApiResults.Event[] eventsArray = null;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 try
                 {

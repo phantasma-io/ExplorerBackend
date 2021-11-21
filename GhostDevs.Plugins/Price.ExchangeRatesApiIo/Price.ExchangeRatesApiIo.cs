@@ -80,7 +80,7 @@ namespace GhostDevs.Price
             }
 
             int pricesUpdated = 0;
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 foreach (var fiatSymbol in TokenMethods.GetSupportedFiatSymbols())
                 {

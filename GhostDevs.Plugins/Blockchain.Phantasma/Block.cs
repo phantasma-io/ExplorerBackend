@@ -25,7 +25,7 @@ namespace GhostDevs.Blockchain
                 DateTime startTime = DateTime.Now;
 
                 System.Numerics.BigInteger i = 1;
-                using (var databaseContext = new MainDatabaseContext())
+                using (var databaseContext = new MainDbContext())
                 {
                     i = ChainMethods.GetLastProcessedBlock(databaseContext, ChainId) + 1;
                 }
@@ -86,7 +86,7 @@ namespace GhostDevs.Blockchain
             // and avoid some unpleasant situations leading to bugs.
             var nftsInThisBlock = new Dictionary<string, Nft>();
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 try
                 {
@@ -97,7 +97,7 @@ namespace GhostDevs.Blockchain
 
                     // Block in caching database
                     // Currently only stored. TODO add reuse to speed up resync
-                    using (var databaseApiCacheContext = new Database.ApiCache.ApiCacheDatabaseContext())
+                    using (var databaseApiCacheContext = new Database.ApiCache.ApiCacheDbContext())
                     {
                         Database.ApiCache.BlockMethods.Upsert(databaseApiCacheContext,
                             "main", blockHeight.ToString(), timestampUnixSeconds, response, true);

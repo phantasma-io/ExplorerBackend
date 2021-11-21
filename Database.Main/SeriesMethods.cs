@@ -4,7 +4,7 @@ namespace Database.Main
 {
     public static class SeriesMethods
     {
-        public static void SeriesModesInit(MainDatabaseContext databaseContext)
+        public static void SeriesModesInit(MainDbContext databaseContext)
         {
             var seriesModeUnique = databaseContext.SeriesModes.Where(x => x.MODE_NAME.ToUpper() == "UNIQUE").FirstOrDefault();
             if(seriesModeUnique == null)
@@ -21,7 +21,7 @@ namespace Database.Main
                 databaseContext.SaveChanges();
             }
         }
-        public static int SeriesModesGetId(MainDatabaseContext databaseContext, string name)
+        public static int SeriesModesGetId(MainDbContext databaseContext, string name)
         {
             return databaseContext.SeriesModes.Where(x => x.MODE_NAME.ToUpper() == name.ToUpper()).First().ID;
         }
@@ -29,7 +29,7 @@ namespace Database.Main
         // Checks if "Series" table has entry,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static Series Upsert(MainDatabaseContext databaseContext, int contractId, string seriesId,
+        public static Series Upsert(MainDbContext databaseContext, int contractId, string seriesId,
             int? creatorAddressId = null,
             int? currentSupply = null, int? maxSupply = null, string seriesModeName = null, string name = null, string description = null, string image = null, decimal? royalties = null,
             string attrType1 = null, string attrValue1 = null, string attrType2 = null, string attrValue2 = null, string attrType3 = null, string attrValue3 = null)
@@ -104,7 +104,7 @@ namespace Database.Main
             return series;
         }
 
-        public static Series Get(MainDatabaseContext databaseContext, int contractId, string seriesId)
+        public static Series Get(MainDbContext databaseContext, int contractId, string seriesId)
         {
             return databaseContext.Serieses.Where(x => x.ContractId == contractId && x.SERIES_ID == seriesId).FirstOrDefault();
         }

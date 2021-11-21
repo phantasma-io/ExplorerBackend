@@ -22,7 +22,7 @@ namespace Database.ApiCache
         // Checks if "Contracts" table has entry with given hash,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static int Upsert(ApiCacheDatabaseContext databaseContext, int chainId, string hashOrName)
+        public static int Upsert(ApiCacheDbContext databaseContext, int chainId, string hashOrName)
         {
             Drop0x(ref hashOrName);
 
@@ -50,7 +50,7 @@ namespace Database.ApiCache
 
             return contractId;
         }
-        public static Contract UpsertWOSave(ApiCacheDatabaseContext databaseContext, int chainId, string hashOrName)
+        public static Contract UpsertWOSave(ApiCacheDbContext databaseContext, int chainId, string hashOrName)
         {
             Drop0x(ref hashOrName);
 
@@ -68,7 +68,7 @@ namespace Database.ApiCache
             return contract;
         }
 
-        public static int GetId(ApiCacheDatabaseContext databaseContext, string chainShortName, string hash)
+        public static int GetId(ApiCacheDbContext databaseContext, string chainShortName, string hash)
         {
             Drop0x(ref hash);
 

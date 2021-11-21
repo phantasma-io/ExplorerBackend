@@ -18,7 +18,7 @@ namespace GhostDevs.Blockchain
 
             var namesUpdatedCount = 0;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 var addressesToUpdate = databaseContext.Addresses.Where(x => x.ChainId == ChainId && (x.NAME_LAST_UPDATED_UNIX_SECONDS == 0 || x.NAME_LAST_UPDATED_UNIX_SECONDS < UnixSeconds.AddMinutes(unixSecondsNow, -30))).ToList();
 

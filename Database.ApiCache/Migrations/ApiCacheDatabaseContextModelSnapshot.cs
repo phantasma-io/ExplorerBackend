@@ -10,7 +10,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Database.ApiCache.Migrations
 {
-    [DbContext(typeof(ApiCacheDatabaseContext))]
+    [DbContext(typeof(ApiCacheDbContext))]
     partial class ApiCacheDatabaseContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)

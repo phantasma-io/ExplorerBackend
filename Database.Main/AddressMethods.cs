@@ -62,7 +62,7 @@ namespace Database.Main
         // Checks if "Addresses" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static Address Upsert(MainDatabaseContext databaseContext, int chainId, string address, bool saveChanges = true)
+        public static Address Upsert(MainDbContext databaseContext, int chainId, string address, bool saveChanges = true)
         {
             ContractMethods.Drop0x(ref address);
 
@@ -121,7 +121,7 @@ namespace Database.Main
 
             return entry;
         }
-        public static Address Get(MainDatabaseContext databaseContext, int chainId, string address)
+        public static Address Get(MainDbContext databaseContext, int chainId, string address)
         {
             ContractMethods.Drop0x(ref address);
 
@@ -142,7 +142,7 @@ namespace Database.Main
 
             return entry;
         }
-        public static int GetId(MainDatabaseContext databaseContext, int chainId, string address)
+        public static int GetId(MainDbContext databaseContext, int chainId, string address)
         {
             ContractMethods.Drop0x(ref address);
 
@@ -160,7 +160,7 @@ namespace Database.Main
             return id;
         }
 
-        public static int[] GetIdsFromExtendedFormat(MainDatabaseContext databaseContext, string addresses, bool returnNonexistentAddressIfNoneFound = true, string defaultChain = null)
+        public static int[] GetIdsFromExtendedFormat(MainDbContext databaseContext, string addresses, bool returnNonexistentAddressIfNoneFound = true, string defaultChain = null)
         {
             var values = AddressMethods.ParseExtendedFormat(addresses, defaultChain);
 

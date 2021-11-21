@@ -137,7 +137,7 @@ namespace GhostDevs.Service
             Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, optional: false).Build().GetSection("ApiServiceConfiguration"));
 
             PostgreSQLConnector pgConnection = null;
-            using (var Database = new MainDatabaseContext())
+            using (var Database = new MainDbContext())
             {
                 int max = 6;
                 for (int i = 1; i <= max; i++)

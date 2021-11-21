@@ -27,7 +27,7 @@ namespace GhostDevs.Service
             long totalResults = 0;
             ApiResults.Series[] seriesArray = null;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 try
                 {

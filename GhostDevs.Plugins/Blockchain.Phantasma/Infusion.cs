@@ -17,7 +17,7 @@ namespace GhostDevs.Blockchain
 
             int updatedInfusionsCount;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 var infusionEvents = databaseContext.Events.Where(x => x.ChainId == ChainId && x.Infusion == null && x.EventKind.NAME.ToUpper() == "INFUSION").Take(maxInfusionUpdatesForOneSession).ToList();
 

@@ -8,7 +8,7 @@ namespace Database.Main
         // Checks if "EventKinds" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static int Upsert(MainDatabaseContext databaseContext, int chainId, string name)
+        public static int Upsert(MainDbContext databaseContext, int chainId, string name)
         {
             int id;
             var entry = databaseContext.EventKinds.Where(x => x.ChainId == chainId && x.NAME.ToUpper() == name.ToUpper()).FirstOrDefault();

@@ -13,7 +13,7 @@ namespace Database.Main
         // Searches only newly added objects, modified and other states are skipped.
         // Used to fight concurrency/async issues when threads trying
         // to add same objects twice.
-        public static Type[] GetTracked<Type>(MainDatabaseContext databaseContext)
+        public static Type[] GetTracked<Type>(MainDbContext databaseContext)
         {
             return databaseContext.ChangeTracker.Entries()
                 .Where(x => x.State == EntityState.Added &&
@@ -21,7 +21,7 @@ namespace Database.Main
                 typeof(Type).IsAssignableFrom(x.Entity.GetType())).Select(x => (Type)x.Entity).ToArray();
         }
 
-        public static void LogTracked<Type>(MainDatabaseContext databaseContext)
+        public static void LogTracked<Type>(MainDbContext databaseContext)
         {
             Log.Information($"LogTracked({typeof(Type).ToString()}):");
             foreach(var e in databaseContext.ChangeTracker.Entries()

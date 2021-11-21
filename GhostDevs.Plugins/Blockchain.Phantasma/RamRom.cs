@@ -171,7 +171,7 @@ namespace GhostDevs.Blockchain
             {
                 DateTime startTime = DateTime.Now;
 
-                using (var databaseContext = new MainDatabaseContext())
+                using (var databaseContext = new MainDbContext())
                 {
                     // First we take GHOST NFTs
                     var nfts = databaseContext.Nfts.Where(x => x.ChainId == ChainId && x.ROM == null && x.BURNED != true && x.Contract.SYMBOL.ToUpper() == "GHOST").Take(maxRomRamUpdatesForOneSession).ToList();
@@ -234,7 +234,7 @@ namespace GhostDevs.Blockchain
                         {
                             error = errorProperty.GetString();
 
-                            using (var databaseApiCacheContext = new Database.ApiCache.ApiCacheDatabaseContext())
+                            using (var databaseApiCacheContext = new Database.ApiCache.ApiCacheDbContext())
                             {
                                 responseSaved = Database.ApiCache.NftMethods.GetChainApiResponse(databaseApiCacheContext, Settings.Default.ChainName, nft.Contract.HASH, nft.TOKEN_ID);
                             }
@@ -270,7 +270,7 @@ namespace GhostDevs.Blockchain
                         if (responseSaved == null)
                         {
                             // We loaded it for the first time, we should save it.
-                            using (var databaseUsersContext = new Database.ApiCache.ApiCacheDatabaseContext())
+                            using (var databaseUsersContext = new Database.ApiCache.ApiCacheDbContext())
                             {
                                 Database.ApiCache.NftMethods.SetApiResponses(databaseUsersContext, Settings.Default.ChainName, nft.Contract.HASH, nft.TOKEN_ID, null, nft.CHAIN_API_RESPONSE, true);
                             }

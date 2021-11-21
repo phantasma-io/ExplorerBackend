@@ -24,7 +24,7 @@ namespace Database.Main
         // Checks if "Token" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static int Upsert(MainDatabaseContext databaseContext, int chainId, string contractHash, string symbol)
+        public static int Upsert(MainDbContext databaseContext, int chainId, string contractHash, string symbol)
         {
             var contractId = ContractMethods.Upsert(databaseContext, symbol, chainId, contractHash, symbol);
 
@@ -45,7 +45,7 @@ namespace Database.Main
             }
             return id;
         }
-        public static Token UpsertWOSave(MainDatabaseContext databaseContext, int chainId, string symbol)
+        public static Token UpsertWOSave(MainDbContext databaseContext, int chainId, string symbol)
         {
             var entry = databaseContext.Tokens.Where(x => x.ChainId == chainId && x.SYMBOL.ToUpper() == symbol.ToUpper()).FirstOrDefault();
             if (entry == null)
@@ -55,15 +55,15 @@ namespace Database.Main
             }
             return entry;
         }
-        public static Token Get(MainDatabaseContext databaseContext, string symbol)
+        public static Token Get(MainDbContext databaseContext, string symbol)
         {
             return databaseContext.Tokens.Where(x => x.SYMBOL.ToUpper() == symbol.ToUpper()).SingleOrDefault();
         }
-        public static Token Get(MainDatabaseContext databaseContext, int chainId, string symbol)
+        public static Token Get(MainDbContext databaseContext, int chainId, string symbol)
         {
             return databaseContext.Tokens.Where(x => x.ChainId == chainId && x.SYMBOL.ToUpper() == symbol.ToUpper()).SingleOrDefault();
         }
-        public static int[] GetIds(MainDatabaseContext databaseContext, string symbols, bool returnNonexistentAddressIfNoneFound = true, string defaultChain = null)
+        public static int[] GetIds(MainDbContext databaseContext, string symbols, bool returnNonexistentAddressIfNoneFound = true, string defaultChain = null)
         {
             string[] values = symbols.Contains(',') ? symbols.Split(',') : new string[] { symbols };
 
@@ -87,12 +87,12 @@ namespace Database.Main
             return ids.ToArray();
         }
         // Returns all token symbols currently used in auctions.
-        public static List<string> GetSymbols(MainDatabaseContext databaseContext)
+        public static List<string> GetSymbols(MainDbContext databaseContext)
         {
             return databaseContext.Tokens.Select(x => x.SYMBOL).ToList();
         }
         // Returns all supported token symbols <chainShortName, tokenSymbol>.
-        public static List<Symbol> GetSupportedTokens(MainDatabaseContext databaseContext)
+        public static List<Symbol> GetSupportedTokens(MainDbContext databaseContext)
         {
             var supportedTokens = new List<Symbol>();
 
@@ -110,7 +110,7 @@ namespace Database.Main
             return new List<string> { "AUD", "CAD", "CNY", "EUR", "GBP", "JPY", "RUB", "USD" };
         }
         // Sets price for token in given fiat currency.
-        public static void SetPrice(MainDatabaseContext databaseContext, int chainId, string symbol, string fiatPairSymbol, decimal price, bool saveChanges = true)
+        public static void SetPrice(MainDbContext databaseContext, int chainId, string symbol, string fiatPairSymbol, decimal price, bool saveChanges = true)
         {
             var entry = databaseContext.Tokens.Where(x => x.ChainId == chainId && x.SYMBOL.ToUpper() == symbol.ToUpper()).FirstOrDefault();
             if (entry == null)
@@ -154,7 +154,7 @@ namespace Database.Main
         }
         // Gets token prices dictionary for given fiat currency.
         // Dictionary key contains crypto token symbol, and value contains price in fiat currency.
-        public static TokenPrice[] GetPrices(MainDatabaseContext efDatabaseContext, string fiatSymbol)
+        public static TokenPrice[] GetPrices(MainDbContext efDatabaseContext, string fiatSymbol)
         {
             return efDatabaseContext.Tokens.Select(x => new TokenPrice { ChainId = x.ChainId, Symbol = x.SYMBOL, Price = (fiatSymbol.ToUpper() == "AUD") ? x.PRICE_AUD : (fiatSymbol.ToUpper() == "CAD") ? x.PRICE_CAD : (fiatSymbol.ToUpper() == "CNY") ? x.PRICE_CNY : (fiatSymbol.ToUpper() == "EUR") ? x.PRICE_EUR : (fiatSymbol.ToUpper() == "GBP") ? x.PRICE_GBP : (fiatSymbol.ToUpper() == "JPY") ? x.PRICE_JPY : (fiatSymbol.ToUpper() == "RUB") ? x.PRICE_RUB : (fiatSymbol.ToUpper() == "USD") ? x.PRICE_USD : 0 }).ToArray();
         }

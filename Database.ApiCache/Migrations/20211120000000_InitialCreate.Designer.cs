@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Database.ApiCache.Migrations
 {
-    [DbContext(typeof(ApiCacheDatabaseContext))]
+    [DbContext(typeof(ApiCacheDbContext))]
     [Migration("20211120000000_InitialCreate")]
     partial class InitialCreate
     {

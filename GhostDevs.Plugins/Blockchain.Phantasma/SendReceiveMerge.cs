@@ -15,7 +15,7 @@ namespace GhostDevs.Blockchain
 
             var mergedEventPairCount = 0;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 var sendEventKindId = databaseContext.EventKinds.Where(x => x.NAME == "TokenSend").Select(x => x.ID).FirstOrDefault();
 

@@ -53,7 +53,7 @@ namespace GhostDevs.Price
 
                         // Get token symbols that are used in auctions <chainShortName, tokenSymbol>.
                         List<TokenMethods.Symbol> cryptoSymbols = null;
-                        using (var databaseContext = new MainDatabaseContext())
+                        using (var databaseContext = new MainDbContext())
                         {
                             cryptoSymbols = TokenMethods.GetSupportedTokens(databaseContext);
                         }
@@ -174,7 +174,7 @@ namespace GhostDevs.Price
 
             int pricesUpdated = 0;
 
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 foreach (var cryptoSymbol in cryptoSymbols)
                 {
@@ -220,7 +220,7 @@ namespace GhostDevs.Price
             int pricesUpdated = 0;
 
             // First pass. We get all tokens prices in USD.
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 var lastLoadedDate = databaseContext.TokenDailyPrices.OrderByDescending(x => x.DATE_UNIX_SECONDS).Select(x => x.DATE_UNIX_SECONDS).FirstOrDefault();
 
@@ -329,7 +329,7 @@ namespace GhostDevs.Price
             }
 
             // Second pass. Updating crypto pairs.
-            using (var databaseContext = new MainDatabaseContext())
+            using (var databaseContext = new MainDbContext())
             {
                 // Searching for fiat pairs that are not initialized.
                 // Take earliest date with uninitialized price.

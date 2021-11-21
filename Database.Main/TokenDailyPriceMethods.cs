@@ -10,7 +10,7 @@ namespace Database.Main
         // Checks if "TokenDailyPrices" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static void Upsert(MainDatabaseContext databaseContext, Int64 dateUnixSeconds, int chainId, string symbol, Dictionary<string, decimal> pricePairs, bool saveChanges = true)
+        public static void Upsert(MainDbContext databaseContext, Int64 dateUnixSeconds, int chainId, string symbol, Dictionary<string, decimal> pricePairs, bool saveChanges = true)
         {
             var token = TokenMethods.Get(databaseContext, chainId, symbol);
             if (token == null)
@@ -67,7 +67,7 @@ namespace Database.Main
                 databaseContext.SaveChanges();
         }
 
-        public static decimal Get(MainDatabaseContext databaseContext, int chainId, Int64 dateUnixSeconds, string symbol, string priceSymbol)
+        public static decimal Get(MainDbContext databaseContext, int chainId, Int64 dateUnixSeconds, string symbol, string priceSymbol)
         {
             var token = TokenMethods.Get(databaseContext, chainId, symbol);
             if (token == null)
@@ -96,11 +96,11 @@ namespace Database.Main
                 _ => 0,
             };
         }
-        public static decimal Calculate(MainDatabaseContext databaseContext, int chainId, Int64 dateUnixSeconds, string tokenSymbol, string PriceInTokens, string outPriceSymbol)
+        public static decimal Calculate(MainDbContext databaseContext, int chainId, Int64 dateUnixSeconds, string tokenSymbol, string PriceInTokens, string outPriceSymbol)
         {
             return Get(databaseContext, chainId, dateUnixSeconds, tokenSymbol, outPriceSymbol) * TokenMethods.ToDecimal(PriceInTokens, tokenSymbol);
         }
-        public static decimal Calculate(MainDatabaseContext databaseContext, int chainId, Int64 dateUnixSeconds, string tokenSymbol, decimal PriceInTokens, string outPriceSymbol)
+        public static decimal Calculate(MainDbContext databaseContext, int chainId, Int64 dateUnixSeconds, string tokenSymbol, decimal PriceInTokens, string outPriceSymbol)
         {
             return Get(databaseContext, chainId, dateUnixSeconds, tokenSymbol, outPriceSymbol) * PriceInTokens;
         }

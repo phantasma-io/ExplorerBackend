@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace Database.ApiCache
 {
-    public class ApiCacheDatabaseContext : DbContext
+    public class ApiCacheDbContext : DbContext
     {
         // Keeping DB configs on same level as "bin" folder.
         // If path contains "Database.ApiCache" - it means we are running database update.

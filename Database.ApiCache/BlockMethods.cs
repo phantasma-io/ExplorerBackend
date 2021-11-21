@@ -8,7 +8,7 @@ namespace Database.ApiCache
     {
         // Checks if table has entry with given height,
         // and adds new entry, if there's no entry available.
-        public static void Upsert(ApiCacheDatabaseContext databaseContext, string chainShortName, string height, Int64 unixTimestampInSeconds, JsonDocument data, bool saveChanges = true)
+        public static void Upsert(ApiCacheDbContext databaseContext, string chainShortName, string height, Int64 unixTimestampInSeconds, JsonDocument data, bool saveChanges = true)
         {
             if (string.IsNullOrEmpty(chainShortName))
                 throw new System.ArgumentException("Argument cannot be null or empty.", "chainShortName");
@@ -57,7 +57,7 @@ namespace Database.ApiCache
             }
         }
 
-        public static Int64 GetTimestamp(ApiCacheDatabaseContext databaseContext, string chainShortName, string height)
+        public static Int64 GetTimestamp(ApiCacheDbContext databaseContext, string chainShortName, string height)
         {
             var chainId = ChainMethods.GetId(databaseContext, chainShortName);
 
@@ -68,7 +68,7 @@ namespace Database.ApiCache
             return block.TIMESTAMP;
         }
         
-        public static Block GetByHeight(ApiCacheDatabaseContext databaseContext, int chainId, string height)
+        public static Block GetByHeight(ApiCacheDbContext databaseContext, int chainId, string height)
         {
             return databaseContext.Blocks.Where(x => x.ChainId == chainId && x.HEIGHT == height).FirstOrDefault();
         }

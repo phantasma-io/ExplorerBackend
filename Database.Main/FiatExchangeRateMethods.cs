@@ -8,7 +8,7 @@ namespace Database.Main
         // Checks if "FiatExchangeRate" table has entry with given name,
         // and adds new entry, if there's no entry available.
         // Returns new or existing entry's Id.
-        public static void Upsert(MainDatabaseContext databaseContext, string symbol, decimal usdPrice, bool saveChanges = true)
+        public static void Upsert(MainDbContext databaseContext, string symbol, decimal usdPrice, bool saveChanges = true)
         {
             var entry = databaseContext.FiatExchangeRates.Where(x => x.SYMBOL.ToUpper() == symbol.ToUpper()).FirstOrDefault();
             if (entry != null)
@@ -24,7 +24,7 @@ namespace Database.Main
             if(saveChanges)
                 databaseContext.SaveChanges();
         }
-        public static decimal Convert(MainDatabaseContext databaseContext, decimal price, string fromSymbol, string toSymbol)
+        public static decimal Convert(MainDbContext databaseContext, decimal price, string fromSymbol, string toSymbol)
         {
             var usdPrice = databaseContext.FiatExchangeRates.Where(x => x.SYMBOL == fromSymbol).Select(x => x.USD_PRICE).SingleOrDefault();
             if (usdPrice == 0)
@@ -37,7 +37,7 @@ namespace Database.Main
         }
         // Gets fiat prices dictionary against USD.
         // Dictionary key contains fiat currency symbol, and value contains price in USD.
-        public static Dictionary<string, decimal> GetPrices(MainDatabaseContext efDatabaseContext)
+        public static Dictionary<string, decimal> GetPrices(MainDbContext efDatabaseContext)
         {
             return efDatabaseContext.FiatExchangeRates.Select(x => new { key = x.SYMBOL, value = x.USD_PRICE }).ToDictionary(x => x.key, x => x.value);
         }

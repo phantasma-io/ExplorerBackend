@@ -9,7 +9,7 @@ namespace Database.Main
     {
         // Checks if "Nfts" table has entry with given NFT id,
         // and updates NFT's metadata.
-        public static void Set(MainDatabaseContext databaseContext, Nft nft, int nftId, string rom, string ram, string description, string name, string image, Int64 mintDateUnixSeconds, int mintNumber, System.Text.Json.JsonDocument extendedProperties, bool saveChanges = true)
+        public static void Set(MainDbContext databaseContext, Nft nft, int nftId, string rom, string ram, string description, string name, string image, Int64 mintDateUnixSeconds, int mintNumber, System.Text.Json.JsonDocument extendedProperties, bool saveChanges = true)
         {
             if(nft == null)
                 nft = databaseContext.Nfts.Where(x => x.ID == nftId).FirstOrDefault();

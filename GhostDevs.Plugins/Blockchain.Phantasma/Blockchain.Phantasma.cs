@@ -45,14 +45,14 @@ namespace GhostDevs.Blockchain
             {
                 Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-                using (var databaseContext = new MainDatabaseContext())
+                using (var databaseContext = new MainDbContext())
                 {
                     ChainId = ChainMethods.GetId(databaseContext, Settings.Default.ChainName);
                 }
 
                 foreach (var cInfo in Settings.Default.NFTs)
                 {
-                    using (var databaseContext = new MainDatabaseContext())
+                    using (var databaseContext = new MainDbContext())
                     {
                         var contractId = ContractMethods.Upsert(databaseContext, cInfo.Symbol, ChainId, cInfo.Symbol, cInfo.Symbol);
                         databaseContext.SaveChanges();
@@ -60,7 +60,7 @@ namespace GhostDevs.Blockchain
                 }
 
                 // Initializing SeriesModes
-                using (var databaseContext = new MainDatabaseContext())
+                using (var databaseContext = new MainDbContext())
                 {
                     SeriesMethods.SeriesModesInit(databaseContext);
 
