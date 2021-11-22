@@ -280,14 +280,21 @@ namespace GhostDevs.Service
                     query.AddColumn("Nfts", "VIDEO");
                     // query.AddColumn("Nfts", "ROM");
                     // query.AddColumn("Nfts", "RAM");
-                    query.AddColumn("Nfts", "MINT_DATE");
+                    query.AddColumn("Nfts", "MINT_DATE_UNIX_SECONDS");
                     query.AddColumn("Nfts", "MINT_NUMBER");
                     query.AddColumn("Nfts", "CHAIN_API_RESPONSE");
                     query.AddColumn("Nfts", "OFFCHAIN_API_RESPONSE");
 
                     query.AddSubselect(@"select ""ADDRESS"" as ""SERIES_CREATOR_ADDRESS"" from ""Addresses"" where ""Addresses"".""ID"" = ""Serieses"".""CreatorAddressId""");
 
-                    query.SetOrderBy("", order_by.ToUpper());
+                    if (order_by.ToUpper() == "MINT_DATE")
+                    {
+                        query.SetOrderBy("Nfts", "MINT_DATE_UNIX_SECONDS");
+                    }
+                    else
+                    {
+                        query.SetOrderBy("", order_by.ToUpper());
+                    }
 
                     query.SetOrderDirection(order_direction);
                     query.SetLimit(limit);
@@ -341,7 +348,7 @@ namespace GhostDevs.Service
                                 info_url = x.GetString("INFO_URL", null),
                                 /*rom = x.GetString("ROM", null),
                                 ram = x.GetString("RAM", null),*/
-                                mint_date = metadataName != null ? x.GetString("MINT_DATE", null) : null,
+                                mint_date = metadataName != null ? x.GetInt64("MINT_DATE_UNIX_SECONDS", 0).ToString() : null,
                                 mint_number = metadataName != null ? x.GetString("MINT_NUMBER", null) : null,
                             },
                             series = new ApiResults.Series()
