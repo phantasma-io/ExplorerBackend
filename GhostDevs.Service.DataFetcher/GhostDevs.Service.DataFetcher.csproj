@@ -10,22 +10,22 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Publish\**" />
-    <EmbeddedResource Remove="Publish\**" />
-    <None Remove="Publish\**" />
+    <Compile Remove="Publish\**"/>
+    <EmbeddedResource Remove="Publish\**"/>
+    <None Remove="Publish\**"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Nethereum.Web3" Version="4.1.1" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.0" />
+    <PackageReference Include="Nethereum.Web3" Version="4.1.1"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.0"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GhostDevs.Commons\GhostDevs.Commons.csproj" />
-    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj" />
-    <ProjectReference Include="..\GhostDevs.PluginEngine\GhostDevs.PluginEngine.csproj" />
-    <ProjectReference Include="..\GhostDevs.PostgreSQLConnector\GhostDevs.PostgreSQLConnector.csproj" />
-    <ProjectReference Include="..\Database.Main\Database.Main.csproj" />
+    <ProjectReference Include="..\GhostDevs.Commons\GhostDevs.Commons.csproj"/>
+    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj"/>
+    <ProjectReference Include="..\GhostDevs.PluginEngine\GhostDevs.PluginEngine.csproj"/>
+    <ProjectReference Include="..\GhostDevs.PostgreSQLConnector\GhostDevs.PostgreSQLConnector.csproj"/>
+    <ProjectReference Include="..\Database.Main\Database.Main.csproj"/>
   </ItemGroup>
 
 </Project>

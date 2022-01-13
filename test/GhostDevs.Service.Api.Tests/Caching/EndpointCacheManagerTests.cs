@@ -12,11 +12,13 @@ public class EndpointCacheManagerTests
 {
     private readonly EndpointCacheManager _cacheManager;
 
+
     public EndpointCacheManagerTests()
     {
         _cacheManager = new EndpointCacheManager(new NullLogger<EndpointCacheManager>(),
             new InMemoryCacheClient(builder => builder.CloneValues(true)));
     }
+
 
     [Theory]
     [InlineData(0)]
@@ -28,6 +30,7 @@ public class EndpointCacheManagerTests
         // Assert
         result.ShouldBeFalse();
     }
+
 
     [Theory]
     [InlineData(10)]
@@ -41,6 +44,7 @@ public class EndpointCacheManagerTests
         result.ShouldBeTrue();
     }
 
+
     [Fact]
     public async Task Get_should_not_return_cache_content_when_data_is_not_cached()
     {
@@ -48,7 +52,7 @@ public class EndpointCacheManagerTests
         var route = "/api/v1/test";
         var queryParameters = new List<KeyValuePair<string, StringValues>>
         {
-            new("q", new StringValues("test")), new("p", new StringValues(new[] { "3", "1", "2" }))
+            new("q", new StringValues("test")), new("p", new StringValues(new[] {"3", "1", "2"}))
         };
         var tag = "test";
 
@@ -62,6 +66,7 @@ public class EndpointCacheManagerTests
         result.Key.ShouldNotBeEmpty();
     }
 
+
     [Fact]
     public async Task Get_should_return_cache_content_when_data_is_cached()
     {
@@ -69,7 +74,7 @@ public class EndpointCacheManagerTests
         var route = "/api/v1/test";
         var queryParameters = new List<KeyValuePair<string, StringValues>>
         {
-            new("q", new StringValues("test")), new("p", new StringValues(new[] { "3", "1", "2" }))
+            new("q", new StringValues("test")), new("p", new StringValues(new[] {"3", "1", "2"}))
         };
         var tag = "test";
         await _cacheManager.Add("/api/v1/test/[p, 1,2,3]/[q, test]", @"{""test"":""data""}", 10, tag);
@@ -84,6 +89,7 @@ public class EndpointCacheManagerTests
         result.Key.ShouldBe("/api/v1/test/[p, 1,2,3]/[q, test]");
     }
 
+
     [Fact]
     public async Task Invalidate_should_remove_cache_for_tag()
     {
@@ -91,7 +97,7 @@ public class EndpointCacheManagerTests
         var route = "/api/v1/test";
         var queryParameters = new List<KeyValuePair<string, StringValues>>
         {
-            new("q", new StringValues("test")), new("p", new StringValues(new[] { "3", "1", "2" }))
+            new("q", new StringValues("test")), new("p", new StringValues(new[] {"3", "1", "2"}))
         };
         var tag = "test";
         await _cacheManager.Add("/api/v1/test/[p, 1,2,3]/[q, test]", @"{""test"":""data""}", 10, tag);
@@ -107,15 +113,18 @@ public class EndpointCacheManagerTests
         result.Key.ShouldNotBeEmpty();
     }
 
+
     [Fact]
     public async Task Invalidate_should_remove_cache_for_tag1_but_keep_tag2()
     {
         // Arrange
         var route1 = "/api/v1/user";
-        var queryParameters1 = new List<KeyValuePair<string, StringValues>> { new("id", new StringValues("123")) };
+        var queryParameters1 =
+            new List<KeyValuePair<string, StringValues>> {new("id", new StringValues("123"))};
         var tag1 = "user";
         var route2 = "/api/v1/assets";
-        var queryParameters2 = new List<KeyValuePair<string, StringValues>> { new("p", new StringValues("10")) };
+        var queryParameters2 =
+            new List<KeyValuePair<string, StringValues>> {new("p", new StringValues("10"))};
         var tag2 = "assets";
         await _cacheManager.Add("/api/v1/user/[id, 123]", @"{""username"":""test""}", 10, tag1);
         await _cacheManager.Add("/api/v1/assets/[p, 10]", @"{""test"":""data""}", 10, tag2);

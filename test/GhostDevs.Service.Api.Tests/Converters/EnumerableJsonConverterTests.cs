@@ -13,14 +13,15 @@ public class EnumerableJsonConverterTests
     {
         IncludeFields = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new EnumerableJsonConverterFactory() }
+        Converters = {new EnumerableJsonConverterFactory()}
     };
+
 
     [Fact]
     public void Write_should_return_json_string_with_no_results_property()
     {
         // Arrange
-        var apiResult = new TestApiResult { total_results = 0, assets = Array.Empty<TestAsset>() };
+        var apiResult = new TestApiResult {total_results = 0, assets = Array.Empty<TestAsset>()};
 
         // Act
         var result = JsonSerializer.Serialize(apiResult, _defaultOptions);
@@ -29,13 +30,14 @@ public class EnumerableJsonConverterTests
         result.ShouldBeEquivalentTo(@"{""total_results"":0}");
     }
 
+
     [Fact]
     public void Write_should_return_json_string_with_results_property()
     {
         // Arrange
         var apiResult = new TestApiResult
         {
-            total_results = 2, assets = new[] { new TestAsset { name = "test1" }, new TestAsset { name = "test2" } }
+            total_results = 2, assets = new[] {new TestAsset {name = "test1"}, new TestAsset {name = "test2"}}
         };
 
         // Act
@@ -44,6 +46,7 @@ public class EnumerableJsonConverterTests
         // Assert
         result.ShouldBeEquivalentTo(@"{""assets"":[{""name"":""test1""},{""name"":""test2""}],""total_results"":2}");
     }
+
 
     [Fact]
     public void Read_should_return_object_with_no_results_when_enumerable_property_provided_with_null()
@@ -59,6 +62,7 @@ public class EnumerableJsonConverterTests
         result.assets.ShouldBeNull();
     }
 
+
     [Fact]
     public void Read_should_return_object_with_no_results_when_enumerable_property_not_provided()
     {
@@ -72,6 +76,7 @@ public class EnumerableJsonConverterTests
         result.total_results.ShouldBe(0);
         result.assets.ShouldBeNull();
     }
+
 
     [Fact]
     public void Read_should_return_object_with_results()
@@ -88,6 +93,7 @@ public class EnumerableJsonConverterTests
         result.assets.ShouldContain(a => a.name == "test1");
         result.assets.ShouldContain(a => a.name == "test2");
     }
+
 
     internal struct TestApiResult
     {

@@ -1,64 +1,69 @@
-using GhostDevs.Api;
-using Database.Main;
-using GhostDevs.PluginEngine;
-using Serilog;
 using System;
 using System.Linq;
 using System.Text.Json;
+using Database.Main;
+using GhostDevs.Api;
+using GhostDevs.PluginEngine;
+using Serilog;
 
-namespace GhostDevs.Blockchain
+namespace GhostDevs.Blockchain;
+
+public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    public partial class PhantasmaPlugin: Plugin, IBlockchainPlugin
+    public void InitNewTokens()
     {
-        public void InitNewTokens()
+        var startTime = DateTime.Now;
+
+        int updatedTokensCount;
+
+        using ( MainDbContext databaseContext = new() )
         {
-            DateTime startTime = DateTime.Now;
+            var tokens = databaseContext.Tokens.Where(x => x.ChainId == ChainId && x.FUNGIBLE == null).ToList();
 
-            int updatedTokensCount;
-
-            using (var databaseContext = new MainDbContext())
+            //maybe change to foreach
+            updatedTokensCount = 0;
+            for ( var i = 0; i < tokens.Count(); i++ )
             {
-                var tokens = databaseContext.Tokens.Where(x => x.ChainId == ChainId && x.FUNGIBLE == null).ToList();
+                var tokenToUpdate = tokens[i];
 
-                updatedTokensCount = 0;
-                for (var i = 0; i < tokens.Count(); i++)
+                var token = Client.APIRequest<JsonDocument>(
+                    $"{Settings.Default.GetRest()}/api/getToken?symbol=" + tokenToUpdate.SYMBOL,
+                    out var stringResponse,
+                    null, 10);
+
+                if ( token == null )
                 {
-                    var tokenToUpdate = tokens[i];
-
-                    var token = Client.APIRequest<JsonDocument>($"{Settings.Default.GetRest()}/api/getToken?symbol=" + tokenToUpdate.SYMBOL, out var stringResponse, null, 10);
-
-                    if (token == null)
-                    {
-                        Log.Error($"[{Name}] Cannot fetch Phantasma {tokenToUpdate.SYMBOL} token info. Unknown error");
-                        continue;
-                    }
-
-                    if (token.RootElement.TryGetProperty("error", out var errorProperty))
-                    {
-                        Log.Error($"[{Name}] Cannot fetch Phantasma {tokenToUpdate.SYMBOL} token info: Error: {errorProperty.GetString()}");
-                        continue;
-                    }
-
-                    if (token.RootElement.GetProperty("flags").GetString().Contains("Fungible"))
-                    {
-                        tokenToUpdate.FUNGIBLE = true;
-                        // It's a fungible token. We should apply decimals.
-                        tokenToUpdate.DECIMALS = token.RootElement.GetProperty("decimals").GetInt32();
-                    }
-                    else
-                    {
-                        tokenToUpdate.FUNGIBLE = false;
-                    }
-
-                    updatedTokensCount++;
+                    Log.Error("[{Name}] Cannot fetch Phantasma {Symbol} token info. Unknown error", Name,
+                        tokenToUpdate.SYMBOL);
+                    continue;
                 }
 
-                if(updatedTokensCount > 0)
-                    databaseContext.SaveChanges();
+                if ( token.RootElement.TryGetProperty("error", out var errorProperty) )
+                {
+                    Log.Error(
+                        "[{Name}] Cannot fetch Phantasma {Symbol} token info: Error: {Error}",
+                        Name, tokenToUpdate.SYMBOL, errorProperty.GetString());
+                    continue;
+                }
+
+                if ( token.RootElement.GetProperty("flags").GetString()!.Contains("Fungible") )
+                {
+                    tokenToUpdate.FUNGIBLE = true;
+                    // It's a fungible token. We should apply decimals.
+                    tokenToUpdate.DECIMALS = token.RootElement.GetProperty("decimals").GetInt32();
+                }
+                else
+                    tokenToUpdate.FUNGIBLE = false;
+
+                updatedTokensCount++;
             }
 
-            TimeSpan updateTime = DateTime.Now - startTime;
-            Log.Information($"[{Name}] Token update took {Math.Round(updateTime.TotalSeconds, 3)} sec, {updatedTokensCount} tokens updated");
+            if ( updatedTokensCount > 0 ) databaseContext.SaveChanges();
         }
+
+        var updateTime = DateTime.Now - startTime;
+        Log.Information(
+            "[{Name}] Token update took {UpdateTime} sec, {UpdatedTokensCount} tokens updated", Name,
+            Math.Round(updateTime.TotalSeconds, 3), updatedTokensCount);
     }
 }

@@ -1,10 +1,10 @@
 {
-    "PluginConfiguration": {
-        "enabled": true,
-        "startDelay": 60,
-        "runInterval": 3600,
-        "apiKeys": [
-            ""
-        ]
-    }
+  "PluginConfiguration": {
+    "enabled": true,
+    "startDelay": 60,
+    "runInterval": 3600,
+    "apiKeys": [
+      ""
+    ]
+  }
 }

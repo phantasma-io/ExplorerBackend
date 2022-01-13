@@ -1,33 +1,34 @@
 using Microsoft.Extensions.Configuration;
 
-namespace GhostDevs.Blockchain
+namespace GhostDevs.Blockchain;
+
+internal class Settings
 {
-    internal class Settings
+    private Settings(IConfigurationSection section)
     {
-        public bool Enabled { get; }
-        public int StartDelay { get; }
-        public int EventsProcessingInterval { get; }
-        public int EventsPriceRefreshStartDelay { get; }
-        public int EventsPriceRefreshInterval { get; }
+        Enabled = section.GetSection("enabled").Get<bool>();
 
-        public static Settings Default { get; private set; }
+        StartDelay = section.GetValue<int>("startDelay");
 
-        private Settings(IConfigurationSection section)
-        {
-            Enabled = section.GetSection("enabled").Get<bool>();
+        EventsProcessingInterval = section.GetValue<int>("eventsProcessingInterval");
 
-            StartDelay = section.GetValue<int>("startDelay");
+        EventsPriceRefreshStartDelay = section.GetValue<int>("eventsPriceRefreshStartDelay");
 
-            EventsProcessingInterval = section.GetValue<int>("eventsProcessingInterval");
+        EventsPriceRefreshInterval = section.GetValue<int>("eventsPriceRefreshInterval");
+    }
 
-            EventsPriceRefreshStartDelay = section.GetValue<int>("eventsPriceRefreshStartDelay");
 
-            EventsPriceRefreshInterval = section.GetValue<int>("eventsPriceRefreshInterval");
-        }
+    public bool Enabled { get; }
+    public int StartDelay { get; }
+    public int EventsProcessingInterval { get; }
+    public int EventsPriceRefreshStartDelay { get; }
+    public int EventsPriceRefreshInterval { get; }
 
-        public static void Load(IConfigurationSection section)
-        {
-            Default = new Settings(section);
-        }
+    public static Settings Default { get; private set; }
+
+
+    public static void Load(IConfigurationSection section)
+    {
+        Default = new Settings(section);
     }
 }

@@ -1,172 +1,141 @@
 using System;
+using System.IO;
 using System.Threading;
 using Database.Main;
+using GhostDevs.Commons;
 using GhostDevs.PluginEngine;
 using Microsoft.Extensions.Configuration;
-using GhostDevs.Commons;
 using Serilog;
+using Serilog.Events;
 
-namespace GhostDevs.Service
+// ReSharper disable LoopVariableIsNeverChangedInsideLoop
+
+namespace GhostDevs.Service.DataFetcher;
+
+public static class DataFetcher
 {
-    public class DataFetcher
+    private static int _fetchInterval = 30;
+
+    private static readonly string ConfigDirectory =
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
+
+    private static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
+
+
+    private static void Main()
     {
-        private static int FetchInterval = 30;
+        LoggingSettings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+            .GetSection("Logging"));
 
-        private static readonly string ConfigDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
-        private static string ConfigFile => System.IO.Path.Combine(ConfigDirectory, "explorer-backend-config.json");
+        //load cfg now, process loglevel then rest
+        var loggingData = LoggingSettings.Default;
+        if ( !Enum.TryParse(loggingData.Level, true, out LogEventLevel logLevel) ) logLevel = LogEventLevel.Information;
 
-        static void Main(string[] args)
+        Directory.CreateDirectory("../logs");
+        LogEx.Init("../logs/data-fetcher-service-.log", logLevel, loggingData.LogOverwrite);
+        Log.Information("\n\n*********************************************************\n" +
+                        "************** Data Fetcher Service Started *************\n" +
+                        "*********************************************************\n" +
+                        "Log level: {Level}, LogOverwrite: {Overwrite}", logLevel,
+            loggingData.LogOverwrite);
+
+        Log.Information("Initializing Data Fetcher Service...");
+
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+            .GetSection("FetcherServiceConfiguration"));
+
+        using ( var database = new MainDbContext() )
         {
-            Serilog.Events.LogEventLevel _logLevel = Serilog.Events.LogEventLevel.Information;
-            bool _logOverwriteMode = true;
+            PostgreSQLConnector pgConnection = null;
+            var max = MainDbContext.GetConnectionMaxRetries();
+            var timeout = MainDbContext.GetConnectionRetryTimeout();
 
-            // Checking if log options are set in command line.
-            // They override settings (for debug purposes).
-            for (int i = 0; i < args.Length; i++)
-            {
-                switch (args[i])
-                {
-                    case "--log-level":
-                        {
-                            if (i + 1 < args.Length)
-                            {
-                                if(!Enum.TryParse<Serilog.Events.LogEventLevel>(args[i + 1], true, out _logLevel))
-                                    _logLevel = Serilog.Events.LogEventLevel.Information;
-                            }
+            Log.Debug("Getting Database Connection, MaxRetries {Max}, Timeout {Timeout}", max, timeout);
 
-                            break;
-                        }
-                    case "--log-overwrite-mode":
-                        {
-                            if (i + 1 < args.Length)
-                            {
-                                _logOverwriteMode = args[i + 1] == "1";
-                            }
-
-                            break;
-                        }
-                    case "--fetch-interval":
-                        {
-                            if (i + 1 < args.Length)
-                            {
-                                FetchInterval = Int32.Parse(args[i + 1]);
-                            }
-
-                            break;
-                        }
-                }
-            }
-
-            System.IO.Directory.CreateDirectory("../logs");
-            LogEx.Init($"../logs/data-fetcher-service-.log", _logLevel, _logOverwriteMode);
-            Log.Information("\n\n*********************************************************\n" +
-                      "************** Data Fetcher Service Started *************\n" +
-                      "*********************************************************\n" +
-                      "Log level: " + _logLevel.ToString());
-
-            Log.Information("Initializing Data Fetcher Service...");
-
-            Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, optional: false).Build().GetSection("FetcherServiceConfiguration"));
-
-            using (var Database = new MainDbContext())
-            {
-
-                PostgreSQLConnector pgConnection = null;
-                int max = 6;
-                for (int i = 1; i <= max; i++)
-                {
-                    try
-                    {
-                        pgConnection = new PostgreSQLConnector(Database.GetConnectionString());
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Warning($"Database connection error: {e.Message}");
-                        if (i < max)
-                        {
-                            Thread.Sleep(5000 * i);
-                            Log.Warning($"Database connection: Trying again...");
-                        }
-                        else
-                        {
-                            throw;
-                        }
-                    }
-                }
-
-                Log.Information($"PostgreSQL version: {pgConnection.GetVersion()}");
-
-                // Add supported chains and tokens to the database.
-                foreach (var chain in Settings.Default.Chains)
-                {
-                    Log.Information($"Registering chain {chain.Name}");
-
-                    ChainMethods.Upsert(Database, chain.Name);
-                }
-                Database.SaveChanges();
-
-                foreach (var symbol in Settings.Default.Tokens)
-                {
-                    Log.Information($"Registering token {symbol.Chain} {symbol.Symbol}");
-                    
-                    var chainId = ChainMethods.GetId(Database, symbol.Chain);
-                    TokenMethods.Upsert(Database, chainId, symbol.Contract, symbol.Symbol);
-                }
-                Database.SaveChanges();
-            }
-
-            Plugin.LoadPlugins();
-
-            // Start up self contained plugins
-            foreach (IDBAccessPlugin plugin in Plugin.DBAPlugins)
-            {
-                plugin.Startup();
-            }
-
-            Log.Information("Data Fetcher Service is ready");
-
-            bool running = true;
-
-            new Thread(() =>
-            {
-                while (running)
-                {
-                    try
-                    {
-                        foreach (IBlockchainPlugin plugin in Plugin.BlockchainPlugins)
-                        {
-                            plugin.Fetch();
-                        }
-                    }
-                    catch(Exception e)
-                    {
-                        LogEx.Exception("Fetch", e);
-                    }
-
-                    Thread.Sleep(1000 * FetchInterval);
-                }
-            }).Start();
-
-            Console.CancelKeyPress += delegate {
-                Log.Information("Terminating service...");
-                running = false;
+            for ( var i = 1; i <= max; i++ )
                 try
                 {
-                    // Stopping code.
-                    foreach (IDBAccessPlugin plugin in Plugin.DBAPlugins)
-                    {
-                        plugin.Shutdown();
-                    }
+                    pgConnection = new PostgreSQLConnector(database.GetConnectionString());
                 }
-                catch (Exception e)
+                catch ( Exception e )
                 {
-                    Log.Error(e, "Termination service exception");
+                    Log.Warning("Database connection error: {Message}", e.Message);
+                    if ( i < max )
+                    {
+                        Thread.Sleep(timeout * i);
+                        Log.Warning("Database connection: Trying again ({Index}/{Max})...", i, max);
+                    }
+                    else
+                        throw;
                 }
 
-                Environment.Exit(0);
-            };
+            if ( pgConnection != null ) Log.Information("PostgresSQL version: {Version}", pgConnection.GetVersion());
 
-            Log.Information($"Service is running...");
+            // Add supported chains and tokens to the database.
+            foreach ( var chain in Settings.Default.Chains )
+            {
+                Log.Information("Registering chain {Name}", chain.Name);
+
+                ChainMethods.Upsert(database, chain.Name);
+            }
+
+            database.SaveChanges();
+
+            foreach ( var symbol in Settings.Default.Tokens )
+            {
+                Log.Information("Registering token {Chain} {Symbol}", symbol.Chain, symbol.Symbol);
+
+                var chainId = ChainMethods.GetId(database, symbol.Chain);
+                TokenMethods.Upsert(database, chainId, symbol.Contract, symbol.Symbol);
+            }
+
+            database.SaveChanges();
         }
+
+        Plugin.LoadPlugins();
+
+        // Start up self contained plugins
+        foreach ( var plugin in Plugin.DBAPlugins ) plugin.Startup();
+
+        _fetchInterval = Settings.Default.FetchInterval;
+        Log.Information("Data Fetcher Service is ready, Interval {Interval}", _fetchInterval);
+
+        var running = true;
+
+        new Thread(() =>
+        {
+            while ( running )
+            {
+                try
+                {
+                    foreach ( var plugin in Plugin.BlockchainPlugins ) plugin.Fetch();
+                }
+                catch ( Exception e )
+                {
+                    LogEx.Exception("Fetch", e);
+                }
+
+                Thread.Sleep(1000 * _fetchInterval);
+            }
+        }).Start();
+
+        Console.CancelKeyPress += delegate
+        {
+            Log.Information("Terminating service...");
+            running = false;
+            try
+            {
+                // Stopping code.
+                foreach ( var plugin in Plugin.DBAPlugins ) plugin.Shutdown();
+            }
+            catch ( Exception e )
+            {
+                Log.Error(e, "Termination service exception");
+            }
+
+            Environment.Exit(0);
+        };
+
+        Log.Information("Service is running...");
     }
 }

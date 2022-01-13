@@ -1,23 +1,24 @@
 using Microsoft.Extensions.Configuration;
 
-namespace GhostDevs
+namespace GhostDevs;
+
+internal class Settings
 {
-    internal class Settings
+    private Settings(IConfigurationSection section)
     {
-        public bool Enabled { get; }
-        public uint RunInterval { get; }
+        Enabled = section.GetSection("enabled").Get<bool>();
+        RunInterval = section.GetSection("runInterval").Get<uint>();
+    }
 
-        public static Settings Default { get; private set; }
 
-        private Settings(IConfigurationSection section)
-        {
-            Enabled = section.GetSection("enabled").Get<bool>();
-            RunInterval =  section.GetSection("runInterval").Get<uint>();
-        }
+    public bool Enabled { get; }
+    public uint RunInterval { get; }
 
-        public static void Load(IConfigurationSection section)
-        {
-            Default = new Settings(section);
-        }
+    public static Settings Default { get; private set; }
+
+
+    public static void Load(IConfigurationSection section)
+    {
+        Default = new Settings(section);
     }
 }

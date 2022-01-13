@@ -1,9 +1,9 @@
 {
-    "PluginConfiguration": {
-        "enabled": true,
-        "startDelay": 60,
-        "eventsProcessingInterval": 30,
-        "eventsPriceRefreshStartDelay": 600,
-        "eventsPriceRefreshInterval": 600
-    }
+  "PluginConfiguration": {
+    "enabled": true,
+    "startDelay": 60,
+    "eventsProcessingInterval": 30,
+    "eventsPriceRefreshStartDelay": 600,
+    "eventsPriceRefreshInterval": 600
+  }
 }

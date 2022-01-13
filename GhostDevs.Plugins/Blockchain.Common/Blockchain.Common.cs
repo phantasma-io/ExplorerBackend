@@ -1,61 +1,64 @@
 using System;
-using GhostDevs.PluginEngine;
 using System.Threading;
-using Serilog;
 using GhostDevs.Commons;
+using GhostDevs.PluginEngine;
+using Serilog;
 
-namespace GhostDevs.Blockchain
+namespace GhostDevs.Blockchain;
+
+public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
 {
-    public partial class BlockchainCommonPlugin: Plugin, IDBAccessPlugin
+    private bool _running = true;
+    public override string Name => "Blockchain.Common";
+
+
+    public void Startup()
     {
-        public override string Name => "Blockchain.Common";
-        private bool _running = true;
+        Log.Information("{Name} plugin: Startup...", Name);
 
-        protected override void Configure()
+        if ( !Settings.Default.Enabled )
         {
-            Settings.Load(GetConfiguration());
+            Log.Information("{Name} plugin is disabled, stopping", Name);
+            return;
         }
-        public void Startup()
+
+        // Starting threads
+
+        var eventsProcessThread = new Thread(() =>
         {
-            Log.Information($"{Name} plugin: Startup...");
+            Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            if (!Settings.Default.Enabled)
-            {
-                Log.Information($"{Name} plugin is disabled, stopping.");
-                return;
-            }
-
-            // Starting threads
-
-            Thread eventsProcessThread = new Thread(() =>
-            {
-                Thread.Sleep(Settings.Default.StartDelay * 1000);
-
-                while (_running)
+            while ( _running )
+                try
                 {
-                    try
-                    {
-                        MarkBurnedNfts();
-                        EventUsdPricesFill();
+                    MarkBurnedNfts();
+                    EventUsdPricesFill();
 
-                        Thread.Sleep(Settings.Default.EventsProcessingInterval * 1000); // We process events every EventsProcessingInterval seconds
-                    }
-                    catch (Exception e)
-                    {
-                        LogEx.Exception($"{Name} plugin: Events processing", e);
-
-                        Thread.Sleep(Settings.Default.EventsProcessingInterval * 1000);
-                    }
+                    Thread.Sleep(Settings.Default.EventsProcessingInterval *
+                                 1000); // We process events every EventsProcessingInterval seconds
                 }
-            });
-            eventsProcessThread.Start();
-            
-            Log.Information($"{Name} plugin: Startup finished");
-        }
-        public void Shutdown()
-        {
-            Log.Information($"{Name} plugin: Shutdown command received.");
-            _running = false;
-        }
+                catch ( Exception e )
+                {
+                    LogEx.Exception($"{Name} plugin: Events processing", e);
+
+                    Thread.Sleep(Settings.Default.EventsProcessingInterval * 1000);
+                }
+        });
+        eventsProcessThread.Start();
+
+        Log.Information("{Name} plugin: Startup finished", Name);
+    }
+
+
+    public void Shutdown()
+    {
+        Log.Information("{Name} plugin: Shutdown command received", Name);
+        _running = false;
+    }
+
+
+    protected override void Configure()
+    {
+        Settings.Load(GetConfiguration());
     }
 }

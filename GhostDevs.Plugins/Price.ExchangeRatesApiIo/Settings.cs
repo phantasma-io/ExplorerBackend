@@ -1,33 +1,33 @@
-using Microsoft.Extensions.Configuration;
-using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Configuration;
 
-namespace GhostDevs
+namespace GhostDevs;
+
+internal class Settings
 {
-    internal class Settings
+    private Settings(IConfigurationSection section)
     {
-        public bool Enabled { get; }
-        public int StartDelay { get; }
-        public uint RunInterval { get; }
-        public string[] ApiKeys { get; }
+        Enabled = section.GetSection("enabled").Get<bool>();
+        StartDelay = section.GetValue<int>("startDelay");
+        RunInterval = section.GetSection("runInterval").Get<uint>();
 
-        public static Settings Default { get; private set; }
+        ApiKeys = section.GetSection("apiKeys").AsEnumerable()
+            .Where(p => p.Value != null)
+            .Select(p => p.Value)
+            .ToArray();
+    }
 
-        private Settings(IConfigurationSection section)
-        {
-            Enabled = section.GetSection("enabled").Get<bool>();
-            StartDelay = section.GetValue<int>("startDelay");
-            RunInterval =  section.GetSection("runInterval").Get<uint>();
 
-            ApiKeys = section.GetSection("apiKeys").AsEnumerable()
-                        .Where(p => p.Value != null)
-                        .Select(p => p.Value)
-                        .ToArray();
-        }
+    public bool Enabled { get; }
+    public int StartDelay { get; }
+    public uint RunInterval { get; }
+    public string[] ApiKeys { get; }
 
-        public static void Load(IConfigurationSection section)
-        {
-            Default = new Settings(section);
-        }
+    public static Settings Default { get; private set; }
+
+
+    public static void Load(IConfigurationSection section)
+    {
+        Default = new Settings(section);
     }
 }

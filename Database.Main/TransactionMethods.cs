@@ -1,50 +1,44 @@
 using System.Linq;
 
-namespace Database.Main
+namespace Database.Main;
+
+public static class TransactionMethods
 {
-    public static class TransactionMethods
+    public static string Prepend0x(string address, string chainShortName = null)
     {
-        public static string Prepend0x(string address, string chainShortName = null)
-        {
-            if (string.IsNullOrEmpty(address))
-            {
-                return address;
-            }
+        if ( string.IsNullOrEmpty(address) ) return address;
 
-            // return "0x" + address;
+        // return "0x" + address;
 
-            return address;
-        }
+        return address;
+    }
 
-        // Checks if "Transactions" table has entry with given name,
-        // and adds new entry, if there's no entry available.
-        // Returns new or existing entry's Id.
-        public static Transaction Upsert(MainDbContext databaseContext, Block block, int txIndex, string hash, bool saveChanges = true)
-        {
-            ContractMethods.Drop0x(ref hash);
 
-            var entry = databaseContext.Transactions.Where(x => x.Block == block && x.HASH == hash).FirstOrDefault();
+    // Checks if "Transactions" table has entry with given name,
+    // and adds new entry, if there's no entry available.
+    // Returns new or existing entry's Id.
+    public static Transaction Upsert(MainDbContext databaseContext, Block block, int txIndex, string hash,
+        bool saveChanges = true)
+    {
+        ContractMethods.Drop0x(ref hash);
 
-            if (entry == null)
-            {
-                // Checking if entry has been added already
-                // but not yet inserted into database.
-                entry = DbHelper.GetTracked<Transaction>(databaseContext).Where(x => x.Block == block && x.HASH == hash).FirstOrDefault();
-            }
+        var entry = databaseContext.Transactions.Where(x => x.Block == block && x.HASH == hash)
+            .FirstOrDefault();
 
-            if (entry != null)
-            {
-                return entry;
-            }
+        if ( entry == null )
+            // Checking if entry has been added already
+            // but not yet inserted into database.
+            entry = DbHelper.GetTracked<Transaction>(databaseContext).Where(x => x.Block == block && x.HASH == hash)
+                .FirstOrDefault();
 
-            entry = new Transaction { Block = block, INDEX = txIndex, HASH = hash };
+        if ( entry != null ) return entry;
 
-            databaseContext.Transactions.Add(entry);
+        entry = new Transaction {Block = block, INDEX = txIndex, HASH = hash};
 
-            if(saveChanges)
-                databaseContext.SaveChanges();
+        databaseContext.Transactions.Add(entry);
 
-            return entry;
-        }
+        if ( saveChanges ) databaseContext.SaveChanges();
+
+        return entry;
     }
 }

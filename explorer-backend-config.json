@@ -27,7 +27,9 @@
                 "Database": "explorer-backend-api-cache",
                 "Username": "postgres",
                 "Password": "masterkey"
-            }
+            },
+        "ConnectMaxRetries": 6,
+        "ConnectRetryTimeout": 5000
     },
     "ApiServiceConfiguration": {
     },
@@ -103,6 +105,11 @@
                 "Contract": "DYT",
                 "Symbol": "DYT"
             }
-        ]
-    }
+        ],
+        "FetchInterval": 30
+    },
+    "Logging": { 
+        "Level": "Verbose",
+        "LogOverwrite": true
+    },
 }

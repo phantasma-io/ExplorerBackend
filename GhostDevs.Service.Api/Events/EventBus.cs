@@ -15,6 +15,7 @@ public class EventBus : IEventBus
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly IMessageSubscriber _subscriber;
 
+
     public EventBus(ILogger<EventBus> logger, IMessageSubscriber subscriber, IServiceScopeFactory serviceScopeFactory)
     {
         _logger = logger;
@@ -22,21 +23,23 @@ public class EventBus : IEventBus
         _serviceScopeFactory = serviceScopeFactory;
     }
 
+
     public async Task Run(CancellationToken cancellationToken)
     {
         try
         {
             await RunInternal(cancellationToken);
         }
-        catch (OperationCanceledException)
+        catch ( OperationCanceledException )
         {
             throw;
         }
-        catch (Exception e)
+        catch ( Exception e )
         {
             _logger.LogCritical(e, "Event bus encountered an unexpected exception");
         }
     }
+
 
     private Task RunInternal(CancellationToken cancellationToken)
     {
@@ -50,6 +53,7 @@ public class EventBus : IEventBus
 
         return Task.WhenAll(tasks.ToArray());
     }
+
 
     private async Task InvalidateEndpointCacheEventHandler(InvalidateEndpointCacheEvent evt)
     {

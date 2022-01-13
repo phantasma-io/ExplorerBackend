@@ -1,79 +1,80 @@
+using System;
+using System.Linq;
+using System.Runtime.ExceptionServices;
 using Database.Main;
 using GhostDevs.PluginEngine;
 using Serilog;
-using System;
-using System.Linq;
 
-namespace GhostDevs.Blockchain
+namespace GhostDevs.Blockchain;
+
+public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
 {
-    public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
+    public void MarkBurnedNfts()
     {
-        public void MarkBurnedNfts()
+        var startTime = DateTime.Now;
+
+        var markedEventCount = 0;
+        var markedNftCount = 0;
+
+        using ( var databaseContext = new MainDbContext() )
         {
-            DateTime startTime = DateTime.Now;
+            int[] chainIds = {ChainMethods.GetId(databaseContext, "main")};
 
-            var markedEventCount = 0;
-            var markedNftCount = 0;
+            var burnEventIds = databaseContext.EventKinds
+                .Where(x => chainIds.Contains(x.ChainId) && x.NAME == "TokenBurn").Select(x => x.ID).ToArray();
 
-            using (var databaseContext = new MainDbContext())
+            foreach ( var burnEventId in burnEventIds )
             {
-                int[] chainIds =
-                    {
-                    ChainMethods.GetId(databaseContext, "main")
-                    };
+                var burnedTokens = databaseContext.Events
+                    .Where(x => x.EventKindId == burnEventId &&
+                                x.BURNED != true)
+                    .Select(x => new {x.ContractId, x.TOKEN_ID}).ToList();
 
-                var burnEventIds = databaseContext.EventKinds.Where(x => chainIds.Contains(x.ChainId) && x.NAME == "TokenBurn").Select(x => x.ID).ToArray();
-
-                foreach (var burnEventId in burnEventIds)
+                foreach ( var burnedToken in burnedTokens )
                 {
-                    var burnedTokens = databaseContext.Events
-                        .Where(x => x.EventKindId == burnEventId &&
-                            x.BURNED != true)
-                        .Select(x => new { x.ContractId, x.TOKEN_ID }).ToList();
-
-                    foreach (var burnedToken in burnedTokens)
+                    var tokenEvents = databaseContext.Events.Where(x =>
+                        x.ContractId == burnedToken.ContractId && x.TOKEN_ID == burnedToken.TOKEN_ID).ToList();
+                    foreach ( var tokenEvent in tokenEvents )
                     {
-                        var tokenEvents = databaseContext.Events.Where(x => x.ContractId == burnedToken.ContractId && x.TOKEN_ID == burnedToken.TOKEN_ID).ToList();
-                        foreach (var tokenEvent in tokenEvents)
-                        {
-                            tokenEvent.BURNED = true;
-                            markedEventCount++;
-                        }
-
-                        var nft = databaseContext.Nfts.Where(x => x.ContractId == burnedToken.ContractId && x.TOKEN_ID == burnedToken.TOKEN_ID).FirstOrDefault();
-                        if (nft != null)
-                        {
-                            nft.BURNED = true;
-                            markedNftCount++;
-                        }
+                        tokenEvent.BURNED = true;
+                        markedEventCount++;
                     }
-                }
 
-                if (markedEventCount > 0 || markedNftCount > 0)
-                {
-                    try
+                    var nft = databaseContext.Nfts
+                        .FirstOrDefault(x =>
+                            x.ContractId == burnedToken.ContractId && x.TOKEN_ID == burnedToken.TOKEN_ID);
+                    if ( nft != null )
                     {
-                        databaseContext.SaveChanges();
-                    }
-                    catch (Exception ex)
-                    {
-                        if (ex.Message.Contains("Database operation expected to affect "))
-                        {
-                            TimeSpan attemptTime = DateTime.Now - startTime;
-                            Log.Warning($"{Name} plugin: Burned token events processing failed because some NFTs or events were deleted in another thread, attempt took {Math.Round(attemptTime.TotalSeconds, 3)} sec");
-                            return;
-                        }
-                        else
-                        {
-                            // Unknown exception, throwing futher.
-                            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex).Throw();
-                        }
+                        nft.BURNED = true;
+                        markedNftCount++;
                     }
                 }
             }
 
-            TimeSpan processTime = DateTime.Now - startTime;
-            Log.Information($"{Name} plugin: Burned token events processing took {Math.Round(processTime.TotalSeconds, 3)} sec, {markedEventCount} events marked, {markedNftCount} NFTs marked");
+            if ( markedEventCount > 0 || markedNftCount > 0 )
+                try
+                {
+                    databaseContext.SaveChanges();
+                }
+                catch ( Exception ex )
+                {
+                    if ( ex.Message.Contains("Database operation expected to affect ") )
+                    {
+                        var attemptTime = DateTime.Now - startTime;
+                        Log.Warning(
+                            "{Name} plugin: Burned token events processing failed because some NFTs or events were deleted in another thread, attempt took {AttemptTime} sec",
+                            Name, Math.Round(attemptTime.TotalSeconds, 3));
+                        return;
+                    }
+
+                    // Unknown exception, throwing futher.
+                    ExceptionDispatchInfo.Capture(ex).Throw();
+                }
         }
+
+        var processTime = DateTime.Now - startTime;
+        Log.Information(
+            "{Name} plugin: Burned token events processing took {ProcessTime} sec, {MarkedEventCount} events marked, {MarkedNftCount} NFTs marked",
+            Name, Math.Round(processTime.TotalSeconds, 3), markedEventCount, markedNftCount);
     }
 }

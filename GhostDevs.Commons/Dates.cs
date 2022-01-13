@@ -1,86 +1,109 @@
 using System;
+using Serilog;
 
-namespace GhostDevs.Commons
+namespace GhostDevs.Commons;
+
+public static class UnixSeconds
 {
-    public static class UnixSeconds
+    public static long Now()
     {
-        public static Int64 Now()
+        return DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    }
+
+
+    public static long MaxValue()
+    {
+        return FromDateTime(DateTime.MaxValue);
+    }
+
+
+    public static DateTime ToDateTime(long unixSeconds)
+    {
+        try
         {
-            return DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(unixSeconds);
         }
-        public static Int64 MaxValue()
+        catch ( Exception )
         {
-            return FromDateTime(DateTime.MaxValue);
-        }
-        public static DateTime ToDateTime(Int64 unixSeconds)
-        {
-            try
-            {
-                return new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc).AddSeconds(unixSeconds);
-            }
-            catch(Exception)
-            {
-                Serilog.Log.Error($"UnixSeconds.ToDateTime() crashed on this date: '{unixSeconds}'");
-                throw;
-            }
-        }
-        public static Int64 FromString(string unixSeconds)
-        {
-            return Int64.Parse(unixSeconds);
-        }
-        public static Int64 FromDateTime(DateTime dateTime)
-        {
-            if (dateTime == DateTime.MinValue)
-                return 0;
-            return new DateTimeOffset(dateTime).ToUnixTimeSeconds();
-        }
-        public static Int64 FromDateTimeString(string dateTime)
-        {
-            return FromDateTime(DateTime.Parse(dateTime));
-        }
-        public static Int64 AddMinutes(Int64 unixSeconds, Int64 minutes)
-        {
-            return unixSeconds + minutes * 60;
-        }
-        public static Int64 AddHours(Int64 unixSeconds, Int64 hours)
-        {
-            return unixSeconds + hours * 3600;
-        }
-        public static Int64 AddDays(Int64 unixSeconds, Int64 days)
-        {
-            return unixSeconds + days * 86400;
-        }
-        // Removes time
-        public static Int64 GetDate(Int64 unixSeconds)
-        {
-            return unixSeconds - unixSeconds % 86400;
-        }
-        public static Int64 CountDays(Int64 unixSeconds)
-        {
-            return unixSeconds / 86400;
-        }
-        public static string Log(Int64 unixSeconds)
-        {
-            return $"{ToDateTime(unixSeconds):yyyy'-'MM'-'dd' 'HH':'mm':'ss}";
-        }
-        public static string LogDate(Int64 unixSeconds)
-        {
-            return $"{ToDateTime(unixSeconds):yyyy'-'MM'-'dd}";
+            Serilog.Log.Error("UnixSeconds.ToDateTime() crashed on this date: '{UnixSeconds}'", unixSeconds);
+            throw;
         }
     }
-    public static class UnixMilliseconds
+
+
+    public static long FromString(string unixSeconds)
     {
-        public static DateTime ToDateTime(Int64 unixMilliseconds)
+        return long.Parse(unixSeconds);
+    }
+
+
+    public static long FromDateTime(DateTime dateTime)
+    {
+        return dateTime == DateTime.MinValue ? 0 : new DateTimeOffset(dateTime).ToUnixTimeSeconds();
+    }
+
+
+    public static long FromDateTimeString(string dateTime)
+    {
+        return FromDateTime(DateTime.Parse(dateTime));
+    }
+
+
+    public static long AddMinutes(long unixSeconds, long minutes)
+    {
+        return unixSeconds + minutes * 60;
+    }
+
+
+    public static long AddHours(long unixSeconds, long hours)
+    {
+        return unixSeconds + hours * 3600;
+    }
+
+
+    public static long AddDays(long unixSeconds, long days)
+    {
+        return unixSeconds + days * 86400;
+    }
+
+
+    // Removes time
+    public static long GetDate(long unixSeconds)
+    {
+        return unixSeconds - unixSeconds % 86400;
+    }
+
+
+    public static long CountDays(long unixSeconds)
+    {
+        return unixSeconds / 86400;
+    }
+
+
+    public static string Log(long unixSeconds)
+    {
+        return $"{ToDateTime(unixSeconds):yyyy'-'MM'-'dd' 'HH':'mm':'ss}";
+    }
+
+
+    public static string LogDate(long unixSeconds)
+    {
+        return $"{ToDateTime(unixSeconds):yyyy'-'MM'-'dd}";
+    }
+}
+
+public static class UnixMilliseconds
+{
+    public static DateTime ToDateTime(long unixMilliseconds)
+    {
+        try
         {
-            try
-            {
-                return new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc).AddMilliseconds(unixMilliseconds);
-            }
-            catch(Exception)
-            {
-                Serilog.Log.Error($"UnixMilliseconds.ToDateTime() crashed on this date: '{unixMilliseconds}'");
-                throw;
-            }
+            return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(unixMilliseconds);
+        }
+        catch ( Exception )
+        {
+            Log.Error("UnixMilliseconds.ToDateTime() crashed on this date: '{UnixMilliseconds}'", unixMilliseconds);
+            throw;
         }
     }
 }

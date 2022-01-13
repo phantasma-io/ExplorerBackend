@@ -1,96 +1,92 @@
 using System.Linq;
 
-namespace Database.Main
+namespace Database.Main;
+
+public static class ContractMethods
 {
-    public static class ContractMethods
+    public static string Drop0x(string hash)
     {
-        public static string Drop0x(string hash)
+        if ( string.IsNullOrEmpty(hash) ) return hash;
+
+        if ( hash.StartsWith("0x") ) hash = hash.Substring(2);
+
+        // For comma-separated values
+        hash = hash.Replace(",0x", ",");
+
+        return hash;
+    }
+
+
+    public static void Drop0x(ref string hash)
+    {
+        hash = Drop0x(hash);
+    }
+
+
+    public static string Prepend0x(string contract, string chainShortName = null)
+    {
+        if ( string.IsNullOrEmpty(contract) ) return contract;
+
+        if ( contract.Length <= 10 ) return contract;
+
+        if ( chainShortName != null && chainShortName.ToUpper() == "main" ) return contract;
+
+        return "0x" + contract;
+    }
+
+
+    public static void Prepend0x(ref string contract, string chainShortName = null)
+    {
+        contract = Prepend0x(contract, chainShortName);
+    }
+
+
+    // Checks if "Contracts" table has entry with given hash,
+    // and adds new entry, if there's no entry available.
+    // Returns new or existing entry's Id.
+    public static int Upsert(MainDbContext databaseContext, string name, int chain, string hash
+        , string symbol)
+    {
+        Drop0x(ref hash);
+
+        int contractId;
+
+        var contract = databaseContext.Contracts
+            .FirstOrDefault(x => x.ChainId == chain && string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
+
+        if ( contract != null )
+            contractId = contract.ID;
+        else
         {
-            if (string.IsNullOrEmpty(hash))
-                return hash;
+            contract = new Contract {NAME = name, ChainId = chain, HASH = hash, SYMBOL = symbol};
 
-            if (hash.StartsWith("0x"))
-                hash = hash.Substring(2);
+            databaseContext.Contracts.Add(contract);
 
-            // For comma-separated values
-            hash = hash.Replace(",0x", ",");
+            databaseContext.SaveChanges();
 
-            return hash;
-        }
-        public static void Drop0x(ref string hash)
-        {
-            hash = Drop0x(hash);
-        }
-        public static string Prepend0x(string contract, string chainShortName = null)
-        {
-            if (string.IsNullOrEmpty(contract))
-            {
-                return contract;
-            }
-
-            if (contract.Length <= 10)
-            {
-                return contract;
-            }
-
-            if (chainShortName != null && (chainShortName.ToUpper() == "main"))
-            {
-                return contract;
-            }
-
-            return "0x" + contract;
-        }
-        public static void Prepend0x(ref string contract, string chainShortName = null)
-        {
-            contract = Prepend0x(contract, chainShortName);
+            contractId = contract.ID;
         }
 
-        // Checks if "Contracts" table has entry with given hash,
-        // and adds new entry, if there's no entry available.
-        // Returns new or existing entry's Id.
-        public static int Upsert(MainDbContext databaseContext, string name, int chain, string hash
-                , string symbol)
-        {
-            Drop0x(ref hash);
+        return contractId;
+    }
 
-            int contractId;
 
-            var contract = databaseContext.Contracts.Where(x => x.ChainId == chain && x.HASH.ToUpper() == hash.ToUpper()).FirstOrDefault();
+    public static Contract Get(MainDbContext databaseContext, int chainId, string hash, bool ignoreCase = false)
+    {
+        Drop0x(ref hash);
 
-            if (contract != null)
-            {
-                contractId = contract.ID;
-            }
-            else
-            {
-                contract = new Contract { NAME = name, ChainId = chain, HASH = hash, SYMBOL = symbol };
+        if ( ignoreCase )
+            return databaseContext.Contracts
+                .FirstOrDefault(x => x.ChainId == chainId && string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
 
-                databaseContext.Contracts.Add(contract);
+        return databaseContext.Contracts.FirstOrDefault(x => x.ChainId == chainId && x.HASH == hash);
+    }
 
-                databaseContext.SaveChanges();
 
-                contractId = contract.ID;
-            }
+    public static int GetId(MainDbContext databaseContext, int chainId, string hash, bool ignoreCase = false)
+    {
+        var contract = Get(databaseContext, chainId, hash, ignoreCase);
 
-            return contractId;
-        }
-        public static Contract Get(MainDbContext databaseContext, int chainId, string hash, bool ignoreCase = false)
-        {
-            Drop0x(ref hash);
-
-            if(ignoreCase)
-                return databaseContext.Contracts.Where(x => x.ChainId == chainId && x.HASH.ToUpper() == hash.ToUpper()).FirstOrDefault();
-            else
-                return databaseContext.Contracts.Where(x => x.ChainId == chainId && x.HASH == hash).FirstOrDefault();
-        }
-        public static int GetId(MainDbContext databaseContext, int chainId, string hash, bool ignoreCase = false)
-        {
-            var contract = Get(databaseContext, chainId, hash, ignoreCase);
-
-            if (contract == null)
-                return 0;
-            else
-                return contract.ID;
-        }
+        return contract?.ID ?? 0;
     }
 }

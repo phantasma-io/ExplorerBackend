@@ -1,69 +1,73 @@
+using System;
+using System.Threading;
 using GhostDevs.Commons;
 using GhostDevs.PluginEngine;
 using Serilog;
-using System;
-using System.Threading;
 
-namespace GhostDevs.Nft
+namespace GhostDevs.Nft;
+
+public class TTRS : Plugin, IDBAccessPlugin
 {
-    public class TTRS: Plugin, IDBAccessPlugin
+    private bool _running = true;
+
+    public override string Name => "Nft.TTRS";
+    public string ExtendedDataId { get; } = "custom22RS";
+
+
+    public void Startup()
     {
-        public override string Name => "Nft.TTRS";
-        private bool _running = true;
-        public string ExtendedDataId { get; } = "custom22RS";
-        public TTRS()
+        Log.Information("{Name} plugin: Startup...", Name);
+
+        if ( !Settings.Default.Enabled )
         {
+            Log.Information("{Name} plugin is disabled, stopping", Name);
+            return;
         }
-        protected override void Configure()
+
+        // Starting thread
+
+        var mainThread = new Thread(() =>
         {
-            Settings.Load(GetConfiguration());
-        }
-        public void Fetch()
-        {
-        }
-        public void Startup()
-        {
-            Log.Information($"{Name} plugin: Startup...");
+            Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            if (!Settings.Default.Enabled)
-            {
-                Log.Information($"{Name} plugin is disabled, stopping.");
-                return;
-            }
+            Nft.Fetch.Init();
 
-            // Starting thread
-
-            Thread mainThread = new Thread(() =>
-            {
-                Thread.Sleep(Settings.Default.StartDelay * 1000);
-
-                Nft.Fetch.Init();
-
-                while (_running)
+            while ( _running )
+                try
                 {
-                    try
-                    {
-                        Nft.Fetch.LoadNfts();
-                        Nft.Fetch.LoadGAMENfts();
+                    Nft.Fetch.LoadNfts();
+                    Nft.Fetch.LoadGAMENfts();
 
-                        Thread.Sleep((int)Settings.Default.RunInterval * 1000); // We repeat task every RunInterval seconds.
-                    }
-                    catch (Exception e)
-                    {
-                        LogEx.Exception($"{Name} plugin", e);
-
-                        Thread.Sleep((int)Settings.Default.RunInterval * 1000);
-                    }
+                    Thread.Sleep(( int ) Settings.Default.RunInterval *
+                                 1000); // We repeat task every RunInterval seconds.
                 }
-            });
-            mainThread.Start();
+                catch ( Exception e )
+                {
+                    LogEx.Exception($"{Name} plugin", e);
 
-            Log.Information($"{Name} plugin: Startup finished");
-        }
-        public void Shutdown()
-        {
-            Log.Information($"{Name} plugin: Shutdown command received.");
-            _running = false;
-        }
+                    Thread.Sleep(( int ) Settings.Default.RunInterval * 1000);
+                }
+        });
+        mainThread.Start();
+
+        Log.Information("{Name} plugin: Startup finished", Name);
+    }
+
+
+    public void Shutdown()
+    {
+        Log.Information("{Name} plugin: Shutdown command received", Name);
+        _running = false;
+    }
+
+
+    protected override void Configure()
+    {
+        Settings.Load(GetConfiguration());
+    }
+
+
+    public void Fetch()
+    {
     }
 }

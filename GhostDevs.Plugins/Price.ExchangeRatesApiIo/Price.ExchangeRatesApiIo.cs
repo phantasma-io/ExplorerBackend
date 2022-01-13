@@ -1,111 +1,121 @@
-using GhostDevs.PluginEngine;
+using System;
+using System.Text.Json;
+using System.Threading;
 using Database.Main;
 using GhostDevs.Api;
-using System.Threading;
-using System;
 using GhostDevs.Commons;
+using GhostDevs.PluginEngine;
 using Serilog;
-using System.Text.Json;
 
-namespace GhostDevs.Price
+namespace GhostDevs.Price;
+
+public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
 {
-    public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
+    private static readonly Random rnd = new();
+    private bool _running = true;
+
+    public override string Name => "Price.ExchangeRatesApiIo";
+
+
+    public void Startup()
     {
-        public override string Name => "Price.ExchangeRatesApiIo";
-        private bool _running = true;
-        private static Random rnd = new Random();
-        public ExchangeRatesApiIo()
+        Log.Information("{Name} plugin: Startup...", Name);
+
+        if ( !Settings.Default.Enabled )
         {
+            Log.Information("{Name} plugin is disabled, stopping", Name);
+            return;
         }
-        protected override void Configure()
+
+        // Starting thread
+
+        Thread mainThread = new(() =>
         {
-            Settings.Load(GetConfiguration());
-        }
-        // Fetching fiat currency prices from https://exchangeratesapi.io/.
-        // Using them to calculate prices for pegged tokens.
-        public void Fetch()
-        {
-        }
-        public void Startup()
-        {
-            Log.Information($"{Name} plugin: Startup...");
+            Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            if (!Settings.Default.Enabled)
-            {
-                Log.Information($"{Name} plugin is disabled, stopping.");
-                return;
-            }
-
-            // Starting thread
-
-            Thread mainThread = new Thread(() =>
-            {
-                Thread.Sleep(Settings.Default.StartDelay * 1000);
-
-                while (_running)
+            while ( _running )
+                try
                 {
-                    try
-                    {
-                        LoadPrices();
+                    LoadPrices();
 
-                        Thread.Sleep((int)Settings.Default.RunInterval * 1000); // We repeat task every RunInterval seconds.
-                    }
-                    catch (Exception e)
-                    {
-                        LogEx.Exception($"{Name} plugin", e);
-
-                        Thread.Sleep((int)Settings.Default.RunInterval * 1000);
-                    }
+                    Thread.Sleep(( int ) Settings.Default.RunInterval *
+                                 1000); // We repeat task every RunInterval seconds.
                 }
-            });
-            mainThread.Start();
-
-            Log.Information($"{Name} plugin: Startup finished");
-        }
-        public void Shutdown()
-        {
-            Log.Information($"{Name} plugin: Shutdown command received.");
-            _running = false;
-        }
-        // Loads token prices from https://exchangeratesapi.io/.
-        // API documentation: https://exchangeratesapi.io/
-        public void LoadPrices()
-        {
-            var url = "https://api.exchangeratesapi.io/latest?base=USD&access_key=" + Settings.Default.ApiKeys.GetValue(rnd.Next(Settings.Default.ApiKeys.Length));
-
-            var response = Client.APIRequest<JsonDocument>(url, out var stringResponse);
-            if (response == null)
-            {
-                return;
-            }
-
-            int pricesUpdated = 0;
-            using (var databaseContext = new MainDbContext())
-            {
-                foreach (var fiatSymbol in TokenMethods.GetSupportedFiatSymbols())
+                catch ( Exception e )
                 {
-                    var price = response.RootElement.GetProperty("rates").GetProperty(fiatSymbol).GetDecimal();
+                    LogEx.Exception($"{Name} plugin", e);
 
-                    FiatExchangeRateMethods.Upsert(databaseContext, fiatSymbol, price, false);
+                    Thread.Sleep(( int ) Settings.Default.RunInterval * 1000);
+                }
+        });
+        mainThread.Start();
 
-                    // Setting pegged token prices.
+        Log.Information("{Name} plugin: Startup finished", Name);
+    }
 
-                    // GOATI. 1 GOATI = 0.1 USD
-                    if (fiatSymbol.ToUpper() == "USD")
-                    {
-                        TokenMethods.SetPrice(databaseContext, ChainMethods.GetId(databaseContext, "main"), "GOATI", fiatSymbol, 0.1m, false);
-                    }
-                    else
-                    {
-                        TokenMethods.SetPrice(databaseContext, ChainMethods.GetId(databaseContext, "main"), "GOATI", fiatSymbol, price * 0.1m, false);
-                    }
-                    pricesUpdated++;
+
+    public void Shutdown()
+    {
+        Log.Information("{Name} plugin: Shutdown command received", Name);
+        _running = false;
+    }
+
+
+    protected override void Configure()
+    {
+        Settings.Load(GetConfiguration());
+    }
+
+
+    // Fetching fiat currency prices from https://exchangeratesapi.io/.
+    // Using them to calculate prices for pegged tokens.
+    public void Fetch()
+    {
+    }
+
+
+    // Loads token prices from https://exchangeratesapi.io/.
+    // API documentation: https://exchangeratesapi.io/
+    public void LoadPrices()
+    {
+        var url = "https://api.exchangeratesapi.io/latest?base=USD&access_key=" +
+                  Settings.Default.ApiKeys.GetValue(rnd.Next(Settings.Default.ApiKeys.Length));
+
+        var response = Client.APIRequest<JsonDocument>(url, out var stringResponse);
+        if ( response == null ) return;
+
+        var pricesUpdated = 0;
+        using ( MainDbContext databaseContext = new() )
+        {
+            foreach ( var fiatSymbol in TokenMethods.GetSupportedFiatSymbols() )
+            {
+                decimal price;
+                if ( response.RootElement.TryGetProperty("rates", out var element) )
+                    price = element.GetProperty(fiatSymbol).GetDecimal();
+                else
+                {
+                    Log.Warning("[{Name}] failed to get 'rates' element, for fiatSymbol {Symbol}", Name, fiatSymbol);
+                    continue;
                 }
 
-                if(pricesUpdated > 0)
-                    databaseContext.SaveChanges();
+                FiatExchangeRateMethods.Upsert(databaseContext, fiatSymbol, price, false);
+
+                // Setting pegged token prices.
+
+                // GOATI. 1 GOATI = 0.1 USD
+                if ( fiatSymbol.ToUpper() == "USD" )
+                    TokenMethods.SetPrice(databaseContext, ChainMethods.GetId(databaseContext, "main"), "GOATI",
+                        fiatSymbol, 0.1m, false);
+                else
+                    TokenMethods.SetPrice(databaseContext, ChainMethods.GetId(databaseContext, "main"), "GOATI",
+                        fiatSymbol, price * 0.1m, false);
+
+                pricesUpdated++;
             }
-            Log.Information($"{Name} plugin: {pricesUpdated} prices updated.");
+
+            if ( pricesUpdated > 0 ) databaseContext.SaveChanges();
         }
+
+        Log.Information("{Name} plugin: {PricesUpdated} prices updated", Name, pricesUpdated);
     }
 }

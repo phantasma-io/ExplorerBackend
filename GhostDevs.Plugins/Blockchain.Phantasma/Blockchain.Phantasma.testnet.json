@@ -1,54 +1,54 @@
 {
-    "PluginConfiguration": {
-        "enabled": true,
-        "startDelay": 3,
-        "first.block": 1,
-        "chainName": "main",
-        "phantasma.nexus": "testnet",
-        "phantasma.rpc.nodes": [
-              "http://testnet.phantasma.io:7077"
-        ],
-        "phantasma.rest.nodes": [
-              "http://testnet.phantasma.io:7078"
-        ],
-        "tokensProcessingInterval": 30,
-        "blocksProcessingInterval": 10,
-        "eventsProcessingInterval": 30,
-        "romRamProcessingInterval": 30,
-        "seriesProcessingInterval": 30,
-        "infusionsProcessingInterval": 30,
-        "namesSyncInterval": 600,
-        "phantasma.nfts": [
-            {
-                "symbol": "TTRS"
-            },
-            {
-                "symbol": "GAME"
-            },
-            {
-                "symbol": "CROWN"
-            },
-            {
-                "symbol": "GHOST"
-            },
-            {
-                "symbol": "LEET"
-            },
-            {
-                "symbol": "SEM"
-            },
-            {
-                "symbol": "NOMI"
-            },
-            {
-                "symbol": "BRCP"
-            },
-            {
-                "symbol": "BRC"
-            },
-            {
-                "symbol": "IGI"
-            }
-        ]
-    }
+  "PluginConfiguration": {
+    "enabled": true,
+    "startDelay": 3,
+    "first.block": 1,
+    "chainName": "main",
+    "phantasma.nexus": "testnet",
+    "phantasma.rpc.nodes": [
+      "http://testnet.phantasma.io:7077"
+    ],
+    "phantasma.rest.nodes": [
+      "http://testnet.phantasma.io:7078"
+    ],
+    "tokensProcessingInterval": 30,
+    "blocksProcessingInterval": 10,
+    "eventsProcessingInterval": 30,
+    "romRamProcessingInterval": 30,
+    "seriesProcessingInterval": 30,
+    "infusionsProcessingInterval": 30,
+    "namesSyncInterval": 600,
+    "phantasma.nfts": [
+      {
+        "symbol": "TTRS"
+      },
+      {
+        "symbol": "GAME"
+      },
+      {
+        "symbol": "CROWN"
+      },
+      {
+        "symbol": "GHOST"
+      },
+      {
+        "symbol": "LEET"
+      },
+      {
+        "symbol": "SEM"
+      },
+      {
+        "symbol": "NOMI"
+      },
+      {
+        "symbol": "BRCP"
+      },
+      {
+        "symbol": "BRC"
+      },
+      {
+        "symbol": "IGI"
+      }
+    ]
+  }
 }

@@ -2,75 +2,64 @@ using System;
 using System.Linq;
 using System.Text.Json;
 
-namespace Database.ApiCache
+namespace Database.ApiCache;
+
+public static class BlockMethods
 {
-    public static class BlockMethods
+    // Checks if table has entry with given height,
+    // and adds new entry, if there's no entry available.
+    public static void Upsert(ApiCacheDbContext databaseContext, string chainShortName, string height,
+        long unixTimestampInSeconds, JsonDocument data, bool saveChanges = true)
     {
-        // Checks if table has entry with given height,
-        // and adds new entry, if there's no entry available.
-        public static void Upsert(ApiCacheDbContext databaseContext, string chainShortName, string height, Int64 unixTimestampInSeconds, JsonDocument data, bool saveChanges = true)
+        if ( string.IsNullOrEmpty(chainShortName) )
+            throw new ArgumentException("Argument cannot be null or empty.", "chainShortName");
+
+        if ( string.IsNullOrEmpty(height) ) throw new ArgumentException("Argument cannot be null or empty.", "height");
+
+        var chainId = ChainMethods.Upsert(databaseContext, chainShortName);
+
+        var block = databaseContext.Blocks.FirstOrDefault(x => x.ChainId == chainId && x.HEIGHT == height);
+
+        if ( block != null ) return;
+
+        block = new Block {ChainId = chainId, HEIGHT = height, TIMESTAMP = unixTimestampInSeconds, DATA = data};
+        databaseContext.Blocks.Add(block);
+
+        if ( !saveChanges ) return;
+
+        try
         {
-            if (string.IsNullOrEmpty(chainShortName))
-                throw new System.ArgumentException("Argument cannot be null or empty.", "chainShortName");
-            if (string.IsNullOrEmpty(height))
-                throw new System.ArgumentException("Argument cannot be null or empty.", "height");
-
-            var chainId = ChainMethods.Upsert(databaseContext, chainShortName);
-
-            var block = databaseContext.Blocks.Where(x => x.ChainId == chainId && x.HEIGHT == height).FirstOrDefault();
-
-            if (block == null)
+            databaseContext.SaveChanges();
+        }
+        catch ( Exception ex )
+        {
+            var exMessage = ex.ToString();
+            if ( exMessage.Contains("duplicate key value violates unique constraint") &&
+                 exMessage.Contains("IX_Blocks_ChainId_HEIGHT") )
             {
-                block = new Block
-                {
-                    ChainId = chainId,
-                    HEIGHT = height,
-                    TIMESTAMP = unixTimestampInSeconds,
-                    DATA = data
-                };
-                databaseContext.Blocks.Add(block);
-
-                if (saveChanges)
-                {
-                    try
-                    {
-                        databaseContext.SaveChanges();
-                    }
-                    catch (Exception ex)
-                    {
-                        var exMessage = ex.ToString();
-                        if (exMessage.Contains("duplicate key value violates unique constraint") &&
-                            exMessage.Contains("IX_Blocks_ChainId_HEIGHT"))
-                        {
-                            // We tried to create same record in two threads concurrently.
-                            // Now we should just remove duplicating record and get an existing record.
-                            databaseContext.Blocks.Remove(block);
-                            block = databaseContext.Blocks.Where(x => x.ChainId == chainId && x.HEIGHT == height).First();
-                        }
-                        else
-                        {
-                            // Unknown exception.
-                            throw;
-                        }
-                    }
-                }
+                // We tried to create same record in two threads concurrently.
+                // Now we should just remove duplicating record and get an existing record.
+                databaseContext.Blocks.Remove(block);
+                block = databaseContext.Blocks.First(x => x.ChainId == chainId && x.HEIGHT == height);
             }
+            else
+                // Unknown exception.
+                throw;
         }
+    }
 
-        public static Int64 GetTimestamp(ApiCacheDbContext databaseContext, string chainShortName, string height)
-        {
-            var chainId = ChainMethods.GetId(databaseContext, chainShortName);
 
-            var block = databaseContext.Blocks.Where(x => x.ChainId == chainId && x.HEIGHT == height).FirstOrDefault();
-            if (block == null)
-                return 0;
-            
-            return block.TIMESTAMP;
-        }
-        
-        public static Block GetByHeight(ApiCacheDbContext databaseContext, int chainId, string height)
-        {
-            return databaseContext.Blocks.Where(x => x.ChainId == chainId && x.HEIGHT == height).FirstOrDefault();
-        }
+    public static long GetTimestamp(ApiCacheDbContext databaseContext, string chainShortName, string height)
+    {
+        var chainId = ChainMethods.GetId(databaseContext, chainShortName);
+
+        var block = databaseContext.Blocks.FirstOrDefault(x => x.ChainId == chainId && x.HEIGHT == height);
+        return block?.TIMESTAMP ?? 0;
+    }
+
+
+    public static Block GetByHeight(ApiCacheDbContext databaseContext, int chainId, string height)
+    {
+        return databaseContext.Blocks.FirstOrDefault(x => x.ChainId == chainId && x.HEIGHT == height);
     }
 }

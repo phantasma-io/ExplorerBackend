@@ -9,10 +9,12 @@ public class EventBusBackgroundService : BackgroundService
 {
     private readonly IEventBus _bus;
 
+
     public EventBusBackgroundService(IEventBus bus)
     {
         _bus = bus;
     }
+
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {

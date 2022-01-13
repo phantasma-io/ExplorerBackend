@@ -1,24 +1,25 @@
-using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 
-namespace GhostDevs.Service
+namespace GhostDevs.Service;
+
+internal class Settings
 {
-    internal class Settings
+    private Settings(IConfigurationSection section)
     {
-        public static Settings Default { get; private set; }
+        var settings = section.Get<ApiServiceSettings>();
+    }
 
-        private Settings(IConfigurationSection section)
-        {
-            var settings = section.Get<ApiServiceSettings>();
-        }
 
-        public static void Load(IConfigurationSection section)
-        {
-            Default = new Settings(section);
-        }
+    public static Settings Default { get; private set; }
 
-        public class ApiServiceSettings
-        {
-        }
+
+    public static void Load(IConfigurationSection section)
+    {
+        Default = new Settings(section);
+    }
+
+
+    public class ApiServiceSettings
+    {
     }
 }

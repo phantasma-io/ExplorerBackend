@@ -15,23 +15,25 @@ public class CacheMiddleware
     private readonly ILogger<CacheMiddleware> _logger;
     private readonly RequestDelegate _next;
 
+
     public CacheMiddleware(RequestDelegate next, ILogger<CacheMiddleware> logger)
     {
         _next = next;
         _logger = logger;
     }
 
+
     public async Task Invoke(HttpContext httpContext, IEndpointCacheManager cacheManager)
     {
         var endpoint = httpContext.Features.Get<IEndpointFeature>()?.Endpoint;
-        if (endpoint == null)
+        if ( endpoint == null )
         {
             await _next(httpContext);
 
             return;
         }
 
-        if (endpoint.Metadata.FirstOrDefault(m => m is APIInfoAttribute) is not APIInfoAttribute apiInfoMeta)
+        if ( endpoint.Metadata.FirstOrDefault(m => m is APIInfoAttribute) is not APIInfoAttribute apiInfoMeta )
         {
             await _next(httpContext);
 
@@ -39,13 +41,13 @@ public class CacheMiddleware
         }
 
         var routeKey = endpoint.DisplayName;
-        if (endpoint is RouteEndpoint routeEndpoint)
+        if ( endpoint is RouteEndpoint routeEndpoint )
             // Use RoutePattern if available or fallback to display name
             routeKey = routeEndpoint.RoutePattern.RawText ?? endpoint.DisplayName;
 
-        if (string.IsNullOrEmpty(routeKey))
+        if ( string.IsNullOrEmpty(routeKey) )
         {
-            if (_logger.IsEnabled(LogLevel.Trace))
+            if ( _logger.IsEnabled(LogLevel.Trace) )
                 _logger.LogTrace("Could not apply cache to endpoint due to empty route key");
 
             await _next(httpContext);
@@ -61,9 +63,10 @@ public class CacheMiddleware
             _ => httpContext.Response.Headers.CacheControl
         };
 
-        var cacheResult = await cacheManager.Get(routeKey, httpContext.Request.Query, apiInfoMeta.CacheTag);
+        var cacheResult =
+            await cacheManager.Get(routeKey, httpContext.Request.Query, apiInfoMeta.CacheTag);
 
-        if (cacheResult.Cached)
+        if ( cacheResult.Cached )
         {
             var response = Encoding.UTF8.GetBytes(cacheResult.Content);
             httpContext.Response.ContentType = "application/json; charset=utf-8";

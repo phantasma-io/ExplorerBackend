@@ -24,6 +24,7 @@ public class EnumerableJsonConverterFactoryTests
         result.ShouldBeTrue();
     }
 
+
     [Theory]
     [InlineData(typeof(string))]
     [InlineData(typeof(string[]))]
@@ -38,6 +39,7 @@ public class EnumerableJsonConverterFactoryTests
         // Assert
         result.ShouldBeFalse();
     }
+
 
     [Theory]
     [InlineData(typeof(IEnumerable<Nft>))]

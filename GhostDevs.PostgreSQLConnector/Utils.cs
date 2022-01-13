@@ -2,94 +2,65 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace GhostDevs
+namespace GhostDevs;
+
+public static class QueryResultExtensions
 {
-    public static class QueryResultExtensions
+    public static bool GetBool(this Dictionary<string, object> dictionary, string key, bool defaultValue = false)
     {
-        public static bool GetBool(this Dictionary<string, object> dictionary, string key, bool defaultValue = false)
-        {
-            if (!dictionary.ContainsKey(key))
-            {
-                return defaultValue;
-            }
+        if ( !dictionary.ContainsKey(key) ) return defaultValue;
 
-            return (bool)dictionary[key];
-        }
-        public static Int32 GetInt32(this Dictionary<string, object> dictionary, string key, Int32 defaultValue = 0)
-        {
-            if (!dictionary.ContainsKey(key))
-            {
-                return defaultValue;
-            }
+        return ( bool ) dictionary[key];
+    }
 
-            if(dictionary[key].GetType() == typeof(Int32))
-            {
-                return (Int32)dictionary[key];
-            }
-            else if (dictionary[key].GetType() == typeof(Int64))
-            {
-                throw new Exception("Cannot convert Int64 to Int32");
-            }
-            else if (dictionary[key].GetType() == typeof(string))
-            {
-                return Int32.Parse((string)dictionary[key]);
-            }
 
-            // Default behaviour, will throw exception describing type incompatibility
-            return (Int32)dictionary[key];
-        }
-        public static Int64 GetInt64(this Dictionary<string, object> dictionary, string key, Int64 defaultValue = 0)
-        {
-            if (!dictionary.ContainsKey(key))
-            {
-                return defaultValue;
-            }
+    public static int GetInt32(this Dictionary<string, object> dictionary, string key, int defaultValue = 0)
+    {
+        if ( !dictionary.ContainsKey(key) ) return defaultValue;
 
-            if (dictionary[key].GetType() == typeof(Int32) ||
-                dictionary[key].GetType() == typeof(Int64))
-            {
-                return (Int64)dictionary[key];
-            }
-            else if (dictionary[key].GetType() == typeof(string))
-            {
-                return Int64.Parse((string)dictionary[key]);
-            }
+        if ( dictionary[key] is int ) return ( int ) dictionary[key];
 
-            // Default behaviour, will throw exception describing type incompatibility
-            return (Int64)dictionary[key];
-        }
-        public static string GetString(this Dictionary<string, object> dictionary, string key, string defaultValue = null)
-        {
-            if(!dictionary.ContainsKey(key))
-            {
-                return defaultValue;
-            }
+        if ( dictionary[key] is long ) throw new Exception("Cannot convert Int64 to Int32");
 
-            if (dictionary[key].GetType() == typeof(string))
-            {
-                return (string)dictionary[key];
-            }
-            else
-            {
-                return dictionary[key].ToString();
-            }
-        }
-        public static string GetString(this Dictionary<string, object> dictionary, Int32 index, string defaultValue = null)
-        {
-            if (dictionary.Count < index + 1)
-            {
-                return defaultValue;
-            }
+        if ( dictionary[key] is string ) return int.Parse(( string ) dictionary[key]);
 
-            var element = dictionary.ElementAt(index);
-            if (element.GetType() == typeof(string))
-            {
-                return (string)element.Value;
-            }
-            else
-            {
-                return element.Value.ToString();
-            }
-        }
+        // Default behaviour, will throw exception describing type incompatibility
+        return ( int ) dictionary[key];
+    }
+
+
+    public static long GetInt64(this Dictionary<string, object> dictionary, string key, long defaultValue = 0)
+    {
+        if ( !dictionary.ContainsKey(key) ) return defaultValue;
+
+        if ( dictionary[key] is int ||
+             dictionary[key] is long )
+            return ( long ) dictionary[key];
+
+        if ( dictionary[key] is string ) return long.Parse(( string ) dictionary[key]);
+
+        // Default behaviour, will throw exception describing type incompatibility
+        return ( long ) dictionary[key];
+    }
+
+
+    public static string GetString(this Dictionary<string, object> dictionary, string key, string defaultValue = null)
+    {
+        if ( !dictionary.ContainsKey(key) ) return defaultValue;
+
+        if ( dictionary[key] is string ) return ( string ) dictionary[key];
+
+        return dictionary[key].ToString();
+    }
+
+
+    public static string GetString(this Dictionary<string, object> dictionary, int index, string defaultValue = null)
+    {
+        if ( dictionary.Count < index + 1 ) return defaultValue;
+
+        var element = dictionary.ElementAt(index);
+        if ( element.GetType() == typeof(string) ) return ( string ) element.Value;
+
+        return element.Value.ToString();
     }
 }

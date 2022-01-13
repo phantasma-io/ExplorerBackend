@@ -1,48 +1,48 @@
 {
-    "PluginConfiguration": {
-        "enabled": true,
-        "startDelay": 3,
-        "first.block": 1,
-        "chainName": "main",
-        "phantasma.nexus": "mainnet",
-        "phantasma.rpc.nodes": [
-              "http://207.148.17.86:7077"
-        ],
-        "phantasma.rest.nodes": [
-              "http://207.148.17.86:7078"
-        ],
-        "tokensProcessingInterval": 30,
-        "blocksProcessingInterval": 10,
-        "eventsProcessingInterval": 30,
-        "romRamProcessingInterval": 30,
-        "seriesProcessingInterval": 30,
-        "infusionsProcessingInterval": 30,
-        "namesSyncInterval": 600,
-        "phantasma.nfts": [
-            {
-                "symbol": "TTRS"
-            },
-            {
-                "symbol": "GAME"
-            },
-            {
-                "symbol": "CROWN"
-            },
-            {
-                "symbol": "GHOST"
-            },
-            {
-                "symbol": "LEET"
-            },
-            {
-                "symbol": "SEM"
-            },
-            {
-                "symbol": "BRC"
-            },
-            {
-                "symbol": "SPECC"
-            }
-        ]
-    }
+  "PluginConfiguration": {
+    "enabled": true,
+    "startDelay": 3,
+    "first.block": 1,
+    "chainName": "main",
+    "phantasma.nexus": "mainnet",
+    "phantasma.rpc.nodes": [
+      "http://207.148.17.86:7077"
+    ],
+    "phantasma.rest.nodes": [
+      "http://207.148.17.86:7078"
+    ],
+    "tokensProcessingInterval": 30,
+    "blocksProcessingInterval": 10,
+    "eventsProcessingInterval": 30,
+    "romRamProcessingInterval": 30,
+    "seriesProcessingInterval": 30,
+    "infusionsProcessingInterval": 30,
+    "namesSyncInterval": 600,
+    "phantasma.nfts": [
+      {
+        "symbol": "TTRS"
+      },
+      {
+        "symbol": "GAME"
+      },
+      {
+        "symbol": "CROWN"
+      },
+      {
+        "symbol": "GHOST"
+      },
+      {
+        "symbol": "LEET"
+      },
+      {
+        "symbol": "SEM"
+      },
+      {
+        "symbol": "BRC"
+      },
+      {
+        "symbol": "SPECC"
+      }
+    ]
+  }
 }

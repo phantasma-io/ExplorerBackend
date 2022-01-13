@@ -1,28 +1,25 @@
-using GhostDevs.PluginEngine;
 using GhostDevs;
+using GhostDevs.PluginEngine;
 
-namespace TestPlugin
+namespace TestPlugin;
+
+public class TestPlugin : Plugin, IDBAccessPlugin
 {
-    public class TestPlugin: Plugin, IDBAccessPlugin
+    public override string Name => "TestPlugin";
+
+
+    public void Startup()
     {
+    }
 
-        public override string Name => "TestPlugin";
 
-        public TestPlugin()
-        {
-            // constructor stuff
-        }
+    public void Shutdown()
+    {
+    }
 
-        protected override void Configure()
-        {
-            Settings.Load(GetConfiguration());
-        }
 
-        public void Startup() 
-        {
-        }
-        public void Shutdown()
-        {
-        }
+    protected override void Configure()
+    {
+        Settings.Load(GetConfiguration());
     }
 }
