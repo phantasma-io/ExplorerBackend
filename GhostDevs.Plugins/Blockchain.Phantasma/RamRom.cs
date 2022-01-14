@@ -30,17 +30,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private static readonly int maxRomRamUpdatesForOneSession = 100;
 
 
-    private static string GetPropertyValue(List<TokenProperty> properties, string key)
+    private static string GetPropertyValue(IEnumerable<TokenProperty> properties, string key)
     {
-        if ( properties != null )
-            return properties.Where(x => string.Equals(x.Key.ToUpper(), key.ToUpper()))
-                .Select(x => x.Value).FirstOrDefault();
-
-        return null;
+        return properties?.Where(x => string.Equals(x.Key.ToUpper(), key.ToUpper()))
+            .Select(x => x.Value).FirstOrDefault();
     }
 
 
-    public void NewNftsSetRomRam()
+    private void NewNftsSetRomRam(int chainId, string chainName)
     {
         int updatedNftCount;
 
@@ -52,7 +49,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 // First we take GHOST NFTs
                 var nfts = databaseContext.Nfts
-                    .Where(x => x.ChainId == ChainId && x.ROM == null && x.BURNED != true &&
+                    .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true &&
                                 x.Contract.SYMBOL.ToUpper() == "GHOST").Take(maxRomRamUpdatesForOneSession).ToList();
 
                 // If we have available quota per iteration, adding other NFTs
@@ -60,7 +57,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if ( nfts.Count() < 0.7 * maxRomRamUpdatesForOneSession )
                 {
                     var nftsOthers = databaseContext.Nfts
-                        .Where(x => x.ChainId == ChainId && x.ROM == null && x.BURNED != true &&
+                        .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true &&
                                     x.Contract.SYMBOL.ToUpper() != "GHOST")
                         .Take(maxRomRamUpdatesForOneSession - nfts.Count()).ToList();
                     nfts.AddRange(nftsOthers);
@@ -122,7 +119,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         using ( ApiCacheDbContext databaseApiCacheContext = new() )
                         {
                             responseSaved = NftMethods.GetChainApiResponse(databaseApiCacheContext,
-                                Settings.Default.ChainName, nft.Contract.HASH, nft.TOKEN_ID);
+                                chainName, nft.Contract.HASH, nft.TOKEN_ID);
                         }
 
                         if ( responseSaved != null )
@@ -153,7 +150,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         // We loaded it for the first time, we should save it.
                     {
                         using ApiCacheDbContext databaseUsersContext = new();
-                        NftMethods.SetApiResponses(databaseUsersContext, Settings.Default.ChainName,
+                        NftMethods.SetApiResponses(databaseUsersContext, chainName,
                             nft.Contract.HASH, nft.TOKEN_ID, null, nft.CHAIN_API_RESPONSE, true);
                     }
 
@@ -162,15 +159,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     if ( response.RootElement.TryGetProperty("properties", out var propertiesNode) )
                         foreach ( var entry in propertiesNode.EnumerateArray() )
                         {
-                            TokenProperty property = new();
-                            property.Key = entry.GetProperty("Key").GetString();
+                            TokenProperty property = new()
+                            {
+                                Key = entry.GetProperty("Key").GetString()
+                            };
                             if ( entry.TryGetProperty("Value", out var valueProperty) )
                                 property.Value = valueProperty.GetString();
 
                             properties.Add(property);
                         }
 
-                    nft.CreatorAddress = AddressMethods.Upsert(databaseContext, ChainId,
+                    nft.CreatorAddress = AddressMethods.Upsert(databaseContext, chainId,
                         response.RootElement.GetProperty("creatorAddress").GetString(), false);
                     var series = response.RootElement.GetProperty("series").GetString();
                     // TODO remove later after changing SERIES_ID type to string
@@ -185,18 +184,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     // Pasring ROM
                     IRom parsedRom = null;
                     var romBytes = nft.ROM.Decode();
-                    switch ( nft.Contract.SYMBOL )
+                    parsedRom = nft.Contract.SYMBOL switch
                     {
-                        case "CROWN":
-                            parsedRom = new CrownRom(romBytes);
-                            break;
-                        case "TTRS":
-                            parsedRom = new DummyRom(romBytes);
-                            break;
-                        default:
-                            parsedRom = new CustomRom(romBytes);
-                            break;
-                    }
+                        "CROWN" => new CrownRom(romBytes),
+                        "TTRS" => new DummyRom(romBytes),
+                        _ => new CustomRom(romBytes)
+                    };
 
                     // Putting all fields from ROM to - ? TODO.
 
@@ -288,13 +281,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         public CrownRom(byte[] rom)
         {
-            using ( MemoryStream stream = new(rom) )
-            {
-                using ( BinaryReader reader = new(stream) )
-                {
-                    UnserializeData(reader);
-                }
-            }
+            using MemoryStream stream = new(rom);
+            using BinaryReader reader = new(stream);
+            UnserializeData(reader);
         }
 
 

@@ -12,7 +12,7 @@ public static class NftMetadataMethods
         string description, string name, string image, long mintDateUnixSeconds, int mintNumber,
         JsonDocument extendedProperties, bool saveChanges = true)
     {
-        if ( nft == null ) nft = databaseContext.Nfts.Where(x => x.ID == nftId).FirstOrDefault();
+        nft ??= databaseContext.Nfts.FirstOrDefault(x => x.ID == nftId);
 
         if ( nft == null ) return;
 

@@ -21,15 +21,17 @@ public static class NftMethods
     {
         newNftCreated = false;
 
-        var entry = databaseContext.Nfts
-            .Where(x => x.ChainId == chainId && x.ContractId == contractId && x.TOKEN_ID == tokenId).FirstOrDefault();
+        var entry = databaseContext.Nfts.FirstOrDefault(x =>
+            x.ChainId == chainId && x.ContractId == contractId && x.TOKEN_ID == tokenId);
         if ( entry != null )
             entry.TOKEN_URI = tokenUri;
         else
         {
-            entry = new Nft {ChainId = chainId, TOKEN_ID = tokenId, TOKEN_URI = tokenUri, ContractId = contractId};
-
-            entry.DM_UNIX_SECONDS = UnixSeconds.Now();
+            entry = new Nft
+            {
+                ChainId = chainId, TOKEN_ID = tokenId, TOKEN_URI = tokenUri, ContractId = contractId,
+                DM_UNIX_SECONDS = UnixSeconds.Now()
+            };
 
             databaseContext.Nfts.Add(entry);
 
@@ -42,14 +44,14 @@ public static class NftMethods
 
     public static Nft Get(MainDbContext databaseContext, int chainId, int contractId, string tokenId)
     {
-        return databaseContext.Nfts
-            .Where(x => x.ChainId == chainId && x.ContractId == contractId && x.TOKEN_ID == tokenId).FirstOrDefault();
+        return databaseContext.Nfts.FirstOrDefault(x =>
+            x.ChainId == chainId && x.ContractId == contractId && x.TOKEN_ID == tokenId);
     }
 
 
     public static void Delete(MainDbContext databaseContext, int id, bool saveChanges = true)
     {
-        var nft = databaseContext.Nfts.Where(x => x.ID == id).FirstOrDefault();
+        var nft = databaseContext.Nfts.FirstOrDefault(x => x.ID == id);
         if ( nft != null ) databaseContext.Entry(nft).State = EntityState.Deleted;
 
         if ( saveChanges ) databaseContext.SaveChanges();

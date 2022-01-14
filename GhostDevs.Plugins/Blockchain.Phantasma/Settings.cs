@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
@@ -14,9 +13,6 @@ internal class Settings
         StartDelay = section.GetValue<int>("startDelay");
 
         FirstBlock = section.GetValue<int>("first.block");
-
-        ChainName = section.GetValue<string>("chainName");
-        if ( string.IsNullOrEmpty(ChainName) ) throw new Exception("ChainName is not set");
 
         PhaNexus = section.GetValue<string>("phantasma.nexus");
 
@@ -45,7 +41,6 @@ internal class Settings
     public bool Enabled { get; }
     public int StartDelay { get; }
     public int FirstBlock { get; }
-    public string ChainName { get; }
     public string PhaNexus { get; }
     public List<string> PhaRestNodes { get; }
     public List<string> PhaRpcNodes { get; }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
@@ -63,5 +64,24 @@ public static class ChainMethods
         chain.CURRENT_HEIGHT = height.ToString();
 
         if ( saveChanges ) databaseContext.SaveChanges();
+    }
+
+
+    public static IEnumerable<Chain> GetChains(MainDbContext dbContext)
+    {
+        return dbContext.Chains.ToList();
+    }
+
+
+    public static List<int> GetChainsIds(MainDbContext dbContext)
+    {
+        var chainList = GetChains(dbContext);
+        return chainList.Select(chain => chain.ID).ToList();
+    }
+
+
+    public static List<string> getChainNames(MainDbContext dbContext)
+    {
+        return GetChains(dbContext).Select(chain => chain.NAME).ToList();
     }
 }

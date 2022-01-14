@@ -16,7 +16,7 @@ public class InternalDocumentFilter : IDocumentFilter
 
             if ( attribute == null || !attribute.InternalEndpoint ) continue;
 
-            var key = "/" + description.RelativePath.TrimEnd('/');
+            var key = "/" + description.RelativePath?.TrimEnd('/');
             var operation = ( OperationType ) Enum.Parse(typeof(OperationType), description.HttpMethod, true);
 
             swaggerDoc.Paths[key].Operations.Remove(operation);

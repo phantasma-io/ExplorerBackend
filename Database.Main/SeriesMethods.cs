@@ -7,7 +7,7 @@ public static class SeriesMethods
     public static void SeriesModesInit(MainDbContext databaseContext)
     {
         var seriesModeUnique =
-            databaseContext.SeriesModes.Where(x => x.MODE_NAME.ToUpper() == "UNIQUE").FirstOrDefault();
+            databaseContext.SeriesModes.FirstOrDefault(x => x.MODE_NAME.ToUpper() == "UNIQUE");
         if ( seriesModeUnique == null )
         {
             seriesModeUnique = new SeriesMode {MODE_NAME = "UNIQUE"};
@@ -15,20 +15,20 @@ public static class SeriesMethods
             databaseContext.SaveChanges();
         }
 
-        var seriesModeDuplicate = databaseContext.SeriesModes.Where(x => x.MODE_NAME.ToUpper() == "DUPLICATE")
-            .FirstOrDefault();
-        if ( seriesModeDuplicate == null )
-        {
-            seriesModeDuplicate = new SeriesMode {MODE_NAME = "DUPLICATED"};
-            databaseContext.SeriesModes.Add(seriesModeDuplicate);
-            databaseContext.SaveChanges();
-        }
+        var seriesModeDuplicate = databaseContext.SeriesModes
+            .FirstOrDefault(x => x.MODE_NAME.ToUpper() == "DUPLICATE");
+
+        if ( seriesModeDuplicate != null ) return;
+
+        seriesModeDuplicate = new SeriesMode {MODE_NAME = "DUPLICATED"};
+        databaseContext.SeriesModes.Add(seriesModeDuplicate);
+        databaseContext.SaveChanges();
     }
 
 
     public static int SeriesModesGetId(MainDbContext databaseContext, string name)
     {
-        return databaseContext.SeriesModes.Where(x => x.MODE_NAME.ToUpper() == name.ToUpper()).First().ID;
+        return databaseContext.SeriesModes.First(x => string.Equals(x.MODE_NAME.ToUpper(), name.ToUpper())).ID;
     }
 
 
@@ -42,8 +42,8 @@ public static class SeriesMethods
         string attrType1 = null, string attrValue1 = null, string attrType2 = null, string attrValue2 = null,
         string attrType3 = null, string attrValue3 = null)
     {
-        var series = databaseContext.Serieses.Where(x => x.ContractId == contractId && x.SERIES_ID == seriesId)
-            .FirstOrDefault();
+        var series = databaseContext.Serieses
+            .FirstOrDefault(x => x.ContractId == contractId && x.SERIES_ID == seriesId);
 
         if ( series == null )
         {
@@ -88,7 +88,7 @@ public static class SeriesMethods
 
     public static Series Get(MainDbContext databaseContext, int contractId, string seriesId)
     {
-        return databaseContext.Serieses.Where(x => x.ContractId == contractId && x.SERIES_ID == seriesId)
-            .FirstOrDefault();
+        return databaseContext.Serieses
+            .FirstOrDefault(x => x.ContractId == contractId && x.SERIES_ID == seriesId);
     }
 }

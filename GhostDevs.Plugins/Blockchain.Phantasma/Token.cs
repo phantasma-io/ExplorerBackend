@@ -10,7 +10,7 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    public void InitNewTokens()
+    private void InitNewTokens(int chainId)
     {
         var startTime = DateTime.Now;
 
@@ -18,14 +18,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         using ( MainDbContext databaseContext = new() )
         {
-            var tokens = databaseContext.Tokens.Where(x => x.ChainId == ChainId && x.FUNGIBLE == null).ToList();
+            var tokens = databaseContext.Tokens.Where(x => x.ChainId == chainId && x.FUNGIBLE == null).ToList();
 
             //maybe change to foreach
             updatedTokensCount = 0;
-            for ( var i = 0; i < tokens.Count(); i++ )
+            foreach ( var tokenToUpdate in tokens )
             {
-                var tokenToUpdate = tokens[i];
-
                 var token = Client.APIRequest<JsonDocument>(
                     $"{Settings.Default.GetRest()}/api/getToken?symbol=" + tokenToUpdate.SYMBOL,
                     out var stringResponse,

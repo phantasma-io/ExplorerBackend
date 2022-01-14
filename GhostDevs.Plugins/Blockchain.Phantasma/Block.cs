@@ -32,7 +32,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private static int OverallEventsLoadedCount;
 
 
-    public void FetchBlocks()
+    private void FetchBlocks(int chainId, string chainName)
     {
         do
         {
@@ -41,7 +41,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             BigInteger i = 1;
             using ( MainDbContext databaseContext = new() )
             {
-                i = ChainMethods.GetLastProcessedBlock(databaseContext, ChainId) + 1;
+                i = ChainMethods.GetLastProcessedBlock(databaseContext, chainId) + 1;
             }
 
             if ( i == 1 )
@@ -51,7 +51,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 i = Settings.Default.FirstBlock;
 
             OverallEventsLoadedCount = 0;
-            while ( FetchByHeight(i) && OverallEventsLoadedCount < maxEventsForOneSession ) i++;
+            while ( FetchByHeight(i, chainId, chainName) && OverallEventsLoadedCount < maxEventsForOneSession ) i++;
 
             var fetchTime = DateTime.Now - startTime;
             Log.Information(
@@ -61,12 +61,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
 
-    public bool FetchByHeight(BigInteger blockHeight)
+    private bool FetchByHeight(BigInteger blockHeight, int chainId, string chainName)
     {
         //TODO add check if we can get block from apicache
         var startTime = DateTime.Now;
 
-        var url = $"{Settings.Default.GetRest()}/api/getBlockByHeight?chainInput=main&height={blockHeight}";
+        var url = $"{Settings.Default.GetRest()}/api/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
         var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
         if ( response == null ) return false;
@@ -103,14 +103,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var timestampUnixSeconds = response.RootElement.GetProperty("timestamp").GetUInt32();
 
             // Block in main database
-            var block = BlockMethods.Upsert(databaseContext, ChainId, blockHeight, timestampUnixSeconds, false);
+            var block = BlockMethods.Upsert(databaseContext, chainId, blockHeight, timestampUnixSeconds, false);
 
             // Block in caching database
             // Currently only stored. TODO add reuse to speed up resync
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
                 Database.ApiCache.BlockMethods.Upsert(databaseApiCacheContext,
-                    "main", blockHeight.ToString(), timestampUnixSeconds, response);
+                    chainName, blockHeight.ToString(), timestampUnixSeconds, response);
             }
 
             if ( response.RootElement.TryGetProperty("txs", out var txsProperty) )
@@ -145,7 +145,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             var kindSerialized = eventNode.GetProperty("kind").GetString();
                             var kind = Enum.Parse<EventKind>(kindSerialized);
                             //just works if we process every event, otherwise we would have data in the database we do not really need
-                            var eventKindId = EventKindMethods.Upsert(databaseContext, ChainId,
+                            var eventKindId = EventKindMethods.Upsert(databaseContext, chainId,
                                 kind.ToString());
 
                             Log.Verbose("[{Name}] Processing EventKind {Kind} in Block #{Block}", Name, kind,
@@ -191,8 +191,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         /*var eventKindId = EventKindMethods.Upsert(databaseContext, ChainId,
                                             kind.ToString());*/
+
                                         var contractId = ContractMethods.Upsert(databaseContext, contract,
-                                            ChainId,
+                                            chainId,
                                             infusionEventData.BaseSymbol.ToUpper(),
                                             infusionEventData.BaseSymbol.ToUpper());
 
@@ -214,7 +215,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             {
                                                 nft = NftMethods.Upsert(databaseContext,
                                                     out var newNftCreated,
-                                                    ChainId,
+                                                    chainId,
                                                     tokenId,
                                                     null, // tokenUri
                                                     contractId);
@@ -227,7 +228,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 nft,
                                                 timestampUnixSeconds,
                                                 eventIndex + 1,
-                                                ChainId,
+                                                chainId,
                                                 transaction,
                                                 contractId,
                                                 eventKindId,
@@ -287,7 +288,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         /*var eventKindId = EventKindMethods.Upsert(databaseContext, ChainId,
                                             kind.ToString());*/
                                         var contractId = ContractMethods.Upsert(databaseContext, contract,
-                                            ChainId,
+                                            chainId,
                                             tokenEventData.Symbol.ToUpper(),
                                             tokenEventData.Symbol.ToUpper());
 
@@ -308,7 +309,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             {
                                                 nft = NftMethods.Upsert(databaseContext,
                                                     out var newNftCreated,
-                                                    ChainId,
+                                                    chainId,
                                                     tokenId,
                                                     null, // tokenUri
                                                     contractId);
@@ -328,7 +329,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             nft, //might be null due not having an ntf
                                             timestampUnixSeconds,
                                             eventIndex + 1,
-                                            ChainId,
+                                            chainId,
                                             transaction,
                                             contractId,
                                             eventKindId,
@@ -350,7 +351,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         if ( nft != null )
                                             // Update NFT's owner address on new event.
                                             NftMethods.ProcessOwnershipChange(databaseContext,
-                                                ChainId,
+                                                chainId,
                                                 nft,
                                                 timestampUnixSeconds,
                                                 addressString);
@@ -464,7 +465,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     /*var eventKindId = EventKindMethods.Upsert(databaseContext, ChainId,
                                         kind.ToString());*/
                                     var contractId = ContractMethods.Upsert(databaseContext, contract,
-                                        ChainId,
+                                        chainId,
                                         marketEventData.BaseSymbol.ToUpper(),
                                         marketEventData.BaseSymbol.ToUpper());
 
@@ -494,7 +495,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         {
                                             nft = NftMethods.Upsert(databaseContext,
                                                 out var newNftCreated,
-                                                ChainId,
+                                                chainId,
                                                 tokenId,
                                                 null, // tokenUri
                                                 contractId);
@@ -507,7 +508,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             nft,
                                             timestampUnixSeconds,
                                             eventIndex + 1,
-                                            ChainId,
+                                            chainId, //ChainId,
                                             transaction,
                                             contractId,
                                             eventKindId,
@@ -527,7 +528,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         if ( kind == EventKind.OrderFilled )
                                             // Update NFT's owner address on new sale event.
                                             NftMethods.ProcessOwnershipChange(databaseContext,
-                                                ChainId,
+                                                chainId,
                                                 nft,
                                                 timestampUnixSeconds,
                                                 addressString);
@@ -678,7 +679,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             if ( !added )
                             {
                                 var contractId = ContractMethods.Upsert(databaseContext, contract,
-                                    ChainId,
+                                    chainId,
                                     evnt.Contract,
                                     null);
 
@@ -687,7 +688,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     null,
                                     timestampUnixSeconds,
                                     eventIndex + 1,
-                                    ChainId,
+                                    chainId,
                                     transaction,
                                     contractId,
                                     eventKindId,
@@ -739,7 +740,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
             }
 
-            ChainMethods.SetLastProcessedBlock(databaseContext, ChainId, blockHeight, false);
+            ChainMethods.SetLastProcessedBlock(databaseContext, chainId, blockHeight, false);
 
             databaseContext.SaveChanges();
         }

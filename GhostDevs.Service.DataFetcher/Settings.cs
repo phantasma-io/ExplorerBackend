@@ -7,13 +7,10 @@ internal class Settings
 {
     private Settings(IConfigurationSection section)
     {
-        Chains = section.GetSection("Chains").Get<List<ChainData>>();
         Tokens = section.GetSection("Tokens").Get<List<TokenData>>();
         FetchInterval = section.GetValue<int>("FetchInterval");
     }
-
-
-    public List<ChainData> Chains { get; }
+    
     public List<TokenData> Tokens { get; }
     public int FetchInterval { get; }
 
@@ -23,12 +20,6 @@ internal class Settings
     public static void Load(IConfigurationSection section)
     {
         Default = new Settings(section);
-    }
-
-
-    public class ChainData
-    {
-        public string Name { get; set; }
     }
 
     public class TokenData

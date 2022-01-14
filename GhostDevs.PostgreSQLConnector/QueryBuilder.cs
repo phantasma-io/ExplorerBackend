@@ -174,9 +174,9 @@ public class QueryBuilder
         for ( var i = 0; i < WhereClauses.Count; i++ )
         {
             if ( i == 0 )
-                @where += "where ";
+                where += "where ";
             else
-                @where += " and ";
+                where += " and ";
 
             where += WhereClauses[i];
         }
@@ -189,16 +189,12 @@ public class QueryBuilder
 
     private string BuildOrderLimitPart()
     {
-        var nullsOrder = "";
-        switch ( NullsOrder )
+        var nullsOrder = NullsOrder switch
         {
-            case NullsOrderType.FIRST:
-                nullsOrder = " NULLS FIRST";
-                break;
-            case NullsOrderType.LAST:
-                nullsOrder = " NULLS LAST";
-                break;
-        }
+            NullsOrderType.FIRST => " NULLS FIRST",
+            NullsOrderType.LAST => " NULLS LAST",
+            _ => ""
+        };
 
         var part = "";
 

@@ -9,7 +9,7 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    public void MergeSendReceiveToTransfer()
+    private void MergeSendReceiveToTransfer(int chainId)
     {
         var startTime = DateTime.Now;
 
@@ -32,13 +32,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             // and delete send event.
 
             var receiveEvents = databaseContext.Events
-                .Where(x => x.ChainId == ChainId && x.EventKindId == receiveEventKindId)
+                .Where(x => x.ChainId == chainId && x.EventKindId == receiveEventKindId)
                 .OrderBy(x => x.TIMESTAMP_UNIX_SECONDS).ThenBy(x => x.Transaction.INDEX)
                 .ThenBy(x => x.INDEX) // Ensure strict events order
                 .ToList();
 
             // We create new meta-event, if it's not available yet.
-            var transferEventId = EventKindMethods.Upsert(databaseContext, ChainId, "TokenTransfer");
+            var transferEventId = EventKindMethods.Upsert(databaseContext, chainId, "TokenTransfer");
 
             foreach ( var receiveEvent in receiveEvents )
             {

@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Database.Main;
 using GhostDevs.Commons;
@@ -106,67 +106,60 @@ public partial class Endpoints
 
                     if ( !string.IsNullOrEmpty(chain) )
                         // Searching for series using given chain.
-                        query = query.Where(x => x.Contract.Chain.NAME.ToUpper() == chain.ToUpper());
+                        query = query.Where(x => string.Equals(x.Contract.Chain.NAME.ToUpper(), chain.ToUpper()));
 
                     if ( !string.IsNullOrEmpty(contract) )
-                        query = query.Where(x => x.Contract.HASH.ToUpper() == contract.ToUpper());
+                        query = query.Where(x => string.Equals(x.Contract.HASH.ToUpper(), contract.ToUpper()));
 
                     if ( !string.IsNullOrEmpty(symbol) )
                         // Searching for series by symbol.
 
-                        query = query.Where(x => x.Contract.SYMBOL.ToUpper() == symbol.ToUpper());
+                        query = query.Where(x => string.Equals(x.Contract.SYMBOL.ToUpper(), symbol.ToUpper()));
 
                     // Count total number of results before adding order and limit parts of query.
                     totalResults = query.Count();
 
                     if ( order_direction == "asc" )
-                    {
-                        if ( order_by == "id" )
-                            query = query.OrderBy(x => x.SERIES_ID);
-                        else if ( order_by == "name" ) query = query.OrderBy(x => x.NAME);
-                    }
+                        query = order_by switch
+                        {
+                            "id" => query.OrderBy(x => x.SERIES_ID),
+                            "name" => query.OrderBy(x => x.NAME),
+                            _ => query
+                        };
                     else
-                    {
-                        if ( order_by == "id" )
-                            query = query.OrderByDescending(x => x.SERIES_ID);
-                        else if ( order_by == "name" ) query = query.OrderByDescending(x => x.NAME);
-                    }
+                        query = order_by switch
+                        {
+                            "id" => query.OrderByDescending(x => x.SERIES_ID),
+                            "name" => query.OrderByDescending(x => x.NAME),
+                            _ => query
+                        };
 
                     var queryResults = query.Skip(offset).Take(limit).ToList();
 
-                    var serieses = new List<Series>();
-
-                    foreach ( var x in queryResults )
+                    seriesArray = queryResults.Select(x => new Series
                     {
-                        var series = new Series
-                        {
-                            id = x.SERIES_ID != null ? x.SERIES_ID : "",
-                            creator = AddressMethods.Prepend0x(x.CreatorAddress?.ADDRESS, x.Contract.Chain.NAME),
-                            name = x.NAME,
-                            description = x.DESCRIPTION,
-                            image = x.IMAGE,
-                            current_supply = x.CURRENT_SUPPLY,
-                            max_supply = x.MAX_SUPPLY,
-                            mode_name = x.SeriesMode?.MODE_NAME,
-                            royalties = x.ROYALTIES.ToString(),
-                            type = x.TYPE,
-                            attrType1 = x.ATTR_TYPE_1,
-                            attrValue1 = x.ATTR_VALUE_1,
-                            attrType2 = x.ATTR_TYPE_2,
-                            attrValue2 = x.ATTR_VALUE_2,
-                            attrType3 = x.ATTR_TYPE_3,
-                            attrValue3 = x.ATTR_VALUE_3
-                        };
-
-                        serieses.Add(series);
-                    }
-
-                    seriesArray = serieses.ToArray();
+                        id = x.SERIES_ID ?? "",
+                        creator = AddressMethods.Prepend0x(x.CreatorAddress?.ADDRESS, x.Contract.Chain.NAME),
+                        name = x.NAME,
+                        description = x.DESCRIPTION,
+                        image = x.IMAGE,
+                        current_supply = x.CURRENT_SUPPLY,
+                        max_supply = x.MAX_SUPPLY,
+                        mode_name = x.SeriesMode?.MODE_NAME ?? string.Empty,
+                        royalties = x.ROYALTIES.ToString(CultureInfo.InvariantCulture),
+                        type = x.TYPE,
+                        attrType1 = x.ATTR_TYPE_1,
+                        attrValue1 = x.ATTR_VALUE_1,
+                        attrType2 = x.ATTR_TYPE_2,
+                        attrValue2 = x.ATTR_VALUE_2,
+                        attrType3 = x.ATTR_TYPE_3,
+                        attrValue3 = x.ATTR_VALUE_3
+                    }).ToArray();
                 }
 
                 var responseTime = DateTime.Now - startTime;
 
-                Log.Information($"API result generated in {Math.Round(responseTime.TotalSeconds, 3)} sec");
+                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
             }
             catch ( APIException )
             {

@@ -49,8 +49,8 @@ public class PostgreSQLConnector
         var cmd = new NpgsqlCommand(query, Connection);
 
         if ( parameters != null )
-            foreach ( var parameter in parameters )
-                cmd.Parameters.AddWithValue(parameter.Item1, parameter.Item2);
+            foreach ( var (item1, item2) in parameters )
+                cmd.Parameters.AddWithValue(item1, item2);
 
         object result;
         try
@@ -84,9 +84,7 @@ public class PostgreSQLConnector
     {
         var result = ExecQuery(query, parameters);
 
-        if ( result == null ) return null;
-
-        return ( long ) result;
+        return ( long? ) result;
     }
 
 
@@ -94,9 +92,7 @@ public class PostgreSQLConnector
     {
         var result = ExecQuery(query, parameters);
 
-        if ( result == null ) return null;
-
-        return ( int ) result;
+        return ( int? ) result;
     }
 
 
@@ -112,13 +108,13 @@ public class PostgreSQLConnector
     }
 
 
-    public List<Dictionary<string, object>> ExecQueryDNex(bool forceQueryLogging, string query,
+    public IEnumerable<Dictionary<string, object>> ExecQueryDNex(bool forceQueryLogging, string query,
         List<Tuple<string, object>> parameters = null)
     {
         if ( forceQueryLogging && !Log.IsEnabled(LogEventLevel.Debug) )
-            Log.Information($"DB: ExecQueryDN(): Query: {query}");
+            Log.Information("DB: ExecQueryDN(): Query: {Query}", query);
         else
-            Log.Debug($"DB: ExecQueryDN(): Query: {query}");
+            Log.Debug("DB: ExecQueryDN(): Query: {Query}", query);
 
         var cmd = new NpgsqlCommand(query, Connection);
 
@@ -138,7 +134,7 @@ public class PostgreSQLConnector
         }
 
         var executeTime = DateTime.Now - executeStartTime;
-        Log.Debug($"DB: ExecQueryDN(): Query executed in {Math.Round(executeTime.TotalSeconds, 3)} sec");
+        Log.Debug("DB: ExecQueryDN(): Query executed in {ExecuteTime} sec", Math.Round(executeTime.TotalSeconds, 3));
 
         var resultStartTime = DateTime.Now;
         var result = new List<Dictionary<string, object>>();
@@ -161,7 +157,7 @@ public class PostgreSQLConnector
         dr.Close();
         dr.Dispose();
         var resultTime = DateTime.Now - resultStartTime;
-        Log.Debug($"DB: ExecQueryDN(): Result generated in {Math.Round(resultTime.TotalSeconds, 3)} sec");
+        Log.Debug("DB: ExecQueryDN(): Result generated in {ResultTime} sec", Math.Round(resultTime.TotalSeconds, 3));
 
         cmd.Dispose();
 
@@ -169,7 +165,8 @@ public class PostgreSQLConnector
     }
 
 
-    public List<Dictionary<string, object>> ExecQueryDN(string query, List<Tuple<string, object>> parameters = null)
+    public IEnumerable<Dictionary<string, object>> ExecQueryDN(string query,
+        List<Tuple<string, object>> parameters = null)
     {
         return ExecQueryDNex(false, query, parameters);
     }
@@ -180,7 +177,7 @@ public class PostgreSQLConnector
         foreach ( var row in result )
         {
             var rowSerialized = "";
-            foreach ( var column in row ) rowSerialized += $" {column.Key} {column.Value}";
+            foreach ( var (key, value) in row ) rowSerialized += $" {key} {value}";
 
             Log.Information(rowSerialized);
         }
@@ -196,8 +193,8 @@ public class PostgreSQLConnector
         cmd.CommandText = command;
 
         if ( parameters != null )
-            foreach ( var parameter in parameters )
-                cmd.Parameters.AddWithValue(parameter.Item1, parameter.Item2);
+            foreach ( var (item1, item2) in parameters )
+                cmd.Parameters.AddWithValue(item1, item2);
 
         try
         {
@@ -227,7 +224,7 @@ public class PostgreSQLConnector
             cmd.CommandText +=
                 $" ON CONFLICT {upsertTarget} DO {( string.IsNullOrEmpty(upsertAction) ? "NOTHING" : upsertAction )}";
 
-        foreach ( var value in valuePairs ) cmd.Parameters.AddWithValue("@" + value.Key, value.Value);
+        foreach ( var (key, value) in valuePairs ) cmd.Parameters.AddWithValue("@" + key, value);
 
         try
         {
@@ -236,7 +233,7 @@ public class PostgreSQLConnector
         catch ( Exception e )
         {
             throw new Exception(
-                $"Error executing '{cmd.CommandText}' statement with values:\n({string.Join(", ", valuePairs.Select(x => string.Format("{0}: {1}", x.Key, x.Value)))}):\n{e.Message}");
+                $"Error executing '{cmd.CommandText}' statement with values:\n({string.Join(", ", valuePairs.Select(x => $"{x.Key}: {x.Value}"))}):\n{e.Message}");
         }
 
         cmd.Dispose();
@@ -245,7 +242,7 @@ public class PostgreSQLConnector
     }
 
 
-    public int InsertAndGetId(string tableName, string idColumnName, Dictionary<string, object> valuePairs,
+    public int? InsertAndGetId(string tableName, string idColumnName, Dictionary<string, object> valuePairs,
         string upsertTarget = "", string upsertAction = "")
     {
         var cmd = new NpgsqlCommand();
@@ -259,7 +256,7 @@ public class PostgreSQLConnector
 
         cmd.CommandText += $" RETURNING {idColumnName}";
 
-        foreach ( var value in valuePairs ) cmd.Parameters.AddWithValue("@" + value.Key, value.Value);
+        foreach ( var (key, value) in valuePairs ) cmd.Parameters.AddWithValue("@" + key, value);
 
         object result;
         try
@@ -269,12 +266,12 @@ public class PostgreSQLConnector
         catch ( Exception e )
         {
             throw new Exception(
-                $"Error executing '{cmd.CommandText}' statement with values:\n({string.Join(", ", valuePairs.Select(x => string.Format("{0}: {1}", x.Key, x.Value)))}):\n{e.Message}");
+                $"Error executing '{cmd.CommandText}' statement with values:\n({string.Join(", ", valuePairs.Select(x => $"{x.Key}: {x.Value}"))}):\n{e.Message}");
         }
 
         cmd.Dispose();
 
-        var rowId = ( int ) result;
+        var rowId = ( int? ) result;
 
         return rowId;
     }

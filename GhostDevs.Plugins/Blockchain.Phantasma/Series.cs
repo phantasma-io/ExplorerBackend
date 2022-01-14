@@ -11,7 +11,7 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    public void NewSeriesLoad()
+    private void NewSeriesLoad(int chainId)
     {
         var startTime = DateTime.Now;
 
@@ -22,9 +22,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             // First we get symbols that has uninitialized series.
             var serieses = databaseContext.Serieses.Where(x =>
-                x.Contract.ChainId == ChainId && ( x.SeriesMode == null || x.Nfts.Count > x.CURRENT_SUPPLY ) &&
+                x.Contract.ChainId == chainId && ( x.SeriesMode == null || x.Nfts.Count > x.CURRENT_SUPPLY ) &&
                 x.SERIES_ID != null).ToList();
-            Log.Information("[{Name}] Series that needs to be updated: {Serieses}", Name, serieses.Count);
+            Log.Information("[{Name}] Series that needs to be updated: {Series}", Name, serieses.Count);
 
             var tokenCache = new Dictionary<string, JsonDocument>();
 
@@ -34,8 +34,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 var seriesesForSymbol =
                     serieses.Where(x => x.Contract.SYMBOL == series.Contract.SYMBOL).ToList();
 
-                JsonDocument token = null;
-                if ( !tokenCache.TryGetValue(series.Contract.SYMBOL, out token) )
+                if ( !tokenCache.TryGetValue(series.Contract.SYMBOL, out var token) )
                 {
                     token = Client.APIRequest<JsonDocument>(
                         $"{Settings.Default.GetRest()}/api/getToken?symbol=" + series.Contract.SYMBOL +

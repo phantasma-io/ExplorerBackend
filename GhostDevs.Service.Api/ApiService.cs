@@ -82,7 +82,7 @@ public static class Api
                 }
         }
 
-        if ( pgConnection != null ) Log.Information("PostgresSQL version: {Version}", pgConnection.GetVersion());
+        if ( pgConnection != null ) Log.Information("PostgreSQL version: {Version}", pgConnection.GetVersion());
 
         Plugin.LoadPlugins();
 

@@ -10,12 +10,10 @@ public static class Utils
     {
         if ( jdoc == null ) return null;
 
-        using ( var stream = new MemoryStream() )
-        {
-            var writer = new Utf8JsonWriter(stream, new JsonWriterOptions {Indented = false});
-            jdoc.WriteTo(writer);
-            writer.Flush();
-            return Encoding.UTF8.GetString(stream.ToArray());
-        }
+        using var stream = new MemoryStream();
+        var writer = new Utf8JsonWriter(stream, new JsonWriterOptions {Indented = false});
+        jdoc.WriteTo(writer);
+        writer.Flush();
+        return Encoding.UTF8.GetString(stream.ToArray());
     }
 }

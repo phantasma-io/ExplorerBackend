@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Database.Main;
@@ -25,7 +26,7 @@ public partial class Endpoints
         [APIParameter("Token contract hash", "string")]
         string contract = "",
         [APIParameter("Token ID", "string")] string token_id = "",
-        [APIParameter("Date day match (matchet whole given day)", "string")]
+        [APIParameter("Date day match (matches whole given day)", "string")]
         string date_day = "",
         [APIParameter("Date (less than)", "string")]
         string date_less = "",
@@ -42,7 +43,7 @@ public partial class Endpoints
             "string")]
         string show_events = "not_hidden",
         [APIParameter("Address", "string")] string address = "",
-        [APIParameter("Address (parial match)", "string")]
+        [APIParameter("Address (partial match)", "string")]
         string address_partial = "",
         [APIParameter("Return NFT metadata with events", "integer")]
         int with_metadata = 0,
@@ -123,7 +124,7 @@ public partial class Endpoints
                 var startTime = DateTime.Now;
 
                 // Getting exchange rates in advance.
-                var fiatPricesInUSD = FiatExchangeRateMethods.GetPrices(databaseContext);
+                var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
                 var query = databaseContext.Events
                     .Include(x => x.Chain)
@@ -154,7 +155,7 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(token_id) ) query = query.Where(x => x.TOKEN_ID == token_id);
 
                 if ( !string.IsNullOrEmpty(contract) )
-                    query = query.Where(x => x.Contract.HASH.ToUpper() == contract.ToUpper());
+                    query = query.Where(x => string.Equals(x.Contract.HASH.ToUpper(), contract.ToUpper()));
 
                 if ( !string.IsNullOrEmpty(date_day) )
                     query = query.Where(x => x.DATE_UNIX_SECONDS == UnixSeconds.FromDateTimeString(date_day));
@@ -166,7 +167,7 @@ public partial class Endpoints
                     query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
                 if ( !string.IsNullOrEmpty(event_kind) )
-                    query = query.Where(x => x.EventKind.NAME.ToUpper() == event_kind.ToUpper());
+                    query = query.Where(x => string.Equals(x.EventKind.NAME.ToUpper(), event_kind.ToUpper()));
 
                 if ( !string.IsNullOrEmpty(event_kind_partial) )
                     query = query.Where(x => x.EventKind.NAME.ToUpper().Contains(event_kind_partial.ToUpper()));
@@ -178,12 +179,9 @@ public partial class Endpoints
                     query = query.Where(x => x.Nft.DESCRIPTION.ToUpper().Contains(nft_description_partial.ToUpper()));
 
                 if ( show_events != "all" )
-                {
-                    if ( show_events == "not_hidden" )
-                        query = query.Where(x => x.HIDDEN == false);
-                    else
-                        query = query.Where(x => x.HIDDEN == true);
-                }
+                    query = show_events == "not_hidden"
+                        ? query.Where(x => x.HIDDEN == false)
+                        : query.Where(x => x.HIDDEN == true);
 
                 if ( !string.IsNullOrEmpty(address) )
                 {
@@ -201,25 +199,25 @@ public partial class Endpoints
                                              x.Address.USER_NAME.ToUpper().Contains(address_partial.ToUpper()));
 
                 if ( order_direction == "asc" )
-                {
-                    if ( order_by == "date" )
-                        query = query.OrderBy(x => x.TIMESTAMP_UNIX_SECONDS).ThenBy(x => x.Transaction.INDEX)
-                            .ThenBy(x => x.INDEX);
-                    else if ( order_by == "token_id" )
-                        query = query.OrderBy(x => x.TOKEN_ID);
-                    else if ( order_by == "price" )
-                        query = query.OrderBy(x => x.PRICE_USD != 0).OrderBy(x => x.PRICE_USD);
-                }
+                    query = order_by switch
+                    {
+                        "date" => query.OrderBy(x => x.TIMESTAMP_UNIX_SECONDS)
+                            .ThenBy(x => x.Transaction.INDEX)
+                            .ThenBy(x => x.INDEX),
+                        "token_id" => query.OrderBy(x => x.TOKEN_ID),
+                        "price" => query.OrderBy(x => x.PRICE_USD != 0).ThenBy(x => x.PRICE_USD),
+                        _ => query
+                    };
                 else
-                {
-                    if ( order_by == "date" )
-                        query = query.OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS)
-                            .ThenByDescending(x => x.Transaction.INDEX).ThenByDescending(x => x.INDEX);
-                    else if ( order_by == "token_id" )
-                        query = query.OrderByDescending(x => x.TOKEN_ID);
-                    else if ( order_by == "price" )
-                        query = query.OrderBy(x => x.PRICE_USD != 0).OrderByDescending(x => x.PRICE_USD);
-                }
+                    query = order_by switch
+                    {
+                        "date" => query.OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS)
+                            .ThenByDescending(x => x.Transaction.INDEX)
+                            .ThenByDescending(x => x.INDEX),
+                        "token_id" => query.OrderByDescending(x => x.TOKEN_ID),
+                        "price" => query.OrderBy(x => x.PRICE_USD != 0).ThenByDescending(x => x.PRICE_USD),
+                        _ => query
+                    };
 
                 query = query.Skip(offset).Take(limit);
 
@@ -241,7 +239,7 @@ public partial class Endpoints
                         event_kind = x.EventKind.NAME,
                         base_symbol = x.Contract.SYMBOL,
                         price = x.PRICE,
-                        fiat_price = FiatExchangeRateMethods.Convert(fiatPricesInUSD, x.PRICE_USD, "USD", fiat_currency)
+                        fiat_price = FiatExchangeRateMethods.Convert(fiatPricesInUsd, x.PRICE_USD, "USD", fiat_currency)
                             .ToString("0.####"),
                         fiat_currency = fiat_currency,
                         quote_symbol = x.QuoteSymbol?.SYMBOL,
@@ -276,7 +274,7 @@ public partial class Endpoints
                                 name = x.Nft.Series.NAME,
                                 description = x.Nft.Series.DESCRIPTION,
                                 image = x.Nft.Series.IMAGE,
-                                royalties = x.Nft.Series.ROYALTIES.ToString(),
+                                royalties = x.Nft.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
                                 type = x.Nft.Series.TYPE,
                                 attrType1 = x.Nft.Series.ATTR_TYPE_1,
                                 attrValue1 = x.Nft.Series.ATTR_VALUE_1,
@@ -297,7 +295,7 @@ public partial class Endpoints
 
                 var responseTime = DateTime.Now - startTime;
 
-                Log.Information($"API result generated in {Math.Round(responseTime.TotalSeconds, 3)} sec");
+                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
             }
             catch ( APIException )
             {

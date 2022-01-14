@@ -11,7 +11,7 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    public void NameSync()
+    private void NameSync(int chainId)
     {
         var startTime = DateTime.Now;
         var unixSecondsNow = UnixSeconds.Now();
@@ -21,7 +21,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         using ( MainDbContext databaseContext = new() )
         {
             var addressesToUpdate = databaseContext.Addresses.Where(x =>
-                x.ChainId == ChainId && ( x.NAME_LAST_UPDATED_UNIX_SECONDS == 0 ||
+                x.ChainId == chainId && ( x.NAME_LAST_UPDATED_UNIX_SECONDS == 0 ||
                                           x.NAME_LAST_UPDATED_UNIX_SECONDS <
                                           UnixSeconds.AddMinutes(unixSecondsNow, -30) )).ToList();
 

@@ -16,7 +16,7 @@ csharp_space_between_parentheses = expressions, type_casts, control_flow_stateme
 csharp_style_var_for_built_in_types = true
 
 # dotnet_diagnostic rules are supported
-dotnet_diagnostic.CS1058.severity = hint
+dotnet_diagnostic.CS1058.severity = warning
 
 # JetBrains Rider custom properties for code formatting styles
 resharper_csharp_brace_style = next_line

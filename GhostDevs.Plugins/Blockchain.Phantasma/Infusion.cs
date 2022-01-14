@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using Database.Main;
 using GhostDevs.PluginEngine;
@@ -13,7 +14,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private static readonly int maxInfusionUpdatesForOneSession = 1000;
 
 
-    public void ProcessInfusionEvents()
+    private void ProcessInfusionEvents(int chainId)
     {
         var startTime = DateTime.Now;
 
@@ -22,19 +23,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         using ( var databaseContext = new MainDbContext() )
         {
             var infusionEvents = databaseContext.Events
-                .Where(x => x.ChainId == ChainId && x.Infusion == null && x.EventKind.NAME.ToUpper() == "INFUSION" &&
+                .Where(x => x.ChainId == chainId && x.Infusion == null && x.EventKind.NAME.ToUpper() == "INFUSION" &&
                             x.Contract.NAME != null)
                 .Take(maxInfusionUpdatesForOneSession).ToList();
 
             updatedInfusionsCount = 0;
-            for ( var i = 0; i < infusionEvents.Count(); i++ )
+            foreach ( var infusionEvent in infusionEvents )
             {
-                var infusionEvent = infusionEvents[i];
-
                 //TODO just for now, might not be needed later
                 if ( string.IsNullOrEmpty(infusionEvent.InfusedSymbol?.SYMBOL) ) continue;
 
-                var token = TokenMethods.Get(databaseContext, ChainId, infusionEvent.InfusedSymbol.SYMBOL);
+                var token = TokenMethods.Get(databaseContext, chainId, infusionEvent.InfusedSymbol.SYMBOL);
+
                 if ( token?.FUNGIBLE == null )
                 {
                     Log.Warning(
@@ -49,7 +49,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     // It's a fungible token. We should apply decimals.
                     var decimals = ( int ) token.DECIMALS;
-                    value = UnitConversion.ToDecimal(BigInteger.Parse(value), decimals).ToString();
+                    value = UnitConversion.ToDecimal(BigInteger.Parse(value), decimals)
+                        .ToString(CultureInfo.InvariantCulture);
                 }
 
                 InfusionMethods.Upsert(databaseContext, infusionEvent, infusionEvent.Nft,

@@ -3,7 +3,6 @@
     "enabled": true,
     "startDelay": 3,
     "first.block": 1,
-    "chainName": "main",
     "phantasma.nexus": "testnet",
     "phantasma.rpc.nodes": [
       "http://testnet.phantasma.io:7077"

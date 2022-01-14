@@ -3,7 +3,6 @@
     "enabled": true,
     "startDelay": 3,
     "first.block": 1,
-    "chainName": "main",
     "phantasma.nexus": "mainnet",
     "phantasma.rpc.nodes": [
       "http://207.148.17.86:7077"

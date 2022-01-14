@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -18,10 +20,10 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private static int ChainId;
+    private static List<Chain> ChainList;
     private bool _running = true;
     public override string Name => "PHA";
-    public string[] ChainNames { get; set; }
+    public string[] ChainNames { get; private set; }
 
 
     public void Fetch()
@@ -43,21 +45,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             Thread.Sleep(Settings.Default.StartDelay * 1000);
 
+            //starting chain thread
+
             using ( MainDbContext databaseContext = new() )
             {
-                ChainId = ChainMethods.GetId(databaseContext, Settings.Default.ChainName);
+                InitChains();
+
+                ChainList = ChainMethods.GetChains(databaseContext).ToList();
+                ChainNames = ChainMethods.getChainNames(databaseContext).ToArray();
             }
 
-            //also, to remove this here, we have to create the contract if we find a new one when reading new blocks
-            foreach ( var cInfo in Settings.Default.NFTs )
-            {
-                using MainDbContext databaseContext = new();
-                var contractId =
-                    ContractMethods.Upsert(databaseContext, cInfo.Symbol, ChainId, cInfo.Symbol, cInfo.Symbol);
-                databaseContext.SaveChanges();
-            }
-
-            // Initializing SeriesModes
             using ( MainDbContext databaseContext = new() )
             {
                 SeriesMethods.SeriesModesInit(databaseContext);
@@ -65,140 +62,155 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 databaseContext.SaveChanges();
             }
 
-            // Starting threads
-
-            Thread tokensInitThread = new(() =>
+            Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, ChainList.Count);
+            foreach ( var chain in ChainList )
             {
-                while ( _running )
-                    try
-                    {
-                        InitNewTokens();
+                Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name, chain.NAME,
+                    chain.ID);
 
-                        Thread.Sleep(Settings.Default.TokensProcessingInterval *
-                                     1000); // We process tokens every TokensProcessingInterval seconds
-                    }
-                    catch ( Exception e )
-                    {
-                        LogEx.Exception("Token init", e);
+                //TODO replace
+                foreach ( var cInfo in Settings.Default.NFTs )
+                {
+                    using MainDbContext databaseContext = new();
+                    var contractId =
+                        ContractMethods.Upsert(databaseContext, cInfo.Symbol, chain.ID, cInfo.Symbol, cInfo.Symbol);
+                    databaseContext.SaveChanges();
+                }
 
-                        Thread.Sleep(Settings.Default.TokensProcessingInterval * 1000);
-                    }
-            });
-            tokensInitThread.Start();
+                Thread tokensInitThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            InitNewTokens(chain.ID);
 
-            Thread blocksSyncThread = new(() =>
-            {
-                while ( _running )
-                    try
-                    {
-                        FetchBlocks();
+                            Thread.Sleep(Settings.Default.TokensProcessingInterval *
+                                         1000); // We process tokens every TokensProcessingInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("Token init", e);
 
-                        Thread.Sleep(Settings.Default.BlocksProcessingInterval *
-                                     1000); // We sync blocks every BlocksProcessingInterval seconds
-                    }
-                    catch ( Exception e )
-                    {
-                        LogEx.Exception("Block fetch", e);
+                            Thread.Sleep(Settings.Default.TokensProcessingInterval * 1000);
+                        }
+                });
+                tokensInitThread.Start();
 
-                        Thread.Sleep(Settings.Default.BlocksProcessingInterval * 1000);
-                    }
-            });
-            blocksSyncThread.Start();
+                Thread blocksSyncThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            FetchBlocks(chain.ID, chain.NAME);
 
-            Thread eventsProcessThread = new(() =>
-            {
-                while ( _running )
-                    try
-                    {
-                        MergeSendReceiveToTransfer();
+                            Thread.Sleep(Settings.Default.BlocksProcessingInterval *
+                                         1000); // We sync blocks every BlocksProcessingInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("Block fetch", e);
 
-                        Thread.Sleep(Settings.Default.EventsProcessingInterval *
-                                     1000); // We process events every EventsProcessingInterval seconds
-                    }
-                    catch ( Exception e )
-                    {
-                        LogEx.Exception("Events processing", e);
+                            Thread.Sleep(Settings.Default.BlocksProcessingInterval * 1000);
+                        }
+                });
+                blocksSyncThread.Start();
 
-                        Thread.Sleep(Settings.Default.EventsProcessingInterval * 1000);
-                    }
-            });
-            eventsProcessThread.Start();
+                Thread eventsProcessThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            MergeSendReceiveToTransfer(chain.ID);
 
-            Thread romRamSyncThread = new(() =>
-            {
-                while ( _running )
-                    try
-                    {
-                        NewNftsSetRomRam();
+                            Thread.Sleep(Settings.Default.EventsProcessingInterval *
+                                         1000); // We process events every EventsProcessingInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("Events processing", e);
 
-                        Thread.Sleep(Settings.Default.RomRamProcessingInterval *
-                                     1000); // We process ROM/RAM every RomRamProcessingInterval seconds
-                    }
-                    catch ( Exception e )
-                    {
-                        LogEx.Exception("ROM/RAM load", e);
+                            Thread.Sleep(Settings.Default.EventsProcessingInterval * 1000);
+                        }
+                });
+                eventsProcessThread.Start();
 
-                        Thread.Sleep(Settings.Default.RomRamProcessingInterval * 1000);
-                    }
-            });
-            romRamSyncThread.Start();
+                Thread romRamSyncThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            NewNftsSetRomRam(chain.ID, chain.NAME);
 
-            Thread seriesSyncThread = new(() =>
-            {
-                while ( _running )
-                    try
-                    {
-                        NewSeriesLoad();
+                            Thread.Sleep(Settings.Default.RomRamProcessingInterval *
+                                         1000); // We process ROM/RAM every RomRamProcessingInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("ROM/RAM load", e);
 
-                        Thread.Sleep(Settings.Default.SeriesProcessingInterval *
-                                     1000); // We check for new series every SeriesProcessingInterval seconds
-                    }
-                    catch ( Exception e )
-                    {
-                        LogEx.Exception("Series load", e);
+                            Thread.Sleep(Settings.Default.RomRamProcessingInterval * 1000);
+                        }
+                });
+                romRamSyncThread.Start();
 
-                        Thread.Sleep(Settings.Default.SeriesProcessingInterval * 1000);
-                    }
-            });
-            seriesSyncThread.Start();
+                Thread seriesSyncThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            NewSeriesLoad(chain.ID);
 
-            Thread infusionsSyncThread = new(() =>
-            {
-                while ( _running )
-                    try
-                    {
-                        ProcessInfusionEvents();
+                            Thread.Sleep(Settings.Default.SeriesProcessingInterval *
+                                         1000); // We check for new series every SeriesProcessingInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("Series load", e);
 
-                        Thread.Sleep(Settings.Default.InfusionsProcessingInterval *
-                                     1000); // We process infusion events every InfusionsProcessingInterval seconds
-                    }
-                    catch ( Exception e )
-                    {
-                        LogEx.Exception("Infusions processing", e);
+                            Thread.Sleep(Settings.Default.SeriesProcessingInterval * 1000);
+                        }
+                });
+                seriesSyncThread.Start();
 
-                        Thread.Sleep(Settings.Default.InfusionsProcessingInterval * 1000);
-                    }
-            });
-            infusionsSyncThread.Start();
+                Thread infusionsSyncThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            ProcessInfusionEvents(chain.ID);
 
-            Thread namesSyncThread = new(() =>
-            {
-                while ( _running )
-                    try
-                    {
-                        NameSync();
+                            Thread.Sleep(Settings.Default.InfusionsProcessingInterval *
+                                         1000); // We process infusion events every InfusionsProcessingInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("Infusions processing", e);
 
-                        Thread.Sleep(Settings.Default.NamesSyncInterval *
-                                     1000); // We sync names every NamesSyncInterval seconds
-                    }
-                    catch ( Exception e )
-                    {
-                        LogEx.Exception("Names sync", e);
+                            Thread.Sleep(Settings.Default.InfusionsProcessingInterval * 1000);
+                        }
+                });
+                infusionsSyncThread.Start();
 
-                        Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
-                    }
-            });
-            namesSyncThread.Start();
+
+                Thread namesSyncThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            NameSync(chain.ID);
+
+                            Thread.Sleep(Settings.Default.NamesSyncInterval *
+                                         1000); // We sync names every NamesSyncInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("Names sync", e);
+
+                            Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
+                        }
+                });
+                namesSyncThread.Start();
+            }
         });
         mainThread.Start();
 
@@ -300,12 +312,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     protected override void Configure()
     {
         Settings.Load(GetConfiguration());
-
-        ChainNames = new[] {Settings.Default.ChainName};
     }
 
 
-    public string GetCurrentOwnerAddress(string contractHash, string tokenId, out string error)
+    private static string GetCurrentOwnerAddress(string contractHash, string tokenId, out string error)
     {
         error = null;
 

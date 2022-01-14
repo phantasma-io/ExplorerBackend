@@ -193,7 +193,7 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(token_id) )
                 {
-                    if ( token_id.Contains(",") )
+                    if ( token_id.Contains(',') )
                     {
                         var token_ids = token_id.ToUpper().Split(',');
 
@@ -314,7 +314,7 @@ public partial class Endpoints
                     var infusedIntoId = x.GetString("InfusedIntoId");
                     if ( infusedIntoId != null )
                         infusionIntoData = pgConnection.ExecQueryDN(
-                                $@"select ""TOKEN_ID"", ""NAME"", ""HASH"" from ""Nfts"", ""Chains"", ""Contracts"" where ""Nfts"".""ID"" = {infusedIntoId} and ""Nfts"".""ChainId"" = ""Chains"".""ID"" and ""Nfts"".""ContractId"" = ""Contracts"".""ID""")
+                                $@"select ""TOKEN_ID"", ""Nfts"".""NAME"", ""HASH"" from ""Nfts"", ""Chains"", ""Contracts"" where ""Nfts"".""ID"" = {infusedIntoId} and ""Nfts"".""ChainId"" = ""Chains"".""ID"" and ""Nfts"".""ContractId"" = ""Contracts"".""ID""")
                             .Select(x => new InfusedInto
                             {
                                 token_id = x.GetString("TOKEN_ID"),
@@ -324,8 +324,7 @@ public partial class Endpoints
                             }).FirstOrDefault();
 
                     var creatorAddress = databaseContext.Addresses
-                        .Where(a => a.ID == x.GetInt32("CreatorAddressId", 0))
-                        .FirstOrDefault();
+                        .FirstOrDefault(a => a.ID == x.GetInt32("CreatorAddressId", 0));
 
                     // We use it to determine if item has metadata.
                     var metadataName = x.GetString("NAME");
@@ -389,7 +388,7 @@ public partial class Endpoints
 
                 var responseTime = DateTime.Now - startTime;
 
-                Log.Information($"API result generated in {Math.Round(responseTime.TotalSeconds, 3)} sec");
+                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
             }
             catch ( APIException )
             {
