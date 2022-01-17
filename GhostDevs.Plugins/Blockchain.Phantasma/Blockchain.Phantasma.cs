@@ -68,15 +68,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name, chain.NAME,
                     chain.ID);
 
-                //TODO replace
-                foreach ( var cInfo in Settings.Default.NFTs )
-                {
-                    using MainDbContext databaseContext = new();
-                    var contractId =
-                        ContractMethods.Upsert(databaseContext, cInfo.Symbol, chain.ID, cInfo.Symbol, cInfo.Symbol);
-                    databaseContext.SaveChanges();
-                }
-
                 Thread tokensInitThread = new(() =>
                 {
                     while ( _running )

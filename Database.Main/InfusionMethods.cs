@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq;
 
 namespace Database.Main;
@@ -10,11 +11,11 @@ public static class InfusionMethods
     {
         // Trying to get token.
         var token = TokenMethods.Get(databaseContext, infusionEvent.ChainId, infusionEvent.InfusedSymbol.SYMBOL);
-        if ( token != null && token.FUNGIBLE == false )
+        if ( token is {FUNGIBLE: false} )
         {
             // For NFT always create new entry, if we can't find infusion with same value
-            var nftInfusion = databaseContext.Infusions
-                .Where(x => x.Nft == nft && x.KEY.ToUpper() == key.ToUpper() && x.VALUE == value).FirstOrDefault();
+            var nftInfusion = databaseContext.Infusions.FirstOrDefault(x =>
+                x.Nft == nft && string.Equals(x.KEY.ToUpper(), key.ToUpper()) && x.VALUE == value);
             if ( nftInfusion == null )
             {
                 nftInfusion = new Infusion {Nft = nft, KEY = key, VALUE = value};
@@ -26,8 +27,9 @@ public static class InfusionMethods
         }
 
         // Fungible infusions
-        var infusion = databaseContext.Infusions.Where(x => x.Nft == nft && x.KEY.ToUpper() == key.ToUpper())
-            .FirstOrDefault();
+        var infusion = databaseContext.Infusions
+            .FirstOrDefault(x => x.Nft == nft &&
+                                 string.Equals(x.KEY.ToUpper(), key.ToUpper()));
         if ( infusion == null )
         {
             var fungibleToken = TokenMethods.UpsertWOSave(databaseContext, infusionEvent.ChainId, key);
@@ -37,7 +39,8 @@ public static class InfusionMethods
             infusion.VALUE = "0";
         }
 
-        infusion.VALUE = ( decimal.Parse(infusion.VALUE) + decimal.Parse(value) ).ToString();
+        infusion.VALUE =
+            ( decimal.Parse(infusion.VALUE) + decimal.Parse(value) ).ToString(CultureInfo.InvariantCulture);
 
         infusionEvent.Infusion = infusion;
     }

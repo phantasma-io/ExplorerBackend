@@ -71,15 +71,8 @@ public static class DataFetcher
 
             if ( pgConnection != null ) Log.Information("PostgreSQL version: {Version}", pgConnection.GetVersion());
 
-            //remove that part here, do it in blockchain plugin
             // Add supported chains and tokens to the database.
-
-            foreach ( var symbol in Settings.Default.Tokens )
-                Log.Information("Registering token {Chain} {Symbol}", symbol.Chain, symbol.Symbol);
-
-            //TODO
-            //var chainId = ChainMethods.GetId(database, symbol.Chain);
-            //TokenMethods.Upsert(database, chainId, symbol.Contract, symbol.Symbol);
+            //supported tokens and chains are added by the plugin
 
             database.SaveChanges();
         }

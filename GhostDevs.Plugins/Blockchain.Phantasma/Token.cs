@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Text.Json;
 using Database.Main;
 using GhostDevs.Api;
@@ -18,42 +17,41 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         using ( MainDbContext databaseContext = new() )
         {
-            var tokens = databaseContext.Tokens.Where(x => x.ChainId == chainId && x.FUNGIBLE == null).ToList();
-
-            //maybe change to foreach
             updatedTokensCount = 0;
-            foreach ( var tokenToUpdate in tokens )
+            var url = $"{Settings.Default.GetRest()}/api/getNexus";
+
+            var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
+            if ( response != null )
             {
-                var token = Client.APIRequest<JsonDocument>(
-                    $"{Settings.Default.GetRest()}/api/getToken?symbol=" + tokenToUpdate.SYMBOL,
-                    out var stringResponse,
-                    null, 10);
+                if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
+                    Log.Error("[{Name}] Cannot fetch Token info. Error: {Error}",
+                        Name, errorProperty.GetString());
 
-                if ( token == null )
+                if ( response.RootElement.TryGetProperty("tokens", out var tokensProperty) )
                 {
-                    Log.Error("[{Name}] Cannot fetch Phantasma {Symbol} token info. Unknown error", Name,
-                        tokenToUpdate.SYMBOL);
-                    continue;
-                }
+                    var tokens = tokensProperty.EnumerateArray();
 
-                if ( token.RootElement.TryGetProperty("error", out var errorProperty) )
-                {
-                    Log.Error(
-                        "[{Name}] Cannot fetch Phantasma {Symbol} token info: Error: {Error}",
-                        Name, tokenToUpdate.SYMBOL, errorProperty.GetString());
-                    continue;
-                }
+                    foreach ( var token in tokens )
+                    {
+                        var tokenSymbol = token.GetProperty("symbol").GetString();
+                        var tokenName = token.GetProperty("name").GetString();
+                        var tokenDecimal = token.GetProperty("decimals").GetInt32();
+                        var fungible = false;
 
-                if ( token.RootElement.GetProperty("flags").GetString()!.Contains("Fungible") )
-                {
-                    tokenToUpdate.FUNGIBLE = true;
-                    // It's a fungible token. We should apply decimals.
-                    tokenToUpdate.DECIMALS = token.RootElement.GetProperty("decimals").GetInt32();
-                }
-                else
-                    tokenToUpdate.FUNGIBLE = false;
+                        if ( token.TryGetProperty("flags", out var flags) )
+                            if ( flags.ToString().Contains("Fungible") )
+                                fungible = true;
 
-                updatedTokensCount++;
+                        var id = TokenMethods.Upsert(databaseContext, chainId, tokenSymbol, tokenSymbol, tokenDecimal,
+                            fungible);
+
+                        Log.Verbose("[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Database Id {Id}", Name,
+                            tokenSymbol,
+                            tokenName, id);
+
+                        updatedTokensCount++;
+                    }
+                }
             }
 
             if ( updatedTokensCount > 0 ) databaseContext.SaveChanges();

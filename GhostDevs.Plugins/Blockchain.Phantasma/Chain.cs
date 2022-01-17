@@ -37,8 +37,24 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     Log.Information("[{Name}] Chain name is {NameChain}", Name, chainName);
 
                     var id = ChainMethods.Upsert(databaseContext, chainName);
-                    Log.Verbose("[{Name}] chain {ChainName} with Database Id {Id} processed", Name, chainName, id);
-                    //TODO also process contracts
+                    Log.Verbose("[{Name}] chain {ChainName} with Database Id {Id} processed, go on with Contracts",
+                        Name, chainName, id);
+
+
+                    if ( element.TryGetProperty("contracts", out var contractsProperty) )
+                    {
+                        var contracts = contractsProperty.EnumerateArray();
+
+                        foreach ( var contract in contracts )
+                        {
+                            var contractId = ContractMethods.Upsert(databaseContext, contract.ToString(),
+                                id,
+                                contract.ToString(),
+                                null);
+
+                            Log.Verbose("[{Name}] Processed Chain contract {Contract}", Name, contract.ToString());
+                        }
+                    }
 
                     updatedChainsCount++;
                 }

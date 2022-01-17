@@ -158,8 +158,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                             Event evnt = new(kind, addr, contract, data);
 
-                            //var dbEvent = new Database.Main.Event();
-                            //dbEvent.PRICE = "test";
                             var added = false;
 
                             switch ( kind )
@@ -168,8 +166,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 {
                                     Log.Verbose("[{Name}] getting InfusionEventData for {Kind}", Name, kind);
 
-                                    //var evnt = new Event(kind, addr, contract, data);
-                                    //dbEvent.ChainId = ChainId;
                                     var infusionEventData = evnt.GetContent<InfusionEventData>();
 
                                     Log.Debug(
@@ -185,13 +181,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     if ( infusionEventData.ChainName == "main" )
                                     {
-                                        /*var test = TokenMethods.Upsert(databaseContext, ChainId,
-                                                InfusionEventData.BaseSymbol.ToUpper(), InfusionEventData.BaseSymbol.ToUpper());*/
-
-
-                                        /*var eventKindId = EventKindMethods.Upsert(databaseContext, ChainId,
-                                            kind.ToString());*/
-
                                         var contractId = ContractMethods.Upsert(databaseContext, contract,
                                             chainId,
                                             infusionEventData.BaseSymbol.ToUpper(),
@@ -260,8 +249,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     or EventKind.TokenSend or EventKind.TokenReceive or EventKind.TokenStake
                                     or EventKind.CrownRewards:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
-
                                     var tokenEventData = evnt.GetContent<TokenEventData>();
 
                                     Log.Verbose("[{Name}] getting TokenEventData for {Kind}, Chain {Chain}", Name,
@@ -270,8 +257,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     //currently checks if the value is configured in json
                                     //change to if we have it in the database, if not create it with the info we have
                                     //if we have that we can also re move the configurations
-                                    /*TokenMethods.Upsert(databaseContext, ChainId,
-                                            tokenEventData.Symbol, tokenEventData.Symbol);*/
 
                                     /*if (tokenEventData.ChainName == "main" && Settings.Default.NFTs.Any(x =>
                                                 string.Equals(x.Symbol, tokenEventData.Symbol,
@@ -285,8 +270,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             tokenEventData.Symbol, tokenEventData.Value, addressString,
                                             contract);
 
-                                        /*var eventKindId = EventKindMethods.Upsert(databaseContext, ChainId,
-                                            kind.ToString());*/
                                         var contractId = ContractMethods.Upsert(databaseContext, contract,
                                             chainId,
                                             tokenEventData.Symbol.ToUpper(),
@@ -451,7 +434,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     or EventKind.OrderCreated or EventKind.OrderFilled or EventKind.OrderBid:
                                 {
                                     Log.Verbose("[{Name}] getting MarketEventData for {Kind}", Name, kind);
-                                    //var evnt = new Event(kind, addr, contract, data);
 
                                     var marketEventData = evnt.GetContent<MarketEventData>();
 
@@ -462,8 +444,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         marketEventData.Price, marketEventData.EndPrice, marketEventData.ID,
                                         addressString, contract, marketEventData.Type);
 
-                                    /*var eventKindId = EventKindMethods.Upsert(databaseContext, ChainId,
-                                        kind.ToString());*/
                                     var contractId = ContractMethods.Upsert(databaseContext, contract,
                                         chainId,
                                         marketEventData.BaseSymbol.ToUpper(),
@@ -545,7 +525,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     or EventKind.AddressRegister or EventKind.ContractDeploy or EventKind.PlatformCreate
                                     or EventKind.OrganizationCreate:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     var stringData = evnt.GetContent<string>();
 
                                     Log.Verbose("[{Name}] getting string for {Kind}, string {String}", Name, kind,
@@ -555,7 +534,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.Crowdsale:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     var saleEventData = evnt.GetContent<SaleEventData>();
 
                                     var hash = saleEventData.saleHash;
@@ -570,7 +548,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.ChainSwap:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     var transactionSettleEventData =
                                         evnt.GetContent<TransactionSettleEventData>();
 
@@ -586,7 +563,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.ValidatorElect or EventKind.ValidatorPropose:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     var address = evnt.GetContent<Address>();
 
                                     Log.Verbose("[{Name}] getting Address for {Kind}, Address {Address}", Name,
@@ -596,7 +572,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.ValidatorSwitch:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     Log.Verbose("[{Name}] getting nothing for {Kind}", Name, kind);
 
 
@@ -604,7 +579,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.ValueCreate or EventKind.ValueUpdate:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     var chainValueEventData =
                                         evnt.GetContent<ChainValueEventData>();
 
@@ -615,12 +589,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         "[{Name}] getting ChainValueEventData for {Kind}, Name {ValueEventName}, Value {Value}",
                                         Name, kind, valueEventName, value);
 
-
                                     break;
                                 }
                                 case EventKind.GasEscrow or EventKind.GasPayment:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     var gasEventData = evnt.GetContent<GasEventData>();
 
                                     var address = gasEventData.address;
@@ -635,7 +607,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.FileCreate or EventKind.FileDelete:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     var hash = evnt.GetContent<Hash>();
 
                                     Log.Verbose("[{Name}] getting Hash for {Kind}, Hash {Hash}", Name, kind, hash);
@@ -644,7 +615,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.OrganizationAdd or EventKind.OrganizationRemove:
                                 {
-                                    //var evnt = new Event(kind, addr, contract, data);
                                     var organizationEventData =
                                         evnt.GetContent<OrganizationEventData>();
 

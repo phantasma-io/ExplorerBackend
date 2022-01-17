@@ -9,7 +9,10 @@ public static class TokenMethods
     // Checks if "Token" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static int Upsert(MainDbContext databaseContext, int chainId, string contractHash, string symbol)
+
+
+    public static int Upsert(MainDbContext databaseContext, int chainId, string contractHash, string symbol,
+        int decimals = 0, bool fungible = false)
     {
         var contractId = ContractMethods.Upsert(databaseContext, symbol, chainId, contractHash, symbol);
 
@@ -18,10 +21,16 @@ public static class TokenMethods
             .FirstOrDefault(x =>
                 x.ChainId == chainId && string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
         if ( entry != null )
+        {
+            entry.FUNGIBLE = fungible;
+            entry.DECIMALS = decimals;
+
             id = entry.ID;
+        }
         else
         {
-            entry = new Token {ChainId = chainId, ContractId = contractId, SYMBOL = symbol};
+            entry = new Token
+                {ChainId = chainId, ContractId = contractId, SYMBOL = symbol, DECIMALS = decimals, FUNGIBLE = fungible};
             databaseContext.Tokens.Add(entry);
 
             databaseContext.SaveChanges();
