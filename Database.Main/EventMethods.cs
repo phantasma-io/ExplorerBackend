@@ -37,11 +37,11 @@ public static class EventMethods
 
         int? quoteSymbolId = null;
         if ( !string.IsNullOrEmpty(quoteSymbol) )
-            quoteSymbolId = TokenMethods.Upsert(databaseContext, chainId, quoteContractHash, quoteSymbol);
+            quoteSymbolId = TokenMethods.Get(databaseContext, chainId, quoteSymbol).ID;
 
         int? infusedSymbolId = null;
         if ( !string.IsNullOrEmpty(infusedSymbol) )
-            infusedSymbolId = TokenMethods.Upsert(databaseContext, chainId, infusedContractHash, infusedSymbol);
+            infusedSymbolId = TokenMethods.Get(databaseContext, chainId, infusedSymbol).ID;
 
         var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
         Address sourceAddressEntry = null;

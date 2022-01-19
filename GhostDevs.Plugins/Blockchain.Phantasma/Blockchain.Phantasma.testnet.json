@@ -16,38 +16,6 @@
     "romRamProcessingInterval": 30,
     "seriesProcessingInterval": 30,
     "infusionsProcessingInterval": 30,
-    "namesSyncInterval": 600,
-    "phantasma.nfts": [
-      {
-        "symbol": "TTRS"
-      },
-      {
-        "symbol": "GAME"
-      },
-      {
-        "symbol": "CROWN"
-      },
-      {
-        "symbol": "GHOST"
-      },
-      {
-        "symbol": "LEET"
-      },
-      {
-        "symbol": "SEM"
-      },
-      {
-        "symbol": "NOMI"
-      },
-      {
-        "symbol": "BRCP"
-      },
-      {
-        "symbol": "BRC"
-      },
-      {
-        "symbol": "IGI"
-      }
-    ]
+    "namesSyncInterval": 600
   }
 }

@@ -9,23 +9,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Publish\**"/>
-    <EmbeddedResource Remove="Publish\**"/>
-    <None Remove="Publish\**"/>
+    <Compile Remove="Publish\**" />
+    <EmbeddedResource Remove="Publish\**" />
+    <None Remove="Publish\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Foundatio" Version="10.2.2"/>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.0"/>
-    <PackageReference Include="Serilog.AspNetCore" Version="4.1.0"/>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3"/>
+    <PackageReference Include="Foundatio" Version="10.2.2" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="4.1.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GhostDevs.Commons\GhostDevs.Commons.csproj"/>
-    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj"/>
-    <ProjectReference Include="..\Database.Main\Database.Main.csproj"/>
-    <ProjectReference Include="..\GhostDevs.PluginEngine\GhostDevs.PluginEngine.csproj"/>
-    <ProjectReference Include="..\GhostDevs.PostgreSQLConnector\GhostDevs.PostgreSQLConnector.csproj"/>
+    <ProjectReference Include="..\GhostDevs.Commons\GhostDevs.Commons.csproj" />
+    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj" />
+    <ProjectReference Include="..\Database.Main\Database.Main.csproj" />
+    <ProjectReference Include="..\GhostDevs.PluginEngine\GhostDevs.PluginEngine.csproj" />
+    <ProjectReference Include="..\GhostDevs.PostgreSQLConnector\GhostDevs.PostgreSQLConnector.csproj" />
   </ItemGroup>
 </Project>

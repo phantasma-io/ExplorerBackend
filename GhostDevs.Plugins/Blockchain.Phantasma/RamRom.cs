@@ -64,10 +64,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
 
                 updatedNftCount = 0;
-                for ( var i = 0; i < nfts.Count(); i++ )
+                for ( var i = 0; i < nfts.Count; i++ )
                 {
                     var nft = nfts[i];
 
+                    Log.Verbose("[{Name}] checking NFT, Symbol {Symbol}, Token Id {Token}", Name, nft.Contract.SYMBOL,
+                        nft.TOKEN_ID);
                     var url = $"{Settings.Default.GetRest()}/api/getNFT?symbol=" + nft.Contract.SYMBOL.ToUpper() +
                               "&IDtext=" + nft.TOKEN_ID + "&extended=true";
 
@@ -126,7 +128,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             response = responseSaved;
                         else
                         {
-                            if ( error.Contains("nft does not exists") )
+                            if ( error.Contains("nft does not exists") ||
+                                 error.Contains("nft") && error.Contains("does not exist") )
                             {
                                 // NFT was burned, marking it.
                                 nft.BURNED = true;
@@ -381,7 +384,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             try
             {
-                if ( fields.TryGetValue(VMObject.FromObject("hasLocked"), out var value) ) return value.AsBool();
+                if ( fields.TryGetValue(VMObject.FromObject("hasLocked"), out var value) )
+                {
+                    Log.Verbose("[PHA][CustomRom] ROM hasLocked {Value}", value);
+                    //TODO maybe fix
+                    //return value.GetType() == typeof(String) ? value.ToString().Equals("1") : value.AsBool();
+                    return value.ToString().Equals("1");
+                }
             }
             catch ( Exception e )
             {

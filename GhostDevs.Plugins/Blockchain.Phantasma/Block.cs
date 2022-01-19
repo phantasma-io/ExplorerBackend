@@ -83,7 +83,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 var block = BlockMethods.GetByHeight(databaseApiCacheContext, chainId,
                     blockHeight.ToString());
                 blockData = block.DATA;
-                Log.Verbose("[{Name}] got Block {@Block}", Name, blockData);
             }
         }
 
@@ -115,8 +114,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 return false;
             }
 
-            Log.Information("[{Name}] Block #{BlockHeight}: {@Response}", Name, blockHeight, response);
-
             blockData = response;
         }
 
@@ -128,6 +125,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         // We cache NFTs in this block to speed up code
         // and avoid some unpleasant situations leading to bugs.
         Dictionary<string, Nft> nftsInThisBlock = new();
+        Dictionary<string, bool> symbolFungible = new();
 
         using MainDbContext databaseContext = new();
         try
@@ -138,7 +136,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var block = Database.Main.BlockMethods.Upsert(databaseContext, chainId, blockHeight, timestampUnixSeconds,
                 false);
 
-            // Currently only stored. TODO add reuse to speed up resync
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
                 BlockMethods.Upsert(databaseApiCacheContext,
@@ -206,12 +203,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         infusionEventData.InfusedValue, infusionEventData.InfusedSymbol,
                                         addressString, contract);
 
-                                    /*if (infusionEventData.ChainName == "main" &&
-                                            Settings.Default.NFTs.Any(x =>
-                                                x.Symbol == infusionEventData.BaseSymbol))
-                                        {*/
+                                    bool fungible;
+                                    if ( symbolFungible.ContainsKey(infusionEventData.BaseSymbol) )
+                                    {
+                                        fungible = symbolFungible.GetValueOrDefault(infusionEventData.BaseSymbol);
+                                    }
+                                    else
+                                    {
+                                        fungible = TokenMethods.Get(
+                                            databaseContext, chainId,
+                                            infusionEventData.BaseSymbol).FUNGIBLE;
+                                        symbolFungible.Add(infusionEventData.BaseSymbol, fungible);
+                                    }
 
-                                    if ( infusionEventData.ChainName == "main" )
+                                    if ( !fungible )
                                     {
                                         var contractId = ContractMethods.Upsert(databaseContext, contract,
                                             chainId,
@@ -220,63 +225,57 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         var tokenId = infusionEventData.TokenID.ToString();
 
-                                        var nftConfig = Settings.Default.NFTs
-                                            .FirstOrDefault(x => string.Equals(x.Symbol.ToUpper(),
-                                                infusionEventData.BaseSymbol.ToUpper()));
-
-                                        if ( nftConfig != null )
+                                        Nft nft;
+                                        // Searching for corresponding NFT.
+                                        // If it's available, we will set up relation.
+                                        // If not, we will create it first.
+                                        if ( nftsInThisBlock.ContainsKey(tokenId) )
+                                            nft = nftsInThisBlock.GetValueOrDefault(tokenId);
+                                        else
                                         {
-                                            Nft nft;
-                                            // Searching for corresponding NFT.
-                                            // If it's available, we will set up relation.
-                                            // If not, we will create it first.
-                                            if ( nftsInThisBlock.ContainsKey(tokenId) )
-                                                nft = nftsInThisBlock.GetValueOrDefault(tokenId);
-                                            else
-                                            {
-                                                nft = NftMethods.Upsert(databaseContext,
-                                                    out var newNftCreated,
-                                                    chainId,
-                                                    tokenId,
-                                                    null, // tokenUri
-                                                    contractId);
-
-                                                if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
-                                            }
-
-                                            EventMethods.Upsert(databaseContext,
-                                                out var eventAdded,
-                                                nft,
-                                                timestampUnixSeconds,
-                                                eventIndex + 1,
+                                            nft = NftMethods.Upsert(databaseContext,
+                                                out var newNftCreated,
                                                 chainId,
-                                                transaction,
-                                                contractId,
-                                                eventKindId,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                0,
-                                                infusionEventData.InfusedSymbol,
-                                                infusionEventData.InfusedSymbol,
-                                                infusionEventData.InfusedValue.ToString(),
                                                 tokenId,
-                                                addressString,
-                                                null,
-                                                false);
+                                                null, // tokenUri
+                                                contractId);
 
-                                            if ( eventAdded ) eventsAddedCount++;
-
-                                            added = eventAdded;
-                                            _overallEventsLoadedCount++;
+                                            Log.Verbose(
+                                                "[{Name}] using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
+                                                Name, nft.ID, nft.TOKEN_ID, newNftCreated);
+                                            if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                         }
+
+                                        EventMethods.Upsert(databaseContext,
+                                            out var eventAdded,
+                                            nft,
+                                            timestampUnixSeconds,
+                                            eventIndex + 1,
+                                            chainId,
+                                            transaction,
+                                            contractId,
+                                            eventKindId,
+                                            null,
+                                            null,
+                                            null,
+                                            null,
+                                            0,
+                                            infusionEventData.InfusedSymbol,
+                                            infusionEventData.InfusedSymbol,
+                                            infusionEventData.InfusedValue.ToString(),
+                                            tokenId,
+                                            addressString,
+                                            null,
+                                            false);
+
+                                        if ( eventAdded ) eventsAddedCount++;
+
+                                        added = eventAdded;
+                                        _overallEventsLoadedCount++;
                                     }
 
                                     break;
                                 }
-                                /*case EventKind.TokenMint or EventKind.TokenClaim or EventKind.TokenBurn
-                                    or EventKind.TokenSend or EventKind.TokenReceive:*/
                                 case EventKind.TokenMint or EventKind.TokenClaim or EventKind.TokenBurn
                                     or EventKind.TokenSend or EventKind.TokenReceive or EventKind.TokenStake
                                     or EventKind.CrownRewards:
@@ -286,15 +285,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     Log.Verbose("[{Name}] getting TokenEventData for {Kind}, Chain {Chain}", Name,
                                         kind, tokenEventData.ChainName);
 
-                                    //currently checks if the value is configured in json
-                                    //change to if we have it in the database, if not create it with the info we have
-                                    //if we have that we can also re move the configurations
+                                    bool fungible;
+                                    if ( symbolFungible.ContainsKey(tokenEventData.Symbol) )
+                                    {
+                                        fungible = symbolFungible.GetValueOrDefault(tokenEventData.Symbol);
+                                    }
+                                    else
+                                    {
+                                        fungible = TokenMethods.Get(
+                                            databaseContext, chainId,
+                                            tokenEventData.Symbol).FUNGIBLE;
+                                        symbolFungible.Add(tokenEventData.Symbol, fungible);
+                                    }
 
-                                    /*if (tokenEventData.ChainName == "main" && Settings.Default.NFTs.Any(x =>
-                                                string.Equals(x.Symbol, tokenEventData.Symbol,
-                                                    StringComparison.InvariantCultureIgnoreCase)))*/
-
-                                    if ( tokenEventData.ChainName == "main" )
+                                    if ( !fungible )
                                     {
                                         Log.Debug(
                                             "[{Name}] New event on {TimestampUnixSeconds}: kind: {Kind} symbol: {Symbol} value: {Value} address: {AddressString} contract: {Contract}",
@@ -309,35 +313,29 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         var tokenId = tokenEventData.Value.ToString();
 
-                                        //fix that, we want to get rid of that configuration
-                                        var nftConfig = Settings.Default.NFTs.FirstOrDefault(x =>
-                                            string.Equals(x.Symbol.ToUpper(),
-                                                tokenEventData.Symbol.ToUpper()));
-
-                                        //if we have an ntf, create everything we need for it
-                                        Nft nft = null;
-                                        if ( nftConfig != null )
+                                        Nft nft;
+                                        if ( nftsInThisBlock.ContainsKey(tokenId) )
+                                            nft = nftsInThisBlock.GetValueOrDefault(tokenId);
+                                        else
                                         {
-                                            if ( nftsInThisBlock.ContainsKey(tokenId) )
-                                                nft = nftsInThisBlock.GetValueOrDefault(tokenId);
-                                            else
-                                            {
-                                                nft = NftMethods.Upsert(databaseContext,
-                                                    out var newNftCreated,
-                                                    chainId,
-                                                    tokenId,
-                                                    null, // tokenUri
-                                                    contractId);
-
-                                                if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
-                                            }
-
-                                            // We should always properly check mint event and update mint date,
-                                            // because nft can be created by auction thread without mint date,
-                                            // so we can't update dates only for just created NFTs using newNftCreated flag.
-                                            if ( kind == EventKind.TokenMint )
-                                                nft.MINT_DATE_UNIX_SECONDS = timestampUnixSeconds;
+                                            nft = NftMethods.Upsert(databaseContext,
+                                                out var newNftCreated,
+                                                chainId,
+                                                tokenId,
+                                                null, // tokenUri
+                                                contractId);
+                                            Log.Verbose(
+                                                "[{Name}] using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
+                                                Name, nft.ID, nft.TOKEN_ID, newNftCreated);
+                                            if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                         }
+
+                                        // We should always properly check mint event and update mint date,
+                                        // because nft can be created by auction thread without mint date,
+                                        // so we can't update dates only for just created NFTs using newNftCreated flag.
+                                        if ( kind == EventKind.TokenMint )
+                                            nft.MINT_DATE_UNIX_SECONDS = timestampUnixSeconds;
+
 
                                         EventMethods.Upsert(databaseContext,
                                             out var eventAdded,
@@ -364,7 +362,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         //update ntf related things if it is not null
                                         if ( nft != null )
-                                            // Update NFT's owner address on new event.
+                                            // Update NFTs owner address on new event.
                                             NftMethods.ProcessOwnershipChange(databaseContext,
                                                 chainId,
                                                 nft,
@@ -375,90 +373,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         added = eventAdded;
                                         _overallEventsLoadedCount++;
-
-                                        //for the backend we do not only need nfts, we need everything
-                                        //in the explorer we do now
-                                        /*if (nftConfig != null)
-                                        {
-                                            Nft nft;
-                                            // Searching for corresponding NFT.
-                                            // If it's available, we will set up relation.
-                                            // If not, we will create it first.
-                                            if (nftsInThisBlock.ContainsKey(tokenId))
-                                            {
-                                                nft = nftsInThisBlock.GetValueOrDefault(tokenId);
-                                            }
-                                            else
-                                            {
-                                                nft = NftMethods.Upsert(databaseContext,
-                                                    out var newNftCreated,
-                                                    ChainId,
-                                                    tokenId,
-                                                    null, // tokenUri
-                                                    contractId);
-
-                                                if (newNftCreated)
-                                                {
-                                                    nftsInThisBlock.Add(tokenId, nft);
-                                                }
-                                            }
-
-                                            // We should always properly check mint event and update mint date,
-                                            // because nft can be created by auction thread without mint date,
-                                            // so we can't update dates only for just created NFTs using newNftCreated flag.
-                                            if (kind == EventKind.TokenMint)
-                                            {
-                                                nft.MINT_DATE_UNIX_SECONDS = timestampUnixSeconds;
-                                            }
-
-                                            EventMethods.Upsert(databaseContext,
-                                                out var eventAdded,
-                                                nft,
-                                                timestampUnixSeconds,
-                                                eventIndex + 1,
-                                                ChainId,
-                                                transaction,
-                                                contractId,
-                                                eventKindId,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                0,
-                                                null,
-                                                null,
-                                                null,
-                                                tokenId,
-                                                addressString,
-                                                null,
-                                                kind != EventKind.TokenMint);
-
-                                            // Update NFT's owner address on new event.
-                                            NftMethods.ProcessOwnershipChange(databaseContext,
-                                                ChainId,
-                                                nft,
-                                                timestampUnixSeconds,
-                                                addressString);
-
-                                            if (eventAdded)
-                                            {
-                                                eventsAddedCount++;
-                                            }
-
-                                            OverallEventsLoadedCount++;
-                                        }*/
                                     }
-                                    /*else if (kind is EventKind.TokenSend or EventKind.TokenReceive)
-                                    {
-                                    }*/
-                                    /*else
-                                    {
-                                        Log.Warning(
-                                            "[{Name}] New UNREGISTERED event on {TimestampUnixSeconds}: kind: {Kind} symbol: {Symbol} value: {Value} address: {AddressString} contract: {Contract}",
-                                            Name, UnixSeconds.Log(timestampUnixSeconds), kind,
-                                            tokenEventData.Symbol, tokenEventData.Value, addressString,
-                                            contract);
-                                    }*/
 
                                     break;
                                 }
@@ -468,6 +383,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     Log.Verbose("[{Name}] getting MarketEventData for {Kind}", Name, kind);
 
                                     var marketEventData = evnt.GetContent<MarketEventData>();
+
+                                    bool fungible;
+                                    if ( symbolFungible.ContainsKey(marketEventData.BaseSymbol) )
+                                    {
+                                        fungible = symbolFungible.GetValueOrDefault(marketEventData.BaseSymbol);
+                                    }
+                                    else
+                                    {
+                                        fungible = TokenMethods.Get(
+                                            databaseContext, chainId,
+                                            marketEventData.BaseSymbol).FUNGIBLE;
+                                        symbolFungible.Add(marketEventData.BaseSymbol, fungible);
+                                    }
+
 
                                     Log.Debug(
                                         "[{Name}] New event on {TimestampUnixSeconds}: kind: {Kind} baseSymbol: {BaseSymbol} quoteSymbol: {QuoteSymbol} price: {Price} endPrice: {EndPrice} id: {ID} address: {AddressString} contract: {Contract} type: {Type}",
@@ -483,11 +412,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     var tokenId = marketEventData.ID.ToString();
 
-                                    var nftConfig = Settings.Default.NFTs
-                                        .FirstOrDefault(x => string.Equals(x.Symbol.ToUpper(),
-                                            marketEventData.BaseSymbol.ToUpper()));
-
-                                    if ( nftConfig != null )
+                                    if ( !fungible )
                                     {
                                         string price;
                                         if ( kind == EventKind.OrderBid ||
@@ -511,7 +436,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 tokenId,
                                                 null, // tokenUri
                                                 contractId);
-
+                                            Log.Verbose(
+                                                "[{Name}] using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
+                                                Name, nft.ID, nft.TOKEN_ID, newNftCreated);
                                             if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                         }
 
@@ -538,7 +465,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             false);
 
                                         if ( kind == EventKind.OrderFilled )
-                                            // Update NFT's owner address on new sale event.
+                                            // Update NFTs owner address on new sale event.
                                             NftMethods.ProcessOwnershipChange(databaseContext,
                                                 chainId,
                                                 nft,

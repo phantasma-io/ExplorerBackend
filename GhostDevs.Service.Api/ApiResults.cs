@@ -131,3 +131,21 @@ public class SeriesResult
     [APIDescription("List of available series")]
     public Series[] series { get; set; }
 }
+
+public class Chain
+{
+    [APIDescription("Returns the chain name")]
+    public string chain_name { get; set; }
+
+    [APIDescription("Returns the chain height")]
+    public string chain_height { get; set; }
+}
+
+public class ChainResult
+{
+    [APIDescription("total number of found chains")]
+    public long total_results { get; set; }
+
+    [APIDescription("List of available chains")]
+    public Chain[] chains { get; set; }
+}

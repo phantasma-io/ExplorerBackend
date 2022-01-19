@@ -642,7 +642,7 @@ public class Token
 {
     public int ID { get; set; }
     public string SYMBOL { get; set; }
-    public bool? FUNGIBLE { get; set; }
+    public bool FUNGIBLE { get; set; }
     public int? DECIMALS { get; set; }
     public decimal PRICE_USD { get; set; }
     public decimal PRICE_EUR { get; set; }

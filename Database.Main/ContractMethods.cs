@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 
 namespace Database.Main;
@@ -52,7 +53,9 @@ public static class ContractMethods
         int contractId;
 
         var contract = databaseContext.Contracts
-            .FirstOrDefault(x => x.ChainId == chain && string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
+            .FirstOrDefault(x =>
+                x.ChainId == chain && string.Equals(x.HASH.ToUpper(), hash.ToUpper()) &&
+                string.Equals(x.SYMBOL.ToUpper(), symbol != null ? symbol.ToUpper() : null));
 
         if ( contract != null )
             contractId = contract.ID;

@@ -12,7 +12,7 @@ public static class TokenMethods
 
 
     public static int Upsert(MainDbContext databaseContext, int chainId, string contractHash, string symbol,
-        int decimals = 0, bool fungible = false)
+        int decimals, bool fungible )
     {
         var contractId = ContractMethods.Upsert(databaseContext, symbol, chainId, contractHash, symbol);
 

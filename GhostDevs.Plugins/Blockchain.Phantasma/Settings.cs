@@ -33,8 +33,6 @@ internal class Settings
         SeriesProcessingInterval = section.GetValue<int>("seriesProcessingInterval");
         InfusionsProcessingInterval = section.GetValue<int>("infusionsProcessingInterval");
         NamesSyncInterval = section.GetValue<int>("namesSyncInterval");
-
-        NFTs = section.GetSection("phantasma.nfts").Get<List<NFTData>>();
     }
 
 
@@ -51,7 +49,6 @@ internal class Settings
     public int SeriesProcessingInterval { get; }
     public int InfusionsProcessingInterval { get; }
     public int NamesSyncInterval { get; }
-    public List<NFTData> NFTs { get; } = new();
 
     public static Settings Default { get; private set; }
 
@@ -74,9 +71,4 @@ internal class Settings
         // TODO: Add proper logic later.
         return PhaRpcNodes[0];
     }
-}
-
-public class NFTData
-{
-    public string Symbol { get; set; }
 }

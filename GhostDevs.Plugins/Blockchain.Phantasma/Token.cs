@@ -45,9 +45,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var id = TokenMethods.Upsert(databaseContext, chainId, tokenSymbol, tokenSymbol, tokenDecimal,
                             fungible);
 
-                        Log.Verbose("[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Database Id {Id}", Name,
-                            tokenSymbol,
-                            tokenName, id);
+                        Log.Verbose(
+                            "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
+                            Name, tokenSymbol, tokenName, fungible, tokenDecimal, id);
 
                         updatedTokensCount++;
                     }
