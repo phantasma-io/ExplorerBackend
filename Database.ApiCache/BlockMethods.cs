@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 
 namespace Database.ApiCache;
@@ -9,14 +10,12 @@ public static class BlockMethods
     // Checks if table has entry with given height,
     // and adds new entry, if there's no entry available.
     public static void Upsert(ApiCacheDbContext databaseContext, string chainShortName, string height,
-        long unixTimestampInSeconds, JsonDocument data, bool saveChanges = true)
+        long unixTimestampInSeconds, JsonDocument data, int chainId, bool saveChanges = true)
     {
         if ( string.IsNullOrEmpty(chainShortName) )
             throw new ArgumentException("Argument cannot be null or empty.", "chainShortName");
 
         if ( string.IsNullOrEmpty(height) ) throw new ArgumentException("Argument cannot be null or empty.", "height");
-
-        var chainId = ChainMethods.Upsert(databaseContext, chainShortName);
 
         var block = databaseContext.Blocks.FirstOrDefault(x => x.ChainId == chainId && x.HEIGHT == height);
 
@@ -24,6 +23,8 @@ public static class BlockMethods
 
         block = new Block {ChainId = chainId, HEIGHT = height, TIMESTAMP = unixTimestampInSeconds, DATA = data};
         databaseContext.Blocks.Add(block);
+
+        ChainMethods.SetLastProcessedBlock(databaseContext, chainId, BigInteger.Parse(height));
 
         if ( !saveChanges ) return;
 

@@ -11,11 +11,11 @@ public class ApiCacheDbContext : DbContext
 {
     // Keeping DB configs on same level as "bin" folder.
     // If path contains "Database.ApiCache" - it means we are running database update.
-    public static readonly string ConfigDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.ApiCache")
+    private static readonly string ConfigDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.ApiCache")
         ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..")
         : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
 
-    public static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
+    private static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
 
     public DbSet<Chain> Chains { get; set; }
     public DbSet<Contract> Contracts { get; set; }
@@ -23,7 +23,7 @@ public class ApiCacheDbContext : DbContext
     public DbSet<Block> Blocks { get; set; }
 
 
-    public string GetConnectionString()
+    private static string GetConnectionString()
     {
         Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
             .GetSection("DatabaseConfiguration"));
@@ -31,7 +31,7 @@ public class ApiCacheDbContext : DbContext
     }
 
 
-    public int GetConnectionMaxRetries()
+    public static int GetConnectionMaxRetries()
     {
         Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
             .GetSection("DatabaseConfiguration"));
@@ -127,6 +127,7 @@ public class Chain
 {
     public int ID { get; set; }
     public string SHORT_NAME { get; set; }
+    public string CURRENT_HEIGHT { get; set; }
     public virtual List<Contract> Contracts { get; set; }
     public virtual List<Block> Blocks { get; set; }
 }

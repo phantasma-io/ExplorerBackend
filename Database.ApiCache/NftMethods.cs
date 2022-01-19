@@ -9,18 +9,16 @@ public static class NftMethods
     // Checks if "Nft" table has entry with given contract/token id,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry.
-    public static Nft Upsert(ApiCacheDbContext databaseContext, int contractId, string tokenId, out bool newNftCreated)
+    private static Nft Upsert(ApiCacheDbContext databaseContext, int contractId, string tokenId, out bool newNftCreated)
     {
         newNftCreated = false;
 
         var nft = databaseContext.Nfts.FirstOrDefault(x => x.ContractId == contractId && x.TOKEN_ID == tokenId);
-        if ( nft == null )
-        {
-            nft = new Nft {ContractId = contractId, TOKEN_ID = tokenId};
-            databaseContext.Nfts.Add(nft);
+        if ( nft != null ) return nft;
+        nft = new Nft {ContractId = contractId, TOKEN_ID = tokenId};
+        databaseContext.Nfts.Add(nft);
 
-            newNftCreated = true;
-        }
+        newNftCreated = true;
 
         return nft;
     }
@@ -31,10 +29,8 @@ public static class NftMethods
     {
         var contractId = ContractMethods.GetId(databaseContext, chainShortName, contractHash);
 
-        var nft = databaseContext.Nfts.Where(x => x.ContractId == contractId && x.TOKEN_ID == tokenId).FirstOrDefault();
-        if ( nft != null ) return nft.OFFCHAIN_API_RESPONSE;
-
-        return null;
+        var nft = databaseContext.Nfts.FirstOrDefault(x => x.ContractId == contractId && x.TOKEN_ID == tokenId);
+        return nft?.OFFCHAIN_API_RESPONSE;
     }
 
 
@@ -43,10 +39,8 @@ public static class NftMethods
     {
         var contractId = ContractMethods.GetId(databaseContext, chainShortName, contractHash);
 
-        var nft = databaseContext.Nfts.Where(x => x.ContractId == contractId && x.TOKEN_ID == tokenId).FirstOrDefault();
-        if ( nft != null ) return nft.CHAIN_API_RESPONSE;
-
-        return null;
+        var nft = databaseContext.Nfts.FirstOrDefault(x => x.ContractId == contractId && x.TOKEN_ID == tokenId);
+        return nft?.CHAIN_API_RESPONSE;
     }
 
 

@@ -109,11 +109,18 @@ public static class EventMethods
              TokenMethods.Get(databaseContext, chainId, infusedSymbol).FUNGIBLE == false )
         {
             // NFT was infused, we should mark it as infused.
-            var infusedNft = databaseContext.Nfts.First(x => x.TOKEN_ID == infusedValue);
-            infusedNft.InfusedInto = nft;
+            //var infusedNft = databaseContext.Nfts.First(x => x.TOKEN_ID == infusedValue);
+            var infusedNft = databaseContext.Nfts.FirstOrDefault(x => x.TOKEN_ID == infusedValue);
+            if ( infusedNft == null )
+                Log.Warning("NFT infused, could not find a Nft for Value {Infused}, Symbol {Symbol}", infusedValue,
+                    infusedSymbol);
+            else
+            {
+                infusedNft.InfusedInto = nft;
 
-            Log.Information("NFT infused: {InfusedNft} into NFT {Nft}", infusedNft.TOKEN_ID,
-                nft.TOKEN_ID);
+                Log.Information("NFT infused: {InfusedNft} into NFT {Nft}", infusedNft.TOKEN_ID,
+                    nft.TOKEN_ID);
+            }
         }
 
         var burnEvent = databaseContext.EventKinds

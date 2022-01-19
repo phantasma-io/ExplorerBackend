@@ -111,10 +111,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     // so that burned NFT has maximum info available.
 
                     JsonDocument responseSaved = null;
-                    var error = "";
                     if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
                     {
-                        error = errorProperty.GetString();
+                        var error = errorProperty.GetString();
 
                         using ( ApiCacheDbContext databaseApiCacheContext = new() )
                         {

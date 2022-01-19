@@ -50,58 +50,58 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     // Set tokens API IDs that are compatible with CoinGecko.
                     // CoinGecko's id for SOUL, for example, is "phantasma".
                     // Also we skip those symbols that are unavailable on CoinGecko.
-                    for ( var i = 0; i < cryptoSymbols.Count(); i++ )
-                        switch ( cryptoSymbols[i].NativeSymbol.ToUpper() )
+                    foreach ( var t in cryptoSymbols )
+                        switch ( t.NativeSymbol.ToUpper() )
                         {
                             case "SOUL":
                                 // Using "PHANTASMA" id for "SOUL" tokens.
-                                cryptoSymbols[i].ApiSymbol = "phantasma"; // Case-sensitive!
+                                t.ApiSymbol = "phantasma"; // Case-sensitive!
                                 break;
                             case "KCAL":
-                                cryptoSymbols[i].ApiSymbol = "phantasma-energy";
+                                t.ApiSymbol = "phantasma-energy";
                                 break;
                             case "ETH":
-                                cryptoSymbols[i].ApiSymbol = "ethereum";
+                                t.ApiSymbol = "ethereum";
                                 break;
                             case "WETH":
-                                cryptoSymbols[i].ApiSymbol = "weth";
+                                t.ApiSymbol = "weth";
                                 break;
                             case "USDC":
-                                cryptoSymbols[i].ApiSymbol = "usd-coin";
+                                t.ApiSymbol = "usd-coin";
                                 break;
                             case "DAI":
-                                cryptoSymbols[i].ApiSymbol = "dai";
+                                t.ApiSymbol = "dai";
                                 break;
                             case "BNB":
-                                cryptoSymbols[i].ApiSymbol = "binancecoin";
+                                t.ApiSymbol = "binancecoin";
                                 break;
                             case "WBNB":
-                                cryptoSymbols[i].ApiSymbol = "wbnb";
+                                t.ApiSymbol = "wbnb";
                                 break;
                             case "BUSD":
-                                cryptoSymbols[i].ApiSymbol = "binance-usd";
+                                t.ApiSymbol = "binance-usd";
                                 break;
                             case "SWTH":
-                                cryptoSymbols[i].ApiSymbol = "switcheo";
+                                t.ApiSymbol = "switcheo";
                                 break;
                             case "CAKE":
-                                cryptoSymbols[i].ApiSymbol = "pancakeswap-token";
+                                t.ApiSymbol = "pancakeswap-token";
                                 break;
                             case "MATIC":
-                                cryptoSymbols[i].ApiSymbol = "matic-network";
+                                t.ApiSymbol = "matic-network";
                                 break;
                             case "DYT":
-                                cryptoSymbols[i].ApiSymbol = "dynamite";
+                                t.ApiSymbol = "dynamite";
                                 break;
                             case "NEO":
                             case "BNEO":
-                                cryptoSymbols[i].ApiSymbol = "neo";
+                                t.ApiSymbol = "neo";
                                 break;
                             case "AVAX":
-                                cryptoSymbols[i].ApiSymbol = "avalanche-2";
+                                t.ApiSymbol = "avalanche-2";
                                 break;
                             case "WAVAX":
-                                cryptoSymbols[i].ApiSymbol = "wrapped-avax";
+                                t.ApiSymbol = "wrapped-avax";
                                 break;
                             case "GOATI":
                             case "TTRS":
@@ -109,11 +109,31 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                             case "CROWN":
                             case "GHOST":
                             case "SEM":
+                            case "BRCD":
+                            case "BRCB":
+                            case "BRCF":
+                            case "BRCG":
+                            case "GFEST":
+                            case "IGI":
+                            case "BRCP":
+                            case "HOD":
+                            case "XXC":
+                            case "SPECC":
+                            case "GFES":
+                            case "GFESS":
+                            case "MOV":
+                            case "GFESA":
+                            case "FESTG":
+                            case "GFNFT":
+                            case "GNFT":
+                            case "ALKS":
+                            case "ALK":
+                                //maybe add that info somehow to the database
                                 // Just ignore, can't get this price from CoinGecko.
                                 break;
                             default:
                                 // Here goes NEO, GAS, and all other tokens.
-                                cryptoSymbols[i].ApiSymbol = cryptoSymbols[i].NativeSymbol.ToLower(); // Case-sensitive!
+                                t.ApiSymbol = t.NativeSymbol.ToLower(); // Case-sensitive!
                                 break;
                         }
 
@@ -160,7 +180,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
     // Loads token prices from CoinGecko.
     // API documentation: https://www.coingecko.com/api/documentations/v3#/simple/get_simple_price
-    public void LoadPrices(List<TokenMethods.Symbol> cryptoSymbols)
+    private void LoadPrices(List<TokenMethods.Symbol> cryptoSymbols)
     {
         var separator = "%2C";
 
@@ -219,7 +239,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
     }
 
 
-    public void LoadPricesHistory(List<TokenMethods.Symbol> cryptoSymbols)
+    private void LoadPricesHistory(IReadOnlyCollection<TokenMethods.Symbol> cryptoSymbols)
     {
         var pricesUpdated = 0;
 
@@ -252,6 +272,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     });
                     if ( response == null )
                     {
+                        //var test = new DateTime(lastLoadedDate).ToString("dd-MM-yyyy");
                         Log.Error(
                             "{Name} plugin: Stuck on '{ApiSymbol}' price update for '{LastLoadedDate}'", Name,
                             cryptoSymbol.ApiSymbol, lastLoadedDate.ToString("dd-MM-yyyy"));

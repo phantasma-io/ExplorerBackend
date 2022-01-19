@@ -20,7 +20,7 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private static List<Chain> ChainList;
+    private static List<Chain> _chainList;
     private bool _running = true;
     public override string Name => "PHA";
     public string[] ChainNames { get; private set; }
@@ -51,8 +51,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 InitChains();
 
-                ChainList = ChainMethods.GetChains(databaseContext).ToList();
+                _chainList = ChainMethods.GetChains(databaseContext).ToList();
                 ChainNames = ChainMethods.getChainNames(databaseContext).ToArray();
+
+                //init tokens once too, cause we might need them, to keep them update, thread them later
+
+                foreach ( var chain in _chainList ) InitNewTokens(chain.ID);
             }
 
             using ( MainDbContext databaseContext = new() )
@@ -62,8 +66,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 databaseContext.SaveChanges();
             }
 
-            Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, ChainList.Count);
-            foreach ( var chain in ChainList )
+            Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, _chainList.Count);
+            foreach ( var chain in _chainList )
             {
                 Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name, chain.NAME,
                     chain.ID);
@@ -254,11 +258,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         var pubKey = Address.FromText(publicKey);
 
-        byte[] msg;
-        if ( !string.IsNullOrEmpty(messagePrefixBase16) )
-            msg = ByteArrayUtils.ConcatBytes(messagePrefixBase16.Decode(), messageBase16.Decode());
-        else
-            msg = messageBase16.Decode();
+        var msg = !string.IsNullOrEmpty(messagePrefixBase16)
+            ? ByteArrayUtils.ConcatBytes(messagePrefixBase16.Decode(), messageBase16.Decode())
+            : messageBase16.Decode();
 
         using MemoryStream stream = new(signatureBase16.Decode());
         using BinaryReader reader = new(stream);
@@ -273,11 +275,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         var pubKey = Address.FromText(publicKey);
 
-        byte[] msg;
-        if ( !string.IsNullOrEmpty(messagePrefixBase16) )
-            msg = ByteArrayUtils.ConcatBytes(messagePrefixBase16.Decode(), messageBase16.Decode());
-        else
-            msg = messageBase16.Decode();
+        var msg = !string.IsNullOrEmpty(messagePrefixBase16)
+            ? ByteArrayUtils.ConcatBytes(messagePrefixBase16.Decode(), messageBase16.Decode())
+            : messageBase16.Decode();
 
         using MemoryStream stream = new(signatureBase16.Decode());
         using BinaryReader reader = new(stream);

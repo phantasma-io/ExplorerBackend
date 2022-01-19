@@ -33,8 +33,8 @@ public static class ContractMethods
 
         int contractId;
 
-        var contract = databaseContext.Contracts.Where(x => x.ChainId == chainId && x.HASH == hashOrName)
-            .FirstOrDefault();
+        var contract = databaseContext.Contracts
+            .FirstOrDefault(x => x.ChainId == chainId && x.HASH == hashOrName);
 
         if ( contract != null )
             contractId = contract.ID;

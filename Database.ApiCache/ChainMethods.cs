@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Numerics;
 
 namespace Database.ApiCache;
 
@@ -14,7 +15,8 @@ public static class ChainMethods
             throw new ArgumentException("Argument cannot be null or empty.", "shortName");
 
         int chainId;
-        var chain = databaseContext.Chains.Where(x => x.SHORT_NAME.ToUpper() == shortName.ToUpper()).FirstOrDefault();
+        var chain = databaseContext.Chains.FirstOrDefault(x =>
+            string.Equals(x.SHORT_NAME.ToUpper(), shortName.ToUpper()));
         if ( chain != null )
         {
             chainId = chain.ID;
@@ -42,7 +44,8 @@ public static class ChainMethods
                     // We tried to create same record in two threads concurrently.
                     // Now we should just remove duplicating record and get an existing record.
                     databaseContext.Chains.Remove(chain);
-                    chain = databaseContext.Chains.Where(x => x.SHORT_NAME.ToUpper() == shortName.ToUpper()).First();
+                    chain = databaseContext.Chains.First(
+                        x => string.Equals(x.SHORT_NAME.ToUpper(), shortName.ToUpper()));
                 }
                 else
                     // Unknown exception.
@@ -61,9 +64,34 @@ public static class ChainMethods
         if ( string.IsNullOrEmpty(shortName) )
             throw new ArgumentException("Argument cannot be null or empty.", "shortName");
 
-        var chain = databaseContext.Chains.Where(x => x.SHORT_NAME.ToUpper() == shortName.ToUpper()).FirstOrDefault();
-        if ( chain != null ) return chain.ID;
+        var chain = databaseContext.Chains.FirstOrDefault(x =>
+            string.Equals(x.SHORT_NAME.ToUpper(), shortName.ToUpper()));
+        return chain?.ID ?? 0;
+    }
 
-        return 0;
+
+    public static Chain Get(ApiCacheDbContext databaseContext, int id)
+    {
+        return databaseContext.Chains.Single(x => x.ID == id);
+    }
+
+
+    public static BigInteger? GetLastProcessedBlock(ApiCacheDbContext databaseContext, int chainId)
+    {
+        var chain = Get(databaseContext, chainId);
+
+        if ( chain?.CURRENT_HEIGHT == null ) return null;
+
+        return BigInteger.Parse(Get(databaseContext, chainId).CURRENT_HEIGHT);
+    }
+
+
+    public static void SetLastProcessedBlock(ApiCacheDbContext databaseContext, int chainId, BigInteger height,
+        bool saveChanges = true)
+    {
+        var chain = Get(databaseContext, chainId);
+        chain.CURRENT_HEIGHT = height.ToString();
+
+        if ( saveChanges ) databaseContext.SaveChanges();
     }
 }

@@ -76,7 +76,7 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
 
     // Loads token prices from https://exchangeratesapi.io/.
     // API documentation: https://exchangeratesapi.io/
-    public void LoadPrices()
+    private void LoadPrices()
     {
         var url = "https://api.exchangeratesapi.io/latest?base=USD&access_key=" +
                   Settings.Default.ApiKeys.GetValue(rnd.Next(Settings.Default.ApiKeys.Length));

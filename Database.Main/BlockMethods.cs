@@ -13,10 +13,9 @@ public static class BlockMethods
     public static Block Upsert(MainDbContext databaseContext, int chainId, BigInteger height, long timestampUnixSeconds,
         bool saveChanges = true)
     {
-        var entry = databaseContext.Blocks.Where(x =>
-                x.ChainId == chainId && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds &&
-                x.HEIGHT == height.ToString())
-            .FirstOrDefault();
+        var entry = databaseContext.Blocks
+            .FirstOrDefault(x => x.ChainId == chainId && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds &&
+                                 x.HEIGHT == height.ToString());
 
         /*if (entry == null)
         {

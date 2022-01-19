@@ -60,14 +60,12 @@ public class Fetch
 
     public static void Init()
     {
-        using ( MainDbContext databaseContext = new() )
-        {
-            ChainId = ChainMethods.GetId(databaseContext, "Phantasma");
-            ContractId = ContractMethods.GetId(databaseContext, ChainId, "TTRS");
-            GameContractId = ContractMethods.GetId(databaseContext, ChainId, "GAME");
+        using MainDbContext databaseContext = new();
+        ChainId = ChainMethods.GetId(databaseContext, "Phantasma");
+        ContractId = ContractMethods.GetId(databaseContext, ChainId, "TTRS");
+        GameContractId = ContractMethods.GetId(databaseContext, ChainId, "GAME");
 
-            databaseContext.SaveChanges();
-        }
+        databaseContext.SaveChanges();
     }
 
 
@@ -89,35 +87,35 @@ public class Fetch
                     foreach ( var id in ids )
                     {
                         var item = storeNft[id];
+                        if ( item == null ) continue;
                         var itemInfo = item["item_info"];
 
                         var nft = NftMethods.Get(databaseContext, ChainId, ContractId, id);
 
-                        if ( nft != null )
+                        if ( nft == null ) continue;
+                        updatedNftsCount++;
+
+                        if ( ( ( string ) item["type"] )!.Contains("System object") )
                         {
-                            updatedNftsCount++;
+                            // We found "system" NFT, which is an internal non-tradable object.
+                            // We should delete it.
+                            EventMethods.DeleteByNftId(databaseContext, nft.ID, false);
+                            NftMethods.Delete(databaseContext, nft.ID);
+                            Log.Information(
+                                "DB: Deleting {NftSymbol} system NFT with type '{Type}'", nftSymbol,
+                                ( string ) item["type"]);
+                        }
+                        else
+                        {
+                            // For TTRS we only save API responses for backup purposes,
+                            // we don't use them on database resync.
 
-                            if ( ( ( string ) item["type"] ).Contains("System object") )
-                            {
-                                // We found "system" NFT, which is an internal non-tradable object.
-                                // We should delete it.
-                                EventMethods.DeleteByNftId(databaseContext, nft.ID, false);
-                                NftMethods.Delete(databaseContext, nft.ID);
-                                Log.Information(
-                                    "DB: Deleting {NftSymbol} system NFT with type '{Type}'", nftSymbol,
-                                    ( string ) item["type"]);
-                            }
-                            else
-                            {
-                                // For TTRS we only save API responses for backup purposes,
-                                // we don't use them on database resync.
-                                if ( item != null )
-                                {
-                                    using ApiCacheDbContext databaseApiCacheContext = new();
-                                    Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, "main",
-                                        "TTRS", nft.TOKEN_ID, JsonDocument.Parse(item.ToJsonString()), null, true);
-                                }
+                            using ApiCacheDbContext databaseApiCacheContext = new();
+                            Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, "main",
+                                "TTRS", nft.TOKEN_ID, JsonDocument.Parse(item.ToJsonString()), null, true);
 
+
+                            if ( itemInfo != null )
                                 NftMetadataMethods.Set(databaseContext,
                                     nft,
                                     0,
@@ -130,8 +128,8 @@ public class Fetch
                                     ( int ) item["mint"],
                                     JsonDocument.Parse(item.ToJsonString()),
                                     false);
-                            }
                         }
+
                         // else - NFT is probably deleted by burn mechanism.
                     }
 
@@ -157,7 +155,7 @@ public class Fetch
 
     public static void LoadNfts()
     {
-        var url = "https://www.22series.com/api/store/nft";
+        const string url = "https://www.22series.com/api/store/nft";
 
         List<string> ids = null;
 
@@ -170,7 +168,7 @@ public class Fetch
                             x.Series != null && x.OFFCHAIN_API_RESPONSE == null).Select(x => x.TOKEN_ID).ToList();
         }
 
-        if ( ids == null || ids.Count == 0 ) return;
+        if ( ids.Count == 0 ) return;
 
         for ( var i = 0; i < ids.Count; i += NftLoadPageSize )
         {
@@ -191,7 +189,7 @@ public class Fetch
     // TODO this is one big bs hacky workaround for pha bug.
     public static void LoadGAMENfts()
     {
-        var url = "https://pavillionhub.com/api/nft_data?phantasma_ids=1&token=GAME&meta=1&ids=";
+        const string url = "https://pavillionhub.com/api/nft_data?phantasma_ids=1&token=GAME&meta=1&ids=";
 
         for ( var i = 0; i < 1000; i += 1 )
         {
@@ -222,8 +220,10 @@ public class Fetch
                 return;
             }
 
+            // ReSharper disable once PossibleNullReferenceException
             var metadataKey = ( string ) response["nfts"][0]["parsed_rom"]["metadata"];
 
+            // ReSharper disable once PossibleNullReferenceException
             var metaJsonDocument = JsonDocument.Parse(meta[metadataKey].ToJsonString());
 
             using ( ApiCacheDbContext databaseApiCacheContext = new() )

@@ -15,7 +15,7 @@ using Phantasma.Numerics;
 using Serilog;
 using Address = Phantasma.Cryptography.Address;
 using BigInteger = System.Numerics.BigInteger;
-using BlockMethods = Database.Main.BlockMethods;
+using BlockMethods = Database.ApiCache.BlockMethods;
 using ChainMethods = Database.Main.ChainMethods;
 using ContractMethods = Database.Main.ContractMethods;
 using Event = Phantasma.Domain.Event;
@@ -28,8 +28,8 @@ namespace GhostDevs.Blockchain;
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     // When we reach this number of new loaded events, we report it in log.
-    private static readonly int maxEventsForOneSession = 1000;
-    private static int OverallEventsLoadedCount;
+    private const int MaxEventsForOneSession = 1000;
+    private static int _overallEventsLoadedCount;
 
 
     private void FetchBlocks(int chainId, string chainName)
@@ -50,48 +50,80 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 // 31172: First NFT traded on Phantasma blockchain at 2020-02-28 12:15:51.
                 i = Settings.Default.FirstBlock;
 
-            OverallEventsLoadedCount = 0;
-            while ( FetchByHeight(i, chainId, chainName) && OverallEventsLoadedCount < maxEventsForOneSession ) i++;
+            _overallEventsLoadedCount = 0;
+            while ( FetchByHeight(i, chainId, chainName) && _overallEventsLoadedCount < MaxEventsForOneSession ) i++;
 
             var fetchTime = DateTime.Now - startTime;
             Log.Information(
                 "[{Name}] Events load took {FetchTime} sec, {OverallEventsLoadedCount} events added",
-                Name, Math.Round(fetchTime.TotalSeconds, 3), OverallEventsLoadedCount);
-        } while ( OverallEventsLoadedCount > 0 );
+                Name, Math.Round(fetchTime.TotalSeconds, 3), _overallEventsLoadedCount);
+        } while ( _overallEventsLoadedCount > 0 );
     }
 
 
     private bool FetchByHeight(BigInteger blockHeight, int chainId, string chainName)
     {
-        //TODO add check if we can get block from apicache
         var startTime = DateTime.Now;
 
-        var url = $"{Settings.Default.GetRest()}/api/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
+        JsonDocument blockData = null;
+        TimeSpan downloadTime = default;
 
-        var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
-        if ( response == null ) return false;
+        using ( ApiCacheDbContext databaseApiCacheContext = new() )
+        {
+            var highestApiBlock =
+                Database.ApiCache.ChainMethods.GetLastProcessedBlock(databaseApiCacheContext, chainId);
+            var useCache = highestApiBlock > blockHeight;
 
-        var downloadTime = DateTime.Now - startTime;
+            Log.Information(
+                "[{Name}] Highest Block in Cache {CacheHeight}, Current need {Height}, Should use Cache {Cache}", Name,
+                highestApiBlock, blockHeight, useCache);
 
-        startTime = DateTime.Now;
+            if ( useCache )
+            {
+                var block = BlockMethods.GetByHeight(databaseApiCacheContext, chainId,
+                    blockHeight.ToString());
+                blockData = block.DATA;
+                Log.Verbose("[{Name}] got Block {@Block}", Name, blockData);
+            }
+        }
+
+        if ( blockData == null )
+        {
+            var url = $"{Settings.Default.GetRest()}/api/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
+
+            var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
+            if ( response == null ) return false;
+
+            downloadTime = DateTime.Now - startTime;
+
+            startTime = DateTime.Now;
+
+
+            var error = "";
+            if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
+                error = errorProperty.GetString();
+
+            if ( error == "block not found" )
+            {
+                Log.Debug("[{Name}] getBlockByHeight(): Block {BlockHeight} not found", Name, blockHeight);
+                return false;
+            }
+
+            if ( !string.IsNullOrEmpty(error) )
+            {
+                Log.Error("[{Name}] getBlockByHeight() error: {Error}", Name, error);
+                return false;
+            }
+
+            Log.Information("[{Name}] Block #{BlockHeight}: {@Response}", Name, blockHeight, response);
+
+            blockData = response;
+        }
+
         var eventsAddedCount = 0;
 
-        var error = "";
-        if ( response.RootElement.TryGetProperty("error", out var errorProperty) ) error = errorProperty.GetString();
+        Log.Information("[{Name}] Block #{BlockHeight}: {@Response}", Name, blockHeight, blockData);
 
-        if ( error == "block not found" )
-        {
-            Log.Debug("[{Name}] getBlockByHeight(): Block {BlockHeight} not found", Name, blockHeight);
-            return false;
-        }
-
-        if ( !string.IsNullOrEmpty(error) )
-        {
-            Log.Error("[{Name}] getBlockByHeight() error: {Error}", Name, error);
-            return false;
-        }
-
-        Log.Information("[{Name}] Block #{BlockHeight}: {@Response}", Name, blockHeight, response);
 
         // We cache NFTs in this block to speed up code
         // and avoid some unpleasant situations leading to bugs.
@@ -100,20 +132,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         using MainDbContext databaseContext = new();
         try
         {
-            var timestampUnixSeconds = response.RootElement.GetProperty("timestamp").GetUInt32();
+            var timestampUnixSeconds = blockData.RootElement.GetProperty("timestamp").GetUInt32();
 
             // Block in main database
-            var block = BlockMethods.Upsert(databaseContext, chainId, blockHeight, timestampUnixSeconds, false);
+            var block = Database.Main.BlockMethods.Upsert(databaseContext, chainId, blockHeight, timestampUnixSeconds,
+                false);
 
-            // Block in caching database
             // Currently only stored. TODO add reuse to speed up resync
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
-                Database.ApiCache.BlockMethods.Upsert(databaseApiCacheContext,
-                    chainName, blockHeight.ToString(), timestampUnixSeconds, response);
+                BlockMethods.Upsert(databaseApiCacheContext,
+                    chainName, blockHeight.ToString(), timestampUnixSeconds, blockData, chainId);
             }
 
-            if ( response.RootElement.TryGetProperty("txs", out var txsProperty) )
+            if ( blockData.RootElement.TryGetProperty("txs", out var txsProperty) )
             {
                 var txs = txsProperty.EnumerateArray();
                 for ( var txIndex = 0; txIndex < txs.Count(); txIndex++ )
@@ -237,7 +269,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             if ( eventAdded ) eventsAddedCount++;
 
                                             added = eventAdded;
-                                            OverallEventsLoadedCount++;
+                                            _overallEventsLoadedCount++;
                                         }
                                     }
 
@@ -342,7 +374,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         if ( eventAdded ) eventsAddedCount++;
 
                                         added = eventAdded;
-                                        OverallEventsLoadedCount++;
+                                        _overallEventsLoadedCount++;
 
                                         //for the backend we do not only need nfts, we need everything
                                         //in the explorer we do now
@@ -516,7 +548,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         if ( eventAdded ) eventsAddedCount++;
 
                                         added = eventAdded;
-                                        OverallEventsLoadedCount++;
+                                        _overallEventsLoadedCount++;
                                     }
 
                                     break;
@@ -629,7 +661,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 //TODO
                                 case EventKind.Inflation or EventKind.Log or EventKind.LeaderboardCreate
-                                    or EventKind.Custom:
+                                    or EventKind.Custom or EventKind.AddressUnregister:
                                 {
                                     Log.Verbose(
                                         "[{Name}] Currently not processing EventKind {Kind} in Block #{Block}",
@@ -677,7 +709,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 if ( eventAdded ) eventsAddedCount++;
 
-                                OverallEventsLoadedCount++;
+                                _overallEventsLoadedCount++;
                             }
                         }
                         catch ( Exception e )
