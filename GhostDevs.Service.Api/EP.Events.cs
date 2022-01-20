@@ -150,7 +150,8 @@ public partial class Endpoints
 
                 query = query.Where(x => x.BLACKLISTED != true);
 
-                if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME.ToUpper() == chain.ToUpper());
+                if ( !string.IsNullOrEmpty(chain) )
+                    query = query.Where(x => string.Equals(x.Chain.NAME.ToUpper(), chain.ToUpper()));
 
                 if ( !string.IsNullOrEmpty(token_id) ) query = query.Where(x => x.TOKEN_ID == token_id);
 
@@ -218,6 +219,10 @@ public partial class Endpoints
                         "price" => query.OrderBy(x => x.PRICE_USD != 0).ThenByDescending(x => x.PRICE_USD),
                         _ => query
                     };
+
+                if ( with_total == 1 )
+                    // Count total number of results before adding order and limit parts of query.
+                    totalResults = query.Count();
 
                 query = query.Skip(offset).Take(limit);
 

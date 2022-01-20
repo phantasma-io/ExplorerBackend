@@ -138,7 +138,7 @@ public struct APIEntry
     private int GetParameterIndex(string name)
     {
         for ( var i = 0; i < Parameters.Count; i++ )
-            if ( Parameters[i].Name.ToUpper() == name.ToUpper() )
+            if ( string.Equals(Parameters[i].Name.ToUpper(), name.ToUpper()) )
                 return i;
 
         return -1;
@@ -150,9 +150,7 @@ public struct APIEntry
         var parameterIndex = GetParameterIndex(name);
         if ( parameterIndex == -1 ) return null;
 
-        if ( input.Length <= parameterIndex ) return null;
-
-        return input[parameterIndex];
+        return input.Length <= parameterIndex ? null : input[parameterIndex];
     }
 
 
@@ -183,12 +181,7 @@ public struct APIEntry
                 exampleValue = "TODO document me";
             }
 
-            object defaultValue;
-
-            if ( entry.HasDefaultValue )
-                defaultValue = entry.DefaultValue;
-            else
-                defaultValue = null;
+            var defaultValue = entry.HasDefaultValue ? entry.DefaultValue : null;
 
             Parameters.Add(new APIValue(entry.ParameterType, entry.Name, description, exampleValue, defaultValue,
                 entry.HasDefaultValue));
@@ -200,19 +193,26 @@ public struct APIEntry
         }
         catch
         {
-            FailCases = new APIFailCaseAttribute[0];
+            FailCases = Array.Empty<APIFailCaseAttribute>();
         }
 
         try
         {
             var attr = info.GetCustomAttribute<APIInfoAttribute>();
+            if ( attr == null )
+            {
+                ReturnType = null;
+                ReturnTypeDescription = null;
+                Description = null;
+                IsPaginated = false;
+                IsInternal = false;
+                return;
+            }
+
             ReturnType = attr.ReturnType;
 
             var returnTypeDescAttr = attr.ReturnType.GetCustomAttribute<APIDescriptionAttribute>();
-            if ( returnTypeDescAttr != null )
-                ReturnTypeDescription = returnTypeDescAttr.Description;
-            else
-                ReturnTypeDescription = "TODO document me";
+            ReturnTypeDescription = returnTypeDescAttr != null ? returnTypeDescAttr.Description : "TODO document me";
 
             Description = attr.Description;
             IsPaginated = attr.Paginated;

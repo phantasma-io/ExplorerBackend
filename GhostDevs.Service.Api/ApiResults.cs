@@ -149,3 +149,119 @@ public class ChainResult
     [APIDescription("List of available chains")]
     public Chain[] chains { get; set; }
 }
+
+public class EventKind
+{
+    [APIDescription("Returns the kind name")]
+    public string kind { get; set; }
+
+    //TODO maybe add chain here too
+}
+
+public class EventKindResult
+{
+    [APIDescription("Total number of found eventKinds")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of available eventKinds")]
+    public EventKind[] eventKinds { get; set; }
+}
+
+public class Address
+{
+    [APIDescription("Returns the address")]
+    public string address { get; set; }
+
+    [APIDescription("Returns the address name")]
+    public string address_name { get; set; }
+}
+
+public class AddressResult
+{
+    [APIDescription("Total number of found addresses")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of available addresses")]
+    public Address[] addresses { get; set; }
+}
+
+//TODO add FIAT Prices from db
+public class Token
+{
+    [APIDescription("Returns Symbol")] public string symbol { get; set; }
+
+    [APIDescription("Returns fungible value of the token")]
+    public bool fungible { get; set; }
+
+    [APIDescription("Returns transferable value of the token")]
+    public bool transferable { get; set; }
+
+    [APIDescription("Returns finite value of the token")]
+    public bool finite { get; set; }
+
+    [APIDescription("Returns divisible value of the token")]
+    public bool divisible { get; set; }
+
+    [APIDescription("Returns fuel value of the token")]
+    public bool fuel { get; set; }
+
+    [APIDescription("Returns stakable value of the token")]
+    public bool stakable { get; set; }
+
+    [APIDescription("Returns fiat value of the token")]
+    public bool fiat { get; set; }
+
+    [APIDescription("Returns swappable value of the token")]
+    public bool swappable { get; set; }
+
+    [APIDescription("Returns burnable value of the token")]
+    public bool burnable { get; set; }
+
+    [APIDescription("Returns decimal value of the token")]
+    public int decimals { get; set; }
+
+    [APIDescription("Returns the current supply of the token")]
+    public string current_supply { get; set; }
+
+    [APIDescription("Returns the max supply of the token, 0 = infinite")]
+    public string max_supply { get; set; }
+
+    [APIDescription("Returns the burned supply of the token")]
+    public string burned_supply { get; set; }
+
+    [APIDescription("Returns the script of the token, raw")]
+    public string script_raw { get; set; }
+}
+
+public class TokenResult
+{
+    [APIDescription("Total number of found tokens")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of available tokens")]
+    public Token[] tokens { get; set; }
+}
+
+public class Transaction
+{
+    [APIDescription("Hash of the transaction")]
+    public string hash { get; set; }
+
+    [APIDescription("Height of the Block from the transaction")]
+    public string blockHeight { get; set; }
+
+    [APIDescription("index in the Block from the transaction")]
+    public int index { get; set; }
+
+    [APIDescription("List of Events from the transaction")]
+    public Event[] events { get; set; }
+}
+
+public class TransactionResult
+{
+    [APIDescription("Total number of found transactions")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of available tokens")]
+    public Transaction[] transactions { get; set; }
+}

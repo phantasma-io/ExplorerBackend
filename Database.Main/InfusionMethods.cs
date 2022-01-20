@@ -32,7 +32,7 @@ public static class InfusionMethods
                                  string.Equals(x.KEY.ToUpper(), key.ToUpper()));
         if ( infusion == null )
         {
-            var fungibleToken = TokenMethods.UpsertWOSave(databaseContext, infusionEvent.ChainId, key);
+            var fungibleToken = TokenMethods.Get(databaseContext, infusionEvent.ChainId, key);
             infusion = new Infusion {Nft = nft, KEY = key, Token = fungibleToken};
             databaseContext.Infusions.Add(infusion);
 

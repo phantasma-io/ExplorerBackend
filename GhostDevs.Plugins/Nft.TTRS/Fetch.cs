@@ -46,6 +46,7 @@ using Serilog;
 using ChainMethods = Database.Main.ChainMethods;
 using ContractMethods = Database.Main.ContractMethods;
 using NftMethods = Database.Main.NftMethods;
+
 // ReSharper disable PossibleNullReferenceException
 
 namespace GhostDevs.Nft;
@@ -224,7 +225,7 @@ public class Fetch
             var metadataKey = ( string ) response["nfts"][0]["parsed_rom"]["metadata"];
 
             var metaJsonDocument = JsonDocument.Parse(meta[metadataKey].ToJsonString());
-            
+
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
                 Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, "main", "GAME", id,

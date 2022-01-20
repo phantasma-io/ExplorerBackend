@@ -36,14 +36,48 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var tokenSymbol = token.GetProperty("symbol").GetString();
                         var tokenName = token.GetProperty("name").GetString();
                         var tokenDecimal = token.GetProperty("decimals").GetInt32();
+                        var currentSupply = token.GetProperty("currentSupply").GetString();
+                        var maxSupply = token.GetProperty("maxSupply").GetString();
+                        var burnedSupply = token.GetProperty("burnedSupply").GetString();
+                        var address = token.GetProperty("address").GetString();
+                        var owner = token.GetProperty("owner").GetString();
+                        var scriptRaw = token.GetProperty("script").GetString();
+                        //external
+
                         var fungible = false;
+                        var transferable = false;
+                        var finite = false;
+                        var divisible = false;
+                        var fuel = false;
+                        var stakable = false;
+                        var fiat = false;
+                        var swappable = false;
+                        var burnable = false;
 
                         if ( token.TryGetProperty("flags", out var flags) )
                             if ( flags.ToString().Contains("Fungible") )
                                 fungible = true;
+                            else if ( flags.ToString().Contains("Transferable") )
+                                transferable = true;
+                            else if ( flags.ToString().Contains("Finite") )
+                                finite = true;
+                            else if ( flags.ToString().Contains("Divisible") )
+                                divisible = true;
+                            else if ( flags.ToString().Contains("Fuel") )
+                                fuel = true;
+                            else if ( flags.ToString().Contains("Stakable") )
+                                stakable = true;
+                            else if ( flags.ToString().Contains("Fiat") )
+                                fiat = true;
+                            else if ( flags.ToString().Contains("Swappable") )
+                                swappable = true;
+                            else if ( flags.ToString().Contains("Burnable") )
+                                burnable = true;
+
 
                         var id = TokenMethods.Upsert(databaseContext, chainId, tokenSymbol, tokenSymbol, tokenDecimal,
-                            fungible);
+                            fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable, burnable,
+                            address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw);
 
                         Log.Verbose(
                             "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",

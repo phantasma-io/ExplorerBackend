@@ -15,8 +15,8 @@ public static class TokenDailyPricesMethods
         var token = TokenMethods.Get(databaseContext, chainId, symbol);
         if ( token == null ) return;
 
-        var entry = databaseContext.TokenDailyPrices
-            .Where(x => x.Token == token && x.DATE_UNIX_SECONDS == dateUnixSeconds).FirstOrDefault();
+        var entry = databaseContext.TokenDailyPrices.FirstOrDefault(x =>
+            x.Token == token && x.DATE_UNIX_SECONDS == dateUnixSeconds);
         if ( entry == null )
         {
             entry = new TokenDailyPrice {DATE_UNIX_SECONDS = dateUnixSeconds, Token = token};
@@ -74,8 +74,8 @@ public static class TokenDailyPricesMethods
         // Ensure it's a date without time
         dateUnixSeconds = UnixSeconds.GetDate(dateUnixSeconds);
 
-        var entry = databaseContext.TokenDailyPrices
-            .Where(x => x.Token == token && x.DATE_UNIX_SECONDS == dateUnixSeconds).FirstOrDefault();
+        var entry = databaseContext.TokenDailyPrices.FirstOrDefault(x =>
+            x.Token == token && x.DATE_UNIX_SECONDS == dateUnixSeconds);
         if ( entry == null ) return 0;
 
         return priceSymbol.ToUpper() switch
@@ -120,10 +120,10 @@ public static class TokenDailyPricesMethods
         var dailyPrices =
             soulDailyTokenPrices.Where(x => x.Key == dateUnixSeconds);
 
-        if ( dailyPrices.Count() == 0 )
+        if ( !dailyPrices.Any() )
         {
             dailyPrices = soulDailyTokenPrices.Where(x => x.Key == UnixSeconds.AddDays(dateUnixSeconds, -1));
-            if ( dailyPrices.Count() == 0 )
+            if ( !dailyPrices.Any() )
                 // There's a problem with prices, just return 0
                 return 0;
         }
@@ -131,36 +131,37 @@ public static class TokenDailyPricesMethods
         var soulTokenDailyPrice = dailyPrices.Select(x => x.Value).FirstOrDefault();
 
         if ( TokenMethods.GetSupportedFiatSymbols().Contains(outPriceSymbol) )
-        {
             // We convert USD to another Fiat.
             // We are doing it through SOUL.
             // Converting price to SOUL:
-            var soulUsdPrice = soulTokenDailyPrice.PRICE_USD;
-            if ( soulUsdPrice == 0 ) return 0;
-
-            var priceInSoul = priceInUsd / soulUsdPrice;
-            return priceInSoul * outPriceSymbol.ToUpper() switch
+            if ( soulTokenDailyPrice != null )
             {
-                "SOUL" => soulTokenDailyPrice.PRICE_SOUL,
-                "NEO" => soulTokenDailyPrice.PRICE_NEO,
-                "AUD" => soulTokenDailyPrice.PRICE_AUD,
-                "CAD" => soulTokenDailyPrice.PRICE_CAD,
-                "CNY" => soulTokenDailyPrice.PRICE_CNY,
-                "EUR" => soulTokenDailyPrice.PRICE_EUR,
-                "GBP" => soulTokenDailyPrice.PRICE_GBP,
-                "JPY" => soulTokenDailyPrice.PRICE_JPY,
-                "RUB" => soulTokenDailyPrice.PRICE_RUB,
-                "USD" => soulTokenDailyPrice.PRICE_USD,
-                _ => 0
-            };
-        }
+                var soulUsdPrice = soulTokenDailyPrice.PRICE_USD;
+                if ( soulUsdPrice == 0 ) return 0;
+
+                var priceInSoul = priceInUsd / soulUsdPrice;
+                return priceInSoul * outPriceSymbol.ToUpper() switch
+                {
+                    "SOUL" => soulTokenDailyPrice.PRICE_SOUL,
+                    "NEO" => soulTokenDailyPrice.PRICE_NEO,
+                    "AUD" => soulTokenDailyPrice.PRICE_AUD,
+                    "CAD" => soulTokenDailyPrice.PRICE_CAD,
+                    "CNY" => soulTokenDailyPrice.PRICE_CNY,
+                    "EUR" => soulTokenDailyPrice.PRICE_EUR,
+                    "GBP" => soulTokenDailyPrice.PRICE_GBP,
+                    "JPY" => soulTokenDailyPrice.PRICE_JPY,
+                    "RUB" => soulTokenDailyPrice.PRICE_RUB,
+                    "USD" => soulTokenDailyPrice.PRICE_USD,
+                    _ => 0
+                };
+            }
 
         // We convert USD price to token price.
         var outTokenDailyPrice = outTokenDailyPrices?.Where(x => x.Key == dateUnixSeconds)
             .Select(x => x.Value)
             .FirstOrDefault();
 
-        var outTokenPriceInUsd = outTokenDailyPrice == null ? 0 : outTokenDailyPrice.PRICE_USD;
+        var outTokenPriceInUsd = outTokenDailyPrice?.PRICE_USD ?? 0;
         if ( outTokenPriceInUsd == 0 ) return 0;
 
         return priceInUsd / outTokenPriceInUsd;

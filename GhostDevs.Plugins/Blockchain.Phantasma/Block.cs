@@ -205,9 +205,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     bool fungible;
                                     if ( symbolFungible.ContainsKey(infusionEventData.BaseSymbol) )
-                                    {
                                         fungible = symbolFungible.GetValueOrDefault(infusionEventData.BaseSymbol);
-                                    }
                                     else
                                     {
                                         fungible = TokenMethods.Get(
@@ -287,9 +285,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     bool fungible;
                                     if ( symbolFungible.ContainsKey(tokenEventData.Symbol) )
-                                    {
                                         fungible = symbolFungible.GetValueOrDefault(tokenEventData.Symbol);
-                                    }
                                     else
                                     {
                                         fungible = TokenMethods.Get(
@@ -386,9 +382,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     bool fungible;
                                     if ( symbolFungible.ContainsKey(marketEventData.BaseSymbol) )
-                                    {
                                         fungible = symbolFungible.GetValueOrDefault(marketEventData.BaseSymbol);
-                                    }
                                     else
                                     {
                                         fungible = TokenMethods.Get(
@@ -532,7 +526,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 case EventKind.ValidatorSwitch:
                                 {
                                     Log.Verbose("[{Name}] getting nothing for {Kind}", Name, kind);
-
 
                                     break;
                                 }

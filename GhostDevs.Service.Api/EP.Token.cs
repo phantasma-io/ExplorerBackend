@@ -1,0 +1,108 @@
+using System;
+using System.Linq;
+using Database.Main;
+using GhostDevs.Commons;
+using GhostDevs.Service.ApiResults;
+using Serilog;
+using Token = GhostDevs.Service.ApiResults.Token;
+
+namespace GhostDevs.Service;
+
+public partial class Endpoints
+{
+    [APIInfo(typeof(TokenResult), "Returns the token on the backend.", false, 10)]
+    public TokenResult Tokens(
+        [APIParameter("Order by [id, symbol]", "string")]
+        string order_by = "id",
+        [APIParameter("Order direction [asc, desc]", "string")]
+        string order_direction = "asc",
+        [APIParameter("Offset", "integer")] int offset = 0,
+        [APIParameter("Limit", "integer")] int limit = 50,
+        [APIParameter("symbol", "string")] string symbol = "",
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0)
+    {
+        long totalResults = 0;
+        Token[] tokenArray;
+
+        using ( var databaseContext = new MainDbContext() )
+        {
+            try
+            {
+                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                    throw new APIException("Unsupported value for 'order_by' parameter.");
+
+                if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+
+                if ( !ArgValidation.CheckLimit(limit) )
+                    throw new APIException("Unsupported value for 'limit' parameter.");
+
+                if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+                    throw new APIException("Unsupported value for 'address' parameter.");
+
+                var startTime = DateTime.Now;
+
+                var query = databaseContext.Tokens.AsQueryable();
+
+                if ( !string.IsNullOrEmpty(symbol) )
+                    query = query.Where(x => string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+
+                // Count total number of results before adding order and limit parts of query.
+                if ( with_total == 1 )
+                    totalResults = query.Count();
+
+                //in case we add more to sort
+                if ( order_direction == "asc" )
+                    query = order_by switch
+                    {
+                        "id" => query.OrderBy(x => x.ID),
+                        "symbol" => query.OrderBy(x => x.SYMBOL),
+                        _ => query
+                    };
+                else
+                    query = order_by switch
+                    {
+                        "id" => query.OrderByDescending(x => x.ID),
+                        "symbol" => query.OrderByDescending(x => x.SYMBOL),
+                        _ => query
+                    };
+
+                var queryResults = query.Skip(offset).Take(limit).ToList();
+
+                tokenArray = queryResults.Select(x => new Token
+                {
+                    symbol = x.SYMBOL,
+                    fungible = x.FUNGIBLE,
+                    transferable = x.TRANSFERABLE,
+                    finite = x.FINITE,
+                    divisible = x.DIVISIBLE,
+                    fiat = x.FUEL,
+                    swappable = x.SWAPPABLE,
+                    burnable = x.BURNABLE,
+                    decimals = x.DECIMALS,
+                    current_supply = x.CURRENT_SUPPLY,
+                    max_supply = x.MAX_SUPPLY,
+                    burned_supply = x.BURNED_SUPPLY,
+                    script_raw = x.SCRIPT_RAW
+                }).ToArray();
+
+                var responseTime = DateTime.Now - startTime;
+
+                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+            }
+            catch ( APIException )
+            {
+                throw;
+            }
+            catch ( Exception exception )
+            {
+                var logMessage = LogEx.Exception("Address()", exception);
+
+                throw new APIException(logMessage, exception);
+            }
+        }
+
+        return new TokenResult {total_results = with_total == 1 ? totalResults : null, tokens = tokenArray};
+    }
+}

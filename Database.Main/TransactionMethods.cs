@@ -22,14 +22,14 @@ public static class TransactionMethods
     {
         ContractMethods.Drop0x(ref hash);
 
-        var entry = databaseContext.Transactions.Where(x => x.Block == block && x.HASH == hash)
-            .FirstOrDefault();
+        var entry = databaseContext.Transactions
+            .FirstOrDefault(x => x.Block == block && x.HASH == hash);
 
         if ( entry == null )
             // Checking if entry has been added already
             // but not yet inserted into database.
-            entry = DbHelper.GetTracked<Transaction>(databaseContext).Where(x => x.Block == block && x.HASH == hash)
-                .FirstOrDefault();
+            entry = DbHelper.GetTracked<Transaction>(databaseContext)
+                .FirstOrDefault(x => x.Block == block && x.HASH == hash);
 
         if ( entry != null ) return entry;
 

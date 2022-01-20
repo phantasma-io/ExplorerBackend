@@ -45,10 +45,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 var value = infusionEvent.INFUSED_VALUE;
 
-                if ( token.FUNGIBLE == true )
+                if ( token.FUNGIBLE )
                 {
                     // It's a fungible token. We should apply decimals.
-                    var decimals = ( int ) token.DECIMALS;
+                    var decimals = token.DECIMALS;
                     value = UnitConversion.ToDecimal(BigInteger.Parse(value), decimals)
                         .ToString(CultureInfo.InvariantCulture);
                 }

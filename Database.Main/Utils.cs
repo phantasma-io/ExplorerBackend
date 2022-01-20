@@ -15,18 +15,16 @@ public static class DbHelper
     {
         return databaseContext.ChangeTracker.Entries()
             .Where(x => x.State == EntityState.Added &&
-                        x.Entity != null &&
-                        typeof(Type).IsAssignableFrom(x.Entity.GetType())).Select(x => ( Type ) x.Entity).ToArray();
+                        x.Entity is Type).Select(x => ( Type ) x.Entity).ToArray();
     }
 
 
     public static void LogTracked<Type>(MainDbContext databaseContext)
     {
-        Log.Information($"LogTracked({typeof(Type)}):");
+        Log.Information("LogTracked({Type}):", typeof(Type));
         foreach ( var e in databaseContext.ChangeTracker.Entries()
                      .Where(x => x.State == EntityState.Added &&
-                                 x.Entity != null &&
-                                 typeof(Type).IsAssignableFrom(x.Entity.GetType())).Select(x => x.Entity) )
-            Log.Information($"Entry: type {e.GetType()}, {e.ToString()}");
+                                 x.Entity is Type).Select(x => x.Entity) )
+            Log.Information("Entry: type {Type}, {String}", e.GetType(), e.ToString());
     }
 }

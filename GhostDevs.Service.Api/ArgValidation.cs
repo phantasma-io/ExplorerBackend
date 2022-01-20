@@ -111,9 +111,7 @@ public static class ArgValidation
         // Latin symbols in both cases
         // Digits
         // , (Comma) - if allowMultipleSymbols == true
-        if ( allowMultipleSymbols ) return Regex.IsMatch(value, @"^[a-zA-Z0-9,]+$");
-
-        return Regex.IsMatch(value, @"^[a-zA-Z0-9]+$");
+        return Regex.IsMatch(value, allowMultipleSymbols ? @"^[a-zA-Z0-9,]+$" : @"^[a-zA-Z0-9]+$");
     }
 
 
@@ -156,8 +154,7 @@ public static class ArgValidation
 
     public static bool CheckLink(string value)
     {
-        Uri uriResult;
-        var result = Uri.TryCreate(value, UriKind.Absolute, out uriResult)
+        var result = Uri.TryCreate(value, UriKind.Absolute, out var uriResult)
                      && ( uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps
                                                                 || uriResult.Scheme.ToLower() == "ipfs" ||
                                                                 uriResult.Scheme.ToLower() == "ipfs-video" );
@@ -200,17 +197,13 @@ public static class ArgValidation
     {
         if ( string.IsNullOrEmpty(value) ) return false;
 
-        if ( Regex.IsMatch(value, @"^0+$") ) return false;
-
-        return CheckNumber(value);
+        return !Regex.IsMatch(value, @"^0+$") && CheckNumber(value);
     }
 
 
     private static bool CheckLink(string link, string pattern)
     {
-        if ( string.IsNullOrEmpty(link) ) return false;
-
-        return Regex.IsMatch(link, pattern);
+        return !string.IsNullOrEmpty(link) && Regex.IsMatch(link, pattern);
     }
 
 
@@ -287,5 +280,17 @@ public static class ArgValidation
     public static bool CheckTitle(string title)
     {
         return Regex.IsMatch(title, _titlePattern);
+    }
+
+
+    public static bool CheckEventKind(string kind)
+    {
+        return Regex.IsMatch(kind, @"^[_\-a-zA-Z0-9]+$");
+    }
+
+
+    public static bool CheckString(string value)
+    {
+        return Regex.IsMatch(value, @"^[a-zA-Z0-9]+$");
     }
 }

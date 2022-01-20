@@ -28,9 +28,7 @@ public partial class Endpoints
                 var query = databaseContext.Chains.AsQueryable();
 
                 if ( !string.IsNullOrEmpty(chain) )
-                {
                     query = query.Where(x => string.Equals(x.NAME.ToUpper(), chain.ToUpper()));
-                }
 
                 totalResults = query.Count();
 

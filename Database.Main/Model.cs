@@ -307,6 +307,9 @@ public class MainDbContext : DbContext
             .WithOne(y => y.Token)
             .HasForeignKey<Token>(x => x.ContractId);
 
+        modelBuilder.Entity<Token>().HasOne(x => x.Address).WithMany().HasForeignKey(x => x.AddressId);
+
+        modelBuilder.Entity<Token>().HasOne(x => x.Owner).WithMany().HasForeignKey(x => x.OwnerId);
         // Indexes
 
         modelBuilder.Entity<Token>()
@@ -643,7 +646,23 @@ public class Token
     public int ID { get; set; }
     public string SYMBOL { get; set; }
     public bool FUNGIBLE { get; set; }
-    public int? DECIMALS { get; set; }
+    public bool TRANSFERABLE { get; set; }
+    public bool FINITE { get; set; }
+    public bool DIVISIBLE { get; set; }
+    public bool FUEL { get; set; }
+    public bool STAKABLE { get; set; }
+    public bool FIAT { get; set; }
+    public bool SWAPPABLE { get; set; }
+    public bool BURNABLE { get; set; }
+    public int DECIMALS { get; set; }
+    public string CURRENT_SUPPLY { get; set; }
+    public string MAX_SUPPLY { get; set; }
+    public string BURNED_SUPPLY { get; set; }
+    public string SCRIPT_RAW { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public int OwnerId { get; set; }
+    public virtual Address Owner { get; set; }
     public decimal PRICE_USD { get; set; }
     public decimal PRICE_EUR { get; set; }
     public decimal PRICE_GBP { get; set; }

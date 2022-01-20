@@ -12,9 +12,15 @@ public static class TokenMethods
 
 
     public static int Upsert(MainDbContext databaseContext, int chainId, string contractHash, string symbol,
-        int decimals, bool fungible )
+        int decimals, bool fungible, bool transferable, bool finite, bool divisible, bool fuel, bool stakable,
+        bool fiat, bool swappable, bool burnable, string address, string owner, string currentSupply, string maxSupply,
+        string burnedSupply, string scriptRaw)
     {
         var contractId = ContractMethods.Upsert(databaseContext, symbol, chainId, contractHash, symbol);
+
+        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
+        var ownerEntry = AddressMethods.Upsert(databaseContext, chainId, owner, false);
+
 
         int id;
         var entry = databaseContext.Tokens
@@ -22,15 +28,49 @@ public static class TokenMethods
                 x.ChainId == chainId && string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
         if ( entry != null )
         {
-            entry.FUNGIBLE = fungible;
             entry.DECIMALS = decimals;
+            entry.FUNGIBLE = fungible;
+            entry.TRANSFERABLE = transferable;
+            entry.FINITE = finite;
+            entry.DIVISIBLE = divisible;
+            entry.FUEL = fuel;
+            entry.STAKABLE = stakable;
+            entry.FIAT = fiat;
+            entry.SWAPPABLE = swappable;
+            entry.BURNABLE = burnable;
+            entry.Address = addressEntry;
+            entry.Owner = ownerEntry;
+            entry.CURRENT_SUPPLY = currentSupply;
+            entry.MAX_SUPPLY = maxSupply;
+            entry.BURNED_SUPPLY = burnedSupply;
+            entry.SCRIPT_RAW = scriptRaw;
 
             id = entry.ID;
         }
         else
         {
             entry = new Token
-                {ChainId = chainId, ContractId = contractId, SYMBOL = symbol, DECIMALS = decimals, FUNGIBLE = fungible};
+            {
+                ChainId = chainId,
+                ContractId = contractId,
+                SYMBOL = symbol,
+                DECIMALS = decimals,
+                FUNGIBLE = fungible,
+                TRANSFERABLE = transferable,
+                FINITE = finite,
+                DIVISIBLE = divisible,
+                FUEL = fuel,
+                STAKABLE = stakable,
+                FIAT = fiat,
+                SWAPPABLE = swappable,
+                BURNABLE = burnable,
+                Address = addressEntry,
+                Owner = ownerEntry,
+                CURRENT_SUPPLY = currentSupply,
+                MAX_SUPPLY = maxSupply,
+                BURNED_SUPPLY = burnedSupply,
+                SCRIPT_RAW = scriptRaw
+            };
             databaseContext.Tokens.Add(entry);
 
             databaseContext.SaveChanges();
@@ -39,20 +79,6 @@ public static class TokenMethods
         }
 
         return id;
-    }
-
-
-    public static Token UpsertWOSave(MainDbContext databaseContext, int chainId, string symbol)
-    {
-        var entry = databaseContext.Tokens
-            .FirstOrDefault(x =>
-                x.ChainId == chainId && string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
-        if ( entry != null ) return entry;
-
-        entry = new Token {ChainId = chainId, SYMBOL = symbol};
-        databaseContext.Tokens.Add(entry);
-
-        return entry;
     }
 
 
