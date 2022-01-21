@@ -262,6 +262,27 @@ public class TransactionResult
     [APIDescription("Total number of found transactions")]
     public long? total_results { get; set; }
 
-    [APIDescription("List of available tokens")]
+    [APIDescription("List of available transactions")]
     public Transaction[] transactions { get; set; }
+}
+
+public class Contract
+{
+    [APIDescription("Name of the contract")]
+    public string name { get; set; }
+
+    [APIDescription("Hash of the contract")]
+    public string hash { get; set; }
+
+    [APIDescription("Symbol of the contract, if there is one")]
+    public string symbol { get; set; }
+}
+
+public class ContractResult
+{
+    [APIDescription("Total number of found contracts")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of available contracts")]
+    public Contract[] contracts { get; set; }
 }

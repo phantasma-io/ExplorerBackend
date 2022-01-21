@@ -4,25 +4,26 @@ using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using EventKind = GhostDevs.Service.ApiResults.EventKind;
+using Contract = GhostDevs.Service.ApiResults.Contract;
 
 namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(EventKindResult), "Returns the eventKinds on the backend.", false, 10)]
-    public EventKindResult EventKinds([APIParameter("Order by [id]", "string")] string order_by = "id",
+    [APIInfo(typeof(ContractResult), "Returns the contracts on the backend.", false, 10)]
+    public ContractResult Contracts(
+        [APIParameter("Order by [id, name, symbol]", "string")]
+        string order_by = "id",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("eventKind name (ex. 'TokenMint')", "string")]
-        string event_kind = "",
+        [APIParameter("symbol", "string")] string symbol = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
         long totalResults = 0;
-        EventKind[] eventKindArray;
+        Contract[] contractArray;
 
         using ( var databaseContext = new MainDbContext() )
         {
@@ -37,15 +38,15 @@ public partial class Endpoints
                 if ( !ArgValidation.CheckLimit(limit) )
                     throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckEventKind(event_kind) )
-                    throw new APIException("Unsupported value for 'event_kind' parameter.");
+                if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+                    throw new APIException("Unsupported value for 'address' parameter.");
 
                 var startTime = DateTime.Now;
 
-                var query = databaseContext.EventKinds.AsQueryable();
+                var query = databaseContext.Contracts.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(event_kind) )
-                    query = query.Where(x => string.Equals(x.NAME.ToUpper(), event_kind.ToUpper()));
+                if ( !string.IsNullOrEmpty(symbol) )
+                    query = query.Where(x => string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
@@ -56,22 +57,28 @@ public partial class Endpoints
                     query = order_by switch
                     {
                         "id" => query.OrderBy(x => x.ID),
+                        "symbol" => query.OrderBy(x => x.SYMBOL),
+                        "name" => query.OrderBy(x => x.NAME),
                         _ => query
                     };
                 else
                     query = order_by switch
                     {
                         "id" => query.OrderByDescending(x => x.ID),
+                        "symbol" => query.OrderByDescending(x => x.SYMBOL),
+                        "name" => query.OrderByDescending(x => x.NAME),
                         _ => query
                     };
 
-
                 var queryResults = query.Skip(offset).Take(limit).ToList();
 
-                eventKindArray = queryResults.Select(x => new EventKind
-                {
-                    kind = x.NAME
-                }).ToArray();
+                contractArray = queryResults.Select(x => new Contract
+                    {
+                        name = x.NAME,
+                        hash = x.HASH,
+                        symbol = x.SYMBOL
+                    }
+                ).ToArray();
 
                 var responseTime = DateTime.Now - startTime;
 
@@ -83,12 +90,12 @@ public partial class Endpoints
             }
             catch ( Exception exception )
             {
-                var logMessage = LogEx.Exception("EventKind()", exception);
+                var logMessage = LogEx.Exception("Address()", exception);
 
                 throw new APIException(logMessage, exception);
             }
         }
 
-        return new EventKindResult {total_results = with_total == 1 ? totalResults : null, eventKinds = eventKindArray};
+        return new ContractResult {total_results = with_total == 1 ? totalResults : null, contracts = contractArray};
     }
 }
