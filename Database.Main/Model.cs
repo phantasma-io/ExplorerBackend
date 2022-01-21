@@ -37,9 +37,13 @@ public class MainDbContext : DbContext
     public DbSet<Series> Serieses { get; set; }
     public DbSet<Infusion> Infusions { get; set; }
     public DbSet<FiatExchangeRate> FiatExchangeRates { get; set; }
+    public DbSet<Platform> Platforms { get; set; }
+    public DbSet<PlatformToken> PlatformTokens { get; set; }
+    public DbSet<PlatformInterop> PlatformInterops { get; set; }
+    public DbSet<External> Externals { get; set; }
 
 
-    public string GetConnectionString()
+    public static string GetConnectionString()
     {
         Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
             .GetSection("DatabaseConfiguration"));
@@ -512,6 +516,51 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<FiatExchangeRate>()
             .HasIndex(x => x.SYMBOL)
             .IsUnique();
+
+
+        //////////////////////
+        // Platform
+        //////////////////////
+
+        // Indexes
+        modelBuilder.Entity<Platform>()
+            .HasIndex(x => x.NAME)
+            .IsUnique();
+
+
+        //////////////////////
+        // PlatformToken
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<PlatformToken>().HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformId);
+
+        // Indexes
+        modelBuilder.Entity<PlatformToken>()
+            .HasIndex(x => x.NAME);
+
+        //////////////////////
+        // PlatformInterop
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<PlatformInterop>().HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformId);
+        modelBuilder.Entity<PlatformInterop>().HasOne(x => x.LocalAddress).WithMany()
+            .HasForeignKey(x => x.LocalAddressId);
+
+        // Indexes
+
+
+        //////////////////////
+        // External
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<External>().HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformId);
+        modelBuilder.Entity<External>().HasOne(x => x.Token).WithMany().HasForeignKey(x => x.TokenId);
+
+
+        // Indexes
     }
 }
 
@@ -834,4 +883,40 @@ public class FiatExchangeRate
     public int ID { get; set; }
     public string SYMBOL { get; set; }
     public decimal USD_PRICE { get; set; }
+}
+
+public class Platform
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public string CHAIN { get; set; }
+    public string FUEL { get; set; }
+}
+
+public class PlatformToken
+{
+    public int ID { get; set; }
+    public int PlatformId { get; set; }
+    public virtual Platform Platform { get; set; }
+    public string NAME { get; set; }
+}
+
+public class PlatformInterop
+{
+    public int ID { get; set; }
+    public int PlatformId { get; set; }
+    public virtual Platform Platform { get; set; }
+    public int LocalAddressId { get; set; }
+    public virtual Address LocalAddress { get; set; }
+    public string EXTERNAL { get; set; }
+}
+
+public class External
+{
+    public int ID { get; set; }
+    public int PlatformId { get; set; }
+    public virtual Platform Platform { get; set; }
+    public int TokenId { get; set; }
+    public virtual Token Token { get; set; }
+    public string HASH { get; set; }
 }

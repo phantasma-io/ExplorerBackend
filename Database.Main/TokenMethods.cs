@@ -315,6 +315,12 @@ public static class TokenMethods
     }
 
 
+    public static Token Get(MainDbContext databaseContext, int id)
+    {
+        return databaseContext.Tokens.SingleOrDefault(x => x.ID == id);
+    }
+
+
     // Used in methods below as an argument. Stores symbol information.
     public class Symbol
     {

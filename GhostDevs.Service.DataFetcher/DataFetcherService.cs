@@ -55,7 +55,7 @@ public static class DataFetcher
             for ( var i = 1; i <= max; i++ )
                 try
                 {
-                    pgConnection = new PostgreSQLConnector(database.GetConnectionString());
+                    pgConnection = new PostgreSQLConnector(MainDbContext.GetConnectionString());
                 }
                 catch ( Exception e )
                 {

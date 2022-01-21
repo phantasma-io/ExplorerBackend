@@ -108,7 +108,7 @@ public partial class Endpoints
                 // Getting list of token prices in advance.
                 var tokenPrices = TokenMethods.GetPrices(databaseContext, fiat_currency);
 
-                var pgConnection = new PostgreSQLConnector(databaseContext.GetConnectionString());
+                var pgConnection = new PostgreSQLConnector(MainDbContext.GetConnectionString());
 
                 var query = new QueryBuilder();
 

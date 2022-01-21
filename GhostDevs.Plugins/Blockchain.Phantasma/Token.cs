@@ -14,10 +14,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var startTime = DateTime.Now;
 
         int updatedTokensCount;
+        int updatedPlatformsCount;
 
         using ( MainDbContext databaseContext = new() )
         {
             updatedTokensCount = 0;
+            updatedPlatformsCount = 0;
             var url = $"{Settings.Default.GetRest()}/api/getNexus";
 
             var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
@@ -27,6 +29,46 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     Log.Error("[{Name}] Cannot fetch Token info. Error: {Error}",
                         Name, errorProperty.GetString());
 
+                //platforms, first, might need it for tokens
+                if ( response.RootElement.TryGetProperty("platforms", out var platformsProperty) )
+                {
+                    var platforms = platformsProperty.EnumerateArray();
+                    foreach ( var platform in platforms )
+                    {
+                        var platformName = platform.GetProperty("platform").GetString();
+                        var chainHash = platform.GetProperty("chain").GetString();
+                        var fuel = platform.GetProperty("fuel").GetString();
+
+                        //create platform now
+                        var platformItem = PlatformMethods.Upsert(databaseContext, platformName, chainHash, fuel);
+
+                        if ( platform.TryGetProperty("tokens", out var platformTokenProperty) )
+                        {
+                            var tokens = platformTokenProperty.EnumerateArray();
+                            foreach ( var token in tokens )
+                                PlatformTokenMethods.Upsert(databaseContext, token.ToString(), platformItem);
+                        }
+
+                        if ( platform.TryGetProperty("interop", out var platformInteropProperty) )
+                        {
+                            var interopList = platformInteropProperty.EnumerateArray();
+                            foreach ( var interop in interopList )
+                            {
+                                var local = interop.GetProperty("local").GetString();
+                                var external = interop.GetProperty("external").GetString();
+                                PlatformInteropMethods.Upsert(databaseContext, local, external, chainId, platformItem);
+                            }
+                        }
+
+                        Log.Verbose(
+                            "[{Name}] got Platform {Platform}, Hash {Hash}, fuel {Fuel}",
+                            Name, platformName, chainHash, fuel);
+
+                        updatedPlatformsCount++;
+                    }
+                }
+
+                //tokens
                 if ( response.RootElement.TryGetProperty("tokens", out var tokensProperty) )
                 {
                     var tokens = tokensProperty.EnumerateArray();
@@ -79,6 +121,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable, burnable,
                             address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw);
 
+                        if ( token.TryGetProperty("external", out var externalsProperty) )
+                        {
+                            var externals = externalsProperty.EnumerateArray();
+                            foreach ( var external in externals )
+                            {
+                                var platform = external.GetProperty("platform").GetString();
+                                var hash = external.GetProperty("hash").GetString();
+                                ExternalMethods.Upsert(databaseContext, platform, hash, id);
+                            }
+                        }
+
                         Log.Verbose(
                             "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
                             Name, tokenSymbol, tokenName, fungible, tokenDecimal, id);
@@ -88,12 +141,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
             }
 
-            if ( updatedTokensCount > 0 ) databaseContext.SaveChanges();
+            if ( updatedTokensCount > 0 || updatedPlatformsCount > 0 ) databaseContext.SaveChanges();
         }
 
         var updateTime = DateTime.Now - startTime;
         Log.Information(
-            "[{Name}] Token update took {UpdateTime} sec, {UpdatedTokensCount} tokens updated", Name,
-            Math.Round(updateTime.TotalSeconds, 3), updatedTokensCount);
+            "[{Name}] Token update took {UpdateTime} sec, {UpdatedTokensCount} tokens updated, {PlatformsUpdated} platforms updated",
+            Name, Math.Round(updateTime.TotalSeconds, 3), updatedTokensCount, updatedPlatformsCount);
     }
 }
