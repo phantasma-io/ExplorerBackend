@@ -50,6 +50,11 @@ public class MainDbContext : DbContext
     public DbSet<GasEvent> GasEvents { get; set; }
     public DbSet<SaleEvent> SaleEvents { get; set; }
     public DbSet<SaleEventKind> SaleEventKinds { get; set; }
+    public DbSet<ChainEvent> ChainEvents { get; set; }
+    public DbSet<TokenEvent> TokenEvents { get; set; }
+    public DbSet<InfusionEvent> InfusionEvents { get; set; }
+    public DbSet<MarketEventKind> MarketEventKinds { get; set; }
+    public DbSet<MarketEvent> MarketEvents { get; set; }
 
 
     public static string GetConnectionString()
@@ -339,6 +344,26 @@ public class MainDbContext : DbContext
             .WithOne(y => y.Event)
             .HasForeignKey<SaleEvent>(x => x.EventId);
 
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.ChainEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<ChainEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.TokenEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<TokenEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.InfusionEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<InfusionEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.MarketEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<MarketEvent>(x => x.EventId);
+
         //////////////////////
         /// Token
         //////////////////////
@@ -355,9 +380,15 @@ public class MainDbContext : DbContext
             .WithOne(y => y.Token)
             .HasForeignKey<Token>(x => x.ContractId);
 
-        modelBuilder.Entity<Token>().HasOne(x => x.Address).WithMany().HasForeignKey(x => x.AddressId);
+        modelBuilder.Entity<Token>()
+            .HasOne(x => x.Address)
+            .WithMany()
+            .HasForeignKey(x => x.AddressId);
 
-        modelBuilder.Entity<Token>().HasOne(x => x.Owner).WithMany().HasForeignKey(x => x.OwnerId);
+        modelBuilder.Entity<Token>()
+            .HasOne(x => x.Owner)
+            .WithMany()
+            .HasForeignKey(x => x.OwnerId);
         // Indexes
 
         modelBuilder.Entity<Token>()
@@ -577,7 +608,10 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<PlatformToken>().HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformId);
+        modelBuilder.Entity<PlatformToken>()
+            .HasOne(x => x.Platform)
+            .WithMany(y => y.PlatformTokens)
+            .HasForeignKey(x => x.PlatformId);
 
         // Indexes
         modelBuilder.Entity<PlatformToken>()
@@ -588,8 +622,13 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<PlatformInterop>().HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformId);
-        modelBuilder.Entity<PlatformInterop>().HasOne(x => x.LocalAddress).WithMany()
+        modelBuilder.Entity<PlatformInterop>()
+            .HasOne(x => x.Platform)
+            .WithMany(y => y.PlatformInterops)
+            .HasForeignKey(x => x.PlatformId);
+        modelBuilder.Entity<PlatformInterop>()
+            .HasOne(x => x.LocalAddress)
+            .WithMany(y => y.PlatformInterops)
             .HasForeignKey(x => x.LocalAddressId);
 
         // Indexes
@@ -600,8 +639,14 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<External>().HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformId);
-        modelBuilder.Entity<External>().HasOne(x => x.Token).WithMany().HasForeignKey(x => x.TokenId);
+        modelBuilder.Entity<External>()
+            .HasOne(x => x.Platform)
+            .WithMany(y => y.Externals)
+            .HasForeignKey(x => x.PlatformId);
+        modelBuilder.Entity<External>()
+            .HasOne(x => x.Token)
+            .WithMany(y => y.Externals)
+            .HasForeignKey(x => x.TokenId);
 
 
         // Indexes
@@ -627,11 +672,11 @@ public class MainDbContext : DbContext
         // FKs
         modelBuilder.Entity<OrganizationEvent>()
             .HasOne(x => x.Organization)
-            .WithMany()
+            .WithMany(y => y.OrganizationEvents)
             .HasForeignKey(x => x.OrganizationId);
         modelBuilder.Entity<OrganizationEvent>()
             .HasOne(x => x.Address)
-            .WithMany()
+            .WithMany(y => y.OrganizationEvents)
             .HasForeignKey(x => x.AddressId);
 
         // Indexes
@@ -653,7 +698,7 @@ public class MainDbContext : DbContext
         // FKs
         modelBuilder.Entity<AddressEvent>()
             .HasOne(x => x.Address)
-            .WithMany()
+            .WithMany(y => y.AddressEvents)
             .HasForeignKey(x => x.AddressId);
         // Indexes
 
@@ -687,7 +732,7 @@ public class MainDbContext : DbContext
         // FKs
         modelBuilder.Entity<GasEvent>()
             .HasOne(x => x.Address)
-            .WithMany()
+            .WithMany(y => y.GasEvents)
             .HasForeignKey(x => x.AddressId);
         // Indexes
 
@@ -707,6 +752,9 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.ChainId, x.NAME})
             .IsUnique();
 
+        modelBuilder.Entity<SaleEventKind>()
+            .HasIndex(x => x.NAME);
+
         //////////////////////
         // SaleEvent
         //////////////////////
@@ -717,6 +765,98 @@ public class MainDbContext : DbContext
             .WithMany(y => y.SaleEvents)
             .HasForeignKey(x => x.SaleEventKindId);
 
+
+        // Indexes
+
+
+        //////////////////////
+        // ChainEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<ChainEvent>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.ChainEvents)
+            .HasForeignKey(x => x.ChainId);
+
+        // Indexes
+
+        //////////////////////
+        // TokenEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<TokenEvent>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.TokenEvents)
+            .HasForeignKey(x => x.ChainId);
+
+        modelBuilder.Entity<TokenEvent>()
+            .HasOne(x => x.Token)
+            .WithMany(y => y.TokenEvents)
+            .HasForeignKey(x => x.TokenId);
+
+        // Indexes
+
+
+        //////////////////////
+        // InfusionEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<InfusionEvent>()
+            .HasOne(x => x.BaseToken)
+            .WithMany(y => y.BaseSymbolInfusionEvents)
+            .HasForeignKey(x => x.BaseTokenId);
+
+        modelBuilder.Entity<InfusionEvent>()
+            .HasOne(x => x.InfusedToken)
+            .WithMany(y => y.InfusedSymbolInfusionEvents)
+            .HasForeignKey(x => x.InfusedTokenId);
+
+        // Indexes
+        modelBuilder.Entity<InfusionEvent>()
+            .HasIndex(x => x.TOKEN_ID);
+
+
+        //////////////////////
+        // MarketEventKind
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<MarketEventKind>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.MarketEventKinds)
+            .HasForeignKey(x => x.ChainId);
+
+        // Indexes
+        modelBuilder.Entity<MarketEventKind>()
+            .HasIndex(x => new {x.ChainId, x.NAME})
+            .IsUnique();
+
+        modelBuilder.Entity<MarketEventKind>()
+            .HasIndex(x => x.NAME);
+
+
+        //////////////////////
+        // MarketEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<MarketEvent>()
+            .HasOne(x => x.MarketEventKind)
+            .WithMany(y => y.MarketEvents)
+            .HasForeignKey(x => x.MarketEventKindId);
+
+        modelBuilder.Entity<MarketEvent>()
+            .HasOne(x => x.BaseToken)
+            .WithMany(y => y.BaseSymbolMarketEvents)
+            .HasForeignKey(x => x.BaseTokenId);
+
+        modelBuilder.Entity<MarketEvent>()
+            .HasOne(x => x.QuoteToken)
+            .WithMany(y => y.QuoteSymbolMarketEvents)
+            .HasForeignKey(x => x.QuoteTokenId);
 
         // Indexes
     }
@@ -740,6 +880,9 @@ public class Chain
     public virtual List<EventKind> EventKinds { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<SaleEventKind> SaleEventKinds { get; set; }
+    public virtual List<ChainEvent> ChainEvents { get; set; }
+    public virtual List<TokenEvent> TokenEvents { get; set; }
+    public virtual List<MarketEventKind> MarketEventKinds { get; set; }
 }
 
 public class Contract
@@ -803,6 +946,10 @@ public class Address
     public virtual List<Nft> Nfts { get; set; }
     public virtual List<NftOwnership> NftOwnerships { get; set; }
     public virtual List<Series> Serieses { get; set; }
+    public virtual List<GasEvent> GasEvents { get; set; }
+    public virtual List<AddressEvent> AddressEvents { get; set; }
+    public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
+    public virtual List<PlatformInterop> PlatformInterops { get; set; }
 }
 
 public class Event
@@ -856,6 +1003,10 @@ public class Event
     public virtual HashEvent HashEvent { get; set; }
     public virtual GasEvent GasEvent { get; set; }
     public virtual SaleEvent SaleEvent { get; set; }
+    public virtual ChainEvent ChainEvent { get; set; }
+    public virtual TokenEvent TokenEvent { get; set; }
+    public virtual InfusionEvent InfusionEvent { get; set; }
+    public virtual MarketEvent MarketEvent { get; set; }
 }
 
 public class Token
@@ -905,6 +1056,12 @@ public class Token
     public virtual List<Event> InfusionEvents { get; set; }
     public virtual List<TokenDailyPrice> TokenDailyPrices { get; set; }
     public virtual List<Infusion> Infusions { get; set; }
+    public virtual List<External> Externals { get; set; }
+    public virtual List<TokenEvent> TokenEvents { get; set; }
+    public virtual List<InfusionEvent> BaseSymbolInfusionEvents { get; set; }
+    public virtual List<InfusionEvent> InfusedSymbolInfusionEvents { get; set; }
+    public virtual List<MarketEvent> BaseSymbolMarketEvents { get; set; }
+    public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
 }
 
 public class TokenDailyPrice
@@ -1060,6 +1217,9 @@ public class Platform
     public string CHAIN { get; set; }
     public string FUEL { get; set; }
     public virtual List<TransactionSettleEvent> TransactionSettleEvents { get; set; }
+    public virtual List<External> Externals { get; set; }
+    public virtual List<PlatformInterop> PlatformInterops { get; set; }
+    public virtual List<PlatformToken> PlatformTokens { get; set; }
 }
 
 public class PlatformToken
@@ -1094,6 +1254,7 @@ public class Organization
 {
     public int ID { get; set; }
     public string NAME { get; set; }
+    public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
 }
 
 public class OrganizationEvent
@@ -1173,6 +1334,70 @@ public class SaleEvent
     public string HASH { get; set; }
     public int SaleEventKindId { get; set; }
     public virtual SaleEventKind SaleEventKind { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+public class ChainEvent
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public string VALUE { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+//TODO data is currently stored in event table
+public class TokenEvent
+{
+    public int ID { get; set; }
+    public int TokenId { get; set; }
+    public virtual Token Token { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
+    public string VALUE { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+//TODO data is currently stored in event table
+public class InfusionEvent
+{
+    public int ID { get; set; }
+    public string TOKEN_ID { get; set; }
+    public int BaseTokenId { get; set; }
+    public virtual Token BaseToken { get; set; }
+    public int InfusedTokenId { get; set; }
+    public virtual Token InfusedToken { get; set; }
+    public string INFUSED_VALUE { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+public class MarketEventKind
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
+    public virtual List<MarketEvent> MarketEvents { get; set; }
+}
+
+//TODO data is currently stored in event table
+public class MarketEvent
+{
+    public int ID { get; set; }
+    public int BaseTokenId { get; set; }
+    public virtual Token BaseToken { get; set; }
+    public int QuoteTokenId { get; set; }
+    public virtual Token QuoteToken { get; set; }
+    public int MarketEventKindId { get; set; }
+    public virtual MarketEventKind MarketEventKind { get; set; }
+    public string MARKET_ID { get; set; }
+    public string PRICE { get; set; }
+    public string END_PRICE { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
 }

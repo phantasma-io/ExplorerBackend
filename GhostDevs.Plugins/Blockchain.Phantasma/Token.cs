@@ -23,10 +23,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             updatedPlatformsCount = 0;
             updatedOrganizationsCount = 0;
             var url = $"{Settings.Default.GetRest()}/api/getNexus";
-            
-            //TODO fis
+
+            //TODO fix
             PlatformMethods.Upsert(databaseContext, "phantasma", null, null);
-            
+
             var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response != null )
             {

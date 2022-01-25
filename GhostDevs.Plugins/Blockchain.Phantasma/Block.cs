@@ -286,7 +286,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                         }
 
-                                        EventMethods.Upsert(databaseContext,
+                                        databaseEvent = EventMethods.Upsert(databaseContext,
                                             out var eventAdded,
                                             nft,
                                             timestampUnixSeconds,
@@ -312,6 +312,19 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         added = eventAdded;
                                         _overallEventsLoadedCount++;
+
+                                        //TODO just add it here for now to check if the model works
+                                        //data will still be used from Events table for the Endpoint atm
+                                        if ( databaseEvent != null )
+                                        {
+                                            var infusionEvent = InfusionEventMethods.Upsert(databaseContext,
+                                                infusionEventData.TokenID.ToString(), infusionEventData.BaseSymbol,
+                                                infusionEventData.InfusedSymbol,
+                                                infusionEventData.InfusedValue.ToString(), chainId, databaseEvent);
+
+                                            Log.Verbose("[{Name}] added InfusionEventData with internal Id {Id}",
+                                                Name, infusionEvent.ID);
+                                        }
                                     }
 
                                     break;
@@ -375,7 +388,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             nft.MINT_DATE_UNIX_SECONDS = timestampUnixSeconds;
 
 
-                                        EventMethods.Upsert(databaseContext,
+                                        databaseEvent = EventMethods.Upsert(databaseContext,
                                             out var eventAdded,
                                             nft, //might be null due not having an ntf
                                             timestampUnixSeconds,
@@ -411,6 +424,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         added = eventAdded;
                                         _overallEventsLoadedCount++;
+
+                                        //TODO just add it here for now to check if the model works
+                                        //data will still be used from Events table for the Endpoint atm
+                                        if ( databaseEvent != null )
+                                        {
+                                            var tokenEvent = TokenEventMethods.Upsert(databaseContext,
+                                                tokenEventData.Symbol, tokenEventData.ChainName, tokenId, chainId,
+                                                databaseEvent);
+
+                                            Log.Verbose("[{Name}] added TokenEventData with internal Id {Id}",
+                                                Name, tokenEvent.ID);
+                                        }
                                     }
 
                                     break;
@@ -478,7 +503,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                         }
 
-                                        EventMethods.Upsert(databaseContext,
+                                        databaseEvent = EventMethods.Upsert(databaseContext,
                                             out var eventAdded,
                                             nft,
                                             timestampUnixSeconds,
@@ -512,6 +537,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         added = eventAdded;
                                         _overallEventsLoadedCount++;
+
+                                        //databaseEvent we need it here, so check it
+                                        //TODO just add it here for now to check if the model works
+                                        //data will still be used from Events table for the Endpoint atm
+                                        if ( databaseEvent != null )
+                                        {
+                                            var marketEvent = MarketEventMethods.Upsert(databaseContext,
+                                                marketEventData.Type.ToString(), marketEventData.BaseSymbol,
+                                                marketEventData.QuoteSymbol, price, marketEventData.EndPrice.ToString(),
+                                                marketEventData.ID.ToString(), chainId, databaseEvent);
+
+                                            Log.Verbose("[{Name}] added MarketEventData with internal Id {Id}",
+                                                Name, marketEvent.ID);
+                                        }
                                     }
 
                                     break;
@@ -553,7 +592,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         var saleEvent = SaleEventMethods.Upsert(databaseContext, saleKind, hash,
                                             chainId, databaseEvent);
 
-                                        Log.Verbose("[{Name}] added aleEvent with internal Id {Id}",
+                                        Log.Verbose("[{Name}] added SaleEvent with internal Id {Id}",
                                             Name, saleEvent.ID);
                                     }
 
@@ -615,11 +654,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         evnt.GetContent<ChainValueEventData>();
 
                                     var valueEventName = chainValueEventData.Name;
-                                    var value = chainValueEventData.Value;
+                                    var value = chainValueEventData.Value.ToString();
 
                                     Log.Verbose(
                                         "[{Name}] getting ChainValueEventData for {Kind}, Name {ValueEventName}, Value {Value}",
                                         Name, kind, valueEventName, value);
+
+                                    //databaseEvent we need it here, so check it
+                                    if ( databaseEvent != null )
+                                    {
+                                        var chainEvent = ChainEventMethods.Upsert(databaseContext, valueEventName,
+                                            value, chainId, databaseEvent);
+
+                                        Log.Verbose("[{Name}] added ChainValueEvent with internal Id {Id}",
+                                            Name, chainEvent.ID);
+                                    }
 
                                     break;
                                 }

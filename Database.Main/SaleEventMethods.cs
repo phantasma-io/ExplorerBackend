@@ -9,7 +9,6 @@ public static class SaleEventMethods
 
         var saleEventKind = SaleEventKindMethods.Upsert(databaseContext, saleKind, chainId, false);
 
-
         var saleEvent = new SaleEvent {SaleEventKind = saleEventKind, HASH = hash, Event = databaseEvent};
 
         databaseContext.SaleEvents.Add(saleEvent);
