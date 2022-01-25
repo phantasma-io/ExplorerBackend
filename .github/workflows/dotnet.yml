@@ -20,7 +20,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
       with:
-        repository: phantasma-io/PhantasmaChain/
+        repository: phantasma-io/PhantasmaChain
         path: './PhantasmaChain'
     - name: Restore dependencies
       run: dotnet restore
