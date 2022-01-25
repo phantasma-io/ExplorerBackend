@@ -15,13 +15,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         int updatedTokensCount;
         int updatedPlatformsCount;
+        int updatedOrganizationsCount;
 
         using ( MainDbContext databaseContext = new() )
         {
             updatedTokensCount = 0;
             updatedPlatformsCount = 0;
+            updatedOrganizationsCount = 0;
             var url = $"{Settings.Default.GetRest()}/api/getNexus";
-
+            
+            //TODO fis
+            PlatformMethods.Upsert(databaseContext, "phantasma", null, null);
+            
             var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response != null )
             {
@@ -139,14 +144,33 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         updatedTokensCount++;
                     }
                 }
+
+                //technically not needed for tokens, but we still got the data here
+                if ( response.RootElement.TryGetProperty("organizations", out var organizationsProperty) )
+                {
+                    var organizations = organizationsProperty.EnumerateArray();
+
+                    foreach ( var organization in organizations )
+                    {
+                        OrganizationMethods.Upsert(databaseContext, organization.ToString());
+
+                        Log.Verbose(
+                            "[{Name}] got Platform {Organization}",
+                            Name, organization.ToString());
+
+                        updatedOrganizationsCount++;
+                    }
+                }
             }
 
-            if ( updatedTokensCount > 0 || updatedPlatformsCount > 0 ) databaseContext.SaveChanges();
+            if ( updatedTokensCount > 0 || updatedPlatformsCount > 0 || updatedOrganizationsCount > 0 )
+                databaseContext.SaveChanges();
         }
 
         var updateTime = DateTime.Now - startTime;
         Log.Information(
-            "[{Name}] Token update took {UpdateTime} sec, {UpdatedTokensCount} tokens updated, {PlatformsUpdated} platforms updated",
-            Name, Math.Round(updateTime.TotalSeconds, 3), updatedTokensCount, updatedPlatformsCount);
+            "[{Name}] Token update took {UpdateTime} sec, {UpdatedTokensCount} tokens updated, {PlatformsUpdated} platforms updated, {OrganizationUpdated} Organizations updated",
+            Name, Math.Round(updateTime.TotalSeconds, 3), updatedTokensCount, updatedPlatformsCount,
+            updatedOrganizationsCount);
     }
 }

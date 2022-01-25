@@ -41,6 +41,15 @@ public class MainDbContext : DbContext
     public DbSet<PlatformToken> PlatformTokens { get; set; }
     public DbSet<PlatformInterop> PlatformInterops { get; set; }
     public DbSet<External> Externals { get; set; }
+    public DbSet<Organization> Organizations { get; set; }
+    public DbSet<OrganizationEvent> OrganizationEvents { get; set; }
+    public DbSet<StringEvent> StringEvents { get; set; }
+    public DbSet<AddressEvent> AddressEvents { get; set; }
+    public DbSet<TransactionSettleEvent> TransactionSettleEvents { get; set; }
+    public DbSet<HashEvent> HashEvents { get; set; }
+    public DbSet<GasEvent> GasEvents { get; set; }
+    public DbSet<SaleEvent> SaleEvents { get; set; }
+    public DbSet<SaleEventKind> SaleEventKinds { get; set; }
 
 
     public static string GetConnectionString()
@@ -294,6 +303,41 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.NSFW);
         modelBuilder.Entity<Event>()
             .HasIndex(x => x.BLACKLISTED);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.OrganizationEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<OrganizationEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.StringEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<StringEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.AddressEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<AddressEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.TransactionSettleEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<TransactionSettleEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.HashEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<HashEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.GasEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<GasEvent>(x => x.EventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.SaleEvent)
+            .WithOne(y => y.Event)
+            .HasForeignKey<SaleEvent>(x => x.EventId);
 
         //////////////////////
         /// Token
@@ -561,6 +605,120 @@ public class MainDbContext : DbContext
 
 
         // Indexes
+
+
+        //////////////////////
+        // Organization
+        //////////////////////
+
+        // FKs
+
+
+        // Indexes
+        modelBuilder.Entity<Organization>()
+            .HasIndex(x => x.NAME)
+            .IsUnique();
+
+
+        //////////////////////
+        // OrganizationEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<OrganizationEvent>()
+            .HasOne(x => x.Organization)
+            .WithMany()
+            .HasForeignKey(x => x.OrganizationId);
+        modelBuilder.Entity<OrganizationEvent>()
+            .HasOne(x => x.Address)
+            .WithMany()
+            .HasForeignKey(x => x.AddressId);
+
+        // Indexes
+
+
+        //////////////////////
+        // StringEvent
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+
+
+        //////////////////////
+        // AddressEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<AddressEvent>()
+            .HasOne(x => x.Address)
+            .WithMany()
+            .HasForeignKey(x => x.AddressId);
+        // Indexes
+
+
+        //////////////////////
+        // TransactionSettleEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<TransactionSettleEvent>()
+            .HasOne(x => x.Platform)
+            .WithMany(y => y.TransactionSettleEvents)
+            .HasForeignKey(x => x.PlatformId);
+
+        // Indexes
+
+
+        //////////////////////
+        // HashEvent
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+
+
+        //////////////////////
+        // GasEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<GasEvent>()
+            .HasOne(x => x.Address)
+            .WithMany()
+            .HasForeignKey(x => x.AddressId);
+        // Indexes
+
+
+        //////////////////////
+        // SaleEventKind
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<SaleEventKind>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.SaleEventKinds)
+            .HasForeignKey(x => x.ChainId);
+
+        // Indexes
+        modelBuilder.Entity<SaleEventKind>()
+            .HasIndex(x => new {x.ChainId, x.NAME})
+            .IsUnique();
+
+        //////////////////////
+        // SaleEvent
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<SaleEvent>()
+            .HasOne(x => x.SaleEventKind)
+            .WithMany(y => y.SaleEvents)
+            .HasForeignKey(x => x.SaleEventKindId);
+
+
+        // Indexes
     }
 }
 
@@ -581,6 +739,7 @@ public class Chain
     public virtual List<Address> Addresses { get; set; }
     public virtual List<EventKind> EventKinds { get; set; }
     public virtual List<Event> Events { get; set; }
+    public virtual List<SaleEventKind> SaleEventKinds { get; set; }
 }
 
 public class Contract
@@ -687,7 +846,16 @@ public class Event
     public virtual Infusion Infusion { get; set; }
 
     public int? NftId { get; set; }
+
     public virtual Nft Nft { get; set; }
+
+    public virtual OrganizationEvent OrganizationEvent { get; set; }
+    public virtual StringEvent StringEvent { get; set; }
+    public virtual AddressEvent AddressEvent { get; set; }
+    public virtual TransactionSettleEvent TransactionSettleEvent { get; set; }
+    public virtual HashEvent HashEvent { get; set; }
+    public virtual GasEvent GasEvent { get; set; }
+    public virtual SaleEvent SaleEvent { get; set; }
 }
 
 public class Token
@@ -891,6 +1059,7 @@ public class Platform
     public string NAME { get; set; }
     public string CHAIN { get; set; }
     public string FUEL { get; set; }
+    public virtual List<TransactionSettleEvent> TransactionSettleEvents { get; set; }
 }
 
 public class PlatformToken
@@ -919,4 +1088,91 @@ public class External
     public int TokenId { get; set; }
     public virtual Token Token { get; set; }
     public string HASH { get; set; }
+}
+
+public class Organization
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+}
+
+public class OrganizationEvent
+{
+    public int ID { get; set; }
+    public int OrganizationId { get; set; }
+    public virtual Organization Organization { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+public class StringEvent
+{
+    public int ID { get; set; }
+    public string STRING_VALUE { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+//used for validator event data, atm
+public class AddressEvent
+{
+    public int ID { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+public class TransactionSettleEvent
+{
+    public int ID { get; set; }
+    public string HASH { get; set; }
+    public int PlatformId { get; set; }
+
+    public virtual Platform Platform { get; set; }
+
+    //chain name should be in platform
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+//used for file events, atm
+public class HashEvent
+{
+    public int ID { get; set; }
+    public string HASH { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+public class GasEvent
+{
+    public int ID { get; set; }
+    public string PRICE { get; set; }
+    public string AMOUNT { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
+}
+
+public class SaleEventKind
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
+    public virtual List<SaleEvent> SaleEvents { get; set; }
+}
+
+public class SaleEvent
+{
+    public int ID { get; set; }
+    public string HASH { get; set; }
+    public int SaleEventKindId { get; set; }
+    public virtual SaleEventKind SaleEventKind { get; set; }
+    public int EventId { get; set; }
+    public virtual Event Event { get; set; }
 }

@@ -189,6 +189,48 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                             var added = false;
 
+                            Database.Main.Event databaseEvent = null;
+                            //currently still handled extra... for now
+                            //create here the event, and below the data
+                            if ( kind is not EventKind.Infusion or EventKind.TokenMint or EventKind.TokenClaim
+                                or EventKind.TokenBurn or EventKind.TokenSend or EventKind.TokenReceive
+                                or EventKind.TokenStake or EventKind.CrownRewards or EventKind.OrderCancelled
+                                or EventKind.OrderClosed or EventKind.OrderCreated or EventKind.OrderFilled
+                                or EventKind.OrderBid )
+                            {
+                                var contractId = ContractMethods.Upsert(databaseContext, contract,
+                                    chainId,
+                                    evnt.Contract,
+                                    null);
+
+                                databaseEvent = EventMethods.Upsert(databaseContext,
+                                    out var eventAdded,
+                                    null,
+                                    timestampUnixSeconds,
+                                    eventIndex + 1,
+                                    chainId,
+                                    transaction,
+                                    contractId,
+                                    eventKindId,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    0,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    addressString,
+                                    null,
+                                    false);
+
+                                if ( eventAdded ) eventsAddedCount++;
+
+                                added = eventAdded;
+                                _overallEventsLoadedCount++;
+                            }
+
                             switch ( kind )
                             {
                                 case EventKind.Infusion:
@@ -483,19 +525,37 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     Log.Verbose("[{Name}] getting string for {Kind}, string {String}", Name, kind,
                                         stringData);
 
+                                    //databaseEvent we need it here, so check it
+                                    if ( databaseEvent != null )
+                                    {
+                                        var stringEvent = StringEventMethods.Upsert(databaseContext, stringData,
+                                            databaseEvent);
+                                        Log.Verbose("[{Name}] added String with internal Id {Id}",
+                                            Name, stringEvent.ID);
+                                    }
+
                                     break;
                                 }
                                 case EventKind.Crowdsale:
                                 {
                                     var saleEventData = evnt.GetContent<SaleEventData>();
 
-                                    var hash = saleEventData.saleHash;
-                                    var saleKind = saleEventData.kind; //handle sale kinds 
+                                    var hash = saleEventData.saleHash.ToString();
+                                    var saleKind = saleEventData.kind.ToString(); //handle sale kinds 
 
                                     Log.Verbose(
                                         "[{Name}] getting SaleEventData for {Kind}, hash {Hash}, saleKind {SaleKind}",
-                                        Name, kind, hash.ToString(), saleKind);
+                                        Name, kind, hash, saleKind);
 
+                                    //databaseEvent we need it here, so check it
+                                    if ( databaseEvent != null )
+                                    {
+                                        var saleEvent = SaleEventMethods.Upsert(databaseContext, saleKind, hash,
+                                            chainId, databaseEvent);
+
+                                        Log.Verbose("[{Name}] added aleEvent with internal Id {Id}",
+                                            Name, saleEvent.ID);
+                                    }
 
                                     break;
                                 }
@@ -504,22 +564,42 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     var transactionSettleEventData =
                                         evnt.GetContent<TransactionSettleEventData>();
 
-                                    var hash = transactionSettleEventData.Hash;
+                                    var hash = transactionSettleEventData.Hash.ToString();
                                     var platform = transactionSettleEventData.Platform;
                                     var chain = transactionSettleEventData.Chain;
 
                                     Log.Verbose(
                                         "[{Name}] getting TransactionSettleEventData for {Kind}, hash {Hash}, platform {Platform}, chain {Chain}",
-                                        Name, kind, hash.ToString(), platform, chain);
+                                        Name, kind, hash, platform, chain);
+
+                                    //databaseEvent we need it here, so check it
+                                    if ( databaseEvent != null )
+                                    {
+                                        var transactionSettleEvent = TransactionSettleEventMethods.Upsert(
+                                            databaseContext, hash, platform, chain, databaseEvent);
+
+                                        Log.Verbose("[{Name}] added TransactionSettleEvent with internal Id {Id}",
+                                            Name, transactionSettleEvent.ID);
+                                    }
 
                                     break;
                                 }
                                 case EventKind.ValidatorElect or EventKind.ValidatorPropose:
                                 {
-                                    var address = evnt.GetContent<Address>();
+                                    var address = evnt.GetContent<Address>().ToString();
 
                                     Log.Verbose("[{Name}] getting Address for {Kind}, Address {Address}", Name,
-                                        kind, address.ToString());
+                                        kind, address);
+
+                                    //databaseEvent we need it here, so check it
+                                    if ( databaseEvent != null )
+                                    {
+                                        var addressEvent = AddressEventMethods.Upsert(databaseContext,
+                                            address, databaseEvent, chainId);
+
+                                        Log.Verbose("[{Name}] added Address with internal Id {Id}",
+                                            Name, addressEvent.ID);
+                                    }
 
                                     break;
                                 }
@@ -547,21 +627,41 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 {
                                     var gasEventData = evnt.GetContent<GasEventData>();
 
-                                    var address = gasEventData.address;
-                                    var price = gasEventData.price;
-                                    var amount = gasEventData.amount;
+                                    var address = gasEventData.address.ToString();
+                                    var price = gasEventData.price.ToString();
+                                    var amount = gasEventData.amount.ToString();
 
                                     Log.Verbose(
                                         "[{Name}] getting GasEventData for {Kind}, Address {Address}, price {Price}, amount {Amount}",
-                                        Name, kind, address.ToString(), price, amount);
+                                        Name, kind, address, price, amount);
+
+                                    //databaseEvent we need it here, so check it
+                                    if ( databaseEvent != null )
+                                    {
+                                        var gasEvent = GasEventMethods.Upsert(databaseContext, address, price, amount,
+                                            databaseEvent, chainId);
+
+                                        Log.Verbose("[{Name}] added GasEvent with internal Id {Id}",
+                                            Name, gasEvent.ID);
+                                    }
+
 
                                     break;
                                 }
                                 case EventKind.FileCreate or EventKind.FileDelete:
                                 {
-                                    var hash = evnt.GetContent<Hash>();
+                                    var hash = evnt.GetContent<Hash>().ToString();
 
                                     Log.Verbose("[{Name}] getting Hash for {Kind}, Hash {Hash}", Name, kind, hash);
+
+                                    //databaseEvent we need it here, so check it
+                                    if ( databaseEvent != null )
+                                    {
+                                        var hashEvent = HashEventMethods.Upsert(databaseContext, hash, databaseEvent);
+
+                                        Log.Verbose("[{Name}] added Hash with internal Id {Id}",
+                                            Name, hashEvent.ID);
+                                    }
 
                                     break;
                                 }
@@ -571,11 +671,22 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         evnt.GetContent<OrganizationEventData>();
 
                                     var organization = organizationEventData.Organization;
-                                    var memberAddress = organizationEventData.MemberAddress;
+                                    var memberAddress = organizationEventData.MemberAddress.ToString();
 
                                     Log.Verbose(
                                         "[{Name}] getting OrganizationEventData for {Kind}, Organization {Organization}, MemberAddress {Address}",
-                                        Name, kind, organization, memberAddress.ToString());
+                                        Name, kind, organization, memberAddress);
+
+                                    //databaseEvent we need it here, so check it
+                                    if ( databaseEvent != null )
+                                    {
+                                        var organizationEvent = OrganizationEventMethods.Upsert(databaseContext,
+                                            organization, memberAddress,
+                                            databaseEvent, chainId);
+
+                                        Log.Verbose("[{Name}] added OrganizationEvent with internal Id {Id}",
+                                            Name, organizationEvent.ID);
+                                    }
 
                                     break;
                                 }
@@ -585,16 +696,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 {
                                     Log.Verbose(
                                         "[{Name}] Currently not processing EventKind {Kind} in Block #{Block}",
-                                        Name, kind,
-                                        blockHeight);
+                                        Name, kind, blockHeight);
 
                                     break;
                                 }
                                 default:
                                     Log.Warning(
                                         "[{Name}] Currently not processing EventKind {Kind} in Block #{Block}",
-                                        Name, kind,
-                                        blockHeight);
+                                        Name, kind, blockHeight);
                                     break;
                             }
 
