@@ -27,3 +27,4 @@ jobs:
       run: dotnet build --no-restore
     - name: redo ef migration api
       run: ./database-api-cache-recreate.sh
+      shell: bash
