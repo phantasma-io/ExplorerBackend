@@ -27,6 +27,6 @@ jobs:
       run: dotnet build --no-restore
     - name: redo ef migrations
       run: |
-        "${GITHUB_WORKSPACE}/database-api-cache-recreate.sh"
-        "${GITHUB_WORKSPACE}/database-migrations-recreate.sh"
+        "${GITHUB_WORKSPACE}/../database-api-cache-recreate.sh"
+        "${GITHUB_WORKSPACE}/../database-migrations-recreate.sh"
       shell: bash
