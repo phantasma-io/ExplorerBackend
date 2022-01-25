@@ -17,6 +17,11 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 6.0.x
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        repository: phantasma-io/PhantasmaChain/
+        path: './PhantasmaChain'
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
