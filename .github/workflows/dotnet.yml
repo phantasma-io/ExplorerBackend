@@ -25,5 +25,11 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
+    - name: Get EF
+      run: |
+        dotnet tool install --global dotnet-ef
+        dotnet tool restore
+      env:
+        ASPNETCORE_ENVIRONMENT: Development
     - name: Entity Framework Main
       run: dotnet ef migrations add InitialCreate --project Database.ApiCache/Database.ApiCache.csproj
