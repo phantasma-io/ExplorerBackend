@@ -25,3 +25,5 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
+    - name: Entity Framework Main
+      run: dotnet ef migrations add InitialCreate --project Database.ApiCache/Database.ApiCache.csproj
