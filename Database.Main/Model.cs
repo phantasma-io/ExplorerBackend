@@ -55,6 +55,8 @@ public class MainDbContext : DbContext
     public DbSet<InfusionEvent> InfusionEvents { get; set; }
     public DbSet<MarketEventKind> MarketEventKinds { get; set; }
     public DbSet<MarketEvent> MarketEvents { get; set; }
+    public DbSet<TokenScriptInstruction> TokenScriptInstructions { get; set; }
+    public DbSet<TransactionScriptInstruction> TransactionScriptInstructions { get; set; }
 
 
     public static string GetConnectionString()
@@ -113,7 +115,7 @@ public class MainDbContext : DbContext
 
 
         //////////////////////
-        /// Chain
+        // Chain
         //////////////////////
 
         // FKs
@@ -130,13 +132,20 @@ public class MainDbContext : DbContext
             .IsUnique();
 
         //////////////////////
-        /// Contract
+        // Contract
         //////////////////////
 
         // FKs
+        modelBuilder.Entity<Contract>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.Contracts)
+            .HasForeignKey(x => x.ChainId);
+
+        // Indexes
+
 
         //////////////////////
-        /// Block
+        // Block
         //////////////////////
 
         // FKs
@@ -146,6 +155,16 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Blocks)
             .HasForeignKey(x => x.ChainId);
 
+        modelBuilder.Entity<Block>()
+            .HasOne(x => x.ChainAddress)
+            .WithMany(y => y.ChainAddressBlocks)
+            .HasForeignKey(x => x.ChainAddressId);
+
+        modelBuilder.Entity<Block>()
+            .HasOne(x => x.ValidatorAddress)
+            .WithMany(y => y.ValidatorAddressBlocks)
+            .HasForeignKey(x => x.ValidatorAddressId);
+
         // Indexes
 
         modelBuilder.Entity<Block>()
@@ -154,14 +173,15 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Block>()
             .HasIndex(x => new {x.ChainId, x.HEIGHT});
 
-        //////////////////////
-        /// Contract
-        //////////////////////
+        modelBuilder.Entity<Block>()
+            .HasIndex(x => x.HASH)
+            .IsUnique();
 
-        // FKsToken
+        modelBuilder.Entity<Block>()
+            .HasIndex(x => x.PREVIOUS_HASH);
 
         //////////////////////
-        /// Transaction
+        // Transaction
         //////////////////////
 
         // FKs
@@ -180,8 +200,11 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => new {x.HASH});
 
+        modelBuilder.Entity<Transaction>()
+            .HasIndex(x => new {x.TIMESTAMP_UNIX_SECONDS});
+
         //////////////////////
-        /// EventKind
+        // EventKind
         //////////////////////
 
         // FKs
@@ -201,7 +224,7 @@ public class MainDbContext : DbContext
             .IsUnique();
 
         //////////////////////
-        /// Address
+        // Address
         //////////////////////
 
         // FKs
@@ -227,7 +250,7 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.NAME_LAST_UPDATED_UNIX_SECONDS});
 
         //////////////////////
-        /// Event
+        // Event
         //////////////////////
 
         // FKs
@@ -269,45 +292,13 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.Address)
-            .WithMany()
+            .WithMany(y => y.Events)
             .HasForeignKey(x => x.AddressId);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.SourceAddress)
-            .WithMany()
+            .WithMany(y => y.SourceAddressEvents)
             .HasForeignKey(x => x.SourceAddressId);
-
-        // Indexes
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => x.DM_UNIX_SECONDS);
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => x.TIMESTAMP_UNIX_SECONDS);
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => x.DATE_UNIX_SECONDS);
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.TransactionId, x.INDEX});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.INDEX});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.ContractId, x.TOKEN_ID});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.PRICE_USD});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.HIDDEN});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.BURNED});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => x.NSFW);
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => x.BLACKLISTED);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.OrganizationEvent)
@@ -364,8 +355,46 @@ public class MainDbContext : DbContext
             .WithOne(y => y.Event)
             .HasForeignKey<MarketEvent>(x => x.EventId);
 
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.Nft)
+            .WithMany(y => y.Events)
+            .HasForeignKey(x => x.NftId);
+
+        // Indexes
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => x.DM_UNIX_SECONDS);
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => x.TIMESTAMP_UNIX_SECONDS);
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => x.DATE_UNIX_SECONDS);
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.TransactionId, x.INDEX});
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.INDEX});
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.ContractId, x.TOKEN_ID});
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.PRICE_USD});
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.HIDDEN});
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.BURNED});
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => x.NSFW);
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => x.BLACKLISTED);
+
+
         //////////////////////
-        /// Token
+        // Token
         //////////////////////
 
         // FKs
@@ -399,7 +428,7 @@ public class MainDbContext : DbContext
             .IsUnique();
 
         //////////////////////
-        /// TokenDailyPrice
+        // TokenDailyPrice
         //////////////////////
 
         // FKs
@@ -415,7 +444,7 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.DATE_UNIX_SECONDS});
 
         //////////////////////
-        /// NftOwnership
+        // NftOwnership
         //////////////////////
 
         // FKs
@@ -437,7 +466,7 @@ public class MainDbContext : DbContext
             .IsUnique();
 
         //////////////////////
-        /// Nft
+        // Nft
         //////////////////////
 
         // FKs
@@ -502,7 +531,7 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.METADATA_UPDATE);
 
         //////////////////////
-        /// SeriesMode
+        // SeriesMode
         //////////////////////
 
         // Indexes
@@ -511,7 +540,7 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.MODE_NAME);
 
         //////////////////////
-        /// Series
+        // Series
         //////////////////////
 
         // FKs
@@ -562,7 +591,7 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.DM_UNIX_SECONDS);
 
         //////////////////////
-        /// Infusion
+        // Infusion
         //////////////////////
 
         // FKs
@@ -583,7 +612,7 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.KEY);
 
         //////////////////////
-        /// FiatExchangeRate
+        // FiatExchangeRate
         //////////////////////
 
         // Indexes
@@ -859,6 +888,36 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.QuoteTokenId);
 
         // Indexes
+
+
+        //////////////////////
+        // ScriptInstruction
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<TokenScriptInstruction>()
+            .HasOne(x => x.Token)
+            .WithMany(y => y.TokenScriptInstructions)
+            .HasForeignKey(x => x.TokenId);
+
+        // Indexes
+        modelBuilder.Entity<TokenScriptInstruction>()
+            .HasIndex(x => x.INDEX);
+
+
+        //////////////////////
+        // TransactionScriptInstruction
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<TransactionScriptInstruction>()
+            .HasOne(x => x.Transaction)
+            .WithMany(y => y.TransactionScriptInstructions)
+            .HasForeignKey(x => x.TransactionId);
+
+        // Indexes
+        modelBuilder.Entity<TransactionScriptInstruction>()
+            .HasIndex(x => x.INDEX);
     }
 }
 
@@ -910,6 +969,14 @@ public class Block
     public long TIMESTAMP_UNIX_SECONDS { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
+    public string HASH { get; set; }
+    public string PREVIOUS_HASH { get; set; }
+    public int PROTOCOL { get; set; }
+    public int ChainAddressId { get; set; }
+    public virtual Address ChainAddress { get; set; }
+    public int ValidatorAddressId { get; set; }
+    public virtual Address ValidatorAddress { get; set; }
+    public string REWARD { get; set; }
     public virtual List<Transaction> Transactions { get; set; }
 }
 
@@ -920,7 +987,11 @@ public class Transaction
     public int INDEX { get; set; } // Index of tx in block
     public int BlockId { get; set; }
     public virtual Block Block { get; set; }
+    public long TIMESTAMP_UNIX_SECONDS { get; set; }
+    public string PAYLOAD { get; set; }
+    public string SCRIPT_RAW { get; set; }
     public virtual List<Event> Events { get; set; }
+    public virtual List<TransactionScriptInstruction> TransactionScriptInstructions { get; set; }
 }
 
 public class EventKind
@@ -950,6 +1021,9 @@ public class Address
     public virtual List<AddressEvent> AddressEvents { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<PlatformInterop> PlatformInterops { get; set; }
+    public virtual List<Event> SourceAddressEvents { get; set; }
+    public virtual List<Block> ChainAddressBlocks { get; set; }
+    public virtual List<Block> ValidatorAddressBlocks { get; set; }
 }
 
 public class Event
@@ -991,11 +1065,8 @@ public class Event
     public string INFUSED_VALUE { get; set; }
     public int? InfusionId { get; set; }
     public virtual Infusion Infusion { get; set; }
-
     public int? NftId { get; set; }
-
     public virtual Nft Nft { get; set; }
-
     public virtual OrganizationEvent OrganizationEvent { get; set; }
     public virtual StringEvent StringEvent { get; set; }
     public virtual AddressEvent AddressEvent { get; set; }
@@ -1062,6 +1133,7 @@ public class Token
     public virtual List<InfusionEvent> InfusedSymbolInfusionEvents { get; set; }
     public virtual List<MarketEvent> BaseSymbolMarketEvents { get; set; }
     public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
+    public virtual List<TokenScriptInstruction> TokenScriptInstructions { get; set; }
 }
 
 public class TokenDailyPrice
@@ -1130,8 +1202,10 @@ public class Nft
     public JsonDocument CHAIN_API_RESPONSE { get; set; }
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
+
     public bool BLACKLISTED { get; set; }
-    public int VIEW_COUNT { get; set; }
+
+    //public int VIEW_COUNT { get; set; }
     public bool? METADATA_UPDATE { get; set; }
 
     // METADATA END
@@ -1400,4 +1474,22 @@ public class MarketEvent
     public string END_PRICE { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
+}
+
+public class TokenScriptInstruction
+{
+    public int ID { get; set; }
+    public int TokenId { get; set; }
+    public virtual Token Token { get; set; }
+    public int INDEX { get; set; }
+    public string INSTRUCTION { get; set; }
+}
+
+public class TransactionScriptInstruction
+{
+    public int ID { get; set; }
+    public int TransactionId { get; set; }
+    public virtual Transaction Transaction { get; set; }
+    public int INDEX { get; set; }
+    public string INSTRUCTION { get; set; }
 }

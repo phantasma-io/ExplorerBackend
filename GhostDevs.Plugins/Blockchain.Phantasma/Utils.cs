@@ -1,5 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using LunarLabs.Parser;
+using Phantasma.Numerics;
+using Phantasma.VM;
 using Serilog;
 
 namespace GhostDevs.Blockchain;
@@ -56,5 +60,13 @@ internal class Utils
                         $"priceMaxLength: {priceMaxLength}\n" +
                         $"romMaxLength: {romMaxLength}\n" +
                         $"ramMaxLength: {ramMaxLength}");
+    }
+
+
+    public static List<string> GetInstructionsFromScript(string scriptRaw)
+    {
+        var disassembler = new Disassembler(scriptRaw.Decode());
+        var instructions = disassembler.Instructions.ToList();
+        return instructions.Select(instruction => instruction.ToString()).ToList();
     }
 }

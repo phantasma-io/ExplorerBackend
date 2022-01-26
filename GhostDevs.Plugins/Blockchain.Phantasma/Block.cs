@@ -131,15 +131,33 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         try
         {
             var timestampUnixSeconds = blockData.RootElement.GetProperty("timestamp").GetUInt32();
+            var blockHash = blockData.RootElement.GetProperty("hash").GetString();
+            var blockPreviousHash = blockData.RootElement.GetProperty("previousHash").GetString();
+            var chainAddress = blockData.RootElement.GetProperty("chainAddress").GetString();
+            var protocol = blockData.RootElement.GetProperty("protocol").GetInt32();
+            var validatorAddress = blockData.RootElement.GetProperty("validatorAddress").GetString();
+            var reward = blockData.RootElement.GetProperty("reward").GetString();
 
             // Block in main database
             var block = Database.Main.BlockMethods.Upsert(databaseContext, chainId, blockHeight, timestampUnixSeconds,
-                false);
+                blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward, false);
 
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
-                BlockMethods.Upsert(databaseApiCacheContext,
-                    chainName, blockHeight.ToString(), timestampUnixSeconds, blockData, chainId);
+                BlockMethods.Upsert(databaseApiCacheContext, chainName, blockHeight.ToString(), timestampUnixSeconds,
+                    blockData, chainId);
+            }
+
+            if ( blockData.RootElement.TryGetProperty("oracles", out var oracleProperty) )
+            {
+                var oracles = oracleProperty.EnumerateArray();
+                foreach ( var oracle in oracles )
+                {
+                    var url = oracle.GetProperty("url").ToString();
+                    var content = oracle.GetProperty("content").ToString();
+
+                    Log.Debug("[{Name}] got Oracle, url {Url}, content {Content}", Name, url, content);
+                }
             }
 
             if ( blockData.RootElement.TryGetProperty("txs", out var txsProperty) )
@@ -161,9 +179,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         Log.Debug("[{Name}] No events for tx #{TxIndex} in block #{BlockHeight}", Name, txIndex,
                             blockHeight);
 
-                    // Current transaction.
+                    // Current transaction
+                    var scriptRaw = tx.GetProperty("script").GetString();
+
                     var transaction = TransactionMethods.Upsert(databaseContext, block, txIndex,
-                        tx.GetProperty("hash").GetString(), false);
+                        tx.GetProperty("hash").GetString(), tx.GetProperty("timestamp").GetUInt32(),
+                        tx.GetProperty("payload").GetString(), scriptRaw, false);
+
+                    var entryCount =
+                        TransactionScriptInstructionMethods.Upsert(databaseContext, transaction,
+                            Utils.GetInstructionsFromScript(scriptRaw));
+
+                    Log.Verbose("[{Name}] Transaction, added Script Instructions Count {Count}", Name, entryCount);
 
                     for ( var eventIndex = 0; eventIndex < events.Count(); eventIndex++ )
                     {
@@ -174,8 +201,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             var kindSerialized = eventNode.GetProperty("kind").GetString();
                             var kind = Enum.Parse<EventKind>(kindSerialized);
                             //just works if we process every event, otherwise we would have data in the database we do not really need
-                            var eventKindId = EventKindMethods.Upsert(databaseContext, chainId,
-                                kind.ToString());
+                            var eventKindId = EventKindMethods.Upsert(databaseContext, chainId, kind.ToString());
 
                             Log.Verbose("[{Name}] Processing EventKind {Kind} in Block #{Block}", Name, kind,
                                 blockHeight);

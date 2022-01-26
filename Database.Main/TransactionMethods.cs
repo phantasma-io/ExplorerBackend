@@ -18,7 +18,7 @@ public static class TransactionMethods
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
     public static Transaction Upsert(MainDbContext databaseContext, Block block, int txIndex, string hash,
-        bool saveChanges = true)
+        long timestampUnixSeconds, string payload, string scriptRaw, bool saveChanges = true)
     {
         ContractMethods.Drop0x(ref hash);
 
@@ -33,7 +33,15 @@ public static class TransactionMethods
 
         if ( entry != null ) return entry;
 
-        entry = new Transaction {Block = block, INDEX = txIndex, HASH = hash};
+        entry = new Transaction
+        {
+            Block = block,
+            INDEX = txIndex,
+            HASH = hash,
+            TIMESTAMP_UNIX_SECONDS = timestampUnixSeconds,
+            PAYLOAD = payload,
+            SCRIPT_RAW = scriptRaw
+        };
 
         databaseContext.Transactions.Add(entry);
 

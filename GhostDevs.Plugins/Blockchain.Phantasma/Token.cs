@@ -26,6 +26,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             //TODO fix
             PlatformMethods.Upsert(databaseContext, "phantasma", null, null);
+            updatedPlatformsCount++;
 
             var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response != null )
@@ -89,7 +90,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var address = token.GetProperty("address").GetString();
                         var owner = token.GetProperty("owner").GetString();
                         var scriptRaw = token.GetProperty("script").GetString();
-                        //external
 
                         var fungible = false;
                         var transferable = false;
@@ -137,9 +137,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             }
                         }
 
+                        //add instructions
+                        var entryCount = ScriptInstructionMethods.Upsert(databaseContext, id,
+                            Utils.GetInstructionsFromScript(scriptRaw));
+
                         Log.Verbose(
-                            "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
-                            Name, tokenSymbol, tokenName, fungible, tokenDecimal, id);
+                            "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}, Instructions {Instructions}",
+                            Name, tokenSymbol, tokenName, fungible, tokenDecimal, id, entryCount);
 
                         updatedTokensCount++;
                     }

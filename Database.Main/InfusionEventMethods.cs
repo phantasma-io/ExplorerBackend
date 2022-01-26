@@ -15,9 +15,9 @@ public static class InfusionEventMethods
 
         var infusionEvent = new InfusionEvent
         {
-            BaseToken = baseToken, 
-            InfusedToken = infusedToken, 
-            INFUSED_VALUE = infusedValue, 
+            BaseToken = baseToken,
+            InfusedToken = infusedToken,
+            INFUSED_VALUE = infusedValue,
             TOKEN_ID = tokenId,
             Event = databaseEvent
         };
