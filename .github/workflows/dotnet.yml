@@ -32,4 +32,4 @@ jobs:
       env:
         ASPNETCORE_ENVIRONMENT: Development
     - name: Entity Framework Main
-      run: dotnet ef migrations add InitialCreate --project Database.ApiCache/Database.ApiCache.csproj
+      run: dotnet ef migrations add InitialCreate --project ${GITHUB_WORKSPACE}/../Database.ApiCache/Database.ApiCache.csproj
