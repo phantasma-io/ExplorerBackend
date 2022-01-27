@@ -39,5 +39,5 @@
     "Logging": { 
         "Level": "Verbose",
         "LogOverwrite": true
-    },
+    }
 }
