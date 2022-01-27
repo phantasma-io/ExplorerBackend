@@ -157,6 +157,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     var content = oracle.GetProperty("content").ToString();
 
                     Log.Debug("[{Name}] got Oracle, url {Url}, content {Content}", Name, url, content);
+                    BlockOracleMethods.Upsert(databaseContext, url, content, block, false);
                 }
             }
 
@@ -184,13 +185,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                     var transaction = TransactionMethods.Upsert(databaseContext, block, txIndex,
                         tx.GetProperty("hash").GetString(), tx.GetProperty("timestamp").GetUInt32(),
-                        tx.GetProperty("payload").GetString(), scriptRaw, false);
+                        tx.GetProperty("payload").GetString(), scriptRaw, tx.GetProperty("result").GetString(),
+                        tx.GetProperty("fee").GetString(), tx.GetProperty("expiration").GetUInt32(), false);
 
-                    var entryCount =
-                        TransactionScriptInstructionMethods.Upsert(databaseContext, transaction,
-                            Utils.GetInstructionsFromScript(scriptRaw));
+                    if ( tx.TryGetProperty("signatures", out var signaturesProperty) )
+                    {
+                        var signatures = signaturesProperty.EnumerateArray();
+                        foreach ( var signature in signatures )
+                        {
+                            var kind = signature.GetProperty("Kind").ToString();
+                            var data = signature.GetProperty("Data").ToString();
 
-                    Log.Verbose("[{Name}] Transaction, added Script Instructions Count {Count}", Name, entryCount);
+                            Log.Verbose("[{Name}] got Signature, kind {Kind}, data {Data}", Name, kind, data);
+                            SignatureMethods.Upsert(databaseContext, kind, data, transaction, false);
+                        }
+                    }
 
                     for ( var eventIndex = 0; eventIndex < events.Count(); eventIndex++ )
                     {

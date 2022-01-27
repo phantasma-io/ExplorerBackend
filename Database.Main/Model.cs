@@ -55,8 +55,10 @@ public class MainDbContext : DbContext
     public DbSet<InfusionEvent> InfusionEvents { get; set; }
     public DbSet<MarketEventKind> MarketEventKinds { get; set; }
     public DbSet<MarketEvent> MarketEvents { get; set; }
-    public DbSet<TokenScriptInstruction> TokenScriptInstructions { get; set; }
-    public DbSet<TransactionScriptInstruction> TransactionScriptInstructions { get; set; }
+    public DbSet<BlockOracle> BlockOracles { get; set; }
+    public DbSet<Oracle> Oracles { get; set; }
+    public DbSet<SignatureKind> SignatureKinds { get; set; }
+    public DbSet<Signature> Signatures { get; set; }
 
 
     public static string GetConnectionString()
@@ -891,33 +893,57 @@ public class MainDbContext : DbContext
 
 
         //////////////////////
-        // ScriptInstruction
+        // BlockOracle
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<TokenScriptInstruction>()
-            .HasOne(x => x.Token)
-            .WithMany(y => y.TokenScriptInstructions)
-            .HasForeignKey(x => x.TokenId);
+        modelBuilder.Entity<BlockOracle>()
+            .HasOne(x => x.Block)
+            .WithMany(y => y.BlockOracles)
+            .HasForeignKey(x => x.BlockId);
+
+        modelBuilder.Entity<BlockOracle>()
+            .HasOne(x => x.Oracle)
+            .WithMany(y => y.BlockOracles)
+            .HasForeignKey(x => x.OracleId);
+
+        //////////////////////
+        // Oracle
+        //////////////////////
+
+        // FKs
 
         // Indexes
-        modelBuilder.Entity<TokenScriptInstruction>()
-            .HasIndex(x => x.INDEX);
-
+        modelBuilder.Entity<Oracle>()
+            .HasIndex(x => new {x.URL, x.CONTENT})
+            .IsUnique();
 
         //////////////////////
-        // TransactionScriptInstruction
+        // SignatureKind
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<TransactionScriptInstruction>()
+
+        // Indexes
+        modelBuilder.Entity<SignatureKind>()
+            .HasIndex(x => x.NAME);
+
+        //////////////////////
+        // Signature
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<Signature>()
+            .HasOne(x => x.SignatureKind)
+            .WithMany(y => y.Signatures)
+            .HasForeignKey(x => x.SignatureKindId);
+
+        modelBuilder.Entity<Signature>()
             .HasOne(x => x.Transaction)
-            .WithMany(y => y.TransactionScriptInstructions)
+            .WithMany(y => y.Signatures)
             .HasForeignKey(x => x.TransactionId);
 
         // Indexes
-        modelBuilder.Entity<TransactionScriptInstruction>()
-            .HasIndex(x => x.INDEX);
     }
 }
 
@@ -978,6 +1004,7 @@ public class Block
     public virtual Address ValidatorAddress { get; set; }
     public string REWARD { get; set; }
     public virtual List<Transaction> Transactions { get; set; }
+    public virtual List<BlockOracle> BlockOracles { get; set; }
 }
 
 public class Transaction
@@ -990,8 +1017,11 @@ public class Transaction
     public long TIMESTAMP_UNIX_SECONDS { get; set; }
     public string PAYLOAD { get; set; }
     public string SCRIPT_RAW { get; set; }
+    public string RESULT { get; set; }
+    public string FEE { get; set; }
+    public long EXPIRATION { get; set; }
     public virtual List<Event> Events { get; set; }
-    public virtual List<TransactionScriptInstruction> TransactionScriptInstructions { get; set; }
+    public virtual List<Signature> Signatures { get; set; }
 }
 
 public class EventKind
@@ -1133,7 +1163,6 @@ public class Token
     public virtual List<InfusionEvent> InfusedSymbolInfusionEvents { get; set; }
     public virtual List<MarketEvent> BaseSymbolMarketEvents { get; set; }
     public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
-    public virtual List<TokenScriptInstruction> TokenScriptInstructions { get; set; }
 }
 
 public class TokenDailyPrice
@@ -1476,20 +1505,37 @@ public class MarketEvent
     public virtual Event Event { get; set; }
 }
 
-public class TokenScriptInstruction
+//to avoid to double data, we create a table for oracle url and content, and just ref it here
+public class BlockOracle
 {
     public int ID { get; set; }
-    public int TokenId { get; set; }
-    public virtual Token Token { get; set; }
-    public int INDEX { get; set; }
-    public string INSTRUCTION { get; set; }
+    public int OracleId { get; set; }
+    public virtual Oracle Oracle { get; set; }
+    public int BlockId { get; set; }
+    public virtual Block Block { get; set; }
 }
 
-public class TransactionScriptInstruction
+public class Oracle
 {
     public int ID { get; set; }
+    public string URL { get; set; }
+    public string CONTENT { get; set; }
+    public virtual List<BlockOracle> BlockOracles { get; set; }
+}
+
+public class SignatureKind
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public virtual List<Signature> Signatures { get; set; }
+}
+
+public class Signature
+{
+    public int ID { get; set; }
+    public int SignatureKindId { get; set; }
+    public virtual SignatureKind SignatureKind { get; set; }
+    public string DATA { get; set; }
     public int TransactionId { get; set; }
     public virtual Transaction Transaction { get; set; }
-    public int INDEX { get; set; }
-    public string INSTRUCTION { get; set; }
 }

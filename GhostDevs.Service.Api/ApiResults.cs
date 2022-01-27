@@ -286,3 +286,17 @@ public class ContractResult
     [APIDescription("List of available contracts")]
     public Contract[] contracts { get; set; }
 }
+
+public class Instruction
+{
+    [APIDescription("Instruction")] public string instruction { get; set; }
+}
+
+public class DisassemblerResult
+{
+    [APIDescription("Total number of Instructions of the parsed Script")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List instructions of the parsed Script")]
+    public Instruction[] Instructions { get; set; }
+}

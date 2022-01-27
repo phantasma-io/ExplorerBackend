@@ -137,13 +137,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             }
                         }
 
-                        //add instructions
-                        var entryCount = ScriptInstructionMethods.Upsert(databaseContext, id,
-                            Utils.GetInstructionsFromScript(scriptRaw));
 
                         Log.Verbose(
-                            "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}, Instructions {Instructions}",
-                            Name, tokenSymbol, tokenName, fungible, tokenDecimal, id, entryCount);
+                            "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
+                            Name, tokenSymbol, tokenName, fungible, tokenDecimal, id);
 
                         updatedTokensCount++;
                     }

@@ -65,7 +65,8 @@ public static class FiatExchangeRateMethods
     }
 
 
-    public static decimal ConvertEx(TokenMethods.TokenPrice[] tokenPrices, Dictionary<string, decimal> fiatPricesInUsd,
+    public static decimal ConvertEx(IEnumerable<TokenMethods.TokenPrice> tokenPrices,
+        Dictionary<string, decimal> fiatPricesInUsd,
         string priceInTokens, string quoteSymbol, decimal price, string fromSymbol, string toSymbol)
     {
         if ( price == 0 )
