@@ -12,41 +12,18 @@ public static class EventMethods
     // Returns new or existing entry's Id.
     public static Event Upsert(MainDbContext databaseContext,
         out bool newEventCreated,
-        Nft nft,
         long timestampUnixSeconds,
         int index,
         int chainId,
         Transaction transaction,
         int contractId,
         int eventKindId,
-        string contractAuctionId,
-        string quoteContractHash,
-        string quoteSymbol,
-        string price,
-        decimal priceUsd,
-        string infusedContractHash,
-        string infusedSymbol,
-        string infusedValue,
-        string tokenId,
         string address,
-        string sourceAddress,
-        bool hidden,
         int tokenAmount = 1)
     {
         newEventCreated = false;
 
-        int? quoteSymbolId = null;
-        if ( !string.IsNullOrEmpty(quoteSymbol) )
-            quoteSymbolId = TokenMethods.Get(databaseContext, chainId, quoteSymbol).ID;
-
-        int? infusedSymbolId = null;
-        if ( !string.IsNullOrEmpty(infusedSymbol) )
-            infusedSymbolId = TokenMethods.Get(databaseContext, chainId, infusedSymbol).ID;
-
         var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
-        Address sourceAddressEntry = null;
-        if ( !string.IsNullOrEmpty(sourceAddress) )
-            sourceAddressEntry = AddressMethods.Upsert(databaseContext, chainId, sourceAddress, false);
 
         var evnt = databaseContext.Events.FirstOrDefault(x =>
             x.ChainId == chainId && x.Transaction == transaction && x.INDEX == index);
@@ -63,16 +40,7 @@ public static class EventMethods
                 Transaction = transaction,
                 ContractId = contractId,
                 EventKindId = eventKindId,
-                QuoteSymbolId = quoteSymbolId,
-                PRICE = price,
-                PRICE_USD = priceUsd,
-                InfusedSymbolId = infusedSymbolId,
-                INFUSED_VALUE = infusedValue,
-                TOKEN_ID = tokenId,
                 Address = addressEntry,
-                SourceAddress = sourceAddressEntry,
-                Nft = nft,
-                HIDDEN = hidden,
                 TOKEN_AMOUNT = tokenAmount
             };
 
@@ -90,55 +58,8 @@ public static class EventMethods
             evnt.Transaction = transaction;
             evnt.ContractId = contractId;
             evnt.EventKindId = eventKindId;
-            evnt.QuoteSymbolId = quoteSymbolId;
-            evnt.PRICE = price;
-            evnt.PRICE_USD = priceUsd;
-            evnt.InfusedSymbolId = infusedSymbolId;
-            evnt.INFUSED_VALUE = infusedValue;
-            evnt.TOKEN_ID = tokenId;
             evnt.Address = addressEntry;
-            evnt.SourceAddress = sourceAddressEntry;
-            evnt.Nft = nft;
-            evnt.HIDDEN = hidden;
             evnt.TOKEN_AMOUNT = tokenAmount;
-        }
-
-        evnt.CONTRACT_AUCTION_ID = contractAuctionId;
-
-        if ( !string.IsNullOrEmpty(infusedSymbol) &&
-             TokenMethods.Get(databaseContext, chainId, infusedSymbol).FUNGIBLE == false )
-        {
-            // NFT was infused, we should mark it as infused.
-            //var infusedNft = databaseContext.Nfts.First(x => x.TOKEN_ID == infusedValue);
-            var infusedNft = databaseContext.Nfts.FirstOrDefault(x => x.TOKEN_ID == infusedValue);
-            if ( infusedNft == null )
-                Log.Warning("NFT infused, could not find a Nft for Value {Infused}, Symbol {Symbol}", infusedValue,
-                    infusedSymbol);
-            else
-            {
-                infusedNft.InfusedInto = nft;
-
-                Log.Information("NFT infused: {InfusedNft} into NFT {Nft}", infusedNft.TOKEN_ID,
-                    nft.TOKEN_ID);
-            }
-        }
-
-        var burnEvent = databaseContext.EventKinds
-            .FirstOrDefault(x => x.NAME == "TokenBurn" && x.ChainId == chainId);
-        if ( burnEvent == null || eventKindId != burnEvent.ID ) return evnt;
-
-        //TODO check if always needed
-        // For burns we must release all infused nfts.
-        var infusedNftIDs =
-            databaseContext.Nfts.Where(x => x.InfusedInto == nft).Select(x => x.TOKEN_ID).ToArray();
-        foreach ( var id in infusedNftIDs )
-        {
-            var defusedNft = databaseContext.Nfts.First(x => x.TOKEN_ID == id);
-            defusedNft.InfusedInto = null;
-
-            if ( nft != null )
-                Log.Information("NFT defused: {DefusedNft} from NFT {Nft}", defusedNft.TOKEN_ID,
-                    nft.TOKEN_ID);
         }
 
         return evnt;
@@ -167,15 +88,99 @@ public static class EventMethods
     }
 
 
-    /*public static Event Upsert(MainDbContext databaseContext,
-        out bool newEventCreated,
-        Event dbEvent
-    )
+    public static Event UpdateValues(MainDbContext databaseContext, out bool eventUpdated, Event eventItem, Nft nft,
+        string contractAuctionId, string quoteContractHash, string quoteSymbol, string price, decimal priceUsd,
+        string infusedContractHash, string infusedSymbol, string infusedValue, string tokenId, string sourceAddress,
+        int chainId, int eventKindId, int contractId, int tokenAmount = 1)
     {
-        var test = dbEvent.AddressId;
-        return Upsert(databaseContext, out newEventCreated, dbEvent.Nft, dbEvent.TIMESTAMP_UNIX_SECONDS, dbEvent.INDEX,
-            dbEvent.ChainId, dbEvent.Transaction, dbEvent.ContractId, dbEvent.EventKindId,
-            dbEvent.CONTRACT_AUCTION_ID,
-            "", "", "", 0, "", "", "", "", "", "", "", false, 1);
-    }*/
+        eventUpdated = false;
+        //just to check
+
+        var quoteSymbolId = GetTokenId(databaseContext, chainId, quoteSymbol);
+        var infusedSymbolId = GetTokenId(databaseContext, chainId, infusedSymbol);
+        var sourceAddressEntry = GetSourceAddress(databaseContext, sourceAddress, chainId, false);
+
+        if ( eventItem == null ) return null;
+
+        eventItem.ChainId = chainId;
+        eventItem.ContractId = contractId;
+        eventItem.EventKindId = eventKindId;
+        eventItem.QuoteSymbolId = quoteSymbolId;
+        eventItem.PRICE = price;
+        eventItem.PRICE_USD = priceUsd;
+        eventItem.InfusedSymbolId = infusedSymbolId;
+        eventItem.INFUSED_VALUE = infusedValue;
+        eventItem.TOKEN_ID = tokenId;
+        eventItem.SourceAddress = sourceAddressEntry;
+        eventItem.Nft = nft;
+        eventItem.CONTRACT_AUCTION_ID = contractAuctionId;
+        eventItem.TOKEN_AMOUNT = tokenAmount;
+
+        MarkNtfInfused(databaseContext, chainId, infusedSymbol, infusedValue, nft);
+
+        var burnEvent = databaseContext.EventKinds
+            .FirstOrDefault(x => x.NAME == "TokenBurn" && x.ChainId == chainId);
+        if ( burnEvent == null || eventKindId != burnEvent.ID ) return eventItem;
+
+        //TODO check if always needed
+        // For burns we must release all infused nfts.
+        ProcessBurnedNft(databaseContext, nft);
+
+        return eventItem;
+    }
+
+
+    private static Address GetSourceAddress(MainDbContext databaseContext, string sourceAddress, int chainId,
+        bool saveChanges)
+    {
+        Address sourceAddressEntry = null;
+        if ( !string.IsNullOrEmpty(sourceAddress) )
+            sourceAddressEntry = AddressMethods.Upsert(databaseContext, chainId, sourceAddress, saveChanges);
+        return sourceAddressEntry;
+    }
+
+
+    private static int? GetTokenId(MainDbContext databaseContext, int chainId, string symbol)
+    {
+        int? id = null;
+        if ( !string.IsNullOrEmpty(symbol) )
+            id = TokenMethods.Get(databaseContext, chainId, symbol).ID;
+        return id;
+    }
+
+
+    private static void MarkNtfInfused(MainDbContext databaseContext, int chainId, string infusedSymbol,
+        string infusedValue, Nft nft)
+    {
+        if ( string.IsNullOrEmpty(infusedSymbol) ||
+             TokenMethods.Get(databaseContext, chainId, infusedSymbol).FUNGIBLE ) return;
+
+        // NFT was infused, we should mark it as infused.
+        var infusedNft = databaseContext.Nfts.FirstOrDefault(x => x.TOKEN_ID == infusedValue);
+        if ( infusedNft == null )
+            Log.Warning("NFT infused, could not find a Nft for Value {Infused}, Symbol {Symbol}", infusedValue,
+                infusedSymbol);
+        else
+        {
+            infusedNft.InfusedInto = nft;
+
+            Log.Information("NFT infused: {InfusedNft} into NFT {Nft}", infusedNft.TOKEN_ID, nft.TOKEN_ID);
+        }
+    }
+
+
+    private static void ProcessBurnedNft(MainDbContext databaseContext, Nft nft)
+    {
+        // For burns we must release all infused nfts.
+        var infusedNftIDs =
+            databaseContext.Nfts.Where(x => x.InfusedInto == nft).Select(x => x.TOKEN_ID).ToArray();
+        foreach ( var id in infusedNftIDs )
+        {
+            var defusedNft = databaseContext.Nfts.First(x => x.TOKEN_ID == id);
+            defusedNft.InfusedInto = null;
+
+            if ( nft != null )
+                Log.Information("NFT defused: {DefusedNft} from NFT {Nft}", defusedNft.TOKEN_ID, nft.TOKEN_ID);
+        }
+    }
 }

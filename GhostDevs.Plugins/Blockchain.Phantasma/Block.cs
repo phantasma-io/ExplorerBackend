@@ -222,49 +222,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                             Event evnt = new(kind, addr, contract, data);
 
-                            var added = false;
-
-                            Database.Main.Event databaseEvent = null;
                             //currently still handled extra... for now
                             //create here the event, and below the data
-                            if ( kind is not EventKind.Infusion or EventKind.TokenMint or EventKind.TokenClaim
-                                or EventKind.TokenBurn or EventKind.TokenSend or EventKind.TokenReceive
-                                or EventKind.TokenStake or EventKind.CrownRewards or EventKind.OrderCancelled
-                                or EventKind.OrderClosed or EventKind.OrderCreated or EventKind.OrderFilled
-                                or EventKind.OrderBid )
-                            {
-                                var contractId = ContractMethods.Upsert(databaseContext, contract,
-                                    chainId,
-                                    evnt.Contract,
-                                    null);
 
-                                databaseEvent = EventMethods.Upsert(databaseContext,
-                                    out var eventAdded,
-                                    null,
-                                    timestampUnixSeconds,
-                                    eventIndex + 1,
-                                    chainId,
-                                    transaction,
-                                    contractId,
-                                    eventKindId,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    0,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    addressString,
-                                    null,
-                                    false);
+                            var contractId = ContractMethods.Upsert(databaseContext, contract,
+                                chainId,
+                                evnt.Contract,
+                                null);
 
-                                if ( eventAdded ) eventsAddedCount++;
+                            var databaseEvent = Utils.CreateEvent(databaseContext, out var eventAdded,
+                                timestampUnixSeconds, eventIndex + 1, chainId, transaction, contractId, eventKindId,
+                                addressString);
 
-                                added = eventAdded;
-                                _overallEventsLoadedCount++;
-                            }
+                            if ( eventAdded ) eventsAddedCount++;
+
+                            _overallEventsLoadedCount++;
 
                             switch ( kind )
                             {
@@ -291,16 +263,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         symbolFungible.Add(infusionEventData.BaseSymbol, fungible);
                                     }
 
+                                    contractId = ContractMethods.Upsert(databaseContext, contract, chainId,
+                                        infusionEventData.BaseSymbol.ToUpper(), infusionEventData.BaseSymbol.ToUpper());
+
+                                    var tokenId = infusionEventData.TokenID.ToString();
+
+                                    Nft nft = null;
                                     if ( !fungible )
                                     {
-                                        var contractId = ContractMethods.Upsert(databaseContext, contract,
-                                            chainId,
-                                            infusionEventData.BaseSymbol.ToUpper(),
-                                            infusionEventData.BaseSymbol.ToUpper());
-
-                                        var tokenId = infusionEventData.TokenID.ToString();
-
-                                        Nft nft;
                                         // Searching for corresponding NFT.
                                         // If it's available, we will set up relation.
                                         // If not, we will create it first.
@@ -320,47 +290,43 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 Name, nft.ID, nft.TOKEN_ID, newNftCreated);
                                             if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                         }
-
-                                        databaseEvent = EventMethods.Upsert(databaseContext,
-                                            out var eventAdded,
-                                            nft,
-                                            timestampUnixSeconds,
-                                            eventIndex + 1,
-                                            chainId,
-                                            transaction,
-                                            contractId,
-                                            eventKindId,
-                                            null,
-                                            null,
-                                            null,
-                                            null,
-                                            0,
-                                            infusionEventData.InfusedSymbol,
-                                            infusionEventData.InfusedSymbol,
-                                            infusionEventData.InfusedValue.ToString(),
-                                            tokenId,
-                                            addressString,
-                                            null,
-                                            false);
-
-                                        if ( eventAdded ) eventsAddedCount++;
-
-                                        added = eventAdded;
-                                        _overallEventsLoadedCount++;
-
-                                        //TODO just add it here for now to check if the model works
-                                        //data will still be used from Events table for the Endpoint atm
-                                        if ( databaseEvent != null )
-                                        {
-                                            var infusionEvent = InfusionEventMethods.Upsert(databaseContext,
-                                                infusionEventData.TokenID.ToString(), infusionEventData.BaseSymbol,
-                                                infusionEventData.InfusedSymbol,
-                                                infusionEventData.InfusedValue.ToString(), chainId, databaseEvent);
-
-                                            Log.Verbose("[{Name}] added InfusionEventData with internal Id {Id}",
-                                                Name, infusionEvent.ID);
-                                        }
                                     }
+
+                                    //parse also a new contract id, just in case
+                                    databaseEvent = EventMethods.UpdateValues(databaseContext,
+                                        out var eventUpdated,
+                                        databaseEvent,
+                                        nft,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        0,
+                                        infusionEventData.InfusedSymbol,
+                                        infusionEventData.InfusedSymbol,
+                                        infusionEventData.InfusedValue.ToString(),
+                                        tokenId,
+                                        null,
+                                        chainId,
+                                        eventKindId,
+                                        contractId
+                                    );
+
+                                    Log.Verbose("[{Name}] Updated event with {Updated}", Name, eventUpdated);
+
+                                    //TODO just add it here for now to check if the model works
+                                    //data will still be used from Events table for the Endpoint atm
+                                    if ( databaseEvent != null )
+                                    {
+                                        var infusionEvent = InfusionEventMethods.Upsert(databaseContext,
+                                            infusionEventData.TokenID.ToString(), infusionEventData.BaseSymbol,
+                                            infusionEventData.InfusedSymbol,
+                                            infusionEventData.InfusedValue.ToString(), chainId, databaseEvent);
+
+                                        Log.Verbose("[{Name}] added InfusionEventData with internal Id {Id}",
+                                            Name, infusionEvent.ID);
+                                    }
+
 
                                     break;
                                 }
@@ -384,6 +350,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         symbolFungible.Add(tokenEventData.Symbol, fungible);
                                     }
 
+                                    contractId = ContractMethods.Upsert(databaseContext, contract, chainId,
+                                        tokenEventData.Symbol.ToUpper(), tokenEventData.Symbol.ToUpper());
+
+                                    var tokenId = tokenEventData.Value.ToString();
+
+                                    Nft nft = null;
                                     if ( !fungible )
                                     {
                                         Log.Debug(
@@ -392,14 +364,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             tokenEventData.Symbol, tokenEventData.Value, addressString,
                                             contract);
 
-                                        var contractId = ContractMethods.Upsert(databaseContext, contract,
-                                            chainId,
-                                            tokenEventData.Symbol.ToUpper(),
-                                            tokenEventData.Symbol.ToUpper());
 
-                                        var tokenId = tokenEventData.Value.ToString();
-
-                                        Nft nft;
                                         if ( nftsInThisBlock.ContainsKey(tokenId) )
                                             nft = nftsInThisBlock.GetValueOrDefault(tokenId);
                                         else
@@ -421,56 +386,49 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         // so we can't update dates only for just created NFTs using newNftCreated flag.
                                         if ( kind == EventKind.TokenMint )
                                             nft.MINT_DATE_UNIX_SECONDS = timestampUnixSeconds;
+                                    }
 
+                                    //parse also a new contract id, just in case
+                                    databaseEvent = EventMethods.UpdateValues(databaseContext,
+                                        out var eventUpdated,
+                                        databaseEvent,
+                                        nft,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        0,
+                                        null,
+                                        null,
+                                        null,
+                                        tokenId,
+                                        null,
+                                        chainId,
+                                        eventKindId,
+                                        contractId
+                                    );
 
-                                        databaseEvent = EventMethods.Upsert(databaseContext,
-                                            out var eventAdded,
-                                            nft, //might be null due not having an ntf
-                                            timestampUnixSeconds,
-                                            eventIndex + 1,
+                                    Log.Verbose("[{Name}] Updated event with {Updated}", Name, eventUpdated);
+
+                                    //update ntf related things if it is not null
+                                    if ( nft != null )
+                                        // Update NFTs owner address on new event.
+                                        NftMethods.ProcessOwnershipChange(databaseContext,
                                             chainId,
-                                            transaction,
-                                            contractId,
-                                            eventKindId,
-                                            null,
-                                            null,
-                                            null,
-                                            null,
-                                            0,
-                                            null,
-                                            null,
-                                            null,
-                                            tokenId,
-                                            addressString,
-                                            null,
-                                            false);
-                                        //kind != EventKind.TokenMint);
+                                            nft,
+                                            timestampUnixSeconds,
+                                            addressString);
 
-                                        //update ntf related things if it is not null
-                                        if ( nft != null )
-                                            // Update NFTs owner address on new event.
-                                            NftMethods.ProcessOwnershipChange(databaseContext,
-                                                chainId,
-                                                nft,
-                                                timestampUnixSeconds,
-                                                addressString);
+                                    //TODO just add it here for now to check if the model works
+                                    //data will still be used from Events table for the Endpoint atm
+                                    if ( databaseEvent != null )
+                                    {
+                                        var tokenEvent = TokenEventMethods.Upsert(databaseContext,
+                                            tokenEventData.Symbol, tokenEventData.ChainName, tokenId, chainId,
+                                            databaseEvent);
 
-                                        if ( eventAdded ) eventsAddedCount++;
-
-                                        added = eventAdded;
-                                        _overallEventsLoadedCount++;
-
-                                        //TODO just add it here for now to check if the model works
-                                        //data will still be used from Events table for the Endpoint atm
-                                        if ( databaseEvent != null )
-                                        {
-                                            var tokenEvent = TokenEventMethods.Upsert(databaseContext,
-                                                tokenEventData.Symbol, tokenEventData.ChainName, tokenId, chainId,
-                                                databaseEvent);
-
-                                            Log.Verbose("[{Name}] added TokenEventData with internal Id {Id}",
-                                                Name, tokenEvent.ID);
-                                        }
+                                        Log.Verbose("[{Name}] added TokenEventData with internal Id {Id}",
+                                            Name, tokenEvent.ID);
                                     }
 
                                     break;
@@ -501,16 +459,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         marketEventData.Price, marketEventData.EndPrice, marketEventData.ID,
                                         addressString, contract, marketEventData.Type);
 
-                                    var contractId = ContractMethods.Upsert(databaseContext, contract,
+                                    contractId = ContractMethods.Upsert(databaseContext, contract,
                                         chainId,
                                         marketEventData.BaseSymbol.ToUpper(),
                                         marketEventData.BaseSymbol.ToUpper());
 
                                     var tokenId = marketEventData.ID.ToString();
 
+                                    Nft nft = null;
+                                    var price = "";
                                     if ( !fungible )
                                     {
-                                        string price;
                                         if ( kind == EventKind.OrderBid ||
                                              kind == EventKind.OrderFilled &&
                                              marketEventData.Type != TypeAuction.Fixed )
@@ -518,7 +477,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         else
                                             price = marketEventData.Price.ToString();
 
-                                        Nft nft;
+
                                         // Searching for corresponding NFT.
                                         // If it's available, we will set up relation.
                                         // If not, we will create it first.
@@ -538,28 +497,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                         }
 
-                                        databaseEvent = EventMethods.Upsert(databaseContext,
-                                            out var eventAdded,
-                                            nft,
-                                            timestampUnixSeconds,
-                                            eventIndex + 1,
-                                            chainId, //ChainId,
-                                            transaction,
-                                            contractId,
-                                            eventKindId,
-                                            null,
-                                            marketEventData.QuoteSymbol,
-                                            marketEventData.QuoteSymbol,
-                                            price,
-                                            0,
-                                            null,
-                                            null,
-                                            null,
-                                            tokenId,
-                                            addressString,
-                                            null,
-                                            false);
-
                                         if ( kind == EventKind.OrderFilled )
                                             // Update NFTs owner address on new sale event.
                                             NftMethods.ProcessOwnershipChange(databaseContext,
@@ -567,26 +504,44 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 nft,
                                                 timestampUnixSeconds,
                                                 addressString);
-
-                                        if ( eventAdded ) eventsAddedCount++;
-
-                                        added = eventAdded;
-                                        _overallEventsLoadedCount++;
-
-                                        //databaseEvent we need it here, so check it
-                                        //TODO just add it here for now to check if the model works
-                                        //data will still be used from Events table for the Endpoint atm
-                                        if ( databaseEvent != null )
-                                        {
-                                            var marketEvent = MarketEventMethods.Upsert(databaseContext,
-                                                marketEventData.Type.ToString(), marketEventData.BaseSymbol,
-                                                marketEventData.QuoteSymbol, price, marketEventData.EndPrice.ToString(),
-                                                marketEventData.ID.ToString(), chainId, databaseEvent);
-
-                                            Log.Verbose("[{Name}] added MarketEventData with internal Id {Id}",
-                                                Name, marketEvent.ID);
-                                        }
                                     }
+
+                                    //parse also a new contract id, just in case
+                                    databaseEvent = EventMethods.UpdateValues(databaseContext,
+                                        out var eventUpdated,
+                                        databaseEvent,
+                                        nft,
+                                        null,
+                                        marketEventData.QuoteSymbol,
+                                        marketEventData.QuoteSymbol,
+                                        price,
+                                        0,
+                                        null,
+                                        null,
+                                        null,
+                                        tokenId,
+                                        null,
+                                        chainId,
+                                        eventKindId,
+                                        contractId
+                                    );
+
+                                    Log.Verbose("[{Name}] Updated event with {Updated}", Name, eventUpdated);
+
+                                    //databaseEvent we need it here, so check it
+                                    //TODO just add it here for now to check if the model works
+                                    //data will still be used from Events table for the Endpoint atm
+                                    if ( databaseEvent != null )
+                                    {
+                                        var marketEvent = MarketEventMethods.Upsert(databaseContext,
+                                            marketEventData.Type.ToString(), marketEventData.BaseSymbol,
+                                            marketEventData.QuoteSymbol, price, marketEventData.EndPrice.ToString(),
+                                            marketEventData.ID.ToString(), chainId, databaseEvent);
+
+                                        Log.Verbose("[{Name}] added MarketEventData with internal Id {Id}",
+                                            Name, marketEvent.ID);
+                                    }
+
 
                                     break;
                                 }
@@ -789,40 +744,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         "[{Name}] Currently not processing EventKind {Kind} in Block #{Block}",
                                         Name, kind, blockHeight);
                                     break;
-                            }
-
-                            if ( !added )
-                            {
-                                var contractId = ContractMethods.Upsert(databaseContext, contract,
-                                    chainId,
-                                    evnt.Contract,
-                                    null);
-
-                                EventMethods.Upsert(databaseContext,
-                                    out var eventAdded,
-                                    null,
-                                    timestampUnixSeconds,
-                                    eventIndex + 1,
-                                    chainId,
-                                    transaction,
-                                    contractId,
-                                    eventKindId,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    0,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    addressString,
-                                    null,
-                                    false);
-
-                                if ( eventAdded ) eventsAddedCount++;
-
-                                _overallEventsLoadedCount++;
                             }
                         }
                         catch ( Exception e )

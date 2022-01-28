@@ -110,7 +110,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 });
                 blocksSyncThread.Start();
 
-                Thread eventsProcessThread = new(() =>
+                //we might not need it
+                /*Thread eventsProcessThread = new(() =>
                 {
                     while ( _running )
                         try
@@ -127,7 +128,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             Thread.Sleep(Settings.Default.EventsProcessingInterval * 1000);
                         }
                 });
-                eventsProcessThread.Start();
+                eventsProcessThread.Start();*/
 
                 Thread romRamSyncThread = new(() =>
                 {

@@ -817,10 +817,6 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<TokenEvent>()
-            .HasOne(x => x.Chain)
-            .WithMany(y => y.TokenEvents)
-            .HasForeignKey(x => x.ChainId);
 
         modelBuilder.Entity<TokenEvent>()
             .HasOne(x => x.Token)
@@ -1458,9 +1454,8 @@ public class TokenEvent
     public int ID { get; set; }
     public int TokenId { get; set; }
     public virtual Token Token { get; set; }
-    public int ChainId { get; set; }
-    public virtual Chain Chain { get; set; }
     public string VALUE { get; set; }
+    public string CHAIN_NAME { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
 }
