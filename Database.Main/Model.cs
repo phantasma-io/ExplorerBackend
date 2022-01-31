@@ -537,10 +537,10 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.METADATA_UPDATE);
 
         modelBuilder.Entity<Nft>()
-            .HasIndex(x => new {x.TOKEN_ID});
+            .HasIndex(x => x.TOKEN_ID);
 
         modelBuilder.Entity<Nft>()
-            .HasIndex(x => new {x.InfusedIntoId});
+            .HasIndex(x => x.InfusedIntoId);
 
         //////////////////////
         // SeriesMode
