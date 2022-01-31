@@ -429,6 +429,10 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.ChainId, x.ContractId, x.SYMBOL})
             .IsUnique();
 
+        modelBuilder.Entity<Token>()
+            .HasIndex(x => new {x.SYMBOL, x.ChainId});
+
+
         //////////////////////
         // TokenDailyPrice
         //////////////////////
@@ -531,6 +535,12 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.BLACKLISTED);
         modelBuilder.Entity<Nft>()
             .HasIndex(x => x.METADATA_UPDATE);
+
+        modelBuilder.Entity<Nft>()
+            .HasIndex(x => new {x.TOKEN_ID});
+
+        modelBuilder.Entity<Nft>()
+            .HasIndex(x => new {x.InfusedIntoId});
 
         //////////////////////
         // SeriesMode

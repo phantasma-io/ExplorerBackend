@@ -69,25 +69,19 @@ public static class AddressMethods
         ContractMethods.Drop0x(ref address);
 
         var chain = ChainMethods.Get(databaseContext, chainId);
-        var addressCaseInsensitive = false;
-
         var entry = databaseContext.Addresses
-            .FirstOrDefault(x => x.ChainId == chainId &&
-                                 ( addressCaseInsensitive && string.Equals(x.ADDRESS.ToUpper(), address.ToUpper()) ||
-                                   x.ADDRESS == address ));
+            .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
 
         if ( entry != null ) return entry;
 
         // Checking if entry has been added already
         // but not yet inserted into database.
         entry = DbHelper.GetTracked<Address>(databaseContext)
-            .FirstOrDefault(x => x.ChainId == chainId &&
-                                 ( addressCaseInsensitive && x.ADDRESS.ToUpper() == address.ToUpper() ||
-                                   x.ADDRESS == address ));
+            .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
 
         if ( entry != null ) return entry;
 
-        entry = new Address {ChainId = chainId, ADDRESS = address};
+        entry = new Address {Chain = chain, ADDRESS = address};
         databaseContext.Addresses.Add(entry);
 
         if ( !saveChanges ) return entry;

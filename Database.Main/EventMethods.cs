@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using GhostDevs.Commons;
 using Microsoft.EntityFrameworkCore;
@@ -94,12 +95,16 @@ public static class EventMethods
         int chainId, int eventKindId, int contractId, int tokenAmount = 1)
     {
         eventUpdated = false;
+        var startTime = DateTime.Now;
         //just to check
 
         var quoteSymbolId = GetTokenId(databaseContext, chainId, quoteSymbol);
         var infusedSymbolId = GetTokenId(databaseContext, chainId, infusedSymbol);
         var sourceAddressEntry = GetSourceAddress(databaseContext, sourceAddress, chainId, false);
-
+        var updateTime = DateTime.Now - startTime;
+        Log.Verbose("Loaded Ids for Quote and Infused Symbol and Source Address in {Time}", Math.Round(updateTime.TotalSeconds, 3));
+        
+        
         if ( eventItem == null ) return null;
 
         eventItem.ChainId = chainId;
@@ -116,15 +121,22 @@ public static class EventMethods
         eventItem.CONTRACT_AUCTION_ID = contractAuctionId;
         eventItem.TOKEN_AMOUNT = tokenAmount;
 
+        eventUpdated = true;
+        startTime = DateTime.Now;
         MarkNtfInfused(databaseContext, chainId, infusedSymbol, infusedValue, nft);
-
+        updateTime = DateTime.Now - startTime;
+        Log.Verbose("Marked infused, took {Time}", Math.Round(updateTime.TotalSeconds, 3));
+        
         var burnEvent = databaseContext.EventKinds
             .FirstOrDefault(x => x.NAME == "TokenBurn" && x.ChainId == chainId);
         if ( burnEvent == null || eventKindId != burnEvent.ID ) return eventItem;
 
         //TODO check if always needed
         // For burns we must release all infused nfts.
+        startTime = DateTime.Now;
         ProcessBurnedNft(databaseContext, nft);
+        updateTime = DateTime.Now - startTime;
+        Log.Verbose("Process Burned, took {Time}", Math.Round(updateTime.TotalSeconds, 3));
 
         return eventItem;
     }
@@ -172,6 +184,7 @@ public static class EventMethods
     private static void ProcessBurnedNft(MainDbContext databaseContext, Nft nft)
     {
         // For burns we must release all infused nfts.
+        //maybe use id here
         var infusedNftIDs =
             databaseContext.Nfts.Where(x => x.InfusedInto == nft).Select(x => x.TOKEN_ID).ToArray();
         foreach ( var id in infusedNftIDs )
