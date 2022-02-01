@@ -126,7 +126,7 @@ public static class EventMethods
         startTime = DateTime.Now;
         MarkNtfInfused(databaseContext, chainId, infusedSymbol, infusedValue, nft);
         updateTime = DateTime.Now - startTime;
-        Log.Verbose("Marked infused, processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
+        Log.Verbose("Marked infused processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
 
         var burnEvent = databaseContext.EventKinds
             .FirstOrDefault(x => x.NAME == "TokenBurn" && x.ChainId == chainId);

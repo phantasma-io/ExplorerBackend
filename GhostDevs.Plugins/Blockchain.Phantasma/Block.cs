@@ -212,8 +212,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             //just works if we process every event, otherwise we would have data in the database we do not really need
                             var eventKindId = EventKindMethods.Upsert(databaseContext, chainId, kind.ToString());
 
-                            Log.Verbose("[{Name}] Processing EventKind {Kind} in Block #{Block}", Name, kind,
-                                blockHeight);
+                            Log.Verbose("[{Name}] Processing EventKind {Kind} in Block #{Block}, Index {Index}", Name,
+                                kind, blockHeight, eventIndex + 1);
 
                             var contract = eventNode.GetProperty("contract").GetString();
                             var addressString = eventNode.GetProperty("address").GetString();
@@ -271,6 +271,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     Nft nft = null;
                                     if ( !fungible )
                                     {
+                                        var ntfStartTime = DateTime.Now;
                                         // Searching for corresponding NFT.
                                         // If it's available, we will set up relation.
                                         // If not, we will create it first.
@@ -290,7 +291,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 Name, nft.ID, nft.TOKEN_ID, newNftCreated);
                                             if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                         }
+
+                                        var nftUpdateTime = DateTime.Now - ntfStartTime;
+                                        Log.Verbose("NTF processed in {Time} sec",
+                                            Math.Round(nftUpdateTime.TotalSeconds, 3));
                                     }
+
 
                                     //parse also a new contract id, just in case
                                     databaseEvent = EventMethods.UpdateValues(databaseContext,
@@ -358,6 +364,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     Nft nft = null;
                                     if ( !fungible )
                                     {
+                                        var ntfStartTime = DateTime.Now;
                                         Log.Debug(
                                             "[{Name}] New event on {TimestampUnixSeconds}: kind: {Kind} symbol: {Symbol} value: {Value} address: {AddressString} contract: {Contract}",
                                             Name, UnixSeconds.Log(timestampUnixSeconds), kind,
@@ -386,6 +393,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         // so we can't update dates only for just created NFTs using newNftCreated flag.
                                         if ( kind == EventKind.TokenMint )
                                             nft.MINT_DATE_UNIX_SECONDS = timestampUnixSeconds;
+
+                                        var nftUpdateTime = DateTime.Now - ntfStartTime;
+                                        Log.Verbose("NTF processed in {Time} sec",
+                                            Math.Round(nftUpdateTime.TotalSeconds, 3));
                                     }
 
                                     //parse also a new contract id, just in case
@@ -470,6 +481,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     var price = "";
                                     if ( !fungible )
                                     {
+                                        var ntfStartTime = DateTime.Now;
                                         if ( kind == EventKind.OrderBid ||
                                              kind == EventKind.OrderFilled &&
                                              marketEventData.Type != TypeAuction.Fixed )
@@ -504,6 +516,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 nft,
                                                 timestampUnixSeconds,
                                                 addressString);
+                                        var nftUpdateTime = DateTime.Now - ntfStartTime;
+                                        Log.Verbose("NTF processed in {Time} sec",
+                                            Math.Round(nftUpdateTime.TotalSeconds, 3));
                                     }
 
                                     //parse also a new contract id, just in case
@@ -541,7 +556,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         Log.Verbose("[{Name}] added MarketEventData with internal Id {Id}",
                                             Name, marketEvent.ID);
                                     }
-
 
                                     break;
                                 }

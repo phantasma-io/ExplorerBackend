@@ -29,7 +29,10 @@ public static class NftMethods
         {
             entry = new Nft
             {
-                ChainId = chainId, TOKEN_ID = tokenId, TOKEN_URI = tokenUri, ContractId = contractId,
+                ChainId = chainId, 
+                TOKEN_ID = tokenId, 
+                TOKEN_URI = tokenUri, 
+                ContractId = contractId,
                 DM_UNIX_SECONDS = UnixSeconds.Now()
             };
 
@@ -88,7 +91,7 @@ public static class NftMethods
 
                 if ( saveChanges ) databaseContext.SaveChanges();
             }
-            else if ( ownership != null && timestampUnixSeconds >= ownership.LAST_CHANGE_UNIX_SECONDS )
+            else if ( timestampUnixSeconds >= ownership.LAST_CHANGE_UNIX_SECONDS )
             {
                 // Our ownership change is newer, we need to update entity.
 

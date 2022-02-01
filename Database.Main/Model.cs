@@ -471,6 +471,9 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.AddressId, x.NftId})
             .IsUnique();
 
+        modelBuilder.Entity<NftOwnership>()
+            .HasIndex(x => x.LAST_CHANGE_UNIX_SECONDS);
+        
         //////////////////////
         // Nft
         //////////////////////
