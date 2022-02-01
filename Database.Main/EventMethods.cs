@@ -188,9 +188,9 @@ public static class EventMethods
         var nftList = databaseContext.Nfts.Where(x =>
             x.InfusedInto == nft && x.TOKEN_ID == databaseContext.Nfts.Where(y => y.TOKEN_ID == x.TOKEN_ID)
                 .Select(y => y.TOKEN_ID).First());
-        
+
         Log.Verbose("Got {Count} Ntfs to defuse", nftList.Count());
-        
+
         foreach ( var item in nftList )
         {
             item.InfusedInto = null;

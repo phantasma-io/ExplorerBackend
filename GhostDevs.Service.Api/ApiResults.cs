@@ -300,3 +300,18 @@ public class DisassemblerResult
     [APIDescription("List instructions of the parsed Script")]
     public Instruction[] Instructions { get; set; }
 }
+
+public class Organization
+{
+    [APIDescription("Name of the organization")]
+    public string name { get; set; }
+
+    [APIDescription("List of Addresses from the organization")]
+    public Address[] addresses { get; set; }
+}
+
+public class OrganizationResult
+{
+    [APIDescription("List of available organizations")]
+    public Organization[] organizations { get; set; }
+}
