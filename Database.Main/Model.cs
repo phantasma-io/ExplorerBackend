@@ -59,6 +59,7 @@ public class MainDbContext : DbContext
     public DbSet<Oracle> Oracles { get; set; }
     public DbSet<SignatureKind> SignatureKinds { get; set; }
     public DbSet<Signature> Signatures { get; set; }
+    public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
 
 
     public static string GetConnectionString()
@@ -473,7 +474,7 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<NftOwnership>()
             .HasIndex(x => x.LAST_CHANGE_UNIX_SECONDS);
-        
+
         //////////////////////
         // Nft
         //////////////////////
@@ -953,6 +954,23 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.TransactionId);
 
         // Indexes
+
+        //////////////////////
+        // OrganizationAddress
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<OrganizationAddress>()
+            .HasOne(x => x.Address)
+            .WithMany(y => y.OrganizationAddresses)
+            .HasForeignKey(x => x.AddressId);
+
+        modelBuilder.Entity<OrganizationAddress>()
+            .HasOne(x => x.Organization)
+            .WithMany(y => y.OrganizationAddresses)
+            .HasForeignKey(x => x.OrganizationId);
+
+        // Indexes
     }
 }
 
@@ -1063,6 +1081,7 @@ public class Address
     public virtual List<Event> SourceAddressEvents { get; set; }
     public virtual List<Block> ChainAddressBlocks { get; set; }
     public virtual List<Block> ValidatorAddressBlocks { get; set; }
+    public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
 }
 
 public class Event
@@ -1367,6 +1386,7 @@ public class Organization
     public int ID { get; set; }
     public string NAME { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
+    public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
 }
 
 public class OrganizationEvent
@@ -1546,4 +1566,13 @@ public class Signature
     public string DATA { get; set; }
     public int TransactionId { get; set; }
     public virtual Transaction Transaction { get; set; }
+}
+
+public class OrganizationAddress
+{
+    public int ID { get; set; }
+    public int OrganizationId { get; set; }
+    public virtual Organization Organization { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
 }

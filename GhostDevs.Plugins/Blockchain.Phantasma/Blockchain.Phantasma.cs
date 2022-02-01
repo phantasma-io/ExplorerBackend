@@ -56,7 +56,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 //init tokens once too, cause we might need them, to keep them update, thread them later
 
-                foreach ( var chain in _chainList ) InitNewTokens(chain.ID);
+                foreach ( var chain in _chainList ) InitNexusData(chain.ID);
             }
 
             using ( MainDbContext databaseContext = new() )
@@ -72,24 +72,24 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name, chain.NAME,
                     chain.ID);
 
-                Thread tokensInitThread = new(() =>
+                Thread nexusDataInitThread = new(() =>
                 {
                     while ( _running )
                         try
                         {
-                            InitNewTokens(chain.ID);
+                            InitNexusData(chain.ID);
 
                             Thread.Sleep(Settings.Default.TokensProcessingInterval *
                                          1000); // We process tokens every TokensProcessingInterval seconds
                         }
                         catch ( Exception e )
                         {
-                            LogEx.Exception("Token init", e);
+                            LogEx.Exception("NexusData init", e);
 
                             Thread.Sleep(Settings.Default.TokensProcessingInterval * 1000);
                         }
                 });
-                tokensInitThread.Start();
+                nexusDataInitThread.Start();
 
                 Thread blocksSyncThread = new(() =>
                 {

@@ -4,7 +4,7 @@ namespace Database.Main;
 
 public static class SeriesMethods
 {
-    public static void SeriesModesInit(MainDbContext databaseContext)
+    public static void SeriesModesInit(MainDbContext databaseContext, bool saveChanges = true)
     {
         var seriesModeUnique =
             databaseContext.SeriesModes.FirstOrDefault(x => x.MODE_NAME.ToUpper() == "UNIQUE");
@@ -12,7 +12,7 @@ public static class SeriesMethods
         {
             seriesModeUnique = new SeriesMode {MODE_NAME = "UNIQUE"};
             databaseContext.SeriesModes.Add(seriesModeUnique);
-            databaseContext.SaveChanges();
+            if ( saveChanges ) databaseContext.SaveChanges();
         }
 
         var seriesModeDuplicate = databaseContext.SeriesModes
@@ -22,7 +22,7 @@ public static class SeriesMethods
 
         seriesModeDuplicate = new SeriesMode {MODE_NAME = "DUPLICATED"};
         databaseContext.SeriesModes.Add(seriesModeDuplicate);
-        databaseContext.SaveChanges();
+        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
 
@@ -36,9 +36,8 @@ public static class SeriesMethods
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
     public static Series Upsert(MainDbContext databaseContext, int contractId, string seriesId,
-        int? creatorAddressId = null,
-        int? currentSupply = null, int? maxSupply = null, string seriesModeName = null, string name = null,
-        string description = null, string image = null, decimal? royalties = null,
+        int? creatorAddressId = null, int? currentSupply = null, int? maxSupply = null, string seriesModeName = null,
+        string name = null, string description = null, string image = null, decimal? royalties = null,
         string attrType1 = null, string attrValue1 = null, string attrType2 = null, string attrValue2 = null,
         string attrType3 = null, string attrValue3 = null)
     {

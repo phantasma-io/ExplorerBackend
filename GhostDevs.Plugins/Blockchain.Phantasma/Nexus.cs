@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text.Json;
 using Database.Main;
 using GhostDevs.Api;
@@ -9,7 +10,7 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private void InitNewTokens(int chainId)
+    private void InitNexusData(int chainId)
     {
         var startTime = DateTime.Now;
 
@@ -25,7 +26,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var url = $"{Settings.Default.GetRest()}/api/getNexus";
 
             //TODO fix
-            PlatformMethods.Upsert(databaseContext, "phantasma", null, null);
+            PlatformMethods.Upsert(databaseContext, "phantasma", null, null, false);
             updatedPlatformsCount++;
 
             var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
@@ -46,7 +47,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var fuel = platform.GetProperty("fuel").GetString();
 
                         //create platform now
-                        var platformItem = PlatformMethods.Upsert(databaseContext, platformName, chainHash, fuel);
+                        var platformItem =
+                            PlatformMethods.Upsert(databaseContext, platformName, chainHash, fuel, false);
 
                         if ( platform.TryGetProperty("tokens", out var platformTokenProperty) )
                         {
@@ -62,7 +64,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             {
                                 var local = interop.GetProperty("local").GetString();
                                 var external = interop.GetProperty("external").GetString();
-                                PlatformInteropMethods.Upsert(databaseContext, local, external, chainId, platformItem);
+                                PlatformInteropMethods.Upsert(databaseContext, local, external, chainId, platformItem,
+                                    false);
                             }
                         }
 
@@ -124,7 +127,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         var id = TokenMethods.Upsert(databaseContext, chainId, tokenSymbol, tokenSymbol, tokenDecimal,
                             fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable, burnable,
-                            address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw);
+                            address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw, false);
 
                         if ( token.TryGetProperty("external", out var externalsProperty) )
                         {
@@ -133,7 +136,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             {
                                 var platform = external.GetProperty("platform").GetString();
                                 var hash = external.GetProperty("hash").GetString();
-                                ExternalMethods.Upsert(databaseContext, platform, hash, id);
+                                ExternalMethods.Upsert(databaseContext, platform, hash, id, false);
                             }
                         }
 
@@ -153,11 +156,30 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                     foreach ( var organization in organizations )
                     {
-                        OrganizationMethods.Upsert(databaseContext, organization.ToString());
+                        var orgItem = OrganizationMethods.Upsert(databaseContext, organization.ToString(), false);
 
                         Log.Verbose(
                             "[{Name}] got Platform {Organization}",
                             Name, organization.ToString());
+
+                        //getting addresses
+                        var urlOrg = $"{Settings.Default.GetRest()}/api/getOrganization/{orgItem.NAME}";
+                        var responseOrg = Client.APIRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
+                        if ( responseOrg != null )
+                        {
+                            if ( responseOrg.RootElement.TryGetProperty("error", out var errorPropertyOrg) )
+                                Log.Error("[{Name}] Cannot fetch Token info. Error: {Error}",
+                                    Name, errorPropertyOrg.GetString());
+
+                            if ( responseOrg.RootElement.TryGetProperty("members", out var membersProperty) )
+                            {
+                                var members = membersProperty.EnumerateArray();
+                                Log.Verbose("[{Name}] got {Count} Addresses to process", Name, members.Count());
+                                foreach ( var member in members )
+                                    OrganizationAddressMethods.Upsert(databaseContext, orgItem, member.ToString(),
+                                        chainId, false);
+                            }
+                        }
 
                         updatedOrganizationsCount++;
                     }

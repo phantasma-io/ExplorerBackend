@@ -29,9 +29,9 @@ public static class NftMethods
         {
             entry = new Nft
             {
-                ChainId = chainId, 
-                TOKEN_ID = tokenId, 
-                TOKEN_URI = tokenUri, 
+                ChainId = chainId,
+                TOKEN_ID = tokenId,
+                TOKEN_URI = tokenUri,
                 ContractId = contractId,
                 DM_UNIX_SECONDS = UnixSeconds.Now()
             };

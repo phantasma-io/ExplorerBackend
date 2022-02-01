@@ -5,9 +5,9 @@ namespace Database.Main;
 public static class PlatformInteropMethods
 {
     public static void Upsert(MainDbContext databaseContext, string localAddress, string externalAddress, int chainId,
-        Platform platform)
+        Platform platform, bool saveChanges = true)
     {
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, localAddress, false);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, localAddress, saveChanges);
 
         var platformInterop =
             databaseContext.PlatformInterops.FirstOrDefault(x =>
@@ -20,7 +20,7 @@ public static class PlatformInteropMethods
             {EXTERNAL = externalAddress, LocalAddress = addressEntry, Platform = platform};
 
         databaseContext.PlatformInterops.Add(platformInterop);
-        databaseContext.SaveChanges();
+        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
 

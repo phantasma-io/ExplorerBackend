@@ -8,8 +8,7 @@ public static class GasEventMethods
         if ( string.IsNullOrEmpty(address) || string.IsNullOrEmpty(price) || string.IsNullOrEmpty(amount) ) return null;
 
         var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
-
-
+        
         var gasEvent = new GasEvent {Address = addressEntry, PRICE = price, AMOUNT = amount, Event = databaseEvent};
 
         databaseContext.GasEvents.Add(gasEvent);

@@ -20,11 +20,12 @@ public static class EventMethods
         int contractId,
         int eventKindId,
         string address,
-        int tokenAmount = 1)
+        int tokenAmount = 1,
+        bool saveChanges = true)
     {
         newEventCreated = false;
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, saveChanges);
 
         var evnt = databaseContext.Events.FirstOrDefault(x =>
             x.ChainId == chainId && x.Transaction == transaction && x.INDEX == index);
@@ -187,7 +188,9 @@ public static class EventMethods
         var nftList = databaseContext.Nfts.Where(x =>
             x.InfusedInto == nft && x.TOKEN_ID == databaseContext.Nfts.Where(y => y.TOKEN_ID == x.TOKEN_ID)
                 .Select(y => y.TOKEN_ID).First());
-
+        
+        Log.Verbose("Got {Count} Ntfs to defuse", nftList.Count());
+        
         foreach ( var item in nftList )
         {
             item.InfusedInto = null;

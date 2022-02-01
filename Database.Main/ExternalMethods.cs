@@ -4,7 +4,8 @@ namespace Database.Main;
 
 public static class ExternalMethods
 {
-    public static void Upsert(MainDbContext databaseContext, string platformName, string hash, int tokenId)
+    public static void Upsert(MainDbContext databaseContext, string platformName, string hash, int tokenId,
+        bool saveChanges = true)
     {
         var token = TokenMethods.Get(databaseContext, tokenId);
         var platform = PlatformMethods.Get(databaseContext, platformName);
@@ -21,7 +22,7 @@ public static class ExternalMethods
         external = new External {HASH = hash, Token = token, Platform = platform};
 
         databaseContext.Externals.Add(external);
-        databaseContext.SaveChanges();
+        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
 

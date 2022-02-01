@@ -4,7 +4,7 @@ namespace Database.Main;
 
 public static class OrganizationMethods
 {
-    public static Organization Upsert(MainDbContext databaseContext, string name)
+    public static Organization Upsert(MainDbContext databaseContext, string name, bool saveChanges = true)
     {
         var organization =
             databaseContext.Organizations.FirstOrDefault(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
@@ -14,7 +14,7 @@ public static class OrganizationMethods
         organization = new Organization {NAME = name};
 
         databaseContext.Organizations.Add(organization);
-        databaseContext.SaveChanges();
+        if ( saveChanges ) databaseContext.SaveChanges();
 
         return organization;
     }

@@ -14,12 +14,12 @@ public static class TokenMethods
     public static int Upsert(MainDbContext databaseContext, int chainId, string contractHash, string symbol,
         int decimals, bool fungible, bool transferable, bool finite, bool divisible, bool fuel, bool stakable,
         bool fiat, bool swappable, bool burnable, string address, string owner, string currentSupply, string maxSupply,
-        string burnedSupply, string scriptRaw)
+        string burnedSupply, string scriptRaw, bool saveChanges = true)
     {
         var contractId = ContractMethods.Upsert(databaseContext, symbol, chainId, contractHash, symbol);
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
-        var ownerEntry = AddressMethods.Upsert(databaseContext, chainId, owner, false);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, saveChanges);
+        var ownerEntry = AddressMethods.Upsert(databaseContext, chainId, owner, saveChanges);
 
 
         int id;
@@ -73,7 +73,7 @@ public static class TokenMethods
             };
             databaseContext.Tokens.Add(entry);
 
-            databaseContext.SaveChanges();
+            if ( saveChanges ) databaseContext.SaveChanges();
 
             id = entry.ID;
         }
