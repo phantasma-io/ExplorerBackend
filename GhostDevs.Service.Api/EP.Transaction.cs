@@ -23,15 +23,19 @@ public partial class Endpoints
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("hash", "string")] string hash = "",
+        [APIParameter("Address (partial match)", "string")]
+        string hash_partial = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0,
         [APIParameter("Return data with nft metadata", "integer")]
-        int with_nft = 0
+        int with_nft = 0,
+        [APIParameter("Return data with events of the transaction", "integer")]
+        int with_events = 0
     )
     {
         long totalResults = 0;
         Transaction[] transactionArray;
-        var fiat_currency = "USD";
+        const string fiatCurrency = "USD";
 
         using ( var databaseContext = new MainDbContext() )
         {
@@ -47,7 +51,10 @@ public partial class Endpoints
                     throw new APIException("Unsupported value for 'limit' parameter.");
 
                 if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
-                    throw new APIException("Unsupported value for 'address' parameter.");
+                    throw new APIException("Unsupported value for 'hash' parameter.");
+
+                if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckAddress(hash_partial) )
+                    throw new APIException("Unsupported value for 'hash_partial' parameter.");
 
                 var startTime = DateTime.Now;
 
@@ -55,12 +62,15 @@ public partial class Endpoints
 
                 var query = databaseContext.Transactions
                     .Include(x => x.Block)
-                    .Include(x => x.Events)
-                    .Include(x => x.Events).ThenInclude(x => x.EventKind)
-                    .Include(x => x.Events).ThenInclude(x => x.Chain)
-                    .Include(x => x.Events).ThenInclude(x => x.Contract)
-                    .Include(x => x.Events).ThenInclude(x => x.Address)
                     .AsQueryable();
+                if ( with_events == 1 )
+                    query = query.Include(x => x.Events)
+                        .Include(x => x.Events).ThenInclude(x => x.EventKind)
+                        .Include(x => x.Events).ThenInclude(x => x.Chain)
+                        .Include(x => x.Events).ThenInclude(x => x.Contract)
+                        .Include(x => x.Events).ThenInclude(x => x.Address)
+                        .AsQueryable();
+
                 if ( with_nft == 1 )
                     //not sure i need the following 3
                     query = query.Include(x => x.Events).ThenInclude(x => x.SourceAddress)
@@ -79,6 +89,9 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(hash) )
                     query = query.Where(x => string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
+
+                if ( !string.IsNullOrEmpty(hash_partial) )
+                    query = query.Where(x => x.HASH.ToUpper().Contains(hash_partial.ToUpper()));
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
@@ -109,7 +122,8 @@ public partial class Endpoints
                         hash = x.HASH,
                         blockHeight = x.Block.HEIGHT,
                         index = x.INDEX,
-                        events = events.Select(e => new Event
+                        events = ( with_events == 1 && x.Events != null
+                            ? events.Select(e => new Event
                             {
                                 chain = e.Chain.NAME.ToLower(),
                                 contract = ContractMethods.Prepend0x(e.Contract.HASH, e.Chain.NAME),
@@ -121,9 +135,9 @@ public partial class Endpoints
                                 base_symbol = e.Contract.SYMBOL,
                                 price = e.PRICE,
                                 fiat_price = FiatExchangeRateMethods
-                                    .Convert(fiatPricesInUsd, e.PRICE_USD, "USD", fiat_currency)
+                                    .Convert(fiatPricesInUsd, e.PRICE_USD, "USD", fiatCurrency)
                                     .ToString("0.####"),
-                                fiat_currency = fiat_currency,
+                                fiat_currency = fiatCurrency,
                                 quote_symbol = e.QuoteSymbol?.SYMBOL!,
                                 infused_symbol = e.InfusedSymbol?.SYMBOL!,
                                 infused_value = e.INFUSED_VALUE,
@@ -167,8 +181,8 @@ public partial class Endpoints
                                         attrValue3 = e.Nft.Series.ATTR_VALUE_3
                                     }
                                     : null
-                            })
-                            .ToArray()
+                            }).ToArray()
+                            : null ) ?? Array.Empty<Event>()
                     } ).ToArray();
 
                 var responseTime = DateTime.Now - startTime;

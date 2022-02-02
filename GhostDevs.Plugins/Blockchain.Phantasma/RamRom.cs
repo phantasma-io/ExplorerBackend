@@ -59,7 +59,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     var nftsOthers = databaseContext.Nfts
                         .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true &&
                                     x.Contract.SYMBOL.ToUpper() != "GHOST")
-                        .Take(maxRomRamUpdatesForOneSession - nfts.Count()).ToList();
+                        .Take(maxRomRamUpdatesForOneSession - nfts.Count).ToList();
                     nfts.AddRange(nftsOthers);
                 }
 
@@ -83,8 +83,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         if ( nft.Contract.SYMBOL.ToUpper() == "GAME" )
                         {
                             // Hack for binary data inside JSON
-                            var cutFrom = stringResponse.IndexOf(",{\"Key\" : \"OriginalMetadata\"");
-                            stringResponse = stringResponse.Substring(0, cutFrom) + "]}";
+                            var cutFrom = stringResponse.IndexOf(",{\"Key\" : \"OriginalMetadata\"",
+                                StringComparison.InvariantCulture);
+                            stringResponse = stringResponse[..cutFrom] + "]}";
 
                             if ( stringResponse.Contains(
                                     "\"creatorAddress\" : \"P2K9ih2iuscWbHT3eyzcjdX4UyEbyY44aJnukdQAS8C2WUY\"") )

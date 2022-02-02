@@ -21,6 +21,8 @@ public partial class Endpoints
         [APIParameter("address", "string")] string address = "",
         [APIParameter("address_name (ex. 'genesis')", "string")]
         string address_name = "",
+        [APIParameter("Address (partial match)", "string")]
+        string address_partial = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -43,7 +45,14 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                     throw new APIException("Unsupported value for 'address' parameter.");
 
-                if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckString(address_name) )
+                ContractMethods.Drop0x(ref address);
+
+                if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
+                    throw new APIException("Unsupported value for 'address_partial' parameter.");
+
+                ContractMethods.Drop0x(ref address_partial);
+
+                if ( !string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name) )
                     throw new APIException("Unsupported value for 'address_name' parameter.");
 
                 var startTime = DateTime.Now;
@@ -55,6 +64,9 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(address_name) )
                     query = query.Where(x => string.Equals(x.ADDRESS_NAME.ToUpper(), address_name.ToUpper()));
+
+                if ( !string.IsNullOrEmpty(address_partial) )
+                    query = query.Where(x => x.ADDRESS.ToUpper().Contains(address_partial.ToUpper()));
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )

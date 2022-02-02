@@ -759,6 +759,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         Name, kind, blockHeight);
                                     break;
                             }
+
+                            databaseContext.SaveChanges();
                         }
                         catch ( Exception e )
                         {

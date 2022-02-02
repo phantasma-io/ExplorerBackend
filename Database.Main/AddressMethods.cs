@@ -51,13 +51,11 @@ public static class AddressMethods
     }
 
 
-    public static AddressParsed[] ParseExtendedFormat(string addresses, string chainShortName = null)
+    private static AddressParsed[] ParseExtendedFormat(string addresses, string chainShortName = null)
     {
-        var values = addresses.Contains(",") ? addresses.Split(',') : new[] {addresses};
-        var result = new List<AddressParsed>();
-        foreach ( var value in values ) result.Add(new AddressParsed(value, chainShortName));
+        var values = addresses.Contains(',') ? addresses.Split(',') : new[] {addresses};
 
-        return result.ToArray();
+        return values.Select(value => new AddressParsed(value, chainShortName)).ToArray();
     }
 
 
@@ -68,7 +66,6 @@ public static class AddressMethods
     {
         ContractMethods.Drop0x(ref address);
 
-        var chain = ChainMethods.Get(databaseContext, chainId);
         var entry = databaseContext.Addresses
             .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
 
@@ -81,6 +78,7 @@ public static class AddressMethods
 
         if ( entry != null ) return entry;
 
+        var chain = ChainMethods.Get(databaseContext, chainId);
         entry = new Address {Chain = chain, ADDRESS = address};
         databaseContext.Addresses.Add(entry);
 

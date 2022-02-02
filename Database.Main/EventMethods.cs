@@ -99,9 +99,17 @@ public static class EventMethods
         var startTime = DateTime.Now;
         //just to check
 
-        var quoteSymbolId = GetTokenId(databaseContext, chainId, quoteSymbol);
-        var infusedSymbolId = GetTokenId(databaseContext, chainId, infusedSymbol);
-        var sourceAddressEntry = GetSourceAddress(databaseContext, sourceAddress, chainId, false);
+        int? quoteSymbolId = null;
+        if ( quoteSymbol != null )
+            quoteSymbolId = GetTokenId(databaseContext, chainId, quoteSymbol);
+
+        int? infusedSymbolId = null;
+        if ( infusedSymbol != null )
+            infusedSymbolId = GetTokenId(databaseContext, chainId, infusedSymbol);
+
+        Address sourceAddressEntry = null;
+        if ( sourceAddress != null )
+            sourceAddressEntry = GetSourceAddress(databaseContext, sourceAddress, chainId, false);
         var updateTime = DateTime.Now - startTime;
         Log.Verbose("Loaded Ids for Quote and Infused Symbol and Source Address processed in {Time} sec",
             Math.Round(updateTime.TotalSeconds, 3));
@@ -124,17 +132,22 @@ public static class EventMethods
         eventItem.TOKEN_AMOUNT = tokenAmount;
 
         eventUpdated = true;
-        startTime = DateTime.Now;
-        MarkNtfInfused(databaseContext, chainId, infusedSymbol, infusedValue, nft);
-        updateTime = DateTime.Now - startTime;
-        Log.Verbose("Marked infused processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
+
+        if ( nft != null )
+        {
+            startTime = DateTime.Now;
+            MarkNtfInfused(databaseContext, chainId, infusedSymbol, infusedValue, nft);
+            updateTime = DateTime.Now - startTime;
+            Log.Verbose("Marked infused processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
+        }
 
         var burnEvent = databaseContext.EventKinds
             .FirstOrDefault(x => x.NAME == "TokenBurn" && x.ChainId == chainId);
-        if ( burnEvent == null || eventKindId != burnEvent.ID ) return eventItem;
+        if ( burnEvent == null || eventKindId != burnEvent.ID || nft == null ) return eventItem;
 
         //TODO check if always needed
         // For burns we must release all infused nfts.
+
         startTime = DateTime.Now;
         ProcessBurnedNft(databaseContext, nft);
         updateTime = DateTime.Now - startTime;

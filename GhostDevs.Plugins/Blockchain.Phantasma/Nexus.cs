@@ -175,6 +175,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             {
                                 var members = membersProperty.EnumerateArray();
                                 Log.Verbose("[{Name}] got {Count} Addresses to process", Name, members.Count());
+
+
                                 foreach ( var member in members )
                                     OrganizationAddressMethods.Upsert(databaseContext, orgItem, member.ToString(),
                                         chainId, false);
