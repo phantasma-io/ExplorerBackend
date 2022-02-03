@@ -23,7 +23,7 @@ public partial class Endpoints
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("hash", "string")] string hash = "",
-        [APIParameter("Address (partial match)", "string")]
+        [APIParameter("hash (partial match)", "string")]
         string hash_partial = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0,

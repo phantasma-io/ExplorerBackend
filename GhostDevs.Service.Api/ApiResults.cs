@@ -315,3 +315,39 @@ public class OrganizationResult
     [APIDescription("List of available organizations")]
     public Organization[] organizations { get; set; }
 }
+
+public class Block
+{
+    [APIDescription("height of the block")]
+    public string height { get; set; }
+
+    [APIDescription("hash of this block")] public string hash { get; set; }
+
+    [APIDescription("hash of the previous block")]
+    public string previous_hash { get; set; }
+
+    [APIDescription("used protocol version")]
+    public int protocol { get; set; }
+
+    [APIDescription("chain address")] public string chain_address { get; set; }
+
+    [APIDescription("validator address")] public string validator_address { get; set; }
+
+    [APIDescription("list of oracles")] public Oracle[] oracles { get; set; }
+
+    [APIDescription("list of transactions")]
+    public Transaction[] Transactions { get; set; }
+}
+
+public class BlockResult
+{
+    [APIDescription("List of blocks")] public Block[] blocks { get; set; }
+}
+
+public class Oracle
+{
+    [APIDescription("url of the oracle")] public string url { get; set; }
+
+    [APIDescription("content of the oracle")]
+    public string content { get; set; }
+}
