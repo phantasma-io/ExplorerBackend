@@ -18,7 +18,9 @@ public partial class Endpoints
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50
+        [APIParameter("Limit", "integer")] int limit = 50,
+        [APIParameter("Return addresses with organization", "integer")]
+        int with_addresses = 0
     )
     {
         Organization[] organizationArray;
@@ -61,11 +63,13 @@ public partial class Endpoints
                 organizationArray = queryResults.Select(x => new Organization
                 {
                     name = x.NAME,
-                    addresses = x.OrganizationAddresses.Select(y => new Address
-                    {
-                        address = y.Address.ADDRESS,
-                        address_name = y.Address.ADDRESS_NAME
-                    }).ToArray()
+                    addresses = with_addresses == 1 && x.OrganizationAddresses != null
+                        ? x.OrganizationAddresses.Select(y => new Address
+                        {
+                            address = y.Address.ADDRESS,
+                            address_name = y.Address.ADDRESS_NAME
+                        }).ToArray()
+                        : null
                 }).ToArray();
 
 

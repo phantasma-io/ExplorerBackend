@@ -19,6 +19,7 @@ public partial class Endpoints
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("symbol", "string")] string symbol = "",
+        [APIParameter("hash", "string")] string hash = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -41,12 +42,18 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                     throw new APIException("Unsupported value for 'address' parameter.");
 
+                if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
+                    throw new APIException("Unsupported value for 'hash' parameter.");
+
                 var startTime = DateTime.Now;
 
                 var query = databaseContext.Contracts.AsQueryable();
 
                 if ( !string.IsNullOrEmpty(symbol) )
                     query = query.Where(x => string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+
+                if ( !string.IsNullOrEmpty(hash) )
+                    query = query.Where(x => string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )

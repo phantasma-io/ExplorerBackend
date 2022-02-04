@@ -43,7 +43,7 @@ public partial class Endpoints
     {
         // Results of the query
         long totalResults = 0;
-        Nft[] nftsArray = null;
+        Nft[] nftsArray;
 
         using ( var databaseContext = new MainDbContext() )
         {
@@ -103,10 +103,10 @@ public partial class Endpoints
                 var startTime = DateTime.Now;
 
                 // Getting exchange rates in advance.
-                var fiatPricesInUSD = FiatExchangeRateMethods.GetPrices(databaseContext);
+                //var fiatPricesInUSD = FiatExchangeRateMethods.GetPrices(databaseContext);
 
                 // Getting list of token prices in advance.
-                var tokenPrices = TokenMethods.GetPrices(databaseContext, fiat_currency);
+                //var tokenPrices = TokenMethods.GetPrices(databaseContext, fiat_currency);
 
                 var pgConnection = new PostgreSQLConnector(MainDbContext.GetConnectionString());
 
@@ -308,19 +308,20 @@ public partial class Endpoints
                     var infusionData = pgConnection
                         .ExecQueryDN(
                             $@"select ""KEY"", ""VALUE"" from ""Infusions"" where ""NftId"" = {x.GetString("ID")}")
-                        .Select(x => new Infusion {key = x.GetString("KEY"), value = x.GetString("VALUE")}).ToArray();
+                        .Select(objects => new Infusion
+                            {key = objects.GetString("KEY"), value = objects.GetString("VALUE")}).ToArray();
 
-                    InfusedInto? infusionIntoData = null;
+                    InfusedInto infusionIntoData = null;
                     var infusedIntoId = x.GetString("InfusedIntoId");
                     if ( infusedIntoId != null )
                         infusionIntoData = pgConnection.ExecQueryDN(
                                 $@"select ""TOKEN_ID"", ""Nfts"".""NAME"", ""HASH"" from ""Nfts"", ""Chains"", ""Contracts"" where ""Nfts"".""ID"" = {infusedIntoId} and ""Nfts"".""ChainId"" = ""Chains"".""ID"" and ""Nfts"".""ContractId"" = ""Contracts"".""ID""")
-                            .Select(x => new InfusedInto
+                            .Select(objects => new InfusedInto
                             {
-                                token_id = x.GetString("TOKEN_ID"),
-                                chain = x.GetString("NAME").ToLower(),
-                                contract = ContractMethods.Prepend0x(x.GetString("HASH"),
-                                    x.GetString("NFT_INFUSED_INTO_CHAIN"))
+                                token_id = objects.GetString("TOKEN_ID"),
+                                chain = objects.GetString("NAME").ToLower(),
+                                contract = ContractMethods.Prepend0x(objects.GetString("HASH"),
+                                    objects.GetString("NFT_INFUSED_INTO_CHAIN"))
                             }).FirstOrDefault();
 
                     var creatorAddress = databaseContext.Addresses
