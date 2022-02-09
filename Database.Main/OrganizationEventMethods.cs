@@ -10,8 +10,7 @@ public static class OrganizationEventMethods
         var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
 
         var organizationEntry = OrganizationMethods.Upsert(databaseContext, organization);
-
-
+        
         var organizationEvent = new OrganizationEvent
             {Address = addressEntry, Organization = organizationEntry, Event = databaseEvent};
 

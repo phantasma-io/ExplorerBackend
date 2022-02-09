@@ -257,6 +257,9 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Address>()
             .HasIndex(x => new {x.NAME_LAST_UPDATED_UNIX_SECONDS});
 
+        modelBuilder.Entity<Address>()
+            .HasIndex(x => new {x.ADDRESS, x.ADDRESS_NAME});
+
         //////////////////////
         // Event
         //////////////////////
@@ -532,6 +535,8 @@ public class MainDbContext : DbContext
         // SeriesMode
         //////////////////////
 
+        // FKs
+        
         // Indexes
 
         modelBuilder.Entity<SeriesMode>()
@@ -653,6 +658,7 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Platform)
             .WithMany(y => y.PlatformInterops)
             .HasForeignKey(x => x.PlatformId);
+        
         modelBuilder.Entity<PlatformInterop>()
             .HasOne(x => x.LocalAddress)
             .WithMany(y => y.PlatformInterops)
@@ -670,6 +676,7 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Platform)
             .WithMany(y => y.Externals)
             .HasForeignKey(x => x.PlatformId);
+        
         modelBuilder.Entity<External>()
             .HasOne(x => x.Token)
             .WithMany(y => y.Externals)
@@ -684,7 +691,6 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
-
 
         // Indexes
         modelBuilder.Entity<Organization>()
@@ -701,6 +707,7 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Organization)
             .WithMany(y => y.OrganizationEvents)
             .HasForeignKey(x => x.OrganizationId);
+        
         modelBuilder.Entity<OrganizationEvent>()
             .HasOne(x => x.Address)
             .WithMany(y => y.OrganizationEvents)
@@ -717,7 +724,6 @@ public class MainDbContext : DbContext
 
         // Indexes
 
-
         //////////////////////
         // AddressEvent
         //////////////////////
@@ -727,6 +733,7 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Address)
             .WithMany(y => y.AddressEvents)
             .HasForeignKey(x => x.AddressId);
+
         // Indexes
 
 
@@ -761,6 +768,7 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Address)
             .WithMany(y => y.GasEvents)
             .HasForeignKey(x => x.AddressId);
+
         // Indexes
 
 
@@ -792,7 +800,6 @@ public class MainDbContext : DbContext
             .WithMany(y => y.SaleEvents)
             .HasForeignKey(x => x.SaleEventKindId);
 
-
         // Indexes
 
 
@@ -808,12 +815,12 @@ public class MainDbContext : DbContext
 
         // Indexes
 
+
         //////////////////////
         // TokenEvent
         //////////////////////
 
         // FKs
-
         modelBuilder.Entity<TokenEvent>()
             .HasOne(x => x.Token)
             .WithMany(y => y.TokenEvents)
@@ -960,6 +967,7 @@ public class MainDbContext : DbContext
 
         // Indexes
 
+
         //////////////////////
         // MarketEventFiatPrice
         //////////////////////
@@ -973,6 +981,7 @@ public class MainDbContext : DbContext
         // Indexes
         modelBuilder.Entity<MarketEventFiatPrice>()
             .HasIndex(x => new {x.PRICE_USD});
+
         modelBuilder.Entity<MarketEventFiatPrice>()
             .HasIndex(x => new {x.PRICE_END_USD});
     }

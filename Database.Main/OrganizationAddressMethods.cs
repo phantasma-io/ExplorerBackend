@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace Database.Main;
 
 public static class OrganizationAddressMethods
@@ -9,7 +11,12 @@ public static class OrganizationAddressMethods
 
         var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
 
-        var organizationAddress = new OrganizationAddress {Address = addressEntry, Organization = organization};
+        var organizationAddress = databaseContext.OrganizationAddresses.FirstOrDefault(x =>
+            x.Address.ADDRESS == address && x.Organization == organization);
+
+        if ( organizationAddress != null ) return organizationAddress;
+
+        organizationAddress = new OrganizationAddress {Address = addressEntry, Organization = organization};
 
         databaseContext.OrganizationAddresses.Add(organizationAddress);
         if ( saveChanges ) databaseContext.SaveChanges();
