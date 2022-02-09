@@ -10,17 +10,21 @@ using Microsoft.Extensions.Configuration;
 // Also public method GetConnectionString() availabe, allowing to get database connection string,
 // which can be used by PostgreSQLConnector module to connect to database and execute raw SQL queries.
 
+//since we build our db struct here, we have a different naming as well
+// ReSharper disable InconsistentNaming
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+
 namespace Database.Main;
 
 public class MainDbContext : DbContext
 {
     // Keeping DB configs on same level as "bin" folder.
     // If path contains "Database.Main" - it means we are running database update.
-    public static readonly string ConfigDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.Main")
+    private static readonly string ConfigDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.Main")
         ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..")
         : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
 
-    public static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
+    private static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
 
     public DbSet<Chain> Chains { get; set; }
     public DbSet<Contract> Contracts { get; set; }
@@ -60,6 +64,7 @@ public class MainDbContext : DbContext
     public DbSet<SignatureKind> SignatureKinds { get; set; }
     public DbSet<Signature> Signatures { get; set; }
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
+    public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
 
 
     public static string GetConnectionString()
@@ -279,29 +284,9 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.ContractId);
 
         modelBuilder.Entity<Event>()
-            .HasOne(x => x.QuoteSymbol)
-            .WithMany(y => y.Events)
-            .HasForeignKey(x => x.QuoteSymbolId);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.InfusedSymbol)
-            .WithMany(y => y.InfusionEvents)
-            .HasForeignKey(x => x.InfusedSymbolId);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.Infusion)
-            .WithMany(y => y.Events)
-            .HasForeignKey(x => x.InfusionId);
-
-        modelBuilder.Entity<Event>()
             .HasOne(x => x.Address)
             .WithMany(y => y.Events)
             .HasForeignKey(x => x.AddressId);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.SourceAddress)
-            .WithMany(y => y.SourceAddressEvents)
-            .HasForeignKey(x => x.SourceAddressId);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.OrganizationEvent)
@@ -380,9 +365,6 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.ContractId, x.TOKEN_ID});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.PRICE_USD});
 
         modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.HIDDEN});
@@ -855,6 +837,12 @@ public class MainDbContext : DbContext
             .WithMany(y => y.InfusedSymbolInfusionEvents)
             .HasForeignKey(x => x.InfusedTokenId);
 
+        modelBuilder.Entity<InfusionEvent>()
+            .HasOne(x => x.Infusion)
+            .WithMany(y => y.InfusionEvents)
+            .HasForeignKey(x => x.InfusionId);
+
+
         // Indexes
         modelBuilder.Entity<InfusionEvent>()
             .HasIndex(x => x.TOKEN_ID);
@@ -971,6 +959,22 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.OrganizationId);
 
         // Indexes
+
+        //////////////////////
+        // MarketEventFiatPrice
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<MarketEventFiatPrice>()
+            .HasOne(x => x.MarketEvent)
+            .WithOne(y => y.MarketEventFiatPrice)
+            .HasForeignKey<MarketEventFiatPrice>(x => x.MarketEventId);
+
+        // Indexes
+        modelBuilder.Entity<MarketEventFiatPrice>()
+            .HasIndex(x => new {x.PRICE_USD});
+        modelBuilder.Entity<MarketEventFiatPrice>()
+            .HasIndex(x => new {x.PRICE_END_USD});
     }
 }
 
@@ -992,8 +996,10 @@ public class Chain
     public virtual List<EventKind> EventKinds { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<SaleEventKind> SaleEventKinds { get; set; }
+
     public virtual List<ChainEvent> ChainEvents { get; set; }
-    public virtual List<TokenEvent> TokenEvents { get; set; }
+
+    //public virtual List<TokenEvent> TokenEvents { get; set; } currently not in use
     public virtual List<MarketEventKind> MarketEventKinds { get; set; }
 }
 
@@ -1008,7 +1014,7 @@ public class Contract
     public string SYMBOL { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
-    public int? TokenId { get; set; }
+    public int? TokenId { get; set; } //TODO maybe fill data
     public virtual Token Token { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<Nft> Nfts { get; set; }
@@ -1078,7 +1084,6 @@ public class Address
     public virtual List<AddressEvent> AddressEvents { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<PlatformInterop> PlatformInterops { get; set; }
-    public virtual List<Event> SourceAddressEvents { get; set; }
     public virtual List<Block> ChainAddressBlocks { get; set; }
     public virtual List<Block> ValidatorAddressBlocks { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
@@ -1096,18 +1101,12 @@ public class Event
     // EF do not preserve insertion order for ID,
     // but we need to know exact order of events, so we add special field for this.
     public string TOKEN_ID { get; set; }
-    public int TOKEN_AMOUNT { get; set; } // Sadly only dotnet 6 supports default values
-    public string CONTRACT_AUCTION_ID { get; set; }
-    public string PRICE { get; set; }
-    public decimal PRICE_USD { get; set; } // Historically correct USD price.
     public bool HIDDEN { get; set; }
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
     public bool BLACKLISTED { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
-    public int? SourceAddressId { get; set; }
-    public virtual Address SourceAddress { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
     public int ContractId { get; set; }
@@ -1116,13 +1115,6 @@ public class Event
     public virtual Transaction Transaction { get; set; }
     public int EventKindId { get; set; }
     public virtual EventKind EventKind { get; set; }
-    public int? QuoteSymbolId { get; set; }
-    public virtual Token QuoteSymbol { get; set; }
-    public int? InfusedSymbolId { get; set; }
-    public virtual Token InfusedSymbol { get; set; }
-    public string INFUSED_VALUE { get; set; }
-    public int? InfusionId { get; set; }
-    public virtual Infusion Infusion { get; set; }
     public int? NftId { get; set; }
     public virtual Nft Nft { get; set; }
     public virtual OrganizationEvent OrganizationEvent { get; set; }
@@ -1180,9 +1172,10 @@ public class Token
     } // Navigation properties can only participate in a single relationship, so adding second one
 
     public int ContractId { get; set; }
+
     public virtual Contract Contract { get; set; }
-    public virtual List<Event> Events { get; set; }
-    public virtual List<Event> InfusionEvents { get; set; }
+
+    //public virtual List<Event> Events { get; set; }
     public virtual List<TokenDailyPrice> TokenDailyPrices { get; set; }
     public virtual List<Infusion> Infusions { get; set; }
     public virtual List<External> Externals { get; set; }
@@ -1327,11 +1320,11 @@ public class Infusion
     public int ID { get; set; }
     public string KEY { get; set; }
     public string VALUE { get; set; }
-    public virtual List<Event> Events { get; set; }
     public int? TokenId { get; set; }
     public virtual Token Token { get; set; }
     public int NftId { get; set; }
     public virtual Nft Nft { get; set; }
+    public virtual List<InfusionEvent> InfusionEvents { get; set; }
 }
 
 public class FiatExchangeRate
@@ -1505,6 +1498,8 @@ public class InfusionEvent
     public string INFUSED_VALUE { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
+    public int? InfusionId { get; set; }
+    public virtual Infusion Infusion { get; set; }
 }
 
 public class MarketEventKind
@@ -1531,6 +1526,7 @@ public class MarketEvent
     public string END_PRICE { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
+    public virtual MarketEventFiatPrice MarketEventFiatPrice { get; set; }
 }
 
 //to avoid to double data, we create a table for oracle url and content, and just ref it here
@@ -1575,4 +1571,14 @@ public class OrganizationAddress
     public virtual Organization Organization { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
+}
+
+public class MarketEventFiatPrice
+{
+    public int ID { get; set; }
+    public decimal PRICE_USD { get; set; }
+    public decimal PRICE_END_USD { get; set; }
+    public string FIAT_NAME { get; set; }
+    public int MarketEventId { get; set; }
+    public virtual MarketEvent MarketEvent { get; set; }
 }

@@ -185,7 +185,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     nft.RAM = response.RootElement.GetProperty("ram").GetString();
 
                     // Pasring ROM
-                    IRom parsedRom = null;
+                    IRom parsedRom;
                     var romBytes = nft.ROM.Decode();
                     parsedRom = nft.Contract.SYMBOL switch
                     {
@@ -329,7 +329,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     public class CustomRom : IRom
     {
-        private readonly Dictionary<VMObject, VMObject> fields = new();
+        private readonly Dictionary<VMObject, VMObject> _fields = new();
 
 
         public CustomRom(byte[] romBytes)
@@ -338,7 +338,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 var rom = VMObject.FromBytes(romBytes);
                 if ( rom.Type == VMType.Struct )
-                    fields = ( Dictionary<VMObject, VMObject> ) rom.Data;
+                    _fields = ( Dictionary<VMObject, VMObject> ) rom.Data;
                 else
                     Log.Error("[PHA][CustomRom] Cannot parse ROM");
             }
@@ -351,19 +351,19 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         public string GetName()
         {
-            return fields.TryGetValue(VMObject.FromObject("name"), out var value) ? value.AsString() : "";
+            return _fields.TryGetValue(VMObject.FromObject("name"), out var value) ? value.AsString() : "";
         }
 
 
         public string GetDescription()
         {
-            return fields.TryGetValue(VMObject.FromObject("description"), out var value) ? value.AsString() : "";
+            return _fields.TryGetValue(VMObject.FromObject("description"), out var value) ? value.AsString() : "";
         }
 
 
         public long GetDate()
         {
-            return fields.TryGetValue(VMObject.FromObject("created"), out var value)
+            return _fields.TryGetValue(VMObject.FromObject("created"), out var value)
                 ? value.AsTimestamp().Value
                 : 0;
         }
@@ -371,13 +371,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         public BigInteger GetNftType()
         {
-            if ( fields.TryGetValue(VMObject.FromObject("typeNFT"), out var value) ) return value.AsNumber();
+            if ( _fields.TryGetValue(VMObject.FromObject("typeNFT"), out var value) ) return value.AsNumber();
 
             // TODO - remove, for old testnet NFTs
-            if ( fields.TryGetValue(VMObject.FromObject("type"), out value) ) return value.AsNumber();
+            if ( _fields.TryGetValue(VMObject.FromObject("type"), out value) ) return value.AsNumber();
 
             // TODO - sounds better, no?
-            return fields.TryGetValue(VMObject.FromObject("nftType"), out value) ? value.AsNumber() : 0;
+            return _fields.TryGetValue(VMObject.FromObject("nftType"), out value) ? value.AsNumber() : 0;
         }
 
 
@@ -385,7 +385,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             try
             {
-                if ( fields.TryGetValue(VMObject.FromObject("hasLocked"), out var value) )
+                if ( _fields.TryGetValue(VMObject.FromObject("hasLocked"), out var value) )
                 {
                     Log.Verbose("[PHA][CustomRom] ROM hasLocked {Value}", value);
                     //TODO maybe fix

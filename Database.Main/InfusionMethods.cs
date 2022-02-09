@@ -7,10 +7,9 @@ public static class InfusionMethods
 {
     // Checks if table has entry with given Nft/key pair,
     // and adds new entry, if there's no entry available.
-    public static void Upsert(MainDbContext databaseContext, Event infusionEvent, Nft nft, string key, string value)
+    public static void Upsert(MainDbContext databaseContext, InfusionEvent infusionEvent, Nft nft, string key,
+        string value, Token token)
     {
-        // Trying to get token.
-        var token = TokenMethods.Get(databaseContext, infusionEvent.ChainId, infusionEvent.InfusedSymbol.SYMBOL);
         if ( token is {FUNGIBLE: false} )
         {
             // For NFT always create new entry, if we can't find infusion with same value
@@ -32,7 +31,7 @@ public static class InfusionMethods
                                  string.Equals(x.KEY.ToUpper(), key.ToUpper()));
         if ( infusion == null )
         {
-            var fungibleToken = TokenMethods.Get(databaseContext, infusionEvent.ChainId, key);
+            var fungibleToken = TokenMethods.Get(databaseContext, infusionEvent.Event.ChainId, key);
             infusion = new Infusion {Nft = nft, KEY = key, Token = fungibleToken};
             databaseContext.Infusions.Add(infusion);
 

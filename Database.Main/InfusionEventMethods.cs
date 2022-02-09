@@ -1,3 +1,7 @@
+using System;
+using System.Linq;
+using Serilog;
+
 namespace Database.Main;
 
 public static class InfusionEventMethods
@@ -22,9 +26,34 @@ public static class InfusionEventMethods
             Event = databaseEvent
         };
 
+        if ( databaseEvent.Nft != null )
+        {
+            var startTime = DateTime.Now;
+            MarkNtfInfused(databaseContext, infusedToken, infusedValue, databaseEvent.Nft);
+            var updateTime = DateTime.Now - startTime;
+            Log.Verbose("Marked infused processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
+        }
+
         databaseContext.InfusionEvents.Add(infusionEvent);
         if ( saveChanges ) databaseContext.SaveChanges();
 
         return infusionEvent;
+    }
+
+
+    private static void MarkNtfInfused(MainDbContext databaseContext, Token infusedToken, string infusedValue, Nft nft)
+    {
+        if ( infusedToken == null || infusedToken.FUNGIBLE ) return;
+
+        // NFT was infused, we should mark it as infused.
+        var infusedNft = databaseContext.Nfts.FirstOrDefault(x => x.TOKEN_ID == infusedValue);
+        if ( infusedNft == null )
+            Log.Warning("NFT infused, could not find a Nft for Value {Infused}, Symbol {Symbol}", infusedValue,
+                infusedToken.SYMBOL);
+        else
+        {
+            infusedNft.InfusedInto = nft;
+            Log.Information("NFT infused: {InfusedNft} into NFT {Nft}", infusedNft.TOKEN_ID, nft.TOKEN_ID);
+        }
     }
 }

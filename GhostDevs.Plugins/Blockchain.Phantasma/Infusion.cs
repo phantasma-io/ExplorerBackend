@@ -11,7 +11,7 @@ namespace GhostDevs.Blockchain;
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     // When we reach this number of processed infusions, we save received/processed results.
-    private static readonly int maxInfusionUpdatesForOneSession = 1000;
+    private const int MaxInfusionUpdatesForOneSession = 1000;
 
 
     private void ProcessInfusionEvents(int chainId)
@@ -22,24 +22,24 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         using ( var databaseContext = new MainDbContext() )
         {
-            var infusionEvents = databaseContext.Events
-                .Where(x => x.ChainId == chainId && x.Infusion == null && x.EventKind.NAME.ToUpper() == "INFUSION" &&
-                            x.Contract.NAME != null)
-                .Take(maxInfusionUpdatesForOneSession).ToList();
+            var infusionEvents = databaseContext.InfusionEvents
+                .Where(x => x.Event.ChainId == chainId && x.Infusion == null && x.Event.Contract.NAME != null)
+                .Take(MaxInfusionUpdatesForOneSession).ToList();
 
             updatedInfusionsCount = 0;
             foreach ( var infusionEvent in infusionEvents )
             {
                 //TODO just for now, might not be needed later
-                if ( string.IsNullOrEmpty(infusionEvent.InfusedSymbol?.SYMBOL) ) continue;
+                //should not be needed since we only work the infusion event table now
+                if ( string.IsNullOrEmpty(infusionEvent.InfusedToken?.SYMBOL) ) continue;
 
-                var token = TokenMethods.Get(databaseContext, chainId, infusionEvent.InfusedSymbol.SYMBOL);
+                var token = TokenMethods.Get(databaseContext, chainId, infusionEvent.InfusedToken.SYMBOL);
+
 
                 if ( token?.FUNGIBLE == null )
                 {
-                    Log.Warning(
-                        "[{Name}] Infusions: Token {Symbol} should be initialized in another thread first", Name,
-                        infusionEvent.InfusedSymbol.SYMBOL);
+                    Log.Warning("[{Name}] Infusions: Token {Symbol} should be initialized in another thread first",
+                        Name, infusionEvent.InfusedToken.SYMBOL);
                     continue;
                 }
 
@@ -53,13 +53,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         .ToString(CultureInfo.InvariantCulture);
                 }
 
-                InfusionMethods.Upsert(databaseContext, infusionEvent, infusionEvent.Nft,
-                    infusionEvent.InfusedSymbol.SYMBOL, value);
+                InfusionMethods.Upsert(databaseContext, infusionEvent, infusionEvent.Event.Nft,
+                    infusionEvent.InfusedToken.SYMBOL, value, token);
                 databaseContext.SaveChanges();
 
                 updatedInfusionsCount++;
 
-                if ( updatedInfusionsCount == maxInfusionUpdatesForOneSession ) break;
+                if ( updatedInfusionsCount == MaxInfusionUpdatesForOneSession ) break;
             }
         }
 

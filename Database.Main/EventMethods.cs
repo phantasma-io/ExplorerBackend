@@ -20,7 +20,6 @@ public static class EventMethods
         int contractId,
         int eventKindId,
         string address,
-        int tokenAmount = 1,
         bool saveChanges = true)
     {
         newEventCreated = false;
@@ -42,8 +41,7 @@ public static class EventMethods
                 Transaction = transaction,
                 ContractId = contractId,
                 EventKindId = eventKindId,
-                Address = addressEntry,
-                TOKEN_AMOUNT = tokenAmount
+                Address = addressEntry
             };
 
             databaseContext.Events.Add(evnt);
@@ -61,7 +59,6 @@ public static class EventMethods
             evnt.ContractId = contractId;
             evnt.EventKindId = eventKindId;
             evnt.Address = addressEntry;
-            evnt.TOKEN_AMOUNT = tokenAmount;
         }
 
         return evnt;
@@ -71,13 +68,13 @@ public static class EventMethods
     public static void UpdateOnEventMerge(MainDbContext databaseContext, int id, int eventKindId, int sourceAddressId,
         bool hidden)
     {
-        var evnt = databaseContext.Events.Single(x => x.ID == id);
+        /*var evnt = databaseContext.Events.Single(x => x.ID == id);
 
         evnt.EventKindId = eventKindId;
         evnt.SourceAddressId = sourceAddressId;
         evnt.HIDDEN = hidden;
 
-        evnt.DM_UNIX_SECONDS = UnixSeconds.Now();
+        evnt.DM_UNIX_SECONDS = UnixSeconds.Now();*/
     }
 
 
@@ -91,25 +88,11 @@ public static class EventMethods
 
 
     public static Event UpdateValues(MainDbContext databaseContext, out bool eventUpdated, Event eventItem, Nft nft,
-        string contractAuctionId, string quoteContractHash, string quoteSymbol, string price, decimal priceUsd,
-        string infusedContractHash, string infusedSymbol, string infusedValue, string tokenId, string sourceAddress,
-        int chainId, int eventKindId, int contractId, int tokenAmount = 1)
+        string tokenId, int chainId, int eventKindId, int contractId)
     {
         eventUpdated = false;
         var startTime = DateTime.Now;
-        //just to check
 
-        int? quoteSymbolId = null;
-        if ( quoteSymbol != null )
-            quoteSymbolId = GetTokenId(databaseContext, chainId, quoteSymbol);
-
-        int? infusedSymbolId = null;
-        if ( infusedSymbol != null )
-            infusedSymbolId = GetTokenId(databaseContext, chainId, infusedSymbol);
-
-        Address sourceAddressEntry = null;
-        if ( sourceAddress != null )
-            sourceAddressEntry = GetSourceAddress(databaseContext, sourceAddress, chainId, false);
         var updateTime = DateTime.Now - startTime;
         Log.Verbose("Loaded Ids for Quote and Infused Symbol and Source Address processed in {Time} sec",
             Math.Round(updateTime.TotalSeconds, 3));
@@ -120,26 +103,10 @@ public static class EventMethods
         eventItem.ChainId = chainId;
         eventItem.ContractId = contractId;
         eventItem.EventKindId = eventKindId;
-        eventItem.QuoteSymbolId = quoteSymbolId;
-        eventItem.PRICE = price;
-        eventItem.PRICE_USD = priceUsd;
-        eventItem.InfusedSymbolId = infusedSymbolId;
-        eventItem.INFUSED_VALUE = infusedValue;
         eventItem.TOKEN_ID = tokenId;
-        eventItem.SourceAddress = sourceAddressEntry;
         eventItem.Nft = nft;
-        eventItem.CONTRACT_AUCTION_ID = contractAuctionId;
-        eventItem.TOKEN_AMOUNT = tokenAmount;
 
         eventUpdated = true;
-
-        if ( nft != null )
-        {
-            startTime = DateTime.Now;
-            MarkNtfInfused(databaseContext, chainId, infusedSymbol, infusedValue, nft);
-            updateTime = DateTime.Now - startTime;
-            Log.Verbose("Marked infused processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
-        }
 
         var burnEvent = databaseContext.EventKinds
             .FirstOrDefault(x => x.NAME == "TokenBurn" && x.ChainId == chainId);
@@ -154,45 +121,6 @@ public static class EventMethods
         Log.Verbose("Process Burned, processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
 
         return eventItem;
-    }
-
-
-    private static Address GetSourceAddress(MainDbContext databaseContext, string sourceAddress, int chainId,
-        bool saveChanges)
-    {
-        Address sourceAddressEntry = null;
-        if ( !string.IsNullOrEmpty(sourceAddress) )
-            sourceAddressEntry = AddressMethods.Upsert(databaseContext, chainId, sourceAddress, saveChanges);
-        return sourceAddressEntry;
-    }
-
-
-    private static int? GetTokenId(MainDbContext databaseContext, int chainId, string symbol)
-    {
-        int? id = null;
-        if ( !string.IsNullOrEmpty(symbol) )
-            id = TokenMethods.Get(databaseContext, chainId, symbol).ID;
-        return id;
-    }
-
-
-    private static void MarkNtfInfused(MainDbContext databaseContext, int chainId, string infusedSymbol,
-        string infusedValue, Nft nft)
-    {
-        if ( string.IsNullOrEmpty(infusedSymbol) ||
-             TokenMethods.Get(databaseContext, chainId, infusedSymbol).FUNGIBLE ) return;
-
-        // NFT was infused, we should mark it as infused.
-        var infusedNft = databaseContext.Nfts.FirstOrDefault(x => x.TOKEN_ID == infusedValue);
-        if ( infusedNft == null )
-            Log.Warning("NFT infused, could not find a Nft for Value {Infused}, Symbol {Symbol}", infusedValue,
-                infusedSymbol);
-        else
-        {
-            infusedNft.InfusedInto = nft;
-
-            Log.Information("NFT infused: {InfusedNft} into NFT {Nft}", infusedNft.TOKEN_ID, nft.TOKEN_ID);
-        }
     }
 
 

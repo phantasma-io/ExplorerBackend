@@ -74,7 +74,7 @@ internal class Utils
 
     public static Event CreateEvent(MainDbContext context, out bool eventCreated, uint timestamp,
         int index, int chainId, Transaction transaction, int contractId, int eventKindId, string address,
-        int tokenAmount = 1, bool saveChanges = true)
+        bool saveChanges = true)
     {
         var eventItem = EventMethods.Upsert(context,
             out var created,
@@ -85,10 +85,9 @@ internal class Utils
             contractId,
             eventKindId,
             address,
-            tokenAmount,
             saveChanges);
         eventCreated = created;
-        context.SaveChanges();
+        if ( saveChanges ) context.SaveChanges();
         return eventItem;
     }
 }

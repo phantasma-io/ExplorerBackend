@@ -9,7 +9,7 @@ namespace GhostDevs.Blockchain;
 
 public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
 {
-    public void MarkBurnedNfts()
+    private void MarkBurnedNfts()
     {
         var startTime = DateTime.Now;
 

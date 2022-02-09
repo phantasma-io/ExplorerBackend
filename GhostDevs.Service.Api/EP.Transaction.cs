@@ -9,6 +9,7 @@ using Address = GhostDevs.Service.ApiResults.Address;
 using AddressEvent = GhostDevs.Service.ApiResults.AddressEvent;
 using Chain = GhostDevs.Service.ApiResults.Chain;
 using ChainEvent = GhostDevs.Service.ApiResults.ChainEvent;
+using Contract = GhostDevs.Service.ApiResults.Contract;
 using Event = GhostDevs.Service.ApiResults.Event;
 using GasEvent = GhostDevs.Service.ApiResults.GasEvent;
 using HashEvent = GhostDevs.Service.ApiResults.HashEvent;
@@ -47,7 +48,9 @@ public partial class Endpoints
         [APIParameter("Return data with events of the transaction", "integer")]
         int with_events = 0,
         [APIParameter("Return event data of events", "integer")]
-        int with_event_data = 0
+        int with_event_data = 0,
+        [APIParameter("Return with fiat_prices (only at market_event)", "integer")]
+        int with_fiat = 0
     )
     {
         long totalResults = 0;
@@ -119,25 +122,18 @@ public partial class Endpoints
                             ? events.Select(e => new Event
                             {
                                 chain = e.Chain.NAME.ToLower(),
-                                contract = ContractMethods.Prepend0x(e.Contract.HASH, e.Chain.NAME),
                                 date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
                                 transaction_hash = x.HASH, //a bit redundant in that case
                                 token_id = e.TOKEN_ID,
-                                token_amount = e.TOKEN_AMOUNT,
                                 event_kind = e.EventKind.NAME,
-                                base_symbol = e.Contract.SYMBOL,
-                                price = e.PRICE,
-                                fiat_price = FiatExchangeRateMethods
-                                    .Convert(fiatPricesInUsd, e.PRICE_USD, "USD", fiatCurrency)
-                                    .ToString("0.####"),
-                                fiat_currency = fiatCurrency,
-                                quote_symbol = e.QuoteSymbol?.SYMBOL!,
-                                infused_symbol = e.InfusedSymbol?.SYMBOL!,
-                                infused_value = e.INFUSED_VALUE,
                                 address = AddressMethods.Prepend0x(e.Address.ADDRESS, e.Chain.NAME),
-                                onchain_name = e.Address.ADDRESS_NAME,
-                                source_address = AddressMethods.Prepend0x(e.SourceAddress?.ADDRESS, e.Chain.NAME),
-                                source_onchain_name = e.SourceAddress?.ADDRESS_NAME!,
+                                address_name = e.Address.ADDRESS_NAME,
+                                contract = new Contract
+                                {
+                                    name = e.Contract.NAME,
+                                    hash = ContractMethods.Prepend0x(e.Contract.HASH, e.Chain.NAME),
+                                    symbol = e.Contract.SYMBOL
+                                },
                                 nft_metadata = with_nft == 1 && e.Nft != null
                                     ? new NftMetadata
                                     {
@@ -296,7 +292,21 @@ public partial class Endpoints
                                         end_price = e.MarketEvent.END_PRICE,
                                         price = e.MarketEvent.PRICE,
                                         market_event_kind = e.MarketEvent.MarketEventKind.NAME,
-                                        market_id = e.MarketEvent.MARKET_ID
+                                        market_id = e.MarketEvent.MARKET_ID,
+                                        fiat_price = with_fiat == 1
+                                            ? new FiatPrice
+                                            {
+                                                fiat_currency = e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                                                fiat_price = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
+                                                    e.MarketEvent.MarketEventFiatPrice.PRICE_USD,
+                                                    e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                                                    fiatCurrency).ToString("0.####"),
+                                                fiat_price_end = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
+                                                    e.MarketEvent.MarketEventFiatPrice.PRICE_END_USD,
+                                                    e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                                                    fiatCurrency).ToString("0.####")
+                                            }
+                                            : null
                                     }
                                     : null,
                                 organization_event = with_event_data == 1 && e.OrganizationEvent != null

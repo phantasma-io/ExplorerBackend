@@ -303,16 +303,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         out var eventUpdated,
                                         databaseEvent,
                                         nft,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        0,
-                                        infusionEventData.InfusedSymbol,
-                                        infusionEventData.InfusedSymbol,
-                                        infusionEventData.InfusedValue.ToString(),
                                         tokenId,
-                                        null,
                                         chainId,
                                         eventKindId,
                                         contractId
@@ -404,16 +395,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         out var eventUpdated,
                                         databaseEvent,
                                         nft,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        0,
-                                        null,
-                                        null,
-                                        null,
                                         tokenId,
-                                        null,
                                         chainId,
                                         eventKindId,
                                         contractId
@@ -478,17 +460,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     var tokenId = marketEventData.ID.ToString();
 
                                     Nft nft = null;
-                                    var price = "";
                                     if ( !fungible )
                                     {
                                         var ntfStartTime = DateTime.Now;
-                                        if ( kind == EventKind.OrderBid ||
-                                             kind == EventKind.OrderFilled &&
-                                             marketEventData.Type != TypeAuction.Fixed )
-                                            price = marketEventData.EndPrice.ToString();
-                                        else
-                                            price = marketEventData.Price.ToString();
-
 
                                         // Searching for corresponding NFT.
                                         // If it's available, we will set up relation.
@@ -526,16 +500,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         out var eventUpdated,
                                         databaseEvent,
                                         nft,
-                                        null,
-                                        marketEventData.QuoteSymbol,
-                                        marketEventData.QuoteSymbol,
-                                        price,
-                                        0,
-                                        null,
-                                        null,
-                                        null,
                                         tokenId,
-                                        null,
                                         chainId,
                                         eventKindId,
                                         contractId
@@ -550,8 +515,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         var marketEvent = MarketEventMethods.Upsert(databaseContext,
                                             marketEventData.Type.ToString(), marketEventData.BaseSymbol,
-                                            marketEventData.QuoteSymbol, price, marketEventData.EndPrice.ToString(),
-                                            marketEventData.ID.ToString(), chainId, databaseEvent);
+                                            marketEventData.QuoteSymbol, marketEventData.Price.ToString(),
+                                            marketEventData.EndPrice.ToString(), marketEventData.ID.ToString(), chainId,
+                                            databaseEvent);
 
                                         Log.Verbose("[{Name}] added MarketEventData with internal Id {Id}",
                                             Name, marketEvent.ID);

@@ -95,23 +95,13 @@ public class NftsResult
 public class Event
 {
     public string? chain { get; set; }
-    public string? contract { get; set; }
     public string? date { get; set; }
     public string? transaction_hash { get; set; }
     public string? token_id { get; set; }
-    public int token_amount { get; set; }
     public string? event_kind { get; set; }
-    public string? base_symbol { get; set; }
-    public string? quote_symbol { get; set; }
-    public string? price { get; set; }
-    public string? infused_symbol { get; set; }
-    public string? infused_value { get; set; }
-    public string? fiat_price { get; set; }
-    public string? fiat_currency { get; set; }
-    public string? source_address { get; set; }
-    public string? source_onchain_name { get; set; }
     public string? address { get; set; }
-    public string? onchain_name { get; set; }
+    public string? address_name { get; set; }
+    public Contract? contract { get; set; }
     public NftMetadata? nft_metadata { get; set; }
     public Series? series { get; set; }
     public AddressEvent? address_event { get; set; }
@@ -468,6 +458,7 @@ public class MarketEvent
     public string? market_id { get; set; }
     public string? price { get; set; }
     public string? end_price { get; set; }
+    public FiatPrice? fiat_price { get; set; }
 }
 
 public class OrganizationEvent
@@ -498,4 +489,11 @@ public class TransactionSettleEvent
 {
     public string? hash { get; set; }
     public Platform? platform { get; set; }
+}
+
+public class FiatPrice
+{
+    public string? fiat_currency { get; set; }
+    public string? fiat_price { get; set; }
+    public string? fiat_price_end { get; set; }
 }

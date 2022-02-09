@@ -82,7 +82,7 @@ public partial class Endpoints
                 contractArray = queryResults.Select(x => new Contract
                     {
                         name = x.NAME,
-                        hash = x.HASH,
+                        hash = ContractMethods.Prepend0x(x.HASH, x.Chain.NAME),
                         symbol = x.SYMBOL
                     }
                 ).ToArray();

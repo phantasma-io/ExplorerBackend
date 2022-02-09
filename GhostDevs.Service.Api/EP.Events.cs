@@ -10,6 +10,7 @@ using Address = GhostDevs.Service.ApiResults.Address;
 using AddressEvent = GhostDevs.Service.ApiResults.AddressEvent;
 using Chain = GhostDevs.Service.ApiResults.Chain;
 using ChainEvent = GhostDevs.Service.ApiResults.ChainEvent;
+using Contract = GhostDevs.Service.ApiResults.Contract;
 using Event = GhostDevs.Service.ApiResults.Event;
 using GasEvent = GhostDevs.Service.ApiResults.GasEvent;
 using HashEvent = GhostDevs.Service.ApiResults.HashEvent;
@@ -30,7 +31,7 @@ namespace GhostDevs.Service;
 public partial class Endpoints
 {
     [APIInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10)]
-    public EventsResult Events([APIParameter("Order by [date, token_id, price]", "string")] string order_by = "date",
+    public EventsResult Events([APIParameter("Order by [date, token_id]", "string")] string order_by = "date",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
@@ -67,12 +68,14 @@ public partial class Endpoints
         int with_series = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0,
-        [APIParameter("Fiat currency to calculate Fiat price", "integer")]
-        string fiat_currency = "USD")
+        [APIParameter("Return with fiat_prices (only at market_event)", "integer")]
+        int with_fiat = 0)
     {
         // Results of the query
         long totalResults = 0;
-        Event[] eventsArray = null;
+        Event[] eventsArray;
+        const string fiatCurrency = "USD";
+
 
         using ( var databaseContext = new MainDbContext() )
         {
@@ -134,14 +137,10 @@ public partial class Endpoints
 
                 ContractMethods.Drop0x(ref address_partial);
 
-                if ( !string.IsNullOrEmpty(fiat_currency) && !ArgValidation.CheckSymbol(fiat_currency) )
-                    throw new APIException("Unsupported value for 'fiat_currency' parameter.");
-
                 var startTime = DateTime.Now;
-
-                // Getting exchange rates in advance.
                 var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
+                // Getting exchange rates in advance.
                 var query = databaseContext.Events.AsQueryable();
 
                 //if (show_events != "all" && show_events != "hidden")
@@ -191,9 +190,7 @@ public partial class Endpoints
                 {
                     var ids = AddressMethods.GetIdsFromExtendedFormat(databaseContext, address, true, chain);
 
-                    query = query.Where(x =>
-                        x.SourceAddressId != null && ids.Contains(( int ) x.SourceAddressId) ||
-                        ids.Contains(x.AddressId)
+                    query = query.Where(x => ids.Contains(x.AddressId)
                     );
                 }
 
@@ -209,7 +206,6 @@ public partial class Endpoints
                             .ThenBy(x => x.Transaction.INDEX)
                             .ThenBy(x => x.INDEX),
                         "token_id" => query.OrderBy(x => x.TOKEN_ID),
-                        "price" => query.OrderBy(x => x.PRICE_USD != 0).ThenBy(x => x.PRICE_USD),
                         _ => query
                     };
                 else
@@ -219,7 +215,6 @@ public partial class Endpoints
                             .ThenByDescending(x => x.Transaction.INDEX)
                             .ThenByDescending(x => x.INDEX),
                         "token_id" => query.OrderByDescending(x => x.TOKEN_ID),
-                        "price" => query.OrderBy(x => x.PRICE_USD != 0).ThenByDescending(x => x.PRICE_USD),
                         _ => query
                     };
 
@@ -232,28 +227,20 @@ public partial class Endpoints
                 eventsArray = query.Select(x => new Event
                     {
                         chain = x.Chain.NAME.ToLower(),
-                        contract = ContractMethods.Prepend0x(x.Contract.HASH, x.Chain.NAME),
                         date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
                         transaction_hash = x.Transaction == null
                             ? null
                             : TransactionMethods.Prepend0x(x.Transaction.HASH, x.Chain.NAME),
                         token_id = x.TOKEN_ID,
-                        token_amount = x.TOKEN_AMOUNT,
                         event_kind = x.EventKind.NAME,
-                        base_symbol = x.Contract.SYMBOL,
-                        price = x.PRICE,
-                        fiat_price = FiatExchangeRateMethods.Convert(fiatPricesInUsd, x.PRICE_USD, "USD", fiat_currency)
-                            .ToString("0.####"),
-                        fiat_currency = fiat_currency,
-                        quote_symbol = x.QuoteSymbol != null ? x.QuoteSymbol.SYMBOL : null,
-                        infused_symbol = x.InfusedSymbol != null ? x.InfusedSymbol.SYMBOL : null,
-                        infused_value = x.INFUSED_VALUE,
                         address = AddressMethods.Prepend0x(x.Address.ADDRESS, x.Chain.NAME, true),
-                        onchain_name = x.Address.ADDRESS_NAME,
-                        source_address =
-                            AddressMethods.Prepend0x(x.SourceAddress != null ? x.SourceAddress.ADDRESS : null,
-                                x.Chain.NAME, true),
-                        source_onchain_name = x.SourceAddress != null ? x.SourceAddress.ADDRESS_NAME : null,
+                        address_name = x.Address.ADDRESS_NAME,
+                        contract = new Contract
+                        {
+                            name = x.Contract.NAME,
+                            hash = ContractMethods.Prepend0x(x.Contract.HASH, x.Chain.NAME),
+                            symbol = x.Contract.SYMBOL
+                        },
                         nft_metadata = with_metadata == 1 && x.Nft != null
                             ? new NftMetadata
                             {
@@ -414,7 +401,21 @@ public partial class Endpoints
                                 end_price = x.MarketEvent.END_PRICE,
                                 price = x.MarketEvent.PRICE,
                                 market_event_kind = x.MarketEvent.MarketEventKind.NAME,
-                                market_id = x.MarketEvent.MARKET_ID
+                                market_id = x.MarketEvent.MARKET_ID,
+                                fiat_price = with_fiat == 1
+                                    ? new FiatPrice
+                                    {
+                                        fiat_currency = x.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                                        fiat_price = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
+                                            x.MarketEvent.MarketEventFiatPrice.PRICE_USD,
+                                            x.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                                            fiatCurrency).ToString("0.####"),
+                                        fiat_price_end = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
+                                            x.MarketEvent.MarketEventFiatPrice.PRICE_END_USD,
+                                            x.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                                            fiatCurrency).ToString("0.####")
+                                    }
+                                    : null
                             }
                             : null,
                         organization_event = with_event_data == 1 && x.OrganizationEvent != null
