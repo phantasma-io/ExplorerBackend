@@ -197,7 +197,8 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Transaction>()
             .HasOne(x => x.Block)
             .WithMany(y => y.Transactions)
-            .HasForeignKey(x => x.BlockId);
+            .HasForeignKey(x => x.BlockId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes
 
@@ -274,7 +275,8 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Event>()
             .HasOne(x => x.Transaction)
             .WithMany(y => y.Events)
-            .HasForeignKey(x => x.TransactionId);
+            .HasForeignKey(x => x.TransactionId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.EventKind)
@@ -294,57 +296,68 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Event>()
             .HasOne(x => x.OrganizationEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<OrganizationEvent>(x => x.EventId);
+            .HasForeignKey<OrganizationEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.StringEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<StringEvent>(x => x.EventId);
+            .HasForeignKey<StringEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.AddressEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<AddressEvent>(x => x.EventId);
+            .HasForeignKey<AddressEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.TransactionSettleEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<TransactionSettleEvent>(x => x.EventId);
+            .HasForeignKey<TransactionSettleEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.HashEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<HashEvent>(x => x.EventId);
+            .HasForeignKey<HashEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.GasEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<GasEvent>(x => x.EventId);
+            .HasForeignKey<GasEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.SaleEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<SaleEvent>(x => x.EventId);
+            .HasForeignKey<SaleEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.ChainEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<ChainEvent>(x => x.EventId);
+            .HasForeignKey<ChainEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.TokenEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<TokenEvent>(x => x.EventId);
+            .HasForeignKey<TokenEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.InfusionEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<InfusionEvent>(x => x.EventId);
+            .HasForeignKey<InfusionEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.MarketEvent)
             .WithOne(y => y.Event)
-            .HasForeignKey<MarketEvent>(x => x.EventId);
+            .HasForeignKey<MarketEvent>(x => x.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
             .HasOne(x => x.Nft)
@@ -536,7 +549,7 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
-        
+
         // Indexes
 
         modelBuilder.Entity<SeriesMode>()
@@ -658,7 +671,7 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Platform)
             .WithMany(y => y.PlatformInterops)
             .HasForeignKey(x => x.PlatformId);
-        
+
         modelBuilder.Entity<PlatformInterop>()
             .HasOne(x => x.LocalAddress)
             .WithMany(y => y.PlatformInterops)
@@ -676,7 +689,7 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Platform)
             .WithMany(y => y.Externals)
             .HasForeignKey(x => x.PlatformId);
-        
+
         modelBuilder.Entity<External>()
             .HasOne(x => x.Token)
             .WithMany(y => y.Externals)
@@ -706,8 +719,9 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<OrganizationEvent>()
             .HasOne(x => x.Organization)
             .WithMany(y => y.OrganizationEvents)
-            .HasForeignKey(x => x.OrganizationId);
-        
+            .HasForeignKey(x => x.OrganizationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<OrganizationEvent>()
             .HasOne(x => x.Address)
             .WithMany(y => y.OrganizationEvents)
@@ -1120,7 +1134,7 @@ public class Event
     public virtual Chain Chain { get; set; }
     public int ContractId { get; set; }
     public virtual Contract Contract { get; set; }
-    public int? TransactionId { get; set; }
+    public int TransactionId { get; set; }
     public virtual Transaction Transaction { get; set; }
     public int EventKindId { get; set; }
     public virtual EventKind EventKind { get; set; }

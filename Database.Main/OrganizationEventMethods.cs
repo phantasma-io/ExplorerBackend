@@ -7,10 +7,10 @@ public static class OrganizationEventMethods
     {
         if ( string.IsNullOrEmpty(organization) || string.IsNullOrEmpty(address) ) return null;
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, saveChanges);
 
-        var organizationEntry = OrganizationMethods.Upsert(databaseContext, organization);
-        
+        var organizationEntry = OrganizationMethods.Upsert(databaseContext, organization, saveChanges);
+
         var organizationEvent = new OrganizationEvent
             {Address = addressEntry, Organization = organizationEntry, Event = databaseEvent};
 

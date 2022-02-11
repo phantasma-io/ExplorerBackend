@@ -53,4 +53,16 @@ public static class TransactionMethods
 
         return entry;
     }
+
+
+    public static Transaction GetNextId(MainDbContext dbContext, int skip)
+    {
+        return dbContext.Transactions.OrderByDescending(x => x.ID).Skip(skip).FirstOrDefault();
+    }
+
+
+    public static Transaction GetById(MainDbContext dbContext, int id)
+    {
+        return dbContext.Transactions.FirstOrDefault(x => x.ID == id);
+    }
 }

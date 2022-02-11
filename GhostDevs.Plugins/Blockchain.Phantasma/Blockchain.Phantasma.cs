@@ -217,6 +217,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     public void Shutdown()
     {
         Log.Information("{Name} plugin: Shutdown command received", Name);
+        foreach ( var chain in _chainList ) CheckData(chain.ID);
+
         _running = false;
     }
 

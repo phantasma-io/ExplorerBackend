@@ -27,8 +27,8 @@ public static class BlockMethods
 
         if ( entry != null ) return entry;
 
-        var chainAddressEntry = AddressMethods.Upsert(databaseContext, chainId, chainAddress, false);
-        var validatorAddressEntry = AddressMethods.Upsert(databaseContext, chainId, validatorAddress, false);
+        var chainAddressEntry = AddressMethods.Upsert(databaseContext, chainId, chainAddress, saveChanges);
+        var validatorAddressEntry = AddressMethods.Upsert(databaseContext, chainId, validatorAddress, saveChanges);
 
 
         entry = new Block
@@ -69,5 +69,12 @@ public static class BlockMethods
     {
         return await databaseContext.Blocks.AsQueryable()
             .Where(x => x.ChainId == chainId && x.HEIGHT == height.ToString()).FirstOrDefaultAsync();
+    }
+
+
+    public static Block GetHighestBlock(MainDbContext dbContext, int chainId)
+    {
+        var height = dbContext.Blocks.Where(x => x.ChainId == chainId).Max(x => x.HEIGHT);
+        return !string.IsNullOrEmpty(height) ? GetByHeight(dbContext, chainId, BigInteger.Parse(height)) : null;
     }
 }

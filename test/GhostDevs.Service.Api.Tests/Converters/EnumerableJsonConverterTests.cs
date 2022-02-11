@@ -27,7 +27,7 @@ public class EnumerableJsonConverterTests
         var result = JsonSerializer.Serialize(apiResult, _defaultOptions);
 
         // Assert
-        result.ShouldBeEquivalentTo(@"{""total_results"":0}");
+        result.ShouldBeEquivalentTo(@"{""assets"":null,""total_results"":0}");
     }
 
 

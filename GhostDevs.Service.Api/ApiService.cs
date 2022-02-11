@@ -88,7 +88,9 @@ public static class Api
 
         var builder = WebApplication.CreateBuilder(args);
         builder.Configuration.AddJsonFile(ConfigFile);
-        builder.WebHost.UseSerilog();
+        //builder.WebHost.UseSerilog();
+        //obsolete note told me I should use IHostBuilder, instead of IWebHostBuilder for serilog
+        builder.Host.UseSerilog();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
         builder.Services.Configure<JsonOptions>(options =>

@@ -139,4 +139,16 @@ public static class EventMethods
                 Log.Information("NFT defused: {DefusedNft} from NFT {Nft}", item.TOKEN_ID, nft.TOKEN_ID);
         }
     }
+
+
+    public static Event GetNextId(MainDbContext dbContext, int skip)
+    {
+        return dbContext.Events.OrderByDescending(x => x.ID).Skip(skip).FirstOrDefault();
+    }
+
+
+    public static Event GetById(MainDbContext dbContext, int id)
+    {
+        return dbContext.Events.FirstOrDefault(x => x.ID == id);
+    }
 }

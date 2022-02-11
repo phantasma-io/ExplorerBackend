@@ -82,7 +82,7 @@ public static class NftMethods
                 ownership = new NftOwnership
                 {
                     Nft = nft,
-                    Address = AddressMethods.Upsert(databaseContext, chainId, toAddress, false),
+                    Address = AddressMethods.Upsert(databaseContext, chainId, toAddress, saveChanges),
                     AMOUNT = 1,
                     LAST_CHANGE_UNIX_SECONDS = timestampUnixSeconds
                 };
@@ -95,7 +95,7 @@ public static class NftMethods
             {
                 // Our ownership change is newer, we need to update entity.
 
-                ownership.Address = AddressMethods.Upsert(databaseContext, nft.ChainId, toAddress, false);
+                ownership.Address = AddressMethods.Upsert(databaseContext, nft.ChainId, toAddress, saveChanges);
                 ownership.LAST_CHANGE_UNIX_SECONDS = timestampUnixSeconds;
 
                 if ( saveChanges ) databaseContext.SaveChanges();

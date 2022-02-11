@@ -7,7 +7,7 @@ public static class AddressEventMethods
     {
         if ( string.IsNullOrEmpty(address) ) return null;
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, false);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, saveChanges);
 
         var addressEvent = new AddressEvent
             {Address = addressEntry, Event = databaseEvent};

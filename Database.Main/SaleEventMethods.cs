@@ -7,7 +7,7 @@ public static class SaleEventMethods
     {
         if ( string.IsNullOrEmpty(saleKind) || string.IsNullOrEmpty(hash) ) return null;
 
-        var saleEventKind = SaleEventKindMethods.Upsert(databaseContext, saleKind, chainId, false);
+        var saleEventKind = SaleEventKindMethods.Upsert(databaseContext, saleKind, chainId, saveChanges);
 
         var saleEvent = new SaleEvent {SaleEventKind = saleEventKind, HASH = hash, Event = databaseEvent};
 
