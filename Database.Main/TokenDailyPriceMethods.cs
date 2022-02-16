@@ -23,41 +23,41 @@ public static class TokenDailyPricesMethods
             databaseContext.TokenDailyPrices.Add(entry);
         }
 
-        foreach ( var pricePair in pricePairs )
-            switch ( pricePair.Key.ToUpper() )
+        foreach ( var (key, value) in pricePairs )
+            switch ( key.ToUpper() )
             {
                 case "SOUL":
-                    entry.PRICE_SOUL = pricePair.Value;
+                    entry.PRICE_SOUL = value;
                     break;
                 case "NEO":
-                    entry.PRICE_NEO = pricePair.Value;
+                    entry.PRICE_NEO = value;
                     break;
                 case "ETH":
-                    entry.PRICE_ETH = pricePair.Value;
+                    entry.PRICE_ETH = value;
                     break;
                 case "AUD":
-                    entry.PRICE_AUD = pricePair.Value;
+                    entry.PRICE_AUD = value;
                     break;
                 case "CAD":
-                    entry.PRICE_CAD = pricePair.Value;
+                    entry.PRICE_CAD = value;
                     break;
                 case "CNY":
-                    entry.PRICE_CNY = pricePair.Value;
+                    entry.PRICE_CNY = value;
                     break;
                 case "EUR":
-                    entry.PRICE_EUR = pricePair.Value;
+                    entry.PRICE_EUR = value;
                     break;
                 case "GBP":
-                    entry.PRICE_GBP = pricePair.Value;
+                    entry.PRICE_GBP = value;
                     break;
                 case "JPY":
-                    entry.PRICE_JPY = pricePair.Value;
+                    entry.PRICE_JPY = value;
                     break;
                 case "RUB":
-                    entry.PRICE_RUB = pricePair.Value;
+                    entry.PRICE_RUB = value;
                     break;
                 case "USD":
-                    entry.PRICE_USD = pricePair.Value;
+                    entry.PRICE_USD = value;
                     break;
             }
 
@@ -97,17 +97,17 @@ public static class TokenDailyPricesMethods
 
 
     public static decimal Calculate(MainDbContext databaseContext, int chainId, long dateUnixSeconds,
-        string tokenSymbol, string PriceInTokens, string outPriceSymbol)
+        string tokenSymbol, string priceInTokens, string outPriceSymbol)
     {
         return Get(databaseContext, chainId, dateUnixSeconds, tokenSymbol, outPriceSymbol) *
-               TokenMethods.ToDecimal(PriceInTokens, tokenSymbol);
+               TokenMethods.ToDecimal(priceInTokens, tokenSymbol);
     }
 
 
     public static decimal Calculate(MainDbContext databaseContext, int chainId, long dateUnixSeconds,
-        string tokenSymbol, decimal PriceInTokens, string outPriceSymbol)
+        string tokenSymbol, decimal priceInTokens, string outPriceSymbol)
     {
-        return Get(databaseContext, chainId, dateUnixSeconds, tokenSymbol, outPriceSymbol) * PriceInTokens;
+        return Get(databaseContext, chainId, dateUnixSeconds, tokenSymbol, outPriceSymbol) * priceInTokens;
     }
 
 
@@ -120,7 +120,8 @@ public static class TokenDailyPricesMethods
         var dailyPrices =
             soulDailyTokenPrices.Where(x => x.Key == dateUnixSeconds);
 
-        if ( !dailyPrices.Any() )
+        var keyValuePairs = dailyPrices.ToList();
+        if ( !keyValuePairs.Any() )
         {
             dailyPrices = soulDailyTokenPrices.Where(x => x.Key == UnixSeconds.AddDays(dateUnixSeconds, -1));
             if ( !dailyPrices.Any() )
@@ -128,7 +129,7 @@ public static class TokenDailyPricesMethods
                 return 0;
         }
 
-        var soulTokenDailyPrice = dailyPrices.Select(x => x.Value).FirstOrDefault();
+        var soulTokenDailyPrice = keyValuePairs.Select(x => x.Value).FirstOrDefault();
 
         if ( TokenMethods.GetSupportedFiatSymbols().Contains(outPriceSymbol) )
             // We convert USD to another Fiat.

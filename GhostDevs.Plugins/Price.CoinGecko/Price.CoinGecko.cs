@@ -128,6 +128,10 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                             case "GNFT":
                             case "ALKS":
                             case "ALK":
+                            case "TCKT":
+                            case "ALKA":
+                            case "USD":
+                            case "SMNFT":
                                 //maybe add that info somehow to the database
                                 // Just ignore, can't get this price from CoinGecko.
                                 break;
@@ -182,7 +186,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
     // API documentation: https://www.coingecko.com/api/documentations/v3#/simple/get_simple_price
     private void LoadPrices(List<TokenMethods.Symbol> cryptoSymbols)
     {
-        var separator = "%2C";
+        const string separator = "%2C";
 
         // Fiat currency symbols, supported by backend.
         var fiatSymbols = TokenMethods.GetSupportedFiatSymbols();
@@ -253,13 +257,18 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                 ? UnixSeconds.FromDateTime(Settings.Default.StartDate)
                 : UnixSeconds.AddDays(lastLoadedDate, 1);
 
+            var lastLoadedDateString = UnixSeconds.ToDateTime(lastLoadedDate).ToString("dd-MM-yyyy");
+
             while ( lastLoadedDate <= UnixSeconds.Now() )
             {
                 foreach ( var cryptoSymbol in cryptoSymbols.Where(
                              x => !string.IsNullOrEmpty(x.ApiSymbol)) )
                 {
+                    Log.Verbose("{Name} Symbol {Symbol}, Date {Date}", Name, cryptoSymbol.ApiSymbol,
+                        lastLoadedDateString);
+
                     var url = "https://api.coingecko.com/api/v3/coins/" + cryptoSymbol.ApiSymbol + "/history?date=" +
-                              lastLoadedDate.ToString("dd-MM-yyyy");
+                              lastLoadedDateString;
 
                     var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, error =>
                     {
@@ -272,10 +281,11 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     });
                     if ( response == null )
                     {
+                        databaseContext.SaveChanges();
                         //var test = new DateTime(lastLoadedDate).ToString("dd-MM-yyyy");
                         Log.Error(
                             "{Name} plugin: Stuck on '{ApiSymbol}' price update for '{LastLoadedDate}'", Name,
-                            cryptoSymbol.ApiSymbol, lastLoadedDate.ToString("dd-MM-yyyy"));
+                            cryptoSymbol.ApiSymbol, lastLoadedDateString);
                         return;
                     }
 
@@ -283,14 +293,15 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
                     if ( marketProperty.TryGetProperty("current_price", out var priceNode) )
                     {
-                        var priceAUD = priceNode.GetProperty("AUD").GetDecimal();
-                        var priceCAD = priceNode.GetProperty("CAD").GetDecimal();
-                        var priceCNY = priceNode.GetProperty("CNY").GetDecimal();
-                        var priceEUR = priceNode.GetProperty("EUR").GetDecimal();
-                        var priceGBP = priceNode.GetProperty("GBP").GetDecimal();
-                        var priceJPY = priceNode.GetProperty("JPY").GetDecimal();
-                        var priceRUB = priceNode.GetProperty("RUB").GetDecimal();
-                        var priceUSD = priceNode.GetProperty("USD").GetDecimal();
+                        //it is send in lowercase now
+                        var priceAUD = priceNode.GetProperty("aud").GetDecimal();
+                        var priceCAD = priceNode.GetProperty("cad").GetDecimal();
+                        var priceCNY = priceNode.GetProperty("cny").GetDecimal();
+                        var priceEUR = priceNode.GetProperty("eur").GetDecimal();
+                        var priceGBP = priceNode.GetProperty("gbp").GetDecimal();
+                        var priceJPY = priceNode.GetProperty("jpy").GetDecimal();
+                        var priceRUB = priceNode.GetProperty("rub").GetDecimal();
+                        var priceUSD = priceNode.GetProperty("usd").GetDecimal();
 
                         if ( cryptoSymbol.NativeSymbol.ToUpper() == "SOUL" )
                         {

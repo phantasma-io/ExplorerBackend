@@ -3,6 +3,8 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
+
+g;
 using Serilog;
 
 namespace GhostDevs.Api;
@@ -23,7 +25,7 @@ public static class Client
 
         Log.Debug("API request: url: {Url}", url);
 
-        var max = 5;
+        const int max = 5;
         for ( var i = 1; i <= max; i++ )
             try
             {
@@ -42,13 +44,13 @@ public static class Client
                             }
 
                             break;
-                        /*case RequestType.POST:
-                            {
-                                var content = new StringContent(postString, System.Text.Encoding.UTF8, "application/json");
-                                var responseContent = wc.PostAsync(url, content).Result.Content;
-                                stringResponse = responseContent.ReadAsStringAsync().Result;
-                                break;
-                            }*/
+                        case RequestType.POST:
+                        {
+                            var content = new StringContent(pEncodingUTF8, "application/json");
+                            var responseContent = wc.PostAsync(url, content).Result.Content;
+                            stringResponse = responseContent.ReadAsStringAsync().Result;
+                            break;
+                        }
                         default:
                             throw new Exception("Unknown RequestType");
                     }

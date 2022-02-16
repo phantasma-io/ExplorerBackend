@@ -4,13 +4,13 @@ namespace GhostDevs.Service;
 
 internal class Settings
 {
-    private Settings(IConfigurationSection section)
+    private Settings(IConfiguration section)
     {
         var settings = section.Get<ApiServiceSettings>();
     }
 
 
-    public static Settings Default { get; private set; }
+    private static Settings Default { get; set; }
 
 
     public static void Load(IConfigurationSection section)

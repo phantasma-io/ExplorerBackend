@@ -19,6 +19,8 @@ public partial class Endpoints
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("symbol", "string")] string symbol = "",
+        [APIParameter("with prices", "integer")]
+        int with_price = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -47,6 +49,7 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(symbol) )
                     query = query.Where(x => string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
@@ -86,11 +89,22 @@ public partial class Endpoints
                     current_supply = x.CURRENT_SUPPLY,
                     max_supply = x.MAX_SUPPLY,
                     burned_supply = x.BURNED_SUPPLY,
-                    script_raw = x.SCRIPT_RAW
+                    script_raw = x.SCRIPT_RAW,
+                    price = with_price == 1
+                        ? new Price
+                        {
+                            usd = x.PRICE_USD != 0 ? x.PRICE_USD : null,
+                            eur = x.PRICE_EUR != 0 ? x.PRICE_EUR : null,
+                            gbp = x.PRICE_GBP != 0 ? x.PRICE_GBP : null,
+                            jpy = x.PRICE_JPY != 0 ? x.PRICE_JPY : null,
+                            cad = x.PRICE_CAD != 0 ? x.PRICE_CAD : null,
+                            aud = x.PRICE_AUD != 0 ? x.PRICE_AUD : null,
+                            cny = x.PRICE_CNY != 0 ? x.PRICE_CNY : null,
+                            rub = x.PRICE_RUB != 0 ? x.PRICE_RUB : null
+                        }
+                        : null
                 }).ToArray();
-
                 var responseTime = DateTime.Now - startTime;
-
                 Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
             }
             catch ( APIException )
@@ -99,7 +113,7 @@ public partial class Endpoints
             }
             catch ( Exception exception )
             {
-                var logMessage = LogEx.Exception("Address()", exception);
+                var logMessage = LogEx.Exception("Token()", exception);
 
                 throw new APIException(logMessage, exception);
             }

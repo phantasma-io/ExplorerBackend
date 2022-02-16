@@ -234,6 +234,12 @@ public class Token
 
     [APIDescription("Returns the script of the token, raw")]
     public string? script_raw { get; set; }
+
+    [APIDescription("Returns currency price information")]
+    public Price? price { get; set; }
+
+    [APIDescription("Returns history currency price information")]
+    public HistoryPrice[]? history_price { get; set; }
 }
 
 public class TokenResult
@@ -496,4 +502,29 @@ public class FiatPrice
     public string? fiat_currency { get; set; }
     public string? fiat_price { get; set; }
     public string? fiat_price_end { get; set; }
+}
+
+public class Price
+{
+    public string? date { get; set; }
+    public decimal? usd { get; set; }
+    public decimal? eur { get; set; }
+    public decimal? gbp { get; set; }
+    public decimal? jpy { get; set; }
+    public decimal? cad { get; set; }
+    public decimal? aud { get; set; }
+    public decimal? cny { get; set; }
+    public decimal? rub { get; set; }
+}
+
+public class HistoryPrice
+{
+    public string? symbol { get; set; }
+    public Token? token { get; set; }
+    public Price? price { get; set; }
+}
+
+public class HistoryPriceResult
+{
+    public HistoryPrice[]? history_prices { get; set; }
 }
