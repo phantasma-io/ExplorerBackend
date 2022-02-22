@@ -9,11 +9,12 @@ public static class TokenDailyPricesMethods
     // Checks if "TokenDailyPrices" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static void Upsert(MainDbContext databaseContext, long dateUnixSeconds, int chainId, string symbol,
+    public static void Upsert(MainDbContext databaseContext, long dateUnixSeconds, Token token,
         Dictionary<string, decimal> pricePairs, bool saveChanges = true)
     {
-        var token = TokenMethods.Get(databaseContext, chainId, symbol);
         if ( token == null ) return;
+
+        dateUnixSeconds = UnixSeconds.GetDate(dateUnixSeconds);
 
         var entry = databaseContext.TokenDailyPrices.FirstOrDefault(x =>
             x.Token == token && x.DATE_UNIX_SECONDS == dateUnixSeconds);
@@ -22,6 +23,8 @@ public static class TokenDailyPricesMethods
             entry = new TokenDailyPrice {DATE_UNIX_SECONDS = dateUnixSeconds, Token = token};
             databaseContext.TokenDailyPrices.Add(entry);
         }
+
+        TokenPriceStateMethods.Upsert(databaseContext, token, true);
 
         foreach ( var (key, value) in pricePairs )
             switch ( key.ToUpper() )

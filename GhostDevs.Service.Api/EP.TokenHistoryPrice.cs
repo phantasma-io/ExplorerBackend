@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
@@ -13,14 +14,16 @@ public partial class Endpoints
     [APIInfo(typeof(HistoryPriceResult), "Returns the token on the backend.", false, 10)]
     public HistoryPriceResult HistoryPrices(
         [APIParameter("Order by [id, symbol, date]", "string")]
-        string order_by = "id",
+        string order_by = "date",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("symbol", "string")] string symbol = "",
+        [APIParameter("symbol", "string")] string symbol = "SOUL",
         [APIParameter("with token info", "integer")]
         int with_token = 0,
+        [APIParameter("Date day match (matches whole given day)", "string")]
+        string date_day = "",
         [APIParameter("Date (less than)", "string")]
         string date_less = "",
         [APIParameter("Date (greater than)", "string")]
@@ -44,6 +47,15 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                     throw new APIException("Unsupported value for 'address' parameter.");
 
+                if ( !string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$") )
+                    throw new APIException("Unsupported value for 'date_day' parameter.");
+
+                if ( !string.IsNullOrEmpty(date_less) && !Regex.IsMatch(date_less, @"^[0-9.]+$") )
+                    throw new APIException("Unsupported value for 'date_less' parameter.");
+
+                if ( !string.IsNullOrEmpty(date_greater) && !Regex.IsMatch(date_greater, @"^[0-9.]+$") )
+                    throw new APIException("Unsupported value for 'date_greater' parameter.");
+
                 var startTime = DateTime.Now;
 
                 var query = databaseContext.TokenDailyPrices.AsQueryable();
@@ -51,6 +63,15 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(symbol) )
                     query = query.Where(x => string.Equals(x.Token.SYMBOL.ToUpper(), symbol.ToUpper()));
 
+                //TODO fix date stuff
+                if ( !string.IsNullOrEmpty(date_day) )
+                    query = query.Where(x => x.DATE_UNIX_SECONDS == UnixSeconds.FromDateTimeString(date_day));
+
+                if ( !string.IsNullOrEmpty(date_greater) )
+                    query = query.Where(x => x.DATE_UNIX_SECONDS >= UnixSeconds.FromDateTimeString(date_greater));
+
+                if ( !string.IsNullOrEmpty(date_less) )
+                    query = query.Where(x => x.DATE_UNIX_SECONDS <= UnixSeconds.FromDateTimeString(date_less));
 
                 //in case we add more to sort
                 if ( order_direction == "asc" )

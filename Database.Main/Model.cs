@@ -65,6 +65,7 @@ public class MainDbContext : DbContext
     public DbSet<Signature> Signatures { get; set; }
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
     public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
+    public DbSet<TokenPriceState> TokenPriceStates { get; set; }
 
 
     public static string GetConnectionString()
@@ -419,6 +420,13 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Owner)
             .WithMany()
             .HasForeignKey(x => x.OwnerId);
+
+        modelBuilder.Entity<Token>()
+            .HasOne(x => x.TokenPriceState)
+            .WithOne(y => y.Token)
+            .HasForeignKey<TokenPriceState>(x => x.TokenId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Indexes
 
         modelBuilder.Entity<Token>()
@@ -998,6 +1006,16 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<MarketEventFiatPrice>()
             .HasIndex(x => new {x.PRICE_END_USD});
+
+        //////////////////////
+        // TokenPriceStates
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+        modelBuilder.Entity<TokenPriceState>()
+            .HasIndex(x => new {x.LAST_CHECK_DATE_UNIX_SECONDS});
     }
 }
 
@@ -1207,6 +1225,7 @@ public class Token
     public virtual List<InfusionEvent> InfusedSymbolInfusionEvents { get; set; }
     public virtual List<MarketEvent> BaseSymbolMarketEvents { get; set; }
     public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
+    public virtual TokenPriceState TokenPriceState { get; set; }
 }
 
 public class TokenDailyPrice
@@ -1604,4 +1623,13 @@ public class MarketEventFiatPrice
     public string FIAT_NAME { get; set; }
     public int MarketEventId { get; set; }
     public virtual MarketEvent MarketEvent { get; set; }
+}
+
+public class TokenPriceState
+{
+    public int ID { get; set; }
+    public int TokenId { get; set; }
+    public virtual Token Token { get; set; }
+    public long LAST_CHECK_DATE_UNIX_SECONDS { get; set; }
+    public bool COIN_GECKO { get; set; }
 }

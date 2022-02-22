@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -44,7 +45,7 @@ public static class Client
                             break;
                         case RequestType.POST:
                         {
-                            var content = new StringContent(postString, System.Text.Encoding.UTF8, "application/json");
+                            var content = new StringContent(postString, Encoding.UTF8, "application/json");
                             var responseContent = wc.PostAsync(url, content).Result.Content;
                             stringResponse = responseContent.ReadAsStringAsync().Result;
                             break;
