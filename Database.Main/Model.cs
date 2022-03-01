@@ -66,6 +66,10 @@ public class MainDbContext : DbContext
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
     public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
     public DbSet<TokenPriceState> TokenPriceStates { get; set; }
+    public DbSet<AddressTransaction> AddressTransactions { get; set; }
+    public DbSet<AddressStake> AddressStakes { get; set; }
+    public DbSet<AddressStorage> AddressStorages { get; set; }
+    public DbSet<AddressBalance> AddressBalances { get; set; }
 
 
     public static string GetConnectionString()
@@ -243,6 +247,18 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Chain)
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.ChainId);
+
+        modelBuilder.Entity<Address>()
+            .HasOne(x => x.AddressStake)
+            .WithOne(y => y.Address)
+            .HasForeignKey<AddressStake>(x => x.AddressId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Address>()
+            .HasOne(x => x.AddressStorage)
+            .WithOne(y => y.Address)
+            .HasForeignKey<AddressStorage>(x => x.AddressId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes
 
@@ -1016,6 +1032,67 @@ public class MainDbContext : DbContext
         // Indexes
         modelBuilder.Entity<TokenPriceState>()
             .HasIndex(x => new {x.LAST_CHECK_DATE_UNIX_SECONDS});
+
+        //////////////////////
+        // AddressTransaction
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<AddressTransaction>()
+            .HasOne(x => x.Address)
+            .WithMany(y => y.AddressTransactions)
+            .HasForeignKey(x => x.AddressId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AddressTransaction>()
+            .HasOne(x => x.Transaction)
+            .WithMany(y => y.AddressTransactions)
+            .HasForeignKey(x => x.TransactionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Indexes
+
+
+        //////////////////////
+        // AddressStake
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+
+        //////////////////////
+        // AddressStorage
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+
+        //////////////////////
+        // AddressBalance
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<AddressBalance>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.AddressBalances)
+            .HasForeignKey(x => x.ChainId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AddressBalance>()
+            .HasOne(x => x.Address)
+            .WithMany(y => y.AddressBalances)
+            .HasForeignKey(x => x.AddressId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AddressBalance>()
+            .HasOne(x => x.Token)
+            .WithMany(y => y.AddressBalances)
+            .HasForeignKey(x => x.TokenId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Indexes
     }
 }
 
@@ -1042,6 +1119,7 @@ public class Chain
 
     //public virtual List<TokenEvent> TokenEvents { get; set; } currently not in use
     public virtual List<MarketEventKind> MarketEventKinds { get; set; }
+    public virtual List<AddressBalance> AddressBalances { get; set; }
 }
 
 public class Contract
@@ -1096,6 +1174,7 @@ public class Transaction
     public long EXPIRATION { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<Signature> Signatures { get; set; }
+    public virtual List<AddressTransaction> AddressTransactions { get; set; }
 }
 
 public class EventKind
@@ -1115,6 +1194,9 @@ public class Address
     public string USER_NAME { get; set; }
     public string USER_TITLE { get; set; }
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
+    public string STAKE { get; set; }
+    public string UNCLAIMED { get; set; }
+    public string RELAY { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
     public virtual List<Event> Events { get; set; }
@@ -1128,6 +1210,10 @@ public class Address
     public virtual List<Block> ChainAddressBlocks { get; set; }
     public virtual List<Block> ValidatorAddressBlocks { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
+    public virtual List<AddressTransaction> AddressTransactions { get; set; }
+    public virtual List<AddressBalance> AddressBalances { get; set; }
+    public virtual AddressStake AddressStake { get; set; }
+    public virtual AddressStorage AddressStorage { get; set; }
 }
 
 public class Event
@@ -1226,6 +1312,7 @@ public class Token
     public virtual List<MarketEvent> BaseSymbolMarketEvents { get; set; }
     public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
     public virtual TokenPriceState TokenPriceState { get; set; }
+    public virtual List<AddressBalance> AddressBalances { get; set; }
 }
 
 public class TokenDailyPrice
@@ -1516,7 +1603,6 @@ public class ChainEvent
     public virtual Event Event { get; set; }
 }
 
-//TODO data is currently stored in event table
 public class TokenEvent
 {
     public int ID { get; set; }
@@ -1528,7 +1614,6 @@ public class TokenEvent
     public virtual Event Event { get; set; }
 }
 
-//TODO data is currently stored in event table
 public class InfusionEvent
 {
     public int ID { get; set; }
@@ -1553,7 +1638,6 @@ public class MarketEventKind
     public virtual List<MarketEvent> MarketEvents { get; set; }
 }
 
-//TODO data is currently stored in event table
 public class MarketEvent
 {
     public int ID { get; set; }
@@ -1632,4 +1716,46 @@ public class TokenPriceState
     public virtual Token Token { get; set; }
     public long LAST_CHECK_DATE_UNIX_SECONDS { get; set; }
     public bool COIN_GECKO { get; set; }
+}
+
+//NEW
+public class AddressTransaction
+{
+    public int ID { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public int TransactionId { get; set; }
+    public virtual Transaction Transaction { get; set; }
+}
+
+public class AddressStake
+{
+    public int ID { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public string AMOUNT { get; set; }
+    public long TIME { get; set; }
+    public string UNCLAIMED { get; set; }
+}
+
+public class AddressStorage
+{
+    public int ID { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public long AVAILABLE { get; set; }
+    public long USED { get; set; }
+    public string AVATAR { get; set; }
+}
+
+public class AddressBalance
+{
+    public int ID { get; set; }
+    public int TokenId { get; set; }
+    public virtual Token Token { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
+    public int AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public string AMOUNT { get; set; }
 }

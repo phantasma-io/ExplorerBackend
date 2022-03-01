@@ -65,4 +65,10 @@ public static class TransactionMethods
     {
         return dbContext.Transactions.FirstOrDefault(x => x.ID == id);
     }
+
+
+    public static Transaction GetByHash(MainDbContext dbContext, string hash)
+    {
+        return dbContext.Transactions.FirstOrDefault(x => x.HASH == hash);
+    }
 }
