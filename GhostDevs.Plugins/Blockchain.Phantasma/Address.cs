@@ -80,13 +80,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 address.STAKE = response.RootElement.GetProperty("stake").GetString();
                 address.UNCLAIMED = response.RootElement.GetProperty("unclaimed").GetString();
                 address.RELAY = response.RootElement.GetProperty("relay").GetString();
+                //address.VALIDATOR = response.RootElement.GetProperty("validator").GetString();
+
+                var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
+                    response.RootElement.GetProperty("validator").GetString());
+                address.AddressValidatorKind = validatorKind;
             }
 
             databaseContext.SaveChanges();
         }
 
         var updateTime = DateTime.Now - startTime;
-        Log.Information("[{Name}] Names sync took {Time} sec, {Updated} names updated", Name,
+        Log.Information("[{Name}] Address sync took {Time} sec, {Updated} names updated", Name,
             Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount);
     }
 }

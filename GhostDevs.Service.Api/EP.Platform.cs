@@ -29,9 +29,12 @@ public partial class Endpoints
         [APIParameter("Return with interops", "integer")]
         int with_interops = 0,
         [APIParameter("Return with token", "integer")]
-        int with_token = 0
+        int with_token = 0,
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0
     )
     {
+        long totalResults = 0;
         Platform[] platformArray;
         using ( var databaseContext = new MainDbContext() )
         {
@@ -55,6 +58,9 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(name) )
                     query = query.Where(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+
+                if ( with_total == 1 )
+                    totalResults = query.Count();
 
                 //in case we add more to sort
                 if ( order_direction == "asc" )
@@ -142,6 +148,6 @@ public partial class Endpoints
             }
         }
 
-        return new PlatformResult {platforms = platformArray};
+        return new PlatformResult {total_results = with_total == 1 ? totalResults : null, platforms = platformArray};
     }
 }

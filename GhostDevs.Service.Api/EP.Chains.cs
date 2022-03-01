@@ -11,9 +11,11 @@ namespace GhostDevs.Service;
 public partial class Endpoints
 {
     [APIInfo(typeof(ChainResult), "Returns the chains on the backend.", false, 10)]
-    public ChainResult Chains([APIParameter("Chain name (ex. 'main')", "string")] string chain = "")
+    public ChainResult Chains([APIParameter("Chain name (ex. 'main')", "string")] string chain = "",
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0)
     {
-        long totalResults;
+        long totalResults = 0;
         Chain[] chainArray;
 
         using ( var databaseContext = new MainDbContext() )
@@ -30,7 +32,8 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(chain) )
                     query = query.Where(x => string.Equals(x.NAME.ToUpper(), chain.ToUpper()));
 
-                totalResults = query.Count();
+                if ( with_total == 1 )
+                    totalResults = query.Count();
 
                 var queryResults = query.ToList();
 
@@ -56,6 +59,6 @@ public partial class Endpoints
             }
         }
 
-        return new ChainResult {total_results = totalResults, chains = chainArray};
+        return new ChainResult {total_results = with_total == 1 ? totalResults : null, chains = chainArray};
     }
 }

@@ -118,7 +118,7 @@ public partial class Endpoints
                         hash = x.HASH,
                         blockHeight = x.Block.HEIGHT,
                         index = x.INDEX,
-                        events = ( with_events == 1 && x.Events != null
+                        events = with_events == 1 && x.Events != null
                             ? events.Select(e => new Event
                             {
                                 chain = e.Chain.NAME.ToLower(),
@@ -380,7 +380,7 @@ public partial class Endpoints
                                     }
                                     : null
                             }).ToArray()
-                            : null ) ?? Array.Empty<Event>()
+                            : null
                     } ).ToArray();
 
                 var responseTime = DateTime.Now - startTime;
@@ -393,7 +393,7 @@ public partial class Endpoints
             }
             catch ( Exception exception )
             {
-                var logMessage = LogEx.Exception("Address()", exception);
+                var logMessage = LogEx.Exception("Transaction()", exception);
 
                 throw new APIException(logMessage, exception);
             }

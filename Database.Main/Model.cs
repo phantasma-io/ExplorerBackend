@@ -70,6 +70,7 @@ public class MainDbContext : DbContext
     public DbSet<AddressStake> AddressStakes { get; set; }
     public DbSet<AddressStorage> AddressStorages { get; set; }
     public DbSet<AddressBalance> AddressBalances { get; set; }
+    public DbSet<AddressValidatorKind> AddressValidatorKinds { get; set; }
 
 
     public static string GetConnectionString()
@@ -259,6 +260,11 @@ public class MainDbContext : DbContext
             .WithOne(y => y.Address)
             .HasForeignKey<AddressStorage>(x => x.AddressId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Address>()
+            .HasOne(x => x.AddressValidatorKind)
+            .WithMany(y => y.Addresses)
+            .HasForeignKey(x => x.AddressValidatorKindId);
 
         // Indexes
 
@@ -1093,6 +1099,17 @@ public class MainDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes
+
+
+        //////////////////////
+        // AddressValidatorKind
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+        modelBuilder.Entity<AddressValidatorKind>()
+            .HasIndex(x => x.NAME);
     }
 }
 
@@ -1214,6 +1231,8 @@ public class Address
     public virtual List<AddressBalance> AddressBalances { get; set; }
     public virtual AddressStake AddressStake { get; set; }
     public virtual AddressStorage AddressStorage { get; set; }
+    public int? AddressValidatorKindId { get; set; }
+    public virtual AddressValidatorKind AddressValidatorKind { get; set; }
 }
 
 public class Event
@@ -1758,4 +1777,11 @@ public class AddressBalance
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }
+}
+
+public class AddressValidatorKind
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public virtual List<Address> Addresses { get; set; }
 }

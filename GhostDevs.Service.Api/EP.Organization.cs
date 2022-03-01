@@ -20,9 +20,12 @@ public partial class Endpoints
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("Return addresses with organization", "integer")]
-        int with_addresses = 0
+        int with_addresses = 0,
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0
     )
     {
+        long totalResults = 0;
         Organization[] organizationArray;
 
         using ( var databaseContext = new MainDbContext() )
@@ -41,6 +44,9 @@ public partial class Endpoints
                 var startTime = DateTime.Now;
 
                 var query = databaseContext.Organizations.AsQueryable();
+
+                if ( with_total == 1 )
+                    totalResults = query.Count();
 
                 //in case we add more to sort
                 if ( order_direction == "asc" )
@@ -89,6 +95,7 @@ public partial class Endpoints
             }
         }
 
-        return new OrganizationResult {organizations = organizationArray};
+        return new OrganizationResult
+            {total_results = with_total == 1 ? totalResults : null, organizations = organizationArray};
     }
 }

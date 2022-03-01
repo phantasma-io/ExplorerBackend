@@ -129,7 +129,7 @@ public class EventsResult
 public class SeriesResult
 {
     [APIDescription("Total number of found series")]
-    public long total_results { get; set; }
+    public long? total_results { get; set; }
 
     [APIDescription("List of available series")]
     public Series[]? series { get; set; }
@@ -147,7 +147,7 @@ public class Chain
 public class ChainResult
 {
     [APIDescription("total number of found chains")]
-    public long total_results { get; set; }
+    public long? total_results { get; set; }
 
     [APIDescription("List of available chains")]
     public Chain[]? chains { get; set; }
@@ -177,6 +177,30 @@ public class Address
 
     [APIDescription("Returns the address name")]
     public string? address_name { get; set; }
+
+    [APIDescription("Returns the validator name")]
+    public string? validator_kind { get; set; }
+
+    [APIDescription("Returns the stake value")]
+    public string? stake { get; set; }
+
+    [APIDescription("Returns the unclaimed value")]
+    public string? unclaimed { get; set; }
+
+    [APIDescription("Returns the relay value")]
+    public string? relay { get; set; }
+
+    [APIDescription("Returns the address storage")]
+    public AddressStorage? storage { get; set; }
+
+    [APIDescription("Returns the address stakes")]
+    public AddressStakes? stakes { get; set; }
+
+    [APIDescription("Returns the address balances")]
+    public AddressBalance[]? balances { get; set; }
+
+    [APIDescription("Returns the address transactions, events are not filled atm")]
+    public Transaction[]? transactions { get; set; }
 }
 
 public class AddressResult
@@ -238,8 +262,8 @@ public class Token
     [APIDescription("Returns currency price information")]
     public Price? price { get; set; }
 
-    [APIDescription("Returns history currency price information")]
-    public HistoryPrice[]? history_price { get; set; }
+    //[APIDescription("Returns history currency price information")]
+    //public HistoryPrice[]? history_price { get; set; }
 }
 
 public class TokenResult
@@ -321,6 +345,9 @@ public class Organization
 
 public class OrganizationResult
 {
+    [APIDescription("Total number of organizations")]
+    public long? total_results { get; set; }
+
     [APIDescription("List of available organizations")]
     public Organization[]? organizations { get; set; }
 }
@@ -350,6 +377,9 @@ public class Block
 
 public class BlockResult
 {
+    [APIDescription("Total number of found Blocks")]
+    public long? total_results { get; set; }
+
     [APIDescription("List of blocks")] public Block[]? blocks { get; set; }
 }
 
@@ -404,6 +434,9 @@ public class Platform
 
 public class PlatformResult
 {
+    [APIDescription("Total number of platforms")]
+    public long? total_results { get; set; }
+
     [APIDescription("platforms known on the backend")]
     public Platform[]? platforms { get; set; }
 }
@@ -526,5 +559,30 @@ public class HistoryPrice
 
 public class HistoryPriceResult
 {
+    [APIDescription("Total number of history prices")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of history prices")]
     public HistoryPrice[]? history_prices { get; set; }
+}
+
+public class AddressStorage
+{
+    public long? available { get; set; }
+    public long? used { get; set; }
+    public string? avatar { get; set; }
+}
+
+public class AddressStakes
+{
+    public string? amount { get; set; }
+    public long? time { get; set; }
+    public string? unclaimed { get; set; }
+}
+
+public class AddressBalance
+{
+    public Token? token { get; set; }
+    public Chain? chain { get; set; }
+    public string? amount { get; set; }
 }

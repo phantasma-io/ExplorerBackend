@@ -28,7 +28,9 @@ public partial class Endpoints
         [APIParameter("Token contract hash", "string")]
         string contract = "",
         [APIParameter("Symbol (ex. 'SOUL')", "string")]
-        string symbol = "")
+        string symbol = "",
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0)
     {
         // Results of the query
         long totalResults = 0;
@@ -117,7 +119,8 @@ public partial class Endpoints
                         query = query.Where(x => string.Equals(x.Contract.SYMBOL.ToUpper(), symbol.ToUpper()));
 
                     // Count total number of results before adding order and limit parts of query.
-                    totalResults = query.Count();
+                    if ( with_total == 1 )
+                        totalResults = query.Count();
 
                     if ( order_direction == "asc" )
                         query = order_by switch
@@ -173,6 +176,6 @@ public partial class Endpoints
             }
         }
 
-        return new SeriesResult {total_results = totalResults, series = seriesArray};
+        return new SeriesResult {total_results = with_total == 1 ? totalResults : null, series = seriesArray};
     }
 }

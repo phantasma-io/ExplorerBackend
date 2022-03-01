@@ -27,8 +27,11 @@ public partial class Endpoints
         [APIParameter("Date (less than)", "string")]
         string date_less = "",
         [APIParameter("Date (greater than)", "string")]
-        string date_greater = "")
+        string date_greater = "",
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0)
     {
+        long totalResults = 0;
         HistoryPrice[] historyArray;
 
         using ( var databaseContext = new MainDbContext() )
@@ -72,6 +75,9 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(date_less) )
                     query = query.Where(x => x.DATE_UNIX_SECONDS <= UnixSeconds.FromDateTimeString(date_less));
+
+                if ( with_total == 1 )
+                    totalResults = query.Count();
 
                 //in case we add more to sort
                 if ( order_direction == "asc" )
@@ -145,6 +151,7 @@ public partial class Endpoints
             }
         }
 
-        return new HistoryPriceResult {history_prices = historyArray};
+        return new HistoryPriceResult
+            {total_results = with_total == 1 ? totalResults : null, history_prices = historyArray};
     }
 }

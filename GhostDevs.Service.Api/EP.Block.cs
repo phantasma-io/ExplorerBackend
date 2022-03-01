@@ -56,9 +56,12 @@ public partial class Endpoints
         [APIParameter("Return data with nft metadata", "integer")]
         int with_nft = 0,
         [APIParameter("Return with fiat_prices (only at market_event)", "integer")]
-        int with_fiat = 0
+        int with_fiat = 0,
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0
     )
     {
+        long totalResults = 0;
         Block[] blockArray;
         const string fiatCurrency = "USD";
 
@@ -100,6 +103,10 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(height) )
                     query = query.Where(x => string.Equals(x.HEIGHT, height));
 
+                // Count total number of results before adding order and limit parts of query.
+                if ( with_total == 1 )
+                    totalResults = query.Count();
+
                 //in case we add more to sort
                 if ( order_direction == "asc" )
                     query = order_by switch
@@ -133,14 +140,14 @@ public partial class Endpoints
                             url = o.Oracle.URL,
                             content = o.Oracle.CONTENT
                         }).ToArray()
-                        : null ) ?? Array.Empty<Oracle>(),
-                    Transactions = ( with_transactions == 1 && x.Transactions != null
+                        : null ),
+                    Transactions = with_transactions == 1 && x.Transactions != null
                         ? x.Transactions.Select(t => new Transaction
                         {
                             hash = t.HASH,
                             blockHeight = x.HEIGHT,
                             index = t.INDEX,
-                            events = ( with_events == 1 && t.Events != null
+                            events = with_events == 1 && t.Events != null
                                 ? t.Events.Select(e => new Event
                                 {
                                     chain = e.Chain.NAME.ToLower(),
@@ -422,9 +429,9 @@ public partial class Endpoints
                                         }
                                         : null
                                 }).ToArray()
-                                : null ) ?? Array.Empty<Event>()
+                                : null
                         }).ToArray()
-                        : null ) ?? Array.Empty<Transaction>()
+                        : null
                 }).ToArray();
 
 
@@ -443,6 +450,6 @@ public partial class Endpoints
             }
         }
 
-        return new BlockResult {blocks = blockArray};
+        return new BlockResult {total_results = with_total == 1 ? totalResults : null, blocks = blockArray};
     }
 }

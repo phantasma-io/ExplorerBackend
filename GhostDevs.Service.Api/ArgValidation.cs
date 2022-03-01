@@ -59,7 +59,8 @@ public static class ArgValidation
 
     public static bool CheckLimit(int value)
     {
-        return value <= 100;
+        //return value <= 100;
+        return value > 0;
     }
 
 

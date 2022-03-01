@@ -5,6 +5,11 @@ using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
+using AddressBalance = GhostDevs.Service.ApiResults.AddressBalance;
+using AddressStorage = GhostDevs.Service.ApiResults.AddressStorage;
+using Chain = GhostDevs.Service.ApiResults.Chain;
+using Token = GhostDevs.Service.ApiResults.Token;
+using Transaction = GhostDevs.Service.ApiResults.Transaction;
 
 namespace GhostDevs.Service;
 
@@ -23,6 +28,14 @@ public partial class Endpoints
         string address_name = "",
         [APIParameter("Address (partial match)", "string")]
         string address_partial = "",
+        [APIParameter("Returns with storage", "integer")]
+        int with_storage = 1,
+        [APIParameter("Returns with stake", "integer")]
+        int with_stakes = 1,
+        [APIParameter("Returns with balances", "integer")]
+        int with_balance = 1,
+        [APIParameter("Returns with transactions", "integer")]
+        int with_transactions = 1,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -95,7 +108,66 @@ public partial class Endpoints
                 addressArray = queryResults.Select(x => new Address
                 {
                     address = x.ADDRESS,
-                    address_name = x.ADDRESS_NAME
+                    address_name = x.ADDRESS_NAME,
+                    validator_kind = x.AddressValidatorKind?.NAME,
+                    stake = x.STAKE,
+                    unclaimed = x.UNCLAIMED,
+                    relay = x.RELAY,
+                    storage = with_storage == 1 && x.AddressStorage != null
+                        ? new AddressStorage
+                        {
+                            available = x.AddressStorage.AVAILABLE,
+                            used = x.AddressStorage.USED,
+                            avatar = x.AddressStorage.AVATAR
+                        }
+                        : null,
+                    stakes = with_stakes == 1 && x.AddressStake != null
+                        ? new AddressStakes
+                        {
+                            amount = x.AddressStake.AMOUNT,
+                            time = x.AddressStake.TIME,
+                            unclaimed = x.AddressStake.UNCLAIMED
+                        }
+                        : null,
+                    balances = with_balance == 1 && x.AddressBalances != null
+                        ? x.AddressBalances.Select(b => new AddressBalance
+                            {
+                                token = b.Token != null
+                                    ? new Token
+                                    {
+                                        symbol = b.Token.SYMBOL,
+                                        fungible = b.Token.FUNGIBLE,
+                                        transferable = b.Token.TRANSFERABLE,
+                                        finite = b.Token.FINITE,
+                                        divisible = b.Token.DIVISIBLE,
+                                        fiat = b.Token.FIAT,
+                                        fuel = b.Token.FUEL,
+                                        swappable = b.Token.SWAPPABLE,
+                                        burnable = b.Token.BURNABLE,
+                                        stakable = b.Token.STAKABLE,
+                                        decimals = b.Token.DECIMALS
+                                    }
+                                    : null,
+                                chain = b.Chain != null
+                                    ? new Chain
+                                    {
+                                        chain_name = b.Chain.NAME
+                                    }
+                                    : null,
+                                amount = b.AMOUNT
+                            }
+                        ).ToArray()
+                        : null,
+                    transactions = with_transactions == 1 && x.AddressTransactions != null
+                        ? x.AddressTransactions.Select(t => new Transaction
+                            {
+                                hash = t.Transaction.HASH,
+                                blockHeight = t.Transaction.Block?.HEIGHT,
+                                index = t.Transaction.INDEX,
+                                events = null //Array.Empty<Event>()
+                            }
+                        ).ToArray()
+                        : null
                 }).ToArray();
 
                 var responseTime = DateTime.Now - startTime;
