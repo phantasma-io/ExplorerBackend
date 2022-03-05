@@ -749,6 +749,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     e2.Message);
                             }
                         }
+                        //we need that atm, but checkdata does not do is job atm with it
+                        databaseContext.SaveChanges();
                     }
                 }
             }
