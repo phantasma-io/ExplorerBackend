@@ -12,7 +12,7 @@ public static class MarketEventMethods
         var baseToken = TokenMethods.Get(databaseContext, chainId, baseSymbol);
         var quoteToken = TokenMethods.Get(databaseContext, chainId, quoteSymbol);
 
-        var marketEventKind = MarketEventKindMethods.Upsert(databaseContext, marketKind, chainId);
+        var marketEventKind = MarketEventKindMethods.Upsert(databaseContext, marketKind, chainId, saveChanges);
 
         var marketEvent = new MarketEvent
         {
