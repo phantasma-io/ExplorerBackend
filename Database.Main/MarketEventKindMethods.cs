@@ -13,6 +13,11 @@ public static class MarketEventKindMethods
         if ( marketEventKind != null )
             return marketEventKind;
 
+        marketEventKind = DbHelper.GetTracked<MarketEventKind>(databaseContext)
+            .FirstOrDefault(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()) && x.ChainId == chainId);
+
+        if ( marketEventKind != null ) return marketEventKind;
+        
         var chain = ChainMethods.Get(databaseContext, chainId);
 
         marketEventKind = new MarketEventKind {NAME = name, Chain = chain};
