@@ -52,7 +52,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 InitChains();
 
                 _chainList = ChainMethods.GetChains(databaseContext).ToList();
-                ChainNames = ChainMethods.getChainNames(databaseContext).ToArray();
+                ChainNames = ChainMethods.GetChainNames(databaseContext).ToArray();
 
                 //init tokens once too, cause we might need them, to keep them update, thread them later
 
@@ -217,8 +217,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     public void Shutdown()
     {
         Log.Information("{Name} plugin: Shutdown command received", Name);
-        foreach ( var chain in _chainList ) CheckData(chain.ID);
-
         _running = false;
     }
 

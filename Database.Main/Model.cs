@@ -167,7 +167,8 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Block>()
             .HasOne(x => x.Chain)
             .WithMany(y => y.Blocks)
-            .HasForeignKey(x => x.ChainId);
+            .HasForeignKey(x => x.ChainId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Block>()
             .HasOne(x => x.ChainAddress)

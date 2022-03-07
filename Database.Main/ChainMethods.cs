@@ -80,7 +80,7 @@ public static class ChainMethods
     }
 
 
-    public static List<string> getChainNames(MainDbContext dbContext)
+    public static List<string> GetChainNames(MainDbContext dbContext)
     {
         return GetChains(dbContext).Select(chain => chain.NAME).ToList();
     }

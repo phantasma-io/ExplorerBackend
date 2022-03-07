@@ -34,17 +34,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void FetchBlocks(int chainId, string chainName)
     {
-        CheckData(chainId);
-
+        MainDbContext databaseContext = new();
+        CheckData(databaseContext, chainId);
         do
         {
             var startTime = DateTime.Now;
 
-            BigInteger i;
-            using ( MainDbContext databaseContext = new() )
-            {
-                i = ChainMethods.GetLastProcessedBlock(databaseContext, chainId) + 1;
-            }
+            var i = ChainMethods.GetLastProcessedBlock(databaseContext, chainId) + 1;
 
             if ( i == 1 )
                 // 16664: First CROWN NFT minted on Phantasma blockchain at 2019-12-30 19:11:09.
