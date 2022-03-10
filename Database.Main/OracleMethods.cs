@@ -39,20 +39,20 @@ public static class OracleMethods
 
         foreach ( var (url, content) in oracleList )
         {
+            //might be faster than equals + toUpper
             var oracle = databaseContext.Oracles.FirstOrDefault(x =>
-                string.Equals(x.URL.ToUpper(), url.ToUpper()) && string.Equals(x.CONTENT.ToUpper(), content.ToUpper()));
-            if ( oracle != null )
-                oracleListToReturn.Add(oracle);
-            else
+                x.URL == url && x.CONTENT == content);
+
+            if ( oracle == null )
             {
                 oracle = new Oracle
                 {
                     URL = url,
                     CONTENT = content
                 };
-                oracleListToReturn.Add(oracle);
                 oracleListToInsert.Add(oracle);
             }
+            oracleListToReturn.Add(oracle);
         }
 
         databaseContext.Oracles.AddRange(oracleListToInsert);

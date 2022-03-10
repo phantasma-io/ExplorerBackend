@@ -434,7 +434,11 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                         firstIncompleteDate, "SOUL", "USD"),
                     ["KCAL"] = TokenDailyPricesMethods.Get(databaseContext, ChainMethods.GetId(databaseContext, "main"),
                         firstIncompleteDate, "KCAL", "USD"),
-                    ["GOATI"] = 0.1m
+                    ["GOATI"] = 0.1m,
+                    ["NEO"] = TokenDailyPricesMethods.Get(databaseContext, ChainMethods.GetId(databaseContext, "main"),
+                        firstIncompleteDate, "NEO", "USD"),
+                    ["ETH"] = TokenDailyPricesMethods.Get(databaseContext, ChainMethods.GetId(databaseContext, "main"),
+                        firstIncompleteDate, "ETH", "USD")
                 };
 
                 if ( tokenUsdPrices["SOUL"] == 0 || tokenUsdPrices["NEO"] == 0 || tokenUsdPrices["ETH"] == 0 )

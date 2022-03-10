@@ -34,19 +34,13 @@ public static class OrganizationAddressMethods
 
         var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chainId, addresses, saveChanges);
 
-        var organizationAddressesToInsert = new List<OrganizationAddress>();
-
-        foreach ( var address in addresses )
-        {
-            var organizationAddress = databaseContext.OrganizationAddresses.FirstOrDefault(x =>
-                x.Address.ADDRESS == address && x.Organization == organization);
-
-            if ( organizationAddress != null ) continue;
-
-            organizationAddress = new OrganizationAddress
-                {Address = addressMap.GetValueOrDefault(address), Organization = organization};
-            organizationAddressesToInsert.Add(organizationAddress);
-        }
+        var organizationAddressesToInsert = ( from address in addresses
+            let organizationAddress =
+                databaseContext.OrganizationAddresses.FirstOrDefault(x =>
+                    x.Address.ADDRESS == address && x.Organization == organization)
+            where organizationAddress == null
+            select new OrganizationAddress
+                {Address = addressMap.GetValueOrDefault(address), Organization = organization} ).ToList();
 
         databaseContext.OrganizationAddresses.AddRange(organizationAddressesToInsert);
         if ( !saveChanges ) databaseContext.SaveChanges();
