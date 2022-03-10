@@ -10,27 +10,32 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private void CheckData(MainDbContext databaseContext, int chainId)
+    private void CheckData(int chainId)
     {
+        MainDbContext databaseContext = new();
         CheckChainData(databaseContext, chainId);
         CheckTransactionData(databaseContext);
         CheckEventData(databaseContext);
+
+        databaseContext.SaveChanges();
     }
-    
+
+
     private void CheckChainData(MainDbContext databaseContext, int chainId)
     {
         var startTime = DateTime.Now;
         //check if we got some orphan data, it should not happen, but still it could happen if we crash
         var highestBlock = BlockMethods.GetHighestBlock(databaseContext, chainId);
         var lastProcessedBlock = ChainMethods.GetLastProcessedBlock(databaseContext, chainId);
-        
-        
+
+
         var changesMade = false;
         //check if block.max(id) > chain.height
         if ( highestBlock != null )
         {
-            Log.Verbose("[{Name}] Chain Height processed {Height}, Block Height {Block}", Name, highestBlock.HEIGHT, lastProcessedBlock);
-            if  (BigInteger.Parse(highestBlock.HEIGHT) > lastProcessedBlock )
+            Log.Verbose("[{Name}] Chain Height processed {Height}, Block Height {Block}", Name, highestBlock.HEIGHT,
+                lastProcessedBlock);
+            if ( BigInteger.Parse(highestBlock.HEIGHT) > lastProcessedBlock )
             {
                 //delete entry
                 Log.Warning("[{Name}] found in BlockTable {Block}, ChainTable {Chain}, delete the Info", Name,
@@ -39,7 +44,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 databaseContext.SaveChanges();
                 changesMade = true;
             }
-
         }
 
 
@@ -49,6 +53,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             "[{Name}] Checking Block took {CheckTime} sec, made changes {Really}",
             Name, Math.Round(processTime.TotalSeconds, 3), changesMade);
     }
+
 
     private void CheckTransactionData(MainDbContext databaseContext)
     {
@@ -95,7 +100,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var transaction = TransactionMethods.GetById(databaseContext, e.TransactionId);
             Log.Verbose("[{Name}] Event Id {ID} with TransactionId {Tid}, Transaction is null {Transaction}", Name,
                 e.ID, e.TransactionId, transaction == null);
-            
+
             if ( transaction != null && transaction.ID != 0 ) break;
             events.Add(e);
             count++;

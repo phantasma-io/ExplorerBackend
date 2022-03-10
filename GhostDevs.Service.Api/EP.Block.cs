@@ -134,13 +134,13 @@ public partial class Endpoints
                     protocol = x.PROTOCOL,
                     chain_address = x.ChainAddress.ADDRESS,
                     validator_address = x.ValidatorAddress.ADDRESS,
-                    oracles = ( with_oracles == 1 && x.BlockOracles != null
+                    oracles = with_oracles == 1 && x.BlockOracles != null
                         ? x.BlockOracles.Select(o => new Oracle
                         {
                             url = o.Oracle.URL,
                             content = o.Oracle.CONTENT
                         }).ToArray()
-                        : null ),
+                        : null,
                     Transactions = with_transactions == 1 && x.Transactions != null
                         ? x.Transactions.Select(t => new Transaction
                         {

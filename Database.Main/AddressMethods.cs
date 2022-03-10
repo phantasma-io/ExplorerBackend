@@ -175,4 +175,43 @@ public static class AddressMethods
 
         return ids.ToArray();
     }
+
+
+    public static Dictionary<string, Address> InsertIfNotExists(MainDbContext databaseContext, int chainId,
+        List<string> addresses,
+        bool saveChanges = true)
+    {
+        if ( !addresses.Any() ) return null;
+
+        var chain = ChainMethods.Get(databaseContext, chainId);
+        var addressesToInsert = new List<Address>();
+
+        //we use that to return
+        Dictionary<string, Address> addressMap = new();
+
+        foreach ( var address in addresses )
+        {
+            var addressString = address;
+            ContractMethods.Drop0x(ref addressString);
+
+            var entry = databaseContext.Addresses.FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
+            if ( entry == null )
+            {
+                entry = DbHelper.GetTracked<Address>(databaseContext)
+                    .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
+                if ( entry == null )
+                {
+                    entry = new Address {Chain = chain, ADDRESS = address};
+                    addressesToInsert.Add(entry);
+                }
+            }
+
+            if ( !addressMap.ContainsKey(address) ) addressMap.Add(address, entry);
+        }
+
+        databaseContext.Addresses.AddRange(addressesToInsert);
+        if ( !saveChanges ) databaseContext.SaveChanges();
+
+        return addressMap;
+    }
 }

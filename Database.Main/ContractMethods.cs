@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Database.Main;
@@ -90,5 +92,33 @@ public static class ContractMethods
         var contract = Get(databaseContext, chainId, hash, ignoreCase);
 
         return contract?.ID ?? 0;
+    }
+
+
+    public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> contractInfoList,
+        int chainId, string symbol, bool saveChanges = true)
+    {
+        if ( !contractInfoList.Any() || string.IsNullOrEmpty(symbol) ) return;
+        var chain = ChainMethods.Get(databaseContext, chainId);
+
+        var contractList = new List<Contract>();
+        //name, hash
+        foreach ( var (name, hash) in contractInfoList )
+        {
+            var hashString = hash;
+            Drop0x(ref hashString);
+            var contract = databaseContext.Contracts
+                .FirstOrDefault(x =>
+                    x.ChainId == chainId && string.Equals(x.HASH.ToUpper(), hashString.ToUpper()) &&
+                    string.Equals(x.SYMBOL.ToUpper(), symbol != null ? symbol.ToUpper() : null));
+
+            if ( contract != null ) continue;
+
+            contract = new Contract {NAME = name, Chain = chain, HASH = hashString, SYMBOL = symbol};
+            contractList.Add(contract);
+        }
+
+        databaseContext.Contracts.AddRange(contractList);
+        if ( !saveChanges ) databaseContext.SaveChanges();
     }
 }

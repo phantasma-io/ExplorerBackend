@@ -74,7 +74,7 @@ public static class BlockMethods
 
     public static Block GetHighestBlock(MainDbContext dbContext, int chainId)
     {
-        var id = dbContext.Blocks.Where(x => x.ChainId == chainId).Max(x => x.ID);
-        return id != 0 ? Get(dbContext, id) : null;
+        var id = dbContext.Blocks.Where(x => x.ChainId == chainId).Max(x => ( int? ) x.ID);
+        return id != null ? Get(dbContext, ( int ) id) : null;
     }
 }

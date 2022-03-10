@@ -7,7 +7,7 @@ using GhostDevs.Api;
 using GhostDevs.PluginEngine;
 using Serilog;
 using ChainMethods = Database.Main.ChainMethods;
-using ContractMethods = Database.Main.ContractMethods;
+using ContractMethods = Database.ApiCache.ContractMethods;
 
 namespace GhostDevs.Blockchain;
 
@@ -45,23 +45,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Log.Verbose("[{Name}] chain {ChainName} with Database Id {Id} processed, go on with Contracts",
                     Name, chainName, id);
 
-
                 if ( element.TryGetProperty("contracts", out var contractsProperty) )
                 {
-                    var contracts = contractsProperty.EnumerateArray();
+                    var transactionStart = DateTime.Now;
 
-                    foreach ( var contract in contracts )
-                    {
-                        var contractId = ContractMethods.Upsert(databaseContext, contract.ToString(),
-                            id,
-                            contract.ToString(),
-                            null);
+                    var contractList = contractsProperty.EnumerateArray().Select(contract =>
+                        new Tuple<string, string>(contract.ToString(), contract.ToString())).ToList();
+                    var hashList = contractList.Select(tuple => tuple.Item1).ToList();
 
-                        var contractApiId =
-                            Database.ApiCache.ContractMethods.Upsert(apiCacheDbContext, id, contract.ToString());
+                    ContractMethods.InsertIfNotExists(apiCacheDbContext, hashList, apiId);
+                    Database.Main.ContractMethods.InsertIfNotExists(databaseContext, contractList, id, null);
 
-                        Log.Verbose("[{Name}] Processed Chain contract {Contract}", Name, contract.ToString());
-                    }
+                    var transactionEnd = DateTime.Now - transactionStart;
+                    Log.Verbose("[{Name}] Processed {Count} Contracts in {Time} sec", Name,
+                        contractList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                 }
 
                 updatedChainsCount++;

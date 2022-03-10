@@ -29,6 +29,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             PlatformMethods.Upsert(databaseContext, "phantasma", null, null, false);
             updatedPlatformsCount++;
 
+            DateTime transactionStart;
+            TimeSpan transactionEnd;
+
             var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response != null )
             {
@@ -52,26 +55,33 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         if ( platform.TryGetProperty("tokens", out var platformTokenProperty) )
                         {
-                            var tokens = platformTokenProperty.EnumerateArray();
-                            foreach ( var token in tokens )
-                                PlatformTokenMethods.Upsert(databaseContext, token.ToString(), platformItem);
+                            transactionStart = DateTime.Now;
+                            var tokenList = platformTokenProperty.EnumerateArray().Select(token => token.ToString())
+                                .ToList();
+                            PlatformTokenMethods.InsertIfNotExists(databaseContext, tokenList, platformItem);
+                            transactionEnd = DateTime.Now - transactionStart;
+                            Log.Verbose("[{Name}] Processed {Count} PlatformTokens in {Time} sec", Name,
+                                tokenList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                         }
 
                         if ( platform.TryGetProperty("interop", out var platformInteropProperty) )
                         {
-                            var interopList = platformInteropProperty.EnumerateArray();
-                            foreach ( var interop in interopList )
-                            {
-                                var local = interop.GetProperty("local").GetString();
-                                var external = interop.GetProperty("external").GetString();
-                                PlatformInteropMethods.Upsert(databaseContext, local, external, chainId, platformItem,
-                                    false);
-                            }
+                            transactionStart = DateTime.Now;
+                            var interopList = platformInteropProperty.EnumerateArray().Select(interop =>
+                                new Tuple<string, string>(interop.GetProperty("local").GetString(),
+                                    interop.GetProperty("external").GetString())).ToList();
+
+                            PlatformInteropMethods.InsertIfNotExists(databaseContext, interopList, chainId,
+                                platformItem, false);
+
+                            transactionEnd = DateTime.Now - transactionStart;
+                            Log.Verbose("[{Name}] Processed {Count} InteropItems in {Time} sec", Name,
+                                interopList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                         }
 
                         Log.Verbose(
                             "[{Name}] got Platform {Platform}, Hash {Hash}, fuel {Fuel}",
-                            Name, platformName, chainHash, fuel);
+                            Name, platformName ?? string.Empty, chainHash ?? string.Empty, fuel ?? string.Empty);
 
                         updatedPlatformsCount++;
                     }
@@ -131,13 +141,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         if ( token.TryGetProperty("external", out var externalsProperty) )
                         {
-                            var externals = externalsProperty.EnumerateArray();
-                            foreach ( var external in externals )
-                            {
-                                var platform = external.GetProperty("platform").GetString();
-                                var hash = external.GetProperty("hash").GetString();
-                                ExternalMethods.Upsert(databaseContext, platform, hash, id, false);
-                            }
+                            transactionStart = DateTime.Now;
+                            var externalList = externalsProperty.EnumerateArray().Select(external =>
+                                new Tuple<string, string>(external.GetProperty("platform").GetString(),
+                                    external.GetProperty("hash").GetString())).ToList();
+
+                            ExternalMethods.InsertIfNotExists(databaseContext, externalList, id, false);
+
+                            transactionEnd = DateTime.Now - transactionStart;
+                            Log.Verbose("[{Name}] Processed {Count} Externals in {Time} sec", Name,
+                                externalList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                         }
 
 
@@ -173,13 +186,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                             if ( responseOrg.RootElement.TryGetProperty("members", out var membersProperty) )
                             {
-                                var members = membersProperty.EnumerateArray();
-                                Log.Verbose("[{Name}] got {Count} Addresses to process", Name, members.Count());
+                                transactionStart = DateTime.Now;
+                                var memberList = membersProperty.EnumerateArray().Select(member => member.ToString())
+                                    .ToList();
+                                Log.Verbose("[{Name}] got {Count} Addresses to process", Name, memberList.Count);
 
+                                OrganizationAddressMethods.InsertIfNotExists(databaseContext, orgItem, memberList,
+                                    chainId, false);
 
-                                foreach ( var member in members )
-                                    OrganizationAddressMethods.Upsert(databaseContext, orgItem, member.ToString(),
-                                        chainId, false);
+                                transactionEnd = DateTime.Now - transactionStart;
+                                Log.Verbose("[{Name}] Processed {Count} OrganizationAddresses in {Time} sec", Name,
+                                    memberList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                             }
                         }
 
@@ -189,7 +206,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
 
             if ( updatedTokensCount > 0 || updatedPlatformsCount > 0 || updatedOrganizationsCount > 0 )
+            {
+                transactionStart = DateTime.Now;
                 databaseContext.SaveChanges();
+                transactionEnd = DateTime.Now - transactionStart;
+                Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name,
+                    Math.Round(transactionEnd.TotalSeconds, 3));
+            }
         }
 
         var updateTime = DateTime.Now - startTime;

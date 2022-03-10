@@ -8,7 +8,7 @@ public static class MarketEventKindMethods
         bool saveChanges = true)
     {
         var chain = ChainMethods.Get(databaseContext, chainId);
-        
+
         var marketEventKind = databaseContext.MarketEventKinds
             .FirstOrDefault(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()) && x.Chain == chain);
 

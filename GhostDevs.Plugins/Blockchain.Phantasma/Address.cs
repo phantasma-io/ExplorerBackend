@@ -24,7 +24,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 x.ChainId == chainId && ( x.NAME_LAST_UPDATED_UNIX_SECONDS == 0 ||
                                           x.NAME_LAST_UPDATED_UNIX_SECONDS <
                                           UnixSeconds.AddMinutes(unixSecondsNow, -30) )).ToList();
-
+            DateTime transactionStart;
+            TimeSpan transactionEnd;
             foreach ( var address in addressesToUpdate )
             {
                 var url = $"{Settings.Default.GetRest()}/api/getAccount?account={address.ADDRESS}";
@@ -48,11 +49,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( response.RootElement.TryGetProperty("txs", out var transactionProperty) )
                 {
-                    var transactions = transactionProperty.EnumerateArray();
-                    Log.Verbose("[{Name}] got {Count} Transaction(s) for Address {Address}", Name, transactions.Count(),
-                        address.ADDRESS);
-                    foreach ( var transaction in transactions )
-                        AddressTransactionMethods.Upsert(databaseContext, address, transaction.ToString(), false);
+                    transactionStart = DateTime.Now;
+                    var transactions = transactionProperty.EnumerateArray()
+                        .Select(transaction => transaction.ToString()).ToList();
+                    AddressTransactionMethods.InsertIfNotExists(databaseContext, address, transactions, false);
+
+                    transactionEnd = DateTime.Now - transactionStart;
+                    Log.Verbose("[{Name}] Processed {Count} TransactionAddresses in {Time} sec", Name,
+                        transactions.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                 }
 
                 if ( response.RootElement.TryGetProperty("stakes", out var stakesProperty) )
@@ -62,13 +66,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( response.RootElement.TryGetProperty("balances", out var balancesProperty) )
                 {
-                    var balances = balancesProperty.EnumerateArray();
-                    Log.Verbose("[{Name}] got {Count} Balance(s) for Address {Address}", Name, balances.Count(),
-                        address.ADDRESS);
-                    foreach ( var balance in balances )
-                        AddressBalanceMethods.Upsert(databaseContext, address, balance.GetProperty("chain").GetString(),
-                            balance.GetProperty("symbol").GetString(), balance.GetProperty("amount").GetString(),
-                            false);
+                    transactionStart = DateTime.Now;
+                    var balancesList = balancesProperty.EnumerateArray().Select(balance =>
+                            new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
+                                balance.GetProperty("symbol").GetString(), balance.GetProperty("amount").GetString()))
+                        .ToList();
+
+                    AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList, false);
+
+                    transactionEnd = DateTime.Now - transactionStart;
+                    Log.Verbose("[{Name}] Processed {Count} Balances in {Time} sec", Name,
+                        balancesList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                 }
 
                 if ( response.RootElement.TryGetProperty("storage", out var storageProperty) )
@@ -80,14 +88,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 address.STAKE = response.RootElement.GetProperty("stake").GetString();
                 address.UNCLAIMED = response.RootElement.GetProperty("unclaimed").GetString();
                 address.RELAY = response.RootElement.GetProperty("relay").GetString();
-                //address.VALIDATOR = response.RootElement.GetProperty("validator").GetString();
 
                 var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
                     response.RootElement.GetProperty("validator").GetString());
                 address.AddressValidatorKind = validatorKind;
             }
 
+            transactionStart = DateTime.Now;
             databaseContext.SaveChanges();
+            transactionEnd = DateTime.Now - transactionStart;
+            Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name, Math.Round(transactionEnd.TotalSeconds, 3));
         }
 
         var updateTime = DateTime.Now - startTime;

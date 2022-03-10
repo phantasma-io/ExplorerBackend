@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Database.ApiCache;
@@ -57,17 +58,14 @@ public static class ContractMethods
     {
         Drop0x(ref hashOrName);
 
-        var contract = databaseContext.Contracts.Where(x => x.ChainId == chainId && x.HASH == hashOrName)
-            .FirstOrDefault();
+        var contract = databaseContext.Contracts.FirstOrDefault(x => x.ChainId == chainId && x.HASH == hashOrName);
 
-        if ( contract == null )
-        {
-            contract = new Contract {ChainId = chainId, HASH = hashOrName};
+        if ( contract != null ) return contract;
 
-            databaseContext.Contracts.Add(contract);
+        contract = new Contract {ChainId = chainId, HASH = hashOrName};
 
-            databaseContext.SaveChanges();
-        }
+        databaseContext.Contracts.Add(contract);
+        databaseContext.SaveChanges();
 
         return contract;
     }
@@ -80,10 +78,32 @@ public static class ContractMethods
         var chainId = ChainMethods.GetId(databaseContext, chainShortName);
 
         var contract = databaseContext.Contracts
-            .Where(x => x.ChainId == chainId && x.HASH.ToUpper() == hash.ToUpper())
-            .FirstOrDefault();
-        if ( contract == null ) return 0;
+            .FirstOrDefault(x => x.ChainId == chainId && string.Equals(x.HASH, hash));
 
-        return contract.ID;
+        return contract?.ID ?? 0;
+    }
+
+
+    public static void InsertIfNotExists(ApiCacheDbContext databaseContext, List<string> contractInfoList, int chainId)
+    {
+        if ( !contractInfoList.Any() ) return;
+
+        var contractList = new List<Contract>();
+
+        foreach ( var hash in contractInfoList )
+        {
+            var hashString = hash;
+            Drop0x(ref hashString);
+
+            var contract = databaseContext.Contracts.FirstOrDefault(x => x.ChainId == chainId && x.HASH == hash);
+
+            if ( contract != null ) continue;
+
+            contract = new Contract {ChainId = chainId, HASH = hash};
+            contractList.Add(contract);
+        }
+
+        databaseContext.Contracts.AddRange(contractList);
+        databaseContext.SaveChanges();
     }
 }
