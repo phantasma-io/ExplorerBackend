@@ -321,6 +321,13 @@ public static class TokenMethods
     }
 
 
+    public static Token Get(MainDbContext databaseContext, Chain chain, string symbol)
+    {
+        return databaseContext.Tokens
+            .SingleOrDefault(x => x.Chain == chain && x.SYMBOL == symbol);
+    }
+
+
     // Used in methods below as an argument. Stores symbol information.
     public class Symbol
     {

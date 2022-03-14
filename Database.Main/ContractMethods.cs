@@ -95,7 +95,7 @@ public static class ContractMethods
     }
 
 
-    public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> contractInfoList,
+    public static void InsertIfNotExistList(MainDbContext databaseContext, List<Tuple<string, string>> contractInfoList,
         int chainId, string symbol, bool saveChanges = true)
     {
         if ( !contractInfoList.Any() || string.IsNullOrEmpty(symbol) ) return;
@@ -120,5 +120,28 @@ public static class ContractMethods
 
         databaseContext.Contracts.AddRange(contractList);
         if ( !saveChanges ) databaseContext.SaveChanges();
+    }
+
+
+    public static Contract Upsert(MainDbContext databaseContext, string name, Chain chain, string hash, string symbol,
+        bool saveChanges = true)
+    {
+        Drop0x(ref hash);
+
+        //also check data in cache
+        var contract =
+            databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hash && x.SYMBOL == symbol) ??
+            DbHelper.GetTracked<Contract>(databaseContext)
+                .FirstOrDefault(x => x.Chain == chain && x.HASH == hash && x.SYMBOL == symbol);
+
+        if ( contract != null ) return contract;
+
+        contract = new Contract {NAME = name, Chain = chain, HASH = hash, SYMBOL = symbol};
+
+        databaseContext.Contracts.Add(contract);
+
+        if ( saveChanges ) databaseContext.SaveChanges();
+
+        return contract;
     }
 }

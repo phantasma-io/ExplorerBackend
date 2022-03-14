@@ -52,6 +52,7 @@ public static class OracleMethods
                 };
                 oracleListToInsert.Add(oracle);
             }
+
             oracleListToReturn.Add(oracle);
         }
 

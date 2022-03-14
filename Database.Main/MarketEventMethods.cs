@@ -3,16 +3,16 @@ namespace Database.Main;
 public static class MarketEventMethods
 {
     public static MarketEvent Upsert(MainDbContext databaseContext, string marketKind, string baseSymbol,
-        string quoteSymbol, string price, string endPrice, string marketId, int chainId, Event databaseEvent,
+        string quoteSymbol, string price, string endPrice, string marketId, Chain chain, Event databaseEvent,
         bool saveChanges = true)
     {
         if ( string.IsNullOrEmpty(marketKind) || string.IsNullOrEmpty(baseSymbol) ||
              string.IsNullOrEmpty(quoteSymbol) ) return null;
 
-        var baseToken = TokenMethods.Get(databaseContext, chainId, baseSymbol);
-        var quoteToken = TokenMethods.Get(databaseContext, chainId, quoteSymbol);
+        var baseToken = TokenMethods.Get(databaseContext, chain, baseSymbol);
+        var quoteToken = TokenMethods.Get(databaseContext, chain, quoteSymbol);
 
-        var marketEventKind = MarketEventKindMethods.Upsert(databaseContext, marketKind, chainId, saveChanges);
+        var marketEventKind = MarketEventKindMethods.Upsert(databaseContext, marketKind, chain, saveChanges);
 
         var marketEvent = new MarketEvent
         {

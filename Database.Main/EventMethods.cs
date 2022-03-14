@@ -91,12 +91,6 @@ public static class EventMethods
         string tokenId, int chainId, int eventKindId, int contractId)
     {
         eventUpdated = false;
-        var startTime = DateTime.Now;
-
-        var updateTime = DateTime.Now - startTime;
-        Log.Verbose("Loaded Ids for Quote and Infused Symbol and Source Address processed in {Time} sec",
-            Math.Round(updateTime.TotalSeconds, 3));
-
 
         if ( eventItem == null ) return null;
 
@@ -115,9 +109,9 @@ public static class EventMethods
         //TODO check if always needed
         // For burns we must release all infused nfts.
 
-        startTime = DateTime.Now;
+        var startTime = DateTime.Now;
         ProcessBurnedNft(databaseContext, nft);
-        updateTime = DateTime.Now - startTime;
+        var updateTime = DateTime.Now - startTime;
         Log.Verbose("Process Burned, processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
 
         return eventItem;
@@ -126,6 +120,7 @@ public static class EventMethods
 
     private static void ProcessBurnedNft(MainDbContext databaseContext, Nft nft)
     {
+        //cache might need checking as well
         var nftList = databaseContext.Nfts.Where(x =>
             x.InfusedInto == nft && x.TOKEN_ID == databaseContext.Nfts.Where(y => y.TOKEN_ID == x.TOKEN_ID)
                 .Select(y => y.TOKEN_ID).First());
@@ -150,5 +145,71 @@ public static class EventMethods
     public static Event GetById(MainDbContext dbContext, int id)
     {
         return dbContext.Events.FirstOrDefault(x => x.ID == id);
+    }
+
+
+    public static Event Upsert(MainDbContext databaseContext,
+        out bool newEventCreated,
+        long timestampUnixSeconds,
+        int index,
+        Chain chain,
+        Transaction transaction,
+        Contract contract,
+        EventKind eventKind,
+        Address address,
+        bool saveChanges = true)
+    {
+        newEventCreated = false;
+
+        var eventEntry = new Event
+        {
+            DM_UNIX_SECONDS = UnixSeconds.Now(),
+            TIMESTAMP_UNIX_SECONDS = timestampUnixSeconds,
+            DATE_UNIX_SECONDS = UnixSeconds.GetDate(timestampUnixSeconds),
+            INDEX = index,
+            Chain = chain,
+            Transaction = transaction,
+            Contract = contract,
+            EventKind = eventKind,
+            Address = address
+        };
+
+        databaseContext.Events.Add(eventEntry);
+        if ( saveChanges ) databaseContext.SaveChanges();
+
+        newEventCreated = true;
+
+        return eventEntry;
+    }
+
+
+    public static Event UpdateValues(MainDbContext databaseContext, out bool eventUpdated, Event eventItem, Nft nft,
+        string tokenId, Chain chain, EventKind eventKind, Contract contract)
+    {
+        eventUpdated = false;
+
+        if ( eventItem == null ) return null;
+
+        eventItem.Chain = chain;
+        eventItem.Contract = contract;
+        eventItem.EventKind = eventKind;
+        eventItem.TOKEN_ID = tokenId;
+        eventItem.Nft = nft;
+
+        eventUpdated = true;
+
+        var burnEvent = databaseContext.EventKinds
+            .FirstOrDefault(x => x.NAME == "TokenBurn" && x.Chain == chain);
+        if ( burnEvent == null || eventKind != burnEvent || nft == null ) return eventItem;
+
+        //TODO check if always needed
+        // For burns we must release all infused nfts.
+
+        var startTime = DateTime.Now;
+        ProcessBurnedNft(databaseContext, nft);
+        var updateTime = DateTime.Now - startTime;
+        Log.Verbose("Process Burned, processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
+
+        return eventItem;
     }
 }

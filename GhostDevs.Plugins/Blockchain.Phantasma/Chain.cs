@@ -54,7 +54,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     var hashList = contractList.Select(tuple => tuple.Item1).ToList();
 
                     ContractMethods.InsertIfNotExists(apiCacheDbContext, hashList, apiId);
-                    Database.Main.ContractMethods.InsertIfNotExists(databaseContext, contractList, id, null);
+                    Database.Main.ContractMethods.InsertIfNotExistList(databaseContext, contractList, id, null);
 
                     var transactionEnd = DateTime.Now - transactionStart;
                     Log.Verbose("[{Name}] Processed {Count} Contracts in {Time} sec", Name,

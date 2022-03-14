@@ -4,15 +4,17 @@ namespace Database.Main;
 
 public static class SaleEventKindMethods
 {
-    public static SaleEventKind Upsert(MainDbContext databaseContext, string name, int chainId, bool saveChanges = true)
+    public static SaleEventKind Upsert(MainDbContext databaseContext, string name, Chain chain, bool saveChanges = true)
     {
         var saleEventKind = databaseContext.SaleEventKinds
-            .FirstOrDefault(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()) && x.ChainId == chainId);
-
+            .FirstOrDefault(x => x.NAME == name && x.Chain == chain);
         if ( saleEventKind != null )
             return saleEventKind;
 
-        var chain = ChainMethods.Get(databaseContext, chainId);
+        saleEventKind = DbHelper.GetTracked<SaleEventKind>(databaseContext)
+            .FirstOrDefault(x => x.NAME == name && x.Chain == chain);
+        if ( saleEventKind != null )
+            return saleEventKind;
 
         saleEventKind = new SaleEventKind {NAME = name, Chain = chain};
 

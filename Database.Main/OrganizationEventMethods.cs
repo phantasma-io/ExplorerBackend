@@ -3,11 +3,11 @@ namespace Database.Main;
 public static class OrganizationEventMethods
 {
     public static OrganizationEvent Upsert(MainDbContext databaseContext, string organization, string address,
-        Event databaseEvent, int chainId, bool saveChanges = true)
+        Event databaseEvent, Chain chain, bool saveChanges = true)
     {
         if ( string.IsNullOrEmpty(organization) || string.IsNullOrEmpty(address) ) return null;
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, saveChanges);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
 
         var organizationEntry = OrganizationMethods.Upsert(databaseContext, organization, saveChanges);
 

@@ -214,4 +214,29 @@ public static class AddressMethods
 
         return addressMap;
     }
+
+
+    public static Address Upsert(MainDbContext databaseContext, Chain chain, string address, bool saveChanges = true)
+    {
+        ContractMethods.Drop0x(ref address);
+
+        var entry = databaseContext.Addresses
+            .FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
+
+        if ( entry != null ) return entry;
+
+        // Checking if entry has been added already
+        // but not yet inserted into database.
+        entry = DbHelper.GetTracked<Address>(databaseContext)
+            .FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
+
+        if ( entry != null ) return entry;
+
+        entry = new Address {Chain = chain, ADDRESS = address};
+        databaseContext.Addresses.Add(entry);
+
+        if ( saveChanges ) databaseContext.SaveChanges();
+
+        return entry;
+    }
 }

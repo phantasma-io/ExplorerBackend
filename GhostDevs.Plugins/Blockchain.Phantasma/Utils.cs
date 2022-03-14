@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Database.Main;
 using LunarLabs.Parser;
 using Phantasma.Numerics;
 using Phantasma.VM;
@@ -69,25 +68,5 @@ internal class Utils
         var disassembler = new Disassembler(scriptRaw.Decode());
         var instructions = disassembler.Instructions.ToList();
         return instructions.Select(instruction => instruction.ToString()).ToList();
-    }
-
-
-    public static Event CreateEvent(MainDbContext context, out bool eventCreated, uint timestamp,
-        int index, int chainId, Transaction transaction, int contractId, int eventKindId, string address,
-        bool saveChanges = true)
-    {
-        var eventItem = EventMethods.Upsert(context,
-            out var created,
-            timestamp,
-            index,
-            chainId,
-            transaction,
-            contractId,
-            eventKindId,
-            address,
-            saveChanges);
-        eventCreated = created;
-        if ( saveChanges ) context.SaveChanges();
-        return eventItem;
     }
 }

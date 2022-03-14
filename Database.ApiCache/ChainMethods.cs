@@ -12,7 +12,7 @@ public static class ChainMethods
     public static int Upsert(ApiCacheDbContext databaseContext, string shortName)
     {
         if ( string.IsNullOrEmpty(shortName) )
-            throw new ArgumentException("Argument cannot be null or empty.", "shortName");
+            throw new ArgumentException("Argument cannot be null or empty.", nameof(shortName));
 
         int chainId;
         var chain = databaseContext.Chains.FirstOrDefault(x =>

@@ -6,8 +6,11 @@ public static class OrganizationMethods
 {
     public static Organization Upsert(MainDbContext databaseContext, string name, bool saveChanges = true)
     {
-        var organization =
-            databaseContext.Organizations.FirstOrDefault(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+        var organization = databaseContext.Organizations.FirstOrDefault(x => x.NAME == name);
+        if ( organization != null )
+            return organization;
+
+        organization = DbHelper.GetTracked<Organization>(databaseContext).FirstOrDefault(x => x.NAME == name);
         if ( organization != null )
             return organization;
 
