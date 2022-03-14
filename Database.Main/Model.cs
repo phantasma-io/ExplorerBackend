@@ -436,12 +436,12 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Token>()
             .HasOne(x => x.Address)
-            .WithMany()
+            .WithMany(y => y.Tokens)
             .HasForeignKey(x => x.AddressId);
 
         modelBuilder.Entity<Token>()
             .HasOne(x => x.Owner)
-            .WithMany()
+            .WithMany(y => y.TokenOwners)
             .HasForeignKey(x => x.OwnerId);
 
         modelBuilder.Entity<Token>()
@@ -1234,6 +1234,8 @@ public class Address
     public virtual AddressStorage AddressStorage { get; set; }
     public int? AddressValidatorKindId { get; set; }
     public virtual AddressValidatorKind AddressValidatorKind { get; set; }
+    public virtual List<Token> Tokens { get; set; }
+    public virtual List<Token> TokenOwners { get; set; }
 }
 
 public class Event
