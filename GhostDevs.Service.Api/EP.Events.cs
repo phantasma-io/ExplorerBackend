@@ -103,11 +103,11 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$") )
                     throw new APIException("Unsupported value for 'date_day' parameter.");
-
-                if ( !string.IsNullOrEmpty(date_less) && !Regex.IsMatch(date_less, @"^[0-9]+$") )
+                
+                if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
                     throw new APIException("Unsupported value for 'date_less' parameter.");
 
-                if ( !string.IsNullOrEmpty(date_greater) && !Regex.IsMatch(date_greater, @"^[0-9]+$") )
+                if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
                     throw new APIException("Unsupported value for 'date_greater' parameter.");
 
                 if ( !string.IsNullOrEmpty(event_kind) && !Regex.IsMatch(event_kind, @"^[_\-a-zA-Z0-9]+$") )

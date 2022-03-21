@@ -47,4 +47,13 @@ public static class AddressTransactionMethods
         databaseContext.AddressTransactions.AddRange(addressTransactionList);
         if ( saveChanges ) databaseContext.SaveChanges();
     }
+
+
+    public static IEnumerable<AddressTransaction> GetAddressTransactionsByAddress(MainDbContext databaseContext,
+        string address)
+    {
+        return string.IsNullOrEmpty(address)
+            ? null
+            : databaseContext.AddressTransactions.Where(x => x.Address.ADDRESS == address);
+    }
 }

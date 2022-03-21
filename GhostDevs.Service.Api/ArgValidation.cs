@@ -294,4 +294,10 @@ public static class ArgValidation
     {
         return Regex.IsMatch(value, @"^[a-zA-Z0-9]+$");
     }
+
+
+    public static bool CheckDateString(string value)
+    {
+        return Regex.IsMatch(value, @"^[0-9]+$");
+    }
 }

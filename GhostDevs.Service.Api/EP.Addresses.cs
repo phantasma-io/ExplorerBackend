@@ -29,13 +29,13 @@ public partial class Endpoints
         [APIParameter("Address (partial match)", "string")]
         string address_partial = "",
         [APIParameter("Returns with storage", "integer")]
-        int with_storage = 1,
+        int with_storage = 0,
         [APIParameter("Returns with stake", "integer")]
-        int with_stakes = 1,
+        int with_stakes = 0,
         [APIParameter("Returns with balances", "integer")]
-        int with_balance = 1,
+        int with_balance = 0,
         [APIParameter("Returns with transactions", "integer")]
-        int with_transactions = 1,
+        int with_transactions = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {

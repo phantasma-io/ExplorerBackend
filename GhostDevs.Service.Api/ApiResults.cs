@@ -286,6 +286,9 @@ public class Transaction
     [APIDescription("index in the Block from the transaction")]
     public int index { get; set; }
 
+    [APIDescription("timestamp of the transaction in unixseconds")]
+    public string? date { get; set; }
+    
     [APIDescription("List of Events from the transaction")]
     public Event[]? events { get; set; }
 }

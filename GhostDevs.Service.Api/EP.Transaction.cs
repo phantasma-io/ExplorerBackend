@@ -41,6 +41,11 @@ public partial class Endpoints
         [APIParameter("hash", "string")] string hash = "",
         [APIParameter("hash (partial match)", "string")]
         string hash_partial = "",
+        [APIParameter("Address", "string")] string address = "",
+        [APIParameter("Date (less than)", "string")]
+        string date_less = "",
+        [APIParameter("Date (greater than)", "string")]
+        string date_greater = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0,
         [APIParameter("Return data with nft metadata", "integer")]
@@ -76,6 +81,17 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckAddress(hash_partial) )
                     throw new APIException("Unsupported value for 'hash_partial' parameter.");
 
+                if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
+                    throw new APIException("Unsupported value for 'address' parameter.");
+                
+                ContractMethods.Drop0x(ref address);
+                
+                if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
+                    throw new APIException("Unsupported value for 'date_less' parameter.");
+
+                if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
+                    throw new APIException("Unsupported value for 'date_greater' parameter.");
+                
                 var startTime = DateTime.Now;
 
                 var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
@@ -89,6 +105,18 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(hash_partial) )
                     query = query.Where(x => x.HASH.ToUpper().Contains(hash_partial.ToUpper()));
 
+                if ( !string.IsNullOrEmpty(date_less) )
+                    query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
+
+                if ( !string.IsNullOrEmpty(date_greater) )
+                    query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
+                
+                if ( !string.IsNullOrEmpty(address) )
+                {
+                    var addressTransactions = AddressTransactionMethods.GetAddressTransactionsByAddress(databaseContext, address).ToList();
+                    query = query.Where(x => x.AddressTransactions.Any(y => addressTransactions.Contains(y)));
+                }
+                
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
                     totalResults = query.Count();
@@ -108,7 +136,7 @@ public partial class Endpoints
                         "hash" => query.OrderByDescending(x => x.HASH),
                         _ => query
                     };
-
+                
                 var queryResults = query.Skip(offset).Take(limit).ToList();
 
                 transactionArray = ( from x in queryResults
@@ -118,6 +146,7 @@ public partial class Endpoints
                         hash = x.HASH,
                         blockHeight = x.Block.HEIGHT,
                         index = x.INDEX,
+                        date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
                         events = with_events == 1 && x.Events != null
                             ? events.Select(e => new Event
                             {

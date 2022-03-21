@@ -22,8 +22,6 @@ public partial class Endpoints
         [APIParameter("symbol", "string")] string symbol = "SOUL",
         [APIParameter("with token info", "integer")]
         int with_token = 0,
-        [APIParameter("Date day match (matches whole given day)", "string")]
-        string date_day = "",
         [APIParameter("Date (less than)", "string")]
         string date_less = "",
         [APIParameter("Date (greater than)", "string")]
@@ -50,13 +48,10 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                     throw new APIException("Unsupported value for 'address' parameter.");
 
-                if ( !string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$") )
-                    throw new APIException("Unsupported value for 'date_day' parameter.");
-
-                if ( !string.IsNullOrEmpty(date_less) && !Regex.IsMatch(date_less, @"^[0-9.]+$") )
+                if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less)  )
                     throw new APIException("Unsupported value for 'date_less' parameter.");
 
-                if ( !string.IsNullOrEmpty(date_greater) && !Regex.IsMatch(date_greater, @"^[0-9.]+$") )
+                if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater)  )
                     throw new APIException("Unsupported value for 'date_greater' parameter.");
 
                 var startTime = DateTime.Now;
@@ -66,15 +61,13 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(symbol) )
                     query = query.Where(x => string.Equals(x.Token.SYMBOL.ToUpper(), symbol.ToUpper()));
 
-                //TODO fix date stuff
-                if ( !string.IsNullOrEmpty(date_day) )
-                    query = query.Where(x => x.DATE_UNIX_SECONDS == UnixSeconds.FromDateTimeString(date_day));
+                //might work
+                if ( !string.IsNullOrEmpty(date_less) )
+                    query = query.Where(x => x.DATE_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
 
                 if ( !string.IsNullOrEmpty(date_greater) )
-                    query = query.Where(x => x.DATE_UNIX_SECONDS >= UnixSeconds.FromDateTimeString(date_greater));
+                    query = query.Where(x => x.DATE_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
-                if ( !string.IsNullOrEmpty(date_less) )
-                    query = query.Where(x => x.DATE_UNIX_SECONDS <= UnixSeconds.FromDateTimeString(date_less));
 
                 if ( with_total == 1 )
                     totalResults = query.Count();
