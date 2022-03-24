@@ -177,13 +177,11 @@ public static class AddressMethods
     }
 
 
-    public static Dictionary<string, Address> InsertIfNotExists(MainDbContext databaseContext, int chainId,
-        List<string> addresses,
-        bool saveChanges = true)
+    public static Dictionary<string, Address> InsertIfNotExists(MainDbContext databaseContext, Chain chain,
+        List<string> addresses, bool saveChanges = true)
     {
-        if ( !addresses.Any() ) return null;
+        if ( !addresses.Any() || chain == null ) return null;
 
-        var chain = ChainMethods.Get(databaseContext, chainId);
         var addressesToInsert = new List<Address>();
 
         //we use that to return
@@ -194,11 +192,11 @@ public static class AddressMethods
             var addressString = address;
             ContractMethods.Drop0x(ref addressString);
 
-            var entry = databaseContext.Addresses.FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
+            var entry = databaseContext.Addresses.FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
             if ( entry == null )
             {
                 entry = DbHelper.GetTracked<Address>(databaseContext)
-                    .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
+                    .FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
                 if ( entry == null )
                 {
                     entry = new Address {Chain = chain, ADDRESS = address};

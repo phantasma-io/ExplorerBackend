@@ -26,11 +26,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var url = $"{Settings.Default.GetRest()}/api/getNexus";
 
             //TODO fix
-            PlatformMethods.Upsert(databaseContext, "phantasma", null, null, false);
+            PlatformMethods.Upsert(databaseContext, "phantasma", null, null, false, true);
             updatedPlatformsCount++;
 
             DateTime transactionStart;
             TimeSpan transactionEnd;
+
+            var chainEntry = ChainMethods.Get(databaseContext, chainId);
 
             var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response != null )
@@ -71,7 +73,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 new Tuple<string, string>(interop.GetProperty("local").GetString(),
                                     interop.GetProperty("external").GetString())).ToList();
 
-                            PlatformInteropMethods.InsertIfNotExists(databaseContext, interopList, chainId,
+                            PlatformInteropMethods.InsertIfNotExists(databaseContext, interopList, chainEntry,
                                 platformItem, false);
 
                             transactionEnd = DateTime.Now - transactionStart;
@@ -135,7 +137,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 burnable = true;
 
 
-                        var id = TokenMethods.Upsert(databaseContext, chainId, tokenSymbol, tokenSymbol, tokenDecimal,
+                        var tokenEntry = TokenMethods.Upsert(databaseContext, chainEntry, tokenSymbol, tokenSymbol,
+                            tokenDecimal,
                             fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable, burnable,
                             address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw, false);
 
@@ -146,7 +149,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 new Tuple<string, string>(external.GetProperty("platform").GetString(),
                                     external.GetProperty("hash").GetString())).ToList();
 
-                            ExternalMethods.InsertIfNotExists(databaseContext, externalList, id, false);
+                            ExternalMethods.InsertIfNotExists(databaseContext, externalList, tokenEntry, false);
 
                             transactionEnd = DateTime.Now - transactionStart;
                             Log.Verbose("[{Name}] Processed {Count} Externals in {Time} sec", Name,
@@ -156,7 +159,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         Log.Verbose(
                             "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
-                            Name, tokenSymbol, tokenName, fungible, tokenDecimal, id);
+                            Name, tokenSymbol, tokenName, fungible, tokenDecimal, tokenEntry.ID);
 
                         updatedTokensCount++;
                     }
@@ -192,7 +195,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 Log.Verbose("[{Name}] got {Count} Addresses to process", Name, memberList.Count);
 
                                 OrganizationAddressMethods.InsertIfNotExists(databaseContext, orgItem, memberList,
-                                    chainId, false);
+                                    chainEntry, false);
 
                                 transactionEnd = DateTime.Now - transactionStart;
                                 Log.Verbose("[{Name}] Processed {Count} OrganizationAddresses in {Time} sec", Name,

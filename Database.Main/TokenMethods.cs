@@ -11,21 +11,19 @@ public static class TokenMethods
     // Returns new or existing entry's Id.
 
 
-    public static int Upsert(MainDbContext databaseContext, int chainId, string contractHash, string symbol,
+    public static Token Upsert(MainDbContext databaseContext, Chain chain, string contractHash, string symbol,
         int decimals, bool fungible, bool transferable, bool finite, bool divisible, bool fuel, bool stakable,
         bool fiat, bool swappable, bool burnable, string address, string owner, string currentSupply, string maxSupply,
         string burnedSupply, string scriptRaw, bool saveChanges = true)
     {
-        var contractId = ContractMethods.Upsert(databaseContext, symbol, chainId, contractHash, symbol);
+        var contractEntry = ContractMethods.Upsert(databaseContext, symbol, chain, contractHash, symbol);
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, saveChanges);
-        var ownerEntry = AddressMethods.Upsert(databaseContext, chainId, owner, saveChanges);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
+        var ownerEntry = AddressMethods.Upsert(databaseContext, chain, owner, saveChanges);
 
 
-        int id;
-        var entry = databaseContext.Tokens
-            .FirstOrDefault(x =>
-                x.ChainId == chainId && string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+        var entry = Get(databaseContext, chain, symbol);
+
         if ( entry != null )
         {
             entry.DECIMALS = decimals;
@@ -44,15 +42,13 @@ public static class TokenMethods
             entry.MAX_SUPPLY = maxSupply;
             entry.BURNED_SUPPLY = burnedSupply;
             entry.SCRIPT_RAW = scriptRaw;
-
-            id = entry.ID;
         }
         else
         {
             entry = new Token
             {
-                ChainId = chainId,
-                ContractId = contractId,
+                Chain = chain,
+                Contract = contractEntry,
                 SYMBOL = symbol,
                 DECIMALS = decimals,
                 FUNGIBLE = fungible,
@@ -74,26 +70,15 @@ public static class TokenMethods
             databaseContext.Tokens.Add(entry);
 
             if ( saveChanges ) databaseContext.SaveChanges();
-
-            id = entry.ID;
         }
 
-        return id;
-    }
-
-
-    public static Token Get(MainDbContext databaseContext, string symbol)
-    {
-        return databaseContext.Tokens.SingleOrDefault(x =>
-            string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+        return entry;
     }
 
 
     public static Token Get(MainDbContext databaseContext, int chainId, string symbol)
     {
-        return databaseContext.Tokens
-            .SingleOrDefault(x =>
-                x.ChainId == chainId && string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+        return databaseContext.Tokens.SingleOrDefault(x => x.ChainId == chainId && x.SYMBOL == symbol);
     }
 
 
@@ -158,8 +143,8 @@ public static class TokenMethods
         decimal price, bool saveChanges = true)
     {
         var entry = databaseContext.Tokens
-            .FirstOrDefault(x =>
-                x.ChainId == chainId && string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+            .FirstOrDefault(x => x.ChainId == chainId && x.SYMBOL == symbol);
+
         if ( entry == null )
             // Token with this symbol is not found, cannot set the price - normal situation, not an error.
             return;
@@ -293,10 +278,7 @@ public static class TokenMethods
         // Applying decimal points.
         var priceInTokensDecimal = ToDecimal(priceInTokens, tokenSymbol);
 
-        var tokenPrice = prices
-            .Where(x => string.Equals(x.Symbol.ToUpper(), tokenSymbol.ToUpper()))
-            .Select(x => x.Price)
-            .FirstOrDefault();
+        var tokenPrice = prices.Where(x => x.Symbol == tokenSymbol).Select(x => x.Price).FirstOrDefault();
 
         return ( double ) ( tokenPrice * priceInTokensDecimal );
     }
@@ -323,8 +305,7 @@ public static class TokenMethods
 
     public static Token Get(MainDbContext databaseContext, Chain chain, string symbol)
     {
-        return databaseContext.Tokens
-            .SingleOrDefault(x => x.Chain == chain && x.SYMBOL == symbol);
+        return databaseContext.Tokens.SingleOrDefault(x => x.Chain == chain && x.SYMBOL == symbol);
     }
 
 

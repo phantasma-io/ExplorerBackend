@@ -68,9 +68,11 @@ public static class EventKindMethods
         entry = new EventKind {Chain = chain, NAME = name};
         databaseContext.EventKinds.Add(entry);
 
+        if ( !saveChanges ) return entry.ID;
+
         try
         {
-            if ( saveChanges ) databaseContext.SaveChanges();
+            databaseContext.SaveChanges();
         }
         catch ( Exception ex )
         {

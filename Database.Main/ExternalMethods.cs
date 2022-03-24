@@ -16,7 +16,7 @@ public static class ExternalMethods
 
         var external =
             databaseContext.Externals.FirstOrDefault(x =>
-                string.Equals(x.HASH.ToUpper(), hash.ToUpper()) && x.PlatformId == platform.ID && x.TokenId == tokenId);
+                x.HASH == hash && x.PlatformId == platform.ID && x.TokenId == tokenId);
         if ( external != null )
             return;
 
@@ -30,16 +30,14 @@ public static class ExternalMethods
 
     public static External Get(MainDbContext databaseContext, string hash, int platformId, int tokenId)
     {
-        return databaseContext.Externals
-            .FirstOrDefault(x =>
-                x.PlatformId == platformId && x.TokenId == tokenId && string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
+        return databaseContext.Externals.FirstOrDefault(x =>
+            x.PlatformId == platformId && x.TokenId == tokenId && x.HASH == hash);
     }
 
 
     public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> externals,
-        int tokenId, bool saveChanges = true)
+        Token token, bool saveChanges = true)
     {
-        var token = TokenMethods.Get(databaseContext, tokenId);
         if ( token == null || !externals.Any() ) return;
 
         var externalList = new List<External>();
@@ -47,7 +45,7 @@ public static class ExternalMethods
         {
             var platform = PlatformMethods.Get(databaseContext, platformName);
             var external = databaseContext.Externals.FirstOrDefault(x =>
-                string.Equals(x.HASH.ToUpper(), hash.ToUpper()) && x.PlatformId == platform.ID && x.TokenId == tokenId);
+                x.HASH == hash && x.PlatformId == platform.ID && x.Token == token);
 
             if ( external != null ) continue;
 

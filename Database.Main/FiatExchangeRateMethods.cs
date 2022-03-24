@@ -10,8 +10,7 @@ public static class FiatExchangeRateMethods
     // Returns new or existing entry's Id.
     public static void Upsert(MainDbContext databaseContext, string symbol, decimal usdPrice, bool saveChanges = true)
     {
-        var entry = databaseContext.FiatExchangeRates
-            .FirstOrDefault(x => string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+        var entry = databaseContext.FiatExchangeRates.FirstOrDefault(x => x.SYMBOL == symbol);
         if ( entry != null )
             entry.USD_PRICE = usdPrice;
         else
@@ -41,9 +40,9 @@ public static class FiatExchangeRateMethods
 
     // Gets fiat prices dictionary against USD.
     // Dictionary key contains fiat currency symbol, and value contains price in USD.
-    public static Dictionary<string, decimal> GetPrices(MainDbContext efDatabaseContext)
+    public static Dictionary<string, decimal> GetPrices(MainDbContext databaseContext)
     {
-        return efDatabaseContext.FiatExchangeRates.Select(x => new {key = x.SYMBOL, value = x.USD_PRICE})
+        return databaseContext.FiatExchangeRates.Select(x => new {key = x.SYMBOL, value = x.USD_PRICE})
             .ToDictionary(x => x.key, x => x.value);
     }
 

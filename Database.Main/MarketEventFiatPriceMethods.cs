@@ -10,7 +10,7 @@ public static class MarketEventFiatPriceMethods
         if ( marketEvent is null ) return null;
 
         var marketEventFiatPrice =
-            databaseContext.MarketEventFiatPrices.FirstOrDefault(x => x.MarketEventId == marketEvent.ID);
+            databaseContext.MarketEventFiatPrices.FirstOrDefault(x => x.MarketEvent == marketEvent);
         //already inserted, update values
 
         if ( marketEventFiatPrice == null )

@@ -54,9 +54,6 @@ public partial class Endpoints
         string nft_name_partial = "",
         [APIParameter("Nft description (parial match)", "string")]
         string nft_description_partial = "",
-        [APIParameter("Show all events, hidden events (claim, unprocessed send/receive/burn) or not hidden events",
-            "string")]
-        string show_events = "not_hidden",
         [APIParameter("Address", "string")] string address = "",
         [APIParameter("Address (partial match)", "string")]
         string address_partial = "",
@@ -69,7 +66,11 @@ public partial class Endpoints
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0,
         [APIParameter("Return with fiat_prices (only at market_event)", "integer")]
-        int with_fiat = 0)
+        int with_fiat = 0,
+        [APIParameter("Return with events marked nsfw as well", "integer")]
+        int with_nsfw = 0,
+        [APIParameter("Return blacklisted events as well", "integer")]
+        int with_blacklisted = 0)
     {
         // Results of the query
         long totalResults = 0;
@@ -103,7 +104,7 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$") )
                     throw new APIException("Unsupported value for 'date_day' parameter.");
-                
+
                 if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
                     throw new APIException("Unsupported value for 'date_less' parameter.");
 
@@ -124,9 +125,6 @@ public partial class Endpoints
                      !Regex.IsMatch(nft_description_partial, @"^[_\-a-zA-Z0-9]+$") )
                     throw new APIException("Unsupported value for 'nft_description_partial' parameter.");
 
-                if ( show_events != "all" && show_events != "not_hidden" && show_events != "hidden" )
-                    throw new APIException("Unsupported value for 'show_events' parameter.");
-
                 if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                     throw new APIException("Unsupported value for 'address' parameter.");
 
@@ -143,14 +141,11 @@ public partial class Endpoints
                 // Getting exchange rates in advance.
                 var query = databaseContext.Events.AsQueryable();
 
-                //if (show_events != "all" && show_events != "hidden")
-                //{
-                //    query = query.Where(x => x.BURNED != true);
-                //}
+                if ( with_nsfw == 0 )
+                    query = query.Where(x => x.NSFW != true);
 
-                query = query.Where(x => x.NSFW != true);
-
-                query = query.Where(x => x.BLACKLISTED != true);
+                if ( with_blacklisted == 0 )
+                    query = query.Where(x => x.BLACKLISTED != true);
 
                 if ( !string.IsNullOrEmpty(chain) )
                     query = query.Where(x => string.Equals(x.Chain.NAME.ToUpper(), chain.ToUpper()));
@@ -180,11 +175,6 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(nft_description_partial) )
                     query = query.Where(x => x.Nft.DESCRIPTION.ToUpper().Contains(nft_description_partial.ToUpper()));
-
-                if ( show_events != "all" )
-                    query = show_events == "not_hidden"
-                        ? query.Where(x => x.HIDDEN == false)
-                        : query.Where(x => x.HIDDEN == true);
 
                 if ( !string.IsNullOrEmpty(address) )
                 {

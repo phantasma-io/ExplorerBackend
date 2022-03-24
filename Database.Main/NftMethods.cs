@@ -6,7 +6,7 @@ namespace Database.Main;
 
 public static class NftMethods
 {
-    private static readonly string ownershipProcessingLock = "ownershipProcessingLock";
+    private const string OwnershipProcessingLock = "ownershipProcessingLock";
 
 
     // Checks if "Nfts" table has entry with given name,
@@ -69,7 +69,7 @@ public static class NftMethods
         // and ignore older events.
         // We can switch to 1155 logic, but don't see any pros in it for now.
 
-        var lockSting = ownershipProcessingLock + chainId;
+        var lockSting = OwnershipProcessingLock + chainId;
         lock ( string.Intern(lockSting) )
         {
             var ownership = databaseContext.NftOwnerships.Where(x => x.Nft == nft)
@@ -146,7 +146,7 @@ public static class NftMethods
         // and ignore older events.
         // We can switch to 1155 logic, but don't see any pros in it for now.
 
-        var lockSting = ownershipProcessingLock + chain.ID;
+        var lockSting = OwnershipProcessingLock + chain.ID;
         lock ( string.Intern(lockSting) )
         {
             //also check in cache

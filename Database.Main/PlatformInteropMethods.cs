@@ -13,7 +13,7 @@ public static class PlatformInteropMethods
 
         var platformInterop =
             databaseContext.PlatformInterops.FirstOrDefault(x =>
-                string.Equals(x.EXTERNAL.ToUpper(), externalAddress.ToUpper()) && x.LocalAddressId == addressEntry.ID);
+                x.EXTERNAL == externalAddress && x.LocalAddressId == addressEntry.ID);
         if ( platformInterop != null )
             return;
 
@@ -34,12 +34,11 @@ public static class PlatformInteropMethods
 
 
     public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> interopList,
-        int chainId,
-        Platform platform, bool saveChanges = true)
+        Chain chain, Platform platform, bool saveChanges = true)
     {
         //item1 = local address
         var addresses = interopList.Select(tuple => tuple.Item1).ToList();
-        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chainId, addresses, saveChanges);
+        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, saveChanges);
 
         var platformInteropList = new List<PlatformInterop>();
 
@@ -48,8 +47,7 @@ public static class PlatformInteropMethods
             var addressEntry = addressMap.GetValueOrDefault(localAddress);
             var platformInterop =
                 databaseContext.PlatformInterops.FirstOrDefault(x =>
-                    string.Equals(x.EXTERNAL.ToUpper(), externalAddress.ToUpper()) &&
-                    x.LocalAddressId == addressEntry.ID);
+                    x.EXTERNAL == externalAddress && x.LocalAddressId == addressEntry.ID);
             if ( platformInterop != null ) continue;
 
             platformInterop = new PlatformInterop

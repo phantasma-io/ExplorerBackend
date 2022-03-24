@@ -12,7 +12,7 @@ public static class ChainMethods
     public static int Upsert(MainDbContext databaseContext, string name)
     {
         int chainId;
-        var chain = databaseContext.Chains.FirstOrDefault(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+        var chain = databaseContext.Chains.FirstOrDefault(x => x.NAME == name);
         if ( chain != null )
             chainId = chain.ID;
         else
@@ -37,17 +37,15 @@ public static class ChainMethods
 
     public static Chain Get(MainDbContext databaseContext, string name)
     {
-        return databaseContext.Chains.Single(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+        return databaseContext.Chains.Single(x => x.NAME == name);
     }
 
 
     public static int GetId(MainDbContext databaseContext, string name)
     {
-        if ( !string.IsNullOrEmpty(name) )
-            return databaseContext.Chains.Where(x => string.Equals(x.NAME.ToUpper(), name.ToUpper())).Select(x => x.ID)
-                .FirstOrDefault();
-
-        return 0;
+        return !string.IsNullOrEmpty(name)
+            ? databaseContext.Chains.Where(x => x.NAME == name).Select(x => x.ID).FirstOrDefault()
+            : 0;
     }
 
 

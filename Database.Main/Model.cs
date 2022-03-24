@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 // Here we have all tables, fields and their relations for backend database.
-// Also public method GetConnectionString() availabe, allowing to get database connection string,
+// Also public method GetConnectionString() available, allowing to get database connection string,
 // which can be used by PostgreSQLConnector module to connect to database and execute raw SQL queries.
 
 //since we build our db struct here, we have a different naming as well
@@ -81,15 +81,6 @@ public class MainDbContext : DbContext
     }
 
 
-    // TODO Remove this hack method when not needed anymore.
-    public string GetConnectionStringCustomDbName(string dbName)
-    {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
-            .GetSection("DatabaseConfiguration"));
-        return Settings.Default.ConnectionStringNoDbName + dbName;
-    }
-
-
     //for now...
     public static int GetConnectionMaxRetries()
     {
@@ -134,10 +125,10 @@ public class MainDbContext : DbContext
 
         // FKs
 
-        modelBuilder.Entity<Chain>()
+        /*modelBuilder.Entity<Chain>()
             .HasOne(x => x.MainToken)
             .WithOne(y => y.Chain2)
-            .HasForeignKey<Chain>(x => x.MainTokenId);
+            .HasForeignKey<Chain>(x => x.MainTokenId);*/
 
         // Indexes
 
@@ -192,9 +183,6 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.HASH)
             .IsUnique();
 
-        modelBuilder.Entity<Block>()
-            .HasIndex(x => x.PREVIOUS_HASH);
-
         //////////////////////
         // Transaction
         //////////////////////
@@ -231,9 +219,6 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.ChainId);
 
         // Indexes
-
-        modelBuilder.Entity<EventKind>()
-            .HasIndex(x => x.NAME);
 
         modelBuilder.Entity<EventKind>()
             .HasIndex(x => new {x.ChainId, x.NAME})
@@ -274,13 +259,7 @@ public class MainDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<Address>()
-            .HasIndex(x => new {x.ADDRESS_NAME});
-
-        modelBuilder.Entity<Address>()
-            .HasIndex(x => new {x.USER_NAME});
-
-        modelBuilder.Entity<Address>()
-            .HasIndex(x => new {x.NAME_LAST_UPDATED_UNIX_SECONDS});
+            .HasIndex(x => new {x.ChainId, x.NAME_LAST_UPDATED_UNIX_SECONDS});
 
         modelBuilder.Entity<Address>()
             .HasIndex(x => new {x.ADDRESS, x.ADDRESS_NAME});
@@ -391,32 +370,24 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<Event>()
-            .HasIndex(x => x.DM_UNIX_SECONDS);
-        modelBuilder.Entity<Event>()
             .HasIndex(x => x.TIMESTAMP_UNIX_SECONDS);
         modelBuilder.Entity<Event>()
             .HasIndex(x => x.DATE_UNIX_SECONDS);
 
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.TransactionId, x.INDEX});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.INDEX});
+        /*modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.INDEX});*/
 
         modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.ContractId, x.TOKEN_ID});
 
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.HIDDEN});
-
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.BURNED});
-
+        /* not needed atm
         modelBuilder.Entity<Event>()
             .HasIndex(x => x.NSFW);
         modelBuilder.Entity<Event>()
             .HasIndex(x => x.BLACKLISTED);
-
+        */
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.BURNED, x.EventKindId});
 
         //////////////////////
         // Token
@@ -451,9 +422,6 @@ public class MainDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes
-
-        modelBuilder.Entity<Token>()
-            .HasIndex(x => new {x.SYMBOL});
 
         modelBuilder.Entity<Token>()
             .HasIndex(x => new {x.ChainId, x.ContractId, x.SYMBOL})
@@ -547,33 +515,24 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Nft>()
             .HasIndex(x => new {x.ContractId, x.TOKEN_URI});
 
-        modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.NAME);
-
-        modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.DESCRIPTION);
-
-        modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.MINT_DATE_UNIX_SECONDS);
-
-        modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.MINT_NUMBER);
+        /*modelBuilder.Entity<Nft>()
+            .HasIndex(x => x.MINT_DATE_UNIX_SECONDS);*/
 
         modelBuilder.Entity<Nft>()
             .HasIndex(x => x.BURNED);
 
-        modelBuilder.Entity<Nft>()
+        /*modelBuilder.Entity<Nft>()
             .HasIndex(x => x.NSFW);
         modelBuilder.Entity<Nft>()
             .HasIndex(x => x.BLACKLISTED);
         modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.METADATA_UPDATE);
+            .HasIndex(x => x.METADATA_UPDATE);*/
 
         modelBuilder.Entity<Nft>()
             .HasIndex(x => x.TOKEN_ID);
 
-        modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.InfusedIntoId);
+        /*modelBuilder.Entity<Nft>()
+            .HasIndex(x => x.InfusedIntoId);*/
 
         //////////////////////
         // SeriesMode
@@ -616,13 +575,13 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.ContractId, x.SERIES_ID})
             .IsUnique();
 
-        modelBuilder.Entity<Series>()
+        /*modelBuilder.Entity<Series>()
             .HasIndex(x => x.NAME);
 
         modelBuilder.Entity<Series>()
-            .HasIndex(x => x.DESCRIPTION);
+            .HasIndex(x => x.DESCRIPTION);*/
 
-        modelBuilder.Entity<Series>()
+        /*modelBuilder.Entity<Series>()
             .HasIndex(x => x.TYPE);
 
         modelBuilder.Entity<Series>()
@@ -635,7 +594,7 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.NSFW);
 
         modelBuilder.Entity<Series>()
-            .HasIndex(x => x.DM_UNIX_SECONDS);
+            .HasIndex(x => x.DM_UNIX_SECONDS);*/
 
         //////////////////////
         // Infusion
@@ -668,6 +627,8 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.SYMBOL)
             .IsUnique();
 
+        modelBuilder.Entity<FiatExchangeRate>()
+            .HasIndex(x => new {x.SYMBOL, x.USD_PRICE});
 
         //////////////////////
         // Platform
@@ -1024,11 +985,14 @@ public class MainDbContext : DbContext
             .HasForeignKey<MarketEventFiatPrice>(x => x.MarketEventId);
 
         // Indexes
-        modelBuilder.Entity<MarketEventFiatPrice>()
+        /*modelBuilder.Entity<MarketEventFiatPrice>()
             .HasIndex(x => new {x.PRICE_USD});
 
         modelBuilder.Entity<MarketEventFiatPrice>()
-            .HasIndex(x => new {x.PRICE_END_USD});
+            .HasIndex(x => new {x.PRICE_END_USD});*/
+
+        modelBuilder.Entity<MarketEventFiatPrice>()
+            .HasIndex(x => new {x.PRICE_END_USD, x.PRICE_USD});
 
         //////////////////////
         // TokenPriceStates
@@ -1121,10 +1085,9 @@ public class Chain
     public string CURRENT_HEIGHT { get; set; }
     public virtual List<Nft> Nfts { get; set; }
 
-    public int?
+    /*public int?
         MainTokenId { get; set; } // Token to be used for crypto price calculations for this chain (ex. SOUL, NEO).
-
-    public virtual Token MainToken { get; set; }
+    public virtual Token MainToken { get; set; }*/
     public virtual List<Contract> Contracts { get; set; }
     public virtual List<Token> Tokens { get; set; }
     public virtual List<Block> Blocks { get; set; }
@@ -1210,7 +1173,6 @@ public class Address
     public string ADDRESS { get; set; }
     public string ADDRESS_NAME { get; set; }
     public string USER_NAME { get; set; }
-    public string USER_TITLE { get; set; }
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
     public string STAKE { get; set; }
     public string UNCLAIMED { get; set; }
@@ -1250,7 +1212,6 @@ public class Event
     // EF do not preserve insertion order for ID,
     // but we need to know exact order of events, so we add special field for this.
     public string TOKEN_ID { get; set; }
-    public bool HIDDEN { get; set; }
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
     public bool BLACKLISTED { get; set; }
@@ -1311,15 +1272,6 @@ public class Token
     public decimal PRICE_RUB { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
-    public int Chain2Id { get; set; }
-
-    public virtual Chain
-        Chain2
-    {
-        get;
-        set;
-    } // Navigation properties can only participate in a single relationship, so adding second one
-
     public int ContractId { get; set; }
 
     public virtual Contract Contract { get; set; }
@@ -1491,6 +1443,7 @@ public class Platform
     public string NAME { get; set; }
     public string CHAIN { get; set; }
     public string FUEL { get; set; }
+    public bool HIDDEN { get; set; }
     public virtual List<TransactionSettleEvent> TransactionSettleEvents { get; set; }
     public virtual List<External> Externals { get; set; }
     public virtual List<PlatformInterop> PlatformInterops { get; set; }

@@ -198,8 +198,7 @@ public static class EventMethods
 
         eventUpdated = true;
 
-        var burnEvent = databaseContext.EventKinds
-            .FirstOrDefault(x => x.NAME == "TokenBurn" && x.Chain == chain);
+        var burnEvent = EventKindMethods.GetByName(databaseContext, chain, "TokenBurn");
         if ( burnEvent == null || eventKind != burnEvent || nft == null ) return eventItem;
 
         //TODO check if always needed

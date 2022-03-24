@@ -53,10 +53,8 @@ public static class ContractMethods
 
         int contractId;
 
-        var contract = databaseContext.Contracts
-            .FirstOrDefault(x =>
-                x.ChainId == chain && string.Equals(x.HASH.ToUpper(), hash.ToUpper()) &&
-                string.Equals(x.SYMBOL.ToUpper(), symbol != null ? symbol.ToUpper() : null));
+        var contract =
+            databaseContext.Contracts.FirstOrDefault(x => x.ChainId == chain && x.HASH == hash && x.SYMBOL == symbol);
 
         if ( contract != null )
             contractId = contract.ID;
@@ -75,21 +73,17 @@ public static class ContractMethods
     }
 
 
-    public static Contract Get(MainDbContext databaseContext, int chainId, string hash, bool ignoreCase = false)
+    public static Contract Get(MainDbContext databaseContext, int chainId, string hash)
     {
         Drop0x(ref hash);
-
-        if ( ignoreCase )
-            return databaseContext.Contracts
-                .FirstOrDefault(x => x.ChainId == chainId && string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
 
         return databaseContext.Contracts.FirstOrDefault(x => x.ChainId == chainId && x.HASH == hash);
     }
 
 
-    public static int GetId(MainDbContext databaseContext, int chainId, string hash, bool ignoreCase = false)
+    public static int GetId(MainDbContext databaseContext, int chainId, string hash)
     {
-        var contract = Get(databaseContext, chainId, hash, ignoreCase);
+        var contract = Get(databaseContext, chainId, hash);
 
         return contract?.ID ?? 0;
     }
@@ -107,10 +101,8 @@ public static class ContractMethods
         {
             var hashString = hash;
             Drop0x(ref hashString);
-            var contract = databaseContext.Contracts
-                .FirstOrDefault(x =>
-                    x.ChainId == chainId && string.Equals(x.HASH.ToUpper(), hashString.ToUpper()) &&
-                    string.Equals(x.SYMBOL.ToUpper(), symbol != null ? symbol.ToUpper() : null));
+            var contract = databaseContext.Contracts.FirstOrDefault(x =>
+                x.ChainId == chainId && x.HASH == hashString && x.SYMBOL == symbol);
 
             if ( contract != null ) continue;
 

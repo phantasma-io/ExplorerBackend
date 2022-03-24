@@ -83,15 +83,15 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                     throw new APIException("Unsupported value for 'address' parameter.");
-                
+
                 ContractMethods.Drop0x(ref address);
-                
+
                 if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
                     throw new APIException("Unsupported value for 'date_less' parameter.");
 
                 if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
                     throw new APIException("Unsupported value for 'date_greater' parameter.");
-                
+
                 var startTime = DateTime.Now;
 
                 var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
@@ -110,13 +110,14 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(date_greater) )
                     query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
-                
+
                 if ( !string.IsNullOrEmpty(address) )
                 {
-                    var addressTransactions = AddressTransactionMethods.GetAddressTransactionsByAddress(databaseContext, address).ToList();
+                    var addressTransactions = AddressTransactionMethods
+                        .GetAddressTransactionsByAddress(databaseContext, address).ToList();
                     query = query.Where(x => x.AddressTransactions.Any(y => addressTransactions.Contains(y)));
                 }
-                
+
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
                     totalResults = query.Count();
@@ -136,7 +137,7 @@ public partial class Endpoints
                         "hash" => query.OrderByDescending(x => x.HASH),
                         _ => query
                     };
-                
+
                 var queryResults = query.Skip(offset).Take(limit).ToList();
 
                 transactionArray = ( from x in queryResults

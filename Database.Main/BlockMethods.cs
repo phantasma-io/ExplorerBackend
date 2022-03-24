@@ -10,12 +10,12 @@ public static class BlockMethods
     // Checks if "Blocks" table has entry with given chain id and height,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static Block Upsert(MainDbContext databaseContext, int chainId, BigInteger height, long timestampUnixSeconds,
+    public static Block Upsert(MainDbContext databaseContext, Chain chain, BigInteger height, long timestampUnixSeconds,
         string hash, string previousHash, int protocol, string chainAddress, string validatorAddress, string reward,
         bool saveChanges = true)
     {
         var entry = databaseContext.Blocks
-            .FirstOrDefault(x => x.ChainId == chainId && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds &&
+            .FirstOrDefault(x => x.Chain == chain && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds &&
                                  x.HEIGHT == height.ToString());
 
         /*if (entry == null)
@@ -27,13 +27,13 @@ public static class BlockMethods
 
         if ( entry != null ) return entry;
 
-        var chainAddressEntry = AddressMethods.Upsert(databaseContext, chainId, chainAddress, saveChanges);
-        var validatorAddressEntry = AddressMethods.Upsert(databaseContext, chainId, validatorAddress, saveChanges);
+        var chainAddressEntry = AddressMethods.Upsert(databaseContext, chain, chainAddress, saveChanges);
+        var validatorAddressEntry = AddressMethods.Upsert(databaseContext, chain, validatorAddress, saveChanges);
 
 
         entry = new Block
         {
-            ChainId = chainId,
+            Chain = chain,
             HEIGHT = height.ToString(),
             TIMESTAMP_UNIX_SECONDS = timestampUnixSeconds,
             HASH = hash,

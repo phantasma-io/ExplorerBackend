@@ -31,7 +31,7 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
             //never processed
             var eventsFirst = databaseContext.MarketEvents.Where(x =>
                     !databaseContext.MarketEventFiatPrices.Any(y => y.MarketEventId == x.ID))
-                .OrderBy(x => x.Event.TIMESTAMP_UNIX_SECONDS).Take(MaxEventUsdPricesProcessedPerSession).ToList();
+                .OrderBy(x => x.Event.ID).Take(MaxEventUsdPricesProcessedPerSession).ToList();
 
             //now get the events we never had
             //at least processed once
@@ -40,7 +40,7 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
             if ( leftToTake > 0 )
                 eventsNoPrice = databaseContext.MarketEvents.Where(x =>
                         x.MarketEventFiatPrice.PRICE_USD == 0 || x.MarketEventFiatPrice.PRICE_END_USD == 0)
-                    .OrderBy(x => x.Event.TIMESTAMP_UNIX_SECONDS).Take(leftToTake).ToList();
+                    .OrderBy(x => x.Event.ID).Take(leftToTake).ToList();
 
             var events = eventsFirst.Concat(eventsNoPrice).ToList();
 

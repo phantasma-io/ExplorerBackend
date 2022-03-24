@@ -13,8 +13,8 @@ public static class InfusionMethods
         if ( token is {FUNGIBLE: false} )
         {
             // For NFT always create new entry, if we can't find infusion with same value
-            var nftInfusion = databaseContext.Infusions.FirstOrDefault(x =>
-                x.Nft == nft && string.Equals(x.KEY.ToUpper(), key.ToUpper()) && x.VALUE == value);
+            var nftInfusion =
+                databaseContext.Infusions.FirstOrDefault(x => x.Nft == nft && x.KEY == key && x.VALUE == value);
             if ( nftInfusion == null )
             {
                 nftInfusion = new Infusion {Nft = nft, KEY = key, VALUE = value};
@@ -26,16 +26,13 @@ public static class InfusionMethods
         }
 
         // Fungible infusions
-        var infusion = databaseContext.Infusions
-            .FirstOrDefault(x => x.Nft == nft &&
-                                 string.Equals(x.KEY.ToUpper(), key.ToUpper()));
+        var infusion = databaseContext.Infusions.FirstOrDefault(x => x.Nft == nft && x.KEY == key);
+
         if ( infusion == null )
         {
             var fungibleToken = TokenMethods.Get(databaseContext, infusionEvent.Event.ChainId, key);
-            infusion = new Infusion {Nft = nft, KEY = key, Token = fungibleToken};
+            infusion = new Infusion {Nft = nft, KEY = key, Token = fungibleToken, VALUE = "0"};
             databaseContext.Infusions.Add(infusion);
-
-            infusion.VALUE = "0";
         }
 
         infusion.VALUE =

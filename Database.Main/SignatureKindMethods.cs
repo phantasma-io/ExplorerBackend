@@ -7,8 +7,7 @@ public static class SignatureKindMethods
 {
     public static SignatureKind Upsert(MainDbContext databaseContext, string name, bool saveChanges = true)
     {
-        var signatureKind =
-            databaseContext.SignatureKinds.FirstOrDefault(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+        var signatureKind = databaseContext.SignatureKinds.FirstOrDefault(x => x.NAME == name);
 
         if ( signatureKind != null )
             return signatureKind;
@@ -33,8 +32,7 @@ public static class SignatureKindMethods
 
         foreach ( var name in names )
         {
-            var signatureKind =
-                databaseContext.SignatureKinds.FirstOrDefault(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+            var signatureKind = databaseContext.SignatureKinds.FirstOrDefault(x => x.NAME == name);
 
             if ( signatureKind == null )
             {

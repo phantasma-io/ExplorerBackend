@@ -27,12 +27,11 @@ public static class OrganizationAddressMethods
 
 
     public static void InsertIfNotExists(MainDbContext databaseContext, Organization organization,
-        List<string> addresses,
-        int chainId, bool saveChanges = true)
+        List<string> addresses, Chain chain, bool saveChanges = true)
     {
         if ( organization == null || !addresses.Any() ) return;
 
-        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chainId, addresses, saveChanges);
+        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, saveChanges);
 
         var organizationAddressesToInsert = ( from address in addresses
             let organizationAddress =

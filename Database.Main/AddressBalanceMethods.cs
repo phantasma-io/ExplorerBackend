@@ -10,9 +10,10 @@ public static class AddressBalanceMethods
         string amount, bool saveChanges = true)
     {
         var chain = ChainMethods.Get(databaseContext, chainName);
-        var token = TokenMethods.Get(databaseContext, symbol);
+        if ( chain == null ) return null;
 
-        if ( chain == null || token == null ) return null;
+        var token = TokenMethods.Get(databaseContext, chain.ID, symbol);
+        if ( token == null ) return null;
 
         var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
             x.Address == address && x.Chain == chain && x.Token == token);
@@ -45,9 +46,10 @@ public static class AddressBalanceMethods
         foreach ( var (chainName, symbol, amount) in balances )
         {
             var chain = ChainMethods.Get(databaseContext, chainName);
-            var token = TokenMethods.Get(databaseContext, symbol);
+            if ( chain == null ) continue;
 
-            if ( chain == null || token == null ) continue;
+            var token = TokenMethods.Get(databaseContext, chain.ID, symbol);
+            if ( token == null ) continue;
 
             var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
                 x.Address == address && x.Chain == chain && x.Token == token);

@@ -56,6 +56,8 @@ public partial class Endpoints
 
                 var query = databaseContext.Platforms.AsQueryable();
 
+                query = query.Where(x => x.HIDDEN == false);
+
                 if ( !string.IsNullOrEmpty(name) )
                     query = query.Where(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
 

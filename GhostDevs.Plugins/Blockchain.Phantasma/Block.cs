@@ -149,7 +149,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var chainEntry = ChainMethods.Get(databaseContext, chainId);
 
             // Block in main database
-            var block = Database.Main.BlockMethods.Upsert(databaseContext, chainId, blockHeight, timestampUnixSeconds,
+            var block = Database.Main.BlockMethods.Upsert(databaseContext, chainEntry, blockHeight,
+                timestampUnixSeconds,
                 blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward, false);
 
             using ( ApiCacheDbContext databaseApiCacheContext = new() )

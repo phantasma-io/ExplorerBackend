@@ -10,8 +10,7 @@ public static class OracleMethods
     {
         if ( string.IsNullOrEmpty(url) || string.IsNullOrEmpty(content) ) return null;
 
-        var oracle = databaseContext.Oracles.FirstOrDefault(x =>
-            string.Equals(x.URL.ToUpper(), url.ToUpper()) && string.Equals(x.CONTENT.ToUpper(), content.ToUpper()));
+        var oracle = databaseContext.Oracles.FirstOrDefault(x => x.URL == url && x.CONTENT == content);
         if ( oracle != null )
             return oracle;
 

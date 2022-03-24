@@ -45,6 +45,10 @@ public partial class Endpoints
         string hash_partial = "",
         [APIParameter("height of the block", "string")]
         string height = "",
+        [APIParameter("Date (less than)", "string")]
+        string date_less = "",
+        [APIParameter("Date (greater than)", "string")]
+        string date_greater = "",
         [APIParameter("Return data with oracles of the block", "integer")]
         int with_oracles = 0,
         [APIParameter("Return data with transactions of the block", "integer")]
@@ -101,7 +105,13 @@ public partial class Endpoints
                     query = query.Where(x => x.HASH.ToUpper().Contains(hash_partial.ToUpper()));
 
                 if ( !string.IsNullOrEmpty(height) )
-                    query = query.Where(x => string.Equals(x.HEIGHT, height));
+                    query = query.Where(x => x.HEIGHT == height);
+
+                if ( !string.IsNullOrEmpty(date_less) )
+                    query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
+
+                if ( !string.IsNullOrEmpty(date_greater) )
+                    query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
@@ -134,6 +144,7 @@ public partial class Endpoints
                     protocol = x.PROTOCOL,
                     chain_address = x.ChainAddress.ADDRESS,
                     validator_address = x.ValidatorAddress.ADDRESS,
+                    date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
                     oracles = with_oracles == 1 && x.BlockOracles != null
                         ? x.BlockOracles.Select(o => new Oracle
                         {
@@ -147,6 +158,7 @@ public partial class Endpoints
                             hash = t.HASH,
                             blockHeight = x.HEIGHT,
                             index = t.INDEX,
+                            date = t.TIMESTAMP_UNIX_SECONDS.ToString(),
                             events = with_events == 1 && t.Events != null
                                 ? t.Events.Select(e => new Event
                                 {
