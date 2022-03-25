@@ -125,11 +125,6 @@ public class MainDbContext : DbContext
 
         // FKs
 
-        /*modelBuilder.Entity<Chain>()
-            .HasOne(x => x.MainToken)
-            .WithOne(y => y.Chain2)
-            .HasForeignKey<Chain>(x => x.MainTokenId);*/
-
         // Indexes
 
         modelBuilder.Entity<Chain>()
@@ -374,18 +369,9 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Event>()
             .HasIndex(x => x.DATE_UNIX_SECONDS);
 
-        /*modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.INDEX});*/
-
         modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.ContractId, x.TOKEN_ID});
 
-        /* not needed atm
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => x.NSFW);
-        modelBuilder.Entity<Event>()
-            .HasIndex(x => x.BLACKLISTED);
-        */
         modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.BURNED, x.EventKindId});
 
@@ -515,24 +501,11 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Nft>()
             .HasIndex(x => new {x.ContractId, x.TOKEN_URI});
 
-        /*modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.MINT_DATE_UNIX_SECONDS);*/
-
         modelBuilder.Entity<Nft>()
             .HasIndex(x => x.BURNED);
 
-        /*modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.NSFW);
-        modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.BLACKLISTED);
-        modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.METADATA_UPDATE);*/
-
         modelBuilder.Entity<Nft>()
             .HasIndex(x => x.TOKEN_ID);
-
-        /*modelBuilder.Entity<Nft>()
-            .HasIndex(x => x.InfusedIntoId);*/
 
         //////////////////////
         // SeriesMode
@@ -575,26 +548,6 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.ContractId, x.SERIES_ID})
             .IsUnique();
 
-        /*modelBuilder.Entity<Series>()
-            .HasIndex(x => x.NAME);
-
-        modelBuilder.Entity<Series>()
-            .HasIndex(x => x.DESCRIPTION);*/
-
-        /*modelBuilder.Entity<Series>()
-            .HasIndex(x => x.TYPE);
-
-        modelBuilder.Entity<Series>()
-            .HasIndex(x => x.HAS_LOCKED);
-
-        modelBuilder.Entity<Series>()
-            .HasIndex(x => x.BLACKLISTED);
-
-        modelBuilder.Entity<Series>()
-            .HasIndex(x => x.NSFW);
-
-        modelBuilder.Entity<Series>()
-            .HasIndex(x => x.DM_UNIX_SECONDS);*/
 
         //////////////////////
         // Infusion
@@ -985,11 +938,6 @@ public class MainDbContext : DbContext
             .HasForeignKey<MarketEventFiatPrice>(x => x.MarketEventId);
 
         // Indexes
-        /*modelBuilder.Entity<MarketEventFiatPrice>()
-            .HasIndex(x => new {x.PRICE_USD});
-
-        modelBuilder.Entity<MarketEventFiatPrice>()
-            .HasIndex(x => new {x.PRICE_END_USD});*/
 
         modelBuilder.Entity<MarketEventFiatPrice>()
             .HasIndex(x => new {x.PRICE_END_USD, x.PRICE_USD});
@@ -1084,10 +1032,6 @@ public class Chain
     public string NAME { get; set; }
     public string CURRENT_HEIGHT { get; set; }
     public virtual List<Nft> Nfts { get; set; }
-
-    /*public int?
-        MainTokenId { get; set; } // Token to be used for crypto price calculations for this chain (ex. SOUL, NEO).
-    public virtual Token MainToken { get; set; }*/
     public virtual List<Contract> Contracts { get; set; }
     public virtual List<Token> Tokens { get; set; }
     public virtual List<Block> Blocks { get; set; }
@@ -1275,8 +1219,6 @@ public class Token
     public int ContractId { get; set; }
 
     public virtual Contract Contract { get; set; }
-
-    //public virtual List<Event> Events { get; set; }
     public virtual List<TokenDailyPrice> TokenDailyPrices { get; set; }
     public virtual List<Infusion> Infusions { get; set; }
     public virtual List<External> Externals { get; set; }
@@ -1319,13 +1261,8 @@ public class NftOwnership
 {
     public int ID { get; set; }
 
-    public long
-        LAST_CHANGE_UNIX_SECONDS
-    {
-        get;
-        set;
-    } // Timestamp of last ownership changing tx (to avoid older tx changing ownership of NFT during multithreaded events loading)
-
+    // Timestamp of last ownership changing tx (to avoid older tx changing ownership of NFT during multithreaded events loading)
+    public long LAST_CHANGE_UNIX_SECONDS { get; set; }
     public int AMOUNT { get; set; }
     public int NftId { get; set; }
     public virtual Nft Nft { get; set; }
@@ -1338,9 +1275,7 @@ public class Nft
     public int ID { get; set; }
     public long DM_UNIX_SECONDS { get; set; } // Last modification date (in database).
     public string TOKEN_ID { get; set; }
-
     public string TOKEN_URI { get; set; }
-
     // METADATA START
     public string DESCRIPTION { get; set; }
     public string NAME { get; set; }
@@ -1355,12 +1290,8 @@ public class Nft
     public JsonDocument CHAIN_API_RESPONSE { get; set; }
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
-
     public bool BLACKLISTED { get; set; }
-
-    //public int VIEW_COUNT { get; set; }
     public bool? METADATA_UPDATE { get; set; }
-
     // METADATA END
     public int? SeriesId { get; set; }
     public virtual Series Series { get; set; }
@@ -1372,9 +1303,7 @@ public class Nft
     public int ContractId { get; set; }
     public virtual Contract Contract { get; set; }
     public virtual List<Event> Events { get; set; }
-
     public virtual List<Infusion> Infusions { get; set; }
-
     // Relation with infused NFTs
     public int? InfusedIntoId { get; set; }
     public virtual Nft InfusedInto { get; set; }

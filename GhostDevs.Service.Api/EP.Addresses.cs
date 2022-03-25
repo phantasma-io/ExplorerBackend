@@ -102,14 +102,12 @@ public partial class Endpoints
                         "address_name" => query.OrderByDescending(x => x.ADDRESS_NAME),
                         _ => query
                     };
-
-                var queryResults = query.Skip(offset).Take(limit).ToList();
-
-                addressArray = queryResults.Select(x => new Address
+                
+                addressArray = query.Skip(offset).Take(limit).Select(x => new Address
                 {
                     address = x.ADDRESS,
                     address_name = x.ADDRESS_NAME,
-                    validator_kind = x.AddressValidatorKind?.NAME,
+                    validator_kind = x.AddressValidatorKind != null ? x.AddressValidatorKind.NAME : null,
                     stake = x.STAKE,
                     unclaimed = x.UNCLAIMED,
                     relay = x.RELAY,
@@ -162,7 +160,7 @@ public partial class Endpoints
                         ? x.AddressTransactions.Select(t => new Transaction
                             {
                                 hash = t.Transaction.HASH,
-                                blockHeight = t.Transaction.Block?.HEIGHT,
+                                blockHeight = t.Transaction.Block.HEIGHT,
                                 index = t.Transaction.INDEX,
                                 events = null //Array.Empty<Event>()
                             }

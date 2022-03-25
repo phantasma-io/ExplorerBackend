@@ -88,12 +88,10 @@ public partial class Endpoints
                         "date" => query.OrderByDescending(x => x.DATE_UNIX_SECONDS),
                         _ => query
                     };
-
-                var queryResults = query.Skip(offset).Take(limit).ToList();
-
-                historyArray = queryResults.Select(x => new HistoryPrice
+                
+                historyArray = query.Skip(offset).Take(limit).Select(x => new HistoryPrice
                 {
-                    symbol = x.Token?.SYMBOL,
+                    symbol = x.Token != null ? x.Token.SYMBOL : null,
                     price = new Price
                     {
                         date = x.DATE_UNIX_SECONDS.ToString(),

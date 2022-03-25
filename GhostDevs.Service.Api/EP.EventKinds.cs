@@ -64,11 +64,8 @@ public partial class Endpoints
                         "id" => query.OrderByDescending(x => x.ID),
                         _ => query
                     };
-
-
-                var queryResults = query.Skip(offset).Take(limit).ToList();
-
-                eventKindArray = queryResults.Select(x => new EventKind
+                
+                eventKindArray = query.Skip(offset).Take(limit).Select(x => new EventKind
                 {
                     kind = x.NAME
                 }).ToArray();

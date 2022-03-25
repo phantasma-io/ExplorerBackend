@@ -137,18 +137,16 @@ public partial class Endpoints
                             _ => query
                         };
 
-                    var queryResults = query.Skip(offset).Take(limit).ToList();
-
-                    seriesArray = queryResults.Select(x => new Series
+                    seriesArray = query.Skip(offset).Take(limit).Select(x => new Series
                     {
                         id = x.SERIES_ID ?? "",
-                        creator = AddressMethods.Prepend0x(x.CreatorAddress?.ADDRESS, x.Contract.Chain.NAME),
+                        creator = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
                         name = x.NAME,
                         description = x.DESCRIPTION,
                         image = x.IMAGE,
                         current_supply = x.CURRENT_SUPPLY,
                         max_supply = x.MAX_SUPPLY,
-                        mode_name = x.SeriesMode?.MODE_NAME ?? string.Empty,
+                        mode_name = x.SeriesMode != null ? x.SeriesMode.MODE_NAME ?? string.Empty : string.Empty,
                         royalties = x.ROYALTIES.ToString(CultureInfo.InvariantCulture),
                         type = x.TYPE,
                         attrType1 = x.ATTR_TYPE_1,

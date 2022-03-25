@@ -76,10 +76,8 @@ public partial class Endpoints
                         "name" => query.OrderByDescending(x => x.NAME),
                         _ => query
                     };
-
-                var queryResults = query.Skip(offset).Take(limit).ToList();
-
-                contractArray = queryResults.Select(x => new Contract
+                
+                contractArray = query.Skip(offset).Take(limit).Select(x => new Contract
                     {
                         name = x.NAME,
                         hash = ContractMethods.Prepend0x(x.HASH, x.Chain.NAME),

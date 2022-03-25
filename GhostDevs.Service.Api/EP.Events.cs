@@ -212,18 +212,14 @@ public partial class Endpoints
                     // Count total number of results before adding order and limit parts of query.
                     totalResults = query.Count();
 
-                query = query.Skip(offset).Take(limit);
-
-                eventsArray = query.Select(x => new Event
+                eventsArray = query.Skip(offset).Take(limit).Select(x => new Event
                     {
                         chain = x.Chain.NAME.ToLower(),
                         date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
-                        transaction_hash = x.Transaction == null
-                            ? null
-                            : TransactionMethods.Prepend0x(x.Transaction.HASH, x.Chain.NAME),
+                        transaction_hash = x.Transaction == null ? null : x.Transaction.HASH,
                         token_id = x.TOKEN_ID,
                         event_kind = x.EventKind.NAME,
-                        address = AddressMethods.Prepend0x(x.Address.ADDRESS, x.Chain.NAME, true),
+                        address = x.Address.ADDRESS,
                         address_name = x.Address.ADDRESS_NAME,
                         contract = new Contract
                         {
@@ -248,11 +244,9 @@ public partial class Endpoints
                             ? new Series
                             {
                                 id = x.Nft.Series.SERIES_ID,
-                                creator =
-                                    AddressMethods.Prepend0x(
-                                        x.Nft.Series.CreatorAddress != null
-                                            ? x.Nft.Series.CreatorAddress.ADDRESS
-                                            : null, x.Chain.NAME, true),
+                                creator = x.Nft.Series.CreatorAddress != null
+                                    ? x.Nft.Series.CreatorAddress.ADDRESS
+                                    : null,
                                 current_supply = x.Nft.Series.CURRENT_SUPPLY,
                                 max_supply = x.Nft.Series.MAX_SUPPLY,
                                 mode_name = x.Nft.Series.SeriesMode != null ? x.Nft.Series.SeriesMode.MODE_NAME : null,

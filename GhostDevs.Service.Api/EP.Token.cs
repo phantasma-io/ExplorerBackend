@@ -71,9 +71,7 @@ public partial class Endpoints
                         _ => query
                     };
 
-                var queryResults = query.Skip(offset).Take(limit).ToList();
-
-                tokenArray = queryResults.Select(x => new Token
+                tokenArray = query.Skip(offset).Take(limit).Select(x => new Token
                 {
                     symbol = x.SYMBOL,
                     fungible = x.FUNGIBLE,

@@ -133,10 +133,7 @@ public partial class Endpoints
                         _ => query
                     };
 
-                var queryResults = query.Skip(offset).Take(limit).ToList();
-
-
-                blockArray = queryResults.Select(x => new Block
+                blockArray = query.Skip(offset).Take(limit).Select(x => new Block
                 {
                     height = x.HEIGHT,
                     hash = x.HASH,
@@ -167,7 +164,7 @@ public partial class Endpoints
                                     transaction_hash = x.HASH, //a bit redundant in that case
                                     token_id = e.TOKEN_ID,
                                     event_kind = e.EventKind.NAME,
-                                    address = AddressMethods.Prepend0x(e.Address.ADDRESS, e.Chain.NAME),
+                                    address = e.Address.ADDRESS,
                                     address_name = e.Address.ADDRESS_NAME,
                                     contract = new Contract
                                     {
@@ -188,16 +185,18 @@ public partial class Endpoints
                                             mint_number = e.Nft.MINT_NUMBER.ToString()
                                         }
                                         : null,
-                                    series = with_nft == 1 && e.Nft?.Series != null
+                                    series = with_nft == 1 && ( e.Nft != null && e.Nft.Series != null )
                                         ? new Series
                                         {
                                             id = e.Nft.Series.SERIES_ID,
-                                            creator =
-                                                AddressMethods.Prepend0x(e.Nft.Series.CreatorAddress?.ADDRESS,
-                                                    e.Chain.NAME),
+                                            creator = e.Nft.Series.CreatorAddress != null
+                                                ? e.Nft.Series.CreatorAddress.ADDRESS
+                                                : null,
                                             current_supply = e.Nft.Series.CURRENT_SUPPLY,
                                             max_supply = e.Nft.Series.MAX_SUPPLY,
-                                            mode_name = e.Nft.Series.SeriesMode?.MODE_NAME!,
+                                            mode_name = ( e.Nft.Series.SeriesMode != null
+                                                ? e.Nft.Series.SeriesMode.MODE_NAME
+                                                : null )!,
                                             name = e.Nft.Series.NAME,
                                             description = e.Nft.Series.DESCRIPTION,
                                             image = e.Nft.Series.IMAGE,

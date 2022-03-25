@@ -63,10 +63,8 @@ public partial class Endpoints
                         "name" => query.OrderByDescending(x => x.NAME),
                         _ => query
                     };
-
-                var queryResults = query.Skip(offset).Take(limit).ToList();
-
-                organizationArray = queryResults.Select(x => new Organization
+                
+                organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
                 {
                     name = x.NAME,
                     addresses = with_addresses == 1 && x.OrganizationAddresses != null

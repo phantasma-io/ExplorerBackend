@@ -79,10 +79,8 @@ public partial class Endpoints
                         "name" => query.OrderByDescending(x => x.NAME),
                         _ => query
                     };
-
-                var queryResults = query.Skip(offset).Take(limit).ToList();
-
-                platformArray = queryResults.Select(x => new Platform
+                
+                platformArray = query.Skip(offset).Take(limit).Select(x => new Platform
                 {
                     name = x.NAME,
                     chain = x.CHAIN,
