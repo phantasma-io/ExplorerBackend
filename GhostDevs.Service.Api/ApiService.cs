@@ -46,13 +46,20 @@ public static class Api
         var loggingData = LoggingSettings.Default;
         if ( !Enum.TryParse(loggingData.Level, true, out LogEventLevel logLevel) ) logLevel = LogEventLevel.Information;
 
-        Directory.CreateDirectory("../logs");
-        LogEx.Init("../logs/api-service-.log", logLevel, loggingData.LogOverwrite);
+        var logPath = "../logs";
+        if ( !string.IsNullOrEmpty(loggingData.LogDirectoryPath) )
+        {
+            logPath = loggingData.LogDirectoryPath;
+        }
+
+        Directory.CreateDirectory(logPath);
+        LogEx.Init(Path.Combine(logPath, "api-service-.log"), logLevel, loggingData.LogOverwrite);
+
         Log.Information("\n\n*********************************************************\n" +
                         "************** API Service Started **************\n" +
                         "*********************************************************\n" +
-                        "Log level: {Level}, LogOverwrite: {Overwrite}", logLevel,
-            loggingData.LogOverwrite);
+                        "Log level: {Level}, LogOverwrite: {Overwrite}, Path: {Path}, Config: {Config}", logLevel,
+            loggingData.LogOverwrite, logPath, ConfigFile);
 
         Log.Information("Initializing APIService...");
 
@@ -60,27 +67,26 @@ public static class Api
             .GetSection("ApiServiceConfiguration"));
 
         PostgreSQLConnector pgConnection = null;
-        using ( var database = new MainDbContext() )
-        {
-            var max = MainDbContext.GetConnectionMaxRetries();
-            var timeout = MainDbContext.GetConnectionRetryTimeout();
-            for ( var i = 1; i <= max; i++ )
-                try
+
+        var max = MainDbContext.GetConnectionMaxRetries();
+        var timeout = MainDbContext.GetConnectionRetryTimeout();
+        for ( var i = 1; i <= max; i++ )
+            try
+            {
+                pgConnection = new PostgreSQLConnector(MainDbContext.GetConnectionString());
+            }
+            catch ( Exception e )
+            {
+                Log.Warning("Database connection error: {Message}", e.Message);
+                if ( i < max )
                 {
-                    pgConnection = new PostgreSQLConnector(MainDbContext.GetConnectionString());
+                    Thread.Sleep(timeout * i);
+                    Log.Warning("Database connection: Trying again ({Index}/{Max})...", i, max);
                 }
-                catch ( Exception e )
-                {
-                    Log.Warning("Database connection error: {Message}", e.Message);
-                    if ( i < max )
-                    {
-                        Thread.Sleep(timeout * i);
-                        Log.Warning("Database connection: Trying again ({Index}/{Max})...", i, max);
-                    }
-                    else
-                        throw;
-                }
-        }
+                else
+                    throw;
+            }
+
 
         if ( pgConnection != null ) Log.Information("PostgreSQL version: {Version}", pgConnection.GetVersion());
 

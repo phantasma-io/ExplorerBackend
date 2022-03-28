@@ -20,7 +20,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
     public void Startup()
     {
-        Log.Information("{Name} plugin: Startup...", Name);
+        Log.Information("{Name} plugin: Startup ...", Name);
 
         if ( !Settings.Default.Enabled )
         {

@@ -31,13 +31,20 @@ public static class DataFetcher
         var loggingData = LoggingSettings.Default;
         if ( !Enum.TryParse(loggingData.Level, true, out LogEventLevel logLevel) ) logLevel = LogEventLevel.Information;
 
-        Directory.CreateDirectory("../logs");
-        LogEx.Init("../logs/data-fetcher-service-.log", logLevel, loggingData.LogOverwrite);
+        var logPath = "../logs";
+        if ( !string.IsNullOrEmpty(loggingData.LogDirectoryPath) )
+        {
+            logPath = loggingData.LogDirectoryPath;
+        }
+
+        Directory.CreateDirectory(logPath);
+        LogEx.Init(Path.Combine(logPath, "data-fetcher-service-.log"), logLevel, loggingData.LogOverwrite);
+        
         Log.Information("\n\n*********************************************************\n" +
                         "************** Data Fetcher Service Started *************\n" +
                         "*********************************************************\n" +
-                        "Log level: {Level}, LogOverwrite: {Overwrite}", logLevel,
-            loggingData.LogOverwrite);
+                        "Log level: {Level}, LogOverwrite: {Overwrite}, Path: {Path}, Config: {Config}", logLevel,
+            loggingData.LogOverwrite, logPath, ConfigFile);
 
         Log.Information("Initializing Data Fetcher Service...");
 

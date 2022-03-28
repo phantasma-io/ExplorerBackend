@@ -8,11 +8,13 @@ public class LoggingSettings
     {
         Level = section.GetValue<string>("Level");
         LogOverwrite = section.GetValue<bool>("LogOverwrite");
+        LogDirectoryPath = section.GetValue<string>("LogDirectoryPath");
     }
 
 
     public string Level { get; }
     public bool LogOverwrite { get; }
+    public string LogDirectoryPath { get; }
 
     public static LoggingSettings Default { get; private set; }
 

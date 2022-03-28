@@ -5,20 +5,16 @@ namespace Database.Main;
 internal class Settings
 {
     public string ConnectionString;
-    public string ConnectionStringNoDbName; // TODO remove hack later.
 
     public int ConnectMaxRetries;
     public int ConnectRetryTimeout;
 
 
-    private Settings(IConfigurationSection section)
+    private Settings(IConfiguration section)
     {
-        //maybe rename ntfs
-        var connectionSettings = section.GetSection("Nfts").Get<DatabaseConnectionSettings>();
+        var connectionSettings = section.GetSection("Main").Get<DatabaseConnectionSettings>();
         ConnectionString =
             $"Host={connectionSettings.Host};Username={connectionSettings.Username};Password={connectionSettings.Password};Database={connectionSettings.Database};Include Error Detail=true";
-        ConnectionStringNoDbName =
-            $"Host={connectionSettings.Host};Username={connectionSettings.Username};Password={connectionSettings.Password};Database=";
 
         ConnectMaxRetries = section.GetValue<int>("ConnectMaxRetries");
         ConnectRetryTimeout = section.GetValue<int>("ConnectRetryTimeout");

@@ -14,7 +14,7 @@
       }
     },
     "DatabaseConfiguration": {
-        "Nfts":
+        "Main":
             {
                 "Host": "localhost",
                 "Database": "explorer-backend",
@@ -38,6 +38,7 @@
     },
     "Logging": { 
         "Level": "Verbose",
-        "LogOverwrite": true
+        "LogOverwrite": true,
+        "LogDirectoryPath": "/opt/ExplorerBackend/logs"
     }
 }
