@@ -39,6 +39,6 @@
     "Logging": { 
         "Level": "Verbose",
         "LogOverwrite": true,
-        "LogDirectoryPath": "/opt/ExplorerBackend/logs"
+        "LogDirectoryPath": "../logs"
     }
 }
