@@ -34,8 +34,8 @@ public partial class Endpoints
         int with_stakes = 0,
         [APIParameter("Returns with balances", "integer")]
         int with_balance = 0,
-        [APIParameter("Returns with transactions", "integer")]
-        int with_transactions = 0,
+        /*[APIParameter("Returns with transactions", "integer")]
+        /int with_transactions = 0,*/
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -156,7 +156,7 @@ public partial class Endpoints
                             }
                         ).ToArray()
                         : null,
-                    transactions = with_transactions == 1 && x.AddressTransactions != null
+                    /*transactions = with_transactions == 1 && x.AddressTransactions != null
                         ? x.AddressTransactions.Select(t => new Transaction
                             {
                                 hash = t.Transaction.HASH,
@@ -165,7 +165,7 @@ public partial class Endpoints
                                 events = null //Array.Empty<Event>()
                             }
                         ).ToArray()
-                        : null
+                        : null*/
                 }).ToArray();
 
                 var responseTime = DateTime.Now - startTime;
