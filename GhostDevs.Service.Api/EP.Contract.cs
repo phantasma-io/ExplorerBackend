@@ -76,7 +76,7 @@ public partial class Endpoints
                         "name" => query.OrderByDescending(x => x.NAME),
                         _ => query
                     };
-                
+
                 contractArray = query.Skip(offset).Take(limit).Select(x => new Contract
                     {
                         name = x.NAME,

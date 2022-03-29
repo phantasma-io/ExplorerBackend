@@ -1275,7 +1275,9 @@ public class Nft
     public int ID { get; set; }
     public long DM_UNIX_SECONDS { get; set; } // Last modification date (in database).
     public string TOKEN_ID { get; set; }
+
     public string TOKEN_URI { get; set; }
+
     // METADATA START
     public string DESCRIPTION { get; set; }
     public string NAME { get; set; }
@@ -1291,7 +1293,9 @@ public class Nft
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
     public bool BLACKLISTED { get; set; }
+
     public bool? METADATA_UPDATE { get; set; }
+
     // METADATA END
     public int? SeriesId { get; set; }
     public virtual Series Series { get; set; }
@@ -1303,7 +1307,9 @@ public class Nft
     public int ContractId { get; set; }
     public virtual Contract Contract { get; set; }
     public virtual List<Event> Events { get; set; }
+
     public virtual List<Infusion> Infusions { get; set; }
+
     // Relation with infused NFTs
     public int? InfusedIntoId { get; set; }
     public virtual Nft InfusedInto { get; set; }

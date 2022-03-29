@@ -47,10 +47,7 @@ public static class Api
         if ( !Enum.TryParse(loggingData.Level, true, out LogEventLevel logLevel) ) logLevel = LogEventLevel.Information;
 
         var logPath = "../logs";
-        if ( !string.IsNullOrEmpty(loggingData.LogDirectoryPath) )
-        {
-            logPath = loggingData.LogDirectoryPath;
-        }
+        if ( !string.IsNullOrEmpty(loggingData.LogDirectoryPath) ) logPath = loggingData.LogDirectoryPath;
 
         Directory.CreateDirectory(logPath);
         LogEx.Init(Path.Combine(logPath, "api-service-.log"), logLevel, loggingData.LogOverwrite);
@@ -92,7 +89,11 @@ public static class Api
 
         Plugin.LoadPlugins();
 
-        var builder = WebApplication.CreateBuilder(args);
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ContentRootPath = AppContext.BaseDirectory
+        });
+
         builder.Configuration.AddJsonFile(ConfigFile);
         //builder.WebHost.UseSerilog();
         //obsolete note told me I should use IHostBuilder, instead of IWebHostBuilder for serilog
@@ -131,13 +132,13 @@ public static class Api
         const string basePath = "/api/v1";
         var httpMethods = new List<Type>
         {
-            typeof(HttpDeleteAttribute),
-            typeof(HttpGetAttribute),
+            //typeof(HttpDeleteAttribute),
+            typeof(HttpGetAttribute)
             //typeof(HttpHeadAttribute),
             //typeof(HttpOptionsAttribute),
             //typeof(HttpPatchAttribute),
-            typeof(HttpPostAttribute),
-            typeof(HttpPutAttribute)
+            //typeof(HttpPostAttribute),
+            //typeof(HttpPutAttribute)
         };
 
         var type = typeof(Endpoints);

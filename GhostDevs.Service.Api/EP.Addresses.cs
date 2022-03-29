@@ -9,7 +9,6 @@ using AddressBalance = GhostDevs.Service.ApiResults.AddressBalance;
 using AddressStorage = GhostDevs.Service.ApiResults.AddressStorage;
 using Chain = GhostDevs.Service.ApiResults.Chain;
 using Token = GhostDevs.Service.ApiResults.Token;
-using Transaction = GhostDevs.Service.ApiResults.Transaction;
 
 namespace GhostDevs.Service;
 
@@ -35,7 +34,11 @@ public partial class Endpoints
         [APIParameter("Returns with balances", "integer")]
         int with_balance = 0,
         /*[APIParameter("Returns with transactions", "integer")]
-        /int with_transactions = 0,*/
+        int with_transactions = 0,
+        [APIParameter("Offset for transactions", "integer")]
+        int transaction_offset = 0,
+        [APIParameter("Limit for transactions", "integer")]
+        int transaction_limit = 50,*/
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -67,6 +70,9 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name) )
                     throw new APIException("Unsupported value for 'address_name' parameter.");
+
+                /*if ( !ArgValidation.CheckLimit(transaction_limit) )
+                    throw new APIException("Unsupported value for 'limit' parameter.");*/
 
                 var startTime = DateTime.Now;
 
@@ -102,7 +108,7 @@ public partial class Endpoints
                         "address_name" => query.OrderByDescending(x => x.ADDRESS_NAME),
                         _ => query
                     };
-                
+
                 addressArray = query.Skip(offset).Take(limit).Select(x => new Address
                 {
                     address = x.ADDRESS,
@@ -155,9 +161,10 @@ public partial class Endpoints
                                 amount = b.AMOUNT
                             }
                         ).ToArray()
-                        : null,
+                        : null
                     /*transactions = with_transactions == 1 && x.AddressTransactions != null
-                        ? x.AddressTransactions.Select(t => new Transaction
+                        ? x.AddressTransactions.Skip(transaction_offset).Take(transaction_limit).Select(t =>
+                            new Transaction
                             {
                                 hash = t.Transaction.HASH,
                                 blockHeight = t.Transaction.Block.HEIGHT,

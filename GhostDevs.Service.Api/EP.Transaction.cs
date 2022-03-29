@@ -176,7 +176,7 @@ public partial class Endpoints
                                         mint_number = e.Nft.MINT_NUMBER.ToString()
                                     }
                                     : null,
-                                series = with_nft == 1 && ( e.Nft != null && e.Nft.Series != null )
+                                series = with_nft == 1 && e.Nft != null && e.Nft.Series != null
                                     ? new Series
                                     {
                                         id = e.Nft.Series.SERIES_ID,

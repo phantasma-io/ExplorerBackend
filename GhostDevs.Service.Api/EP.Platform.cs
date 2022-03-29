@@ -79,7 +79,7 @@ public partial class Endpoints
                         "name" => query.OrderByDescending(x => x.NAME),
                         _ => query
                     };
-                
+
                 platformArray = query.Skip(offset).Take(limit).Select(x => new Platform
                 {
                     name = x.NAME,

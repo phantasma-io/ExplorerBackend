@@ -88,7 +88,7 @@ public partial class Endpoints
                         "date" => query.OrderByDescending(x => x.DATE_UNIX_SECONDS),
                         _ => query
                     };
-                
+
                 historyArray = query.Skip(offset).Take(limit).Select(x => new HistoryPrice
                 {
                     symbol = x.Token != null ? x.Token.SYMBOL : null,
