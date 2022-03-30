@@ -44,4 +44,13 @@ public static class OrganizationAddressMethods
         databaseContext.OrganizationAddresses.AddRange(organizationAddressesToInsert);
         if ( !saveChanges ) databaseContext.SaveChanges();
     }
+
+
+    public static IEnumerable<OrganizationAddress> GetOrganizationAddressByOrganization(MainDbContext databaseContext,
+        string organization)
+    {
+        return string.IsNullOrEmpty(organization)
+            ? null
+            : databaseContext.OrganizationAddresses.Where(x => x.Organization.NAME == organization);
+    }
 }

@@ -4,7 +4,6 @@ using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using Address = GhostDevs.Service.ApiResults.Address;
 using Organization = GhostDevs.Service.ApiResults.Organization;
 
 namespace GhostDevs.Service;
@@ -19,8 +18,10 @@ public partial class Endpoints
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Return addresses with organization", "integer")]
-        int with_addresses = 0,
+        [APIParameter("Organization name", "string")]
+        string organization_name = "",
+        [APIParameter("Organization name (partial)", "string")]
+        string organization_name_partial = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0
     )
@@ -41,9 +42,22 @@ public partial class Endpoints
                 if ( !ArgValidation.CheckLimit(limit) )
                     throw new APIException("Unsupported value for 'limit' parameter.");
 
+                if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
+                    throw new APIException("Unsupported value for 'organization_name' parameter.");
+
+                if ( !string.IsNullOrEmpty(organization_name_partial) &&
+                     !ArgValidation.CheckString(organization_name_partial) )
+                    throw new APIException("Unsupported value for 'organization_name_partial' parameter.");
+
                 var startTime = DateTime.Now;
 
                 var query = databaseContext.Organizations.AsQueryable();
+
+                if ( !string.IsNullOrEmpty(organization_name) )
+                    query = query.Where(x => string.Equals(x.NAME.ToUpper(), organization_name.ToUpper()));
+
+                if ( !string.IsNullOrEmpty(organization_name_partial) )
+                    query = query.Where(x => x.NAME.ToUpper().Contains(organization_name_partial.ToUpper()));
 
                 if ( with_total == 1 )
                     totalResults = query.Count();
@@ -66,14 +80,7 @@ public partial class Endpoints
 
                 organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
                 {
-                    name = x.NAME,
-                    addresses = with_addresses == 1 && x.OrganizationAddresses != null
-                        ? x.OrganizationAddresses.Select(y => new Address
-                        {
-                            address = y.Address.ADDRESS,
-                            address_name = y.Address.ADDRESS_NAME
-                        }).ToArray()
-                        : null
+                    name = x.NAME
                 }).ToArray();
 
 

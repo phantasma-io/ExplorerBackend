@@ -198,9 +198,6 @@ public class Address
 
     [APIDescription("Returns the address balances")]
     public AddressBalance[]? balances { get; set; }
-
-    [APIDescription("Returns the address transactions, events are not filled atm")]
-    public Transaction[]? transactions { get; set; }
 }
 
 public class AddressResult
@@ -261,9 +258,6 @@ public class Token
 
     [APIDescription("Returns currency price information")]
     public Price? price { get; set; }
-
-    //[APIDescription("Returns history currency price information")]
-    //public HistoryPrice[]? history_price { get; set; }
 }
 
 public class TokenResult
@@ -288,9 +282,6 @@ public class Transaction
 
     [APIDescription("timestamp of the transaction in unixseconds")]
     public string? date { get; set; }
-
-    [APIDescription("List of Events from the transaction")]
-    public Event[]? events { get; set; }
 }
 
 public class TransactionResult
@@ -341,9 +332,6 @@ public class Organization
 {
     [APIDescription("Name of the organization")]
     public string? name { get; set; }
-
-    [APIDescription("List of Addresses from the organization")]
-    public Address[]? addresses { get; set; }
 }
 
 public class OrganizationResult
@@ -374,11 +362,6 @@ public class Block
 
     [APIDescription("timestamp of the block in unixseconds")]
     public string? date { get; set; }
-
-    [APIDescription("list of oracles")] public Oracle[]? oracles { get; set; }
-
-    [APIDescription("list of transactions")]
-    public Transaction[]? Transactions { get; set; }
 }
 
 public class BlockResult
@@ -395,6 +378,14 @@ public class Oracle
 
     [APIDescription("content of the oracle")]
     public string? content { get; set; }
+}
+
+public class OracleResult
+{
+    [APIDescription("Total number of found Oracles for Block")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of Oracles")] public Oracle[]? oracles { get; set; }
 }
 
 public class External

@@ -27,18 +27,14 @@ public partial class Endpoints
         string address_name = "",
         [APIParameter("Address (partial match)", "string")]
         string address_partial = "",
+        [APIParameter("Organization Name", "string")]
+        string organization_name = "",
         [APIParameter("Returns with storage", "integer")]
         int with_storage = 0,
         [APIParameter("Returns with stake", "integer")]
         int with_stakes = 0,
         [APIParameter("Returns with balances", "integer")]
         int with_balance = 0,
-        /*[APIParameter("Returns with transactions", "integer")]
-        int with_transactions = 0,
-        [APIParameter("Offset for transactions", "integer")]
-        int transaction_offset = 0,
-        [APIParameter("Limit for transactions", "integer")]
-        int transaction_limit = 50,*/
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -71,8 +67,8 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name) )
                     throw new APIException("Unsupported value for 'address_name' parameter.");
 
-                /*if ( !ArgValidation.CheckLimit(transaction_limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");*/
+                if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
+                    throw new APIException("Unsupported value for 'organization_name' parameter.");
 
                 var startTime = DateTime.Now;
 
@@ -86,6 +82,13 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(address_partial) )
                     query = query.Where(x => x.ADDRESS.ToUpper().Contains(address_partial.ToUpper()));
+
+                if ( !string.IsNullOrEmpty(organization_name) )
+                {
+                    var organizationAddresses = OrganizationAddressMethods
+                        .GetOrganizationAddressByOrganization(databaseContext, organization_name).ToList();
+                    query = query.Where(x => x.OrganizationAddresses.Any(y => organizationAddresses.Contains(y)));
+                }
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
@@ -162,17 +165,6 @@ public partial class Endpoints
                             }
                         ).ToArray()
                         : null
-                    /*transactions = with_transactions == 1 && x.AddressTransactions != null
-                        ? x.AddressTransactions.Skip(transaction_offset).Take(transaction_limit).Select(t =>
-                            new Transaction
-                            {
-                                hash = t.Transaction.HASH,
-                                blockHeight = t.Transaction.Block.HEIGHT,
-                                index = t.Transaction.INDEX,
-                                events = null //Array.Empty<Event>()
-                            }
-                        ).ToArray()
-                        : null*/
                 }).ToArray();
 
                 var responseTime = DateTime.Now - startTime;

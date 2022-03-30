@@ -57,6 +57,11 @@ public partial class Endpoints
         [APIParameter("Address", "string")] string address = "",
         [APIParameter("Address (partial match)", "string")]
         string address_partial = "",
+        [APIParameter("Block Hash", "string")] string block_hash = "",
+        [APIParameter("Block Height", "string")]
+        string block_height = "",
+        [APIParameter("Transaction Hash", "string")]
+        string transaction_hash = "",
         [APIParameter("Return event data of events", "integer")]
         int with_event_data = 0,
         [APIParameter("Return NFT metadata with events", "integer")]
@@ -135,6 +140,15 @@ public partial class Endpoints
 
                 ContractMethods.Drop0x(ref address_partial);
 
+                if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckString(block_hash) )
+                    throw new APIException("Unsupported value for 'block_hash' parameter.");
+
+                if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
+                    throw new APIException("Unsupported value for 'block_height' parameter.");
+
+                if ( !string.IsNullOrEmpty(transaction_hash) && !ArgValidation.CheckString(transaction_hash) )
+                    throw new APIException("Unsupported value for 'transaction_hash' parameter.");
+
                 var startTime = DateTime.Now;
                 var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
@@ -188,6 +202,15 @@ public partial class Endpoints
                     query = query.Where(x => x.Address.ADDRESS.Contains(address_partial) ||
                                              x.Address.ADDRESS_NAME.ToUpper().Contains(address_partial.ToUpper()) ||
                                              x.Address.USER_NAME.ToUpper().Contains(address_partial.ToUpper()));
+
+                if ( !string.IsNullOrEmpty(block_hash) )
+                    query = query.Where(x => string.Equals(x.Transaction.Block.HASH.ToUpper(), block_hash.ToUpper()));
+
+                if ( !string.IsNullOrEmpty(block_height) )
+                    query = query.Where(x => x.Transaction.Block.HEIGHT == block_height);
+
+                if ( !string.IsNullOrEmpty(transaction_hash) )
+                    query = query.Where(x => string.Equals(x.Transaction.HASH.ToUpper(), transaction_hash.ToUpper()));
 
                 if ( order_direction == "asc" )
                     query = order_by switch
@@ -408,8 +431,7 @@ public partial class Endpoints
                                 organization = x.OrganizationEvent.Organization != null
                                     ? new Organization
                                     {
-                                        name = x.OrganizationEvent.Organization.NAME,
-                                        addresses = null //atm we do not include them here
+                                        name = x.OrganizationEvent.Organization.NAME
                                     }
                                     : null,
                                 address = x.OrganizationEvent.Address != null

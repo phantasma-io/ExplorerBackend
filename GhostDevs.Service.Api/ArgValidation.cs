@@ -100,9 +100,7 @@ public static class ArgValidation
 
     public static bool CheckChain(string value)
     {
-        //TODO fix that
-        value = value.ToUpper();
-        return value == "main";
+        return value.ToLower() == "main";
     }
 
 

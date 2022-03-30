@@ -26,10 +26,9 @@ public static class LogEx
             .WriteTo.Console(
                 outputTemplate:
                 "{Timestamp:u} {Timestamp:ffff} [{Level:u3}] <{ThreadId}> {Message:lj}{NewLine}{Exception}")
-            .WriteTo.File(filePath,
-                rollingInterval: RollingInterval.Day,
-                outputTemplate:
+            .WriteTo.File(filePath, rollingInterval: RollingInterval.Day, outputTemplate:
                 "{Timestamp:u} {Timestamp:ffff} [{Level:u3}] <{ThreadId}> {Message:lj}{NewLine}{Exception}");
+
 
         Log.Logger = logConfig.CreateLogger();
     }
