@@ -31,7 +31,7 @@ namespace GhostDevs.Service;
 public partial class Endpoints
 {
     [APIInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10)]
-    public EventsResult Events([APIParameter("Order by [date, token_id]", "string")] string order_by = "date",
+    public EventsResult Events([APIParameter("Order by [date, token_id, id]", "string")] string order_by = "id",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
@@ -215,19 +215,17 @@ public partial class Endpoints
                 if ( order_direction == "asc" )
                     query = order_by switch
                     {
-                        "date" => query.OrderBy(x => x.TIMESTAMP_UNIX_SECONDS)
-                            .ThenBy(x => x.Transaction.INDEX)
-                            .ThenBy(x => x.INDEX),
+                        "date" => query.OrderBy(x => x.TIMESTAMP_UNIX_SECONDS),
                         "token_id" => query.OrderBy(x => x.TOKEN_ID),
+                        "id" => query.OrderBy(x => x.ID),
                         _ => query
                     };
                 else
                     query = order_by switch
                     {
-                        "date" => query.OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS)
-                            .ThenByDescending(x => x.Transaction.INDEX)
-                            .ThenByDescending(x => x.INDEX),
+                        "date" => query.OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS),
                         "token_id" => query.OrderByDescending(x => x.TOKEN_ID),
+                        "id" => query.OrderByDescending(x => x.ID),
                         _ => query
                     };
 
