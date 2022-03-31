@@ -31,7 +31,7 @@ public class InfusedInto
 {
     public string? token_id { get; set; }
     public string? chain { get; set; }
-    public string? contract { get; set; }
+    public Contract? contract { get; set; }
 }
 
 public class NftOwnershipResult
@@ -76,7 +76,7 @@ public class Nft
     public string? creator_address { get; set; }
     public string? creator_onchain_name { get; set; }
     public NftOwnershipResult[]? owners { get; set; }
-    public string? contract { get; set; }
+    public Contract? contract { get; set; }
     public NftMetadata? nft_metadata { get; set; }
     public Series? series { get; set; }
     public Infusion[]? infusion { get; set; }

@@ -194,8 +194,7 @@ public partial class Endpoints
                 {
                     var ids = AddressMethods.GetIdsFromExtendedFormat(databaseContext, address, true, chain);
 
-                    query = query.Where(x => ids.Contains(x.AddressId)
-                    );
+                    query = query.Where(x => ids.Contains(x.AddressId));
                 }
 
                 if ( !string.IsNullOrEmpty(address_partial) )
@@ -211,6 +210,10 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(transaction_hash) )
                     query = query.Where(x => string.Equals(x.Transaction.HASH.ToUpper(), transaction_hash.ToUpper()));
+
+                if ( with_total == 1 )
+                    // Count total number of results before adding order and limit parts of query.
+                    totalResults = query.Count();
 
                 if ( order_direction == "asc" )
                     query = order_by switch
@@ -228,10 +231,6 @@ public partial class Endpoints
                         "id" => query.OrderByDescending(x => x.ID),
                         _ => query
                     };
-
-                if ( with_total == 1 )
-                    // Count total number of results before adding order and limit parts of query.
-                    totalResults = query.Count();
 
                 eventsArray = query.Skip(offset).Take(limit).Select(x => new Event
                     {
