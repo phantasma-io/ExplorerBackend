@@ -11,7 +11,7 @@ namespace GhostDevs.Service;
 public partial class Endpoints
 {
     [APIInfo(typeof(EventKindResult), "Returns the eventKinds on the backend.", false, 10)]
-    public EventKindResult EventKinds([APIParameter("Order by [id]", "string")] string order_by = "id",
+    public EventKindResult EventKinds([APIParameter("Order by [id, name]", "string")] string order_by = "id",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
@@ -56,12 +56,14 @@ public partial class Endpoints
                     query = order_by switch
                     {
                         "id" => query.OrderBy(x => x.ID),
+                        "name" => query.OrderBy(x => x.NAME),
                         _ => query
                     };
                 else
                     query = order_by switch
                     {
                         "id" => query.OrderByDescending(x => x.ID),
+                        "name" => query.OrderByDescending(x => x.NAME),
                         _ => query
                     };
 

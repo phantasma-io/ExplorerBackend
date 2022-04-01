@@ -128,7 +128,8 @@ public partial class Endpoints
                     select new Transaction
                     {
                         hash = x.HASH,
-                        blockHeight = x.Block.HEIGHT,
+                        block_hash = x.Block.HASH,
+                        block_height = x.Block.HEIGHT,
                         index = x.INDEX,
                         date = x.TIMESTAMP_UNIX_SECONDS.ToString()
                     } ).ToArray();

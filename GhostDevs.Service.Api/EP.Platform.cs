@@ -111,7 +111,7 @@ public partial class Endpoints
                                 : null
                         }).ToArray()
                         : null,
-                    platformInterops = with_interops == 1 && x.PlatformInterops != null
+                    platform_interops = with_interops == 1 && x.PlatformInterops != null
                         ? x.PlatformInterops.Select(i => new PlatformInterop
                         {
                             external_address = i.EXTERNAL,
@@ -124,7 +124,7 @@ public partial class Endpoints
                                 : null
                         }).ToArray()
                         : null,
-                    platformTokens = with_token == 1 && x.PlatformTokens != null
+                    platform_tokens = with_token == 1 && x.PlatformTokens != null
                         ? x.PlatformTokens.Select(t => new PlatformToken
                         {
                             name = t.NAME

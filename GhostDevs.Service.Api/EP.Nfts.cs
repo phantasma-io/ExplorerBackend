@@ -155,13 +155,15 @@ public partial class Endpoints
                     symbol = x.Contract.SYMBOL,
                     creator_address = x.CreatorAddress.ADDRESS,
                     creator_onchain_name = x.CreatorAddress.ADDRESS_NAME,
-                    owners = x.NftOwnerships.Select(n => new NftOwnershipResult
-                    {
-                        address = n.Address.ADDRESS,
-                        onchain_name = n.Address.ADDRESS_NAME,
-                        offchain_name = n.Address.USER_NAME,
-                        amount = n.AMOUNT
-                    }).ToArray(),
+                    owners = x.NftOwnerships != null
+                        ? x.NftOwnerships.Select(n => new NftOwnershipResult
+                        {
+                            address = n.Address.ADDRESS,
+                            onchain_name = n.Address.ADDRESS_NAME,
+                            offchain_name = n.Address.USER_NAME,
+                            amount = n.AMOUNT
+                        }).ToArray()
+                        : null,
                     contract = new Contract
                     {
                         name = x.Contract.NAME,
@@ -192,12 +194,12 @@ public partial class Endpoints
                         image = x.Series.IMAGE,
                         royalties = x.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
                         type = x.Series.TYPE,
-                        attrType1 = x.Series.ATTR_TYPE_1,
-                        attrValue1 = x.Series.ATTR_VALUE_1,
-                        attrType2 = x.Series.ATTR_TYPE_2,
-                        attrValue2 = x.Series.ATTR_VALUE_2,
-                        attrType3 = x.Series.ATTR_TYPE_3,
-                        attrValue3 = x.Series.ATTR_VALUE_3
+                        attr_type_1 = x.Series.ATTR_TYPE_1,
+                        attr_value_1 = x.Series.ATTR_VALUE_1,
+                        attr_type_2 = x.Series.ATTR_TYPE_2,
+                        attr_value_2 = x.Series.ATTR_VALUE_2,
+                        attr_type_3 = x.Series.ATTR_TYPE_3,
+                        attr_value_3 = x.Series.ATTR_VALUE_3
                     },
                     infusion = x.Infusions != null
                         ? x.Infusions.Select(i => new Infusion

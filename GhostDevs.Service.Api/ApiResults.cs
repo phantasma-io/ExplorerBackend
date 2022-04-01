@@ -54,12 +54,12 @@ public class Series
     public string? image { get; set; }
     public string? royalties { get; set; }
     public int type { get; set; }
-    public string? attrType1 { get; set; }
-    public string? attrValue1 { get; set; }
-    public string? attrType2 { get; set; }
-    public string? attrValue2 { get; set; }
-    public string? attrType3 { get; set; }
-    public string? attrValue3 { get; set; }
+    public string? attr_type_1 { get; set; }
+    public string? attr_value_1 { get; set; }
+    public string? attr_type_2 { get; set; }
+    public string? attr_value_2 { get; set; }
+    public string? attr_type_3 { get; set; }
+    public string? attr_value_3 { get; set; }
 }
 
 public class Infusion
@@ -96,6 +96,7 @@ public class Event
 {
     public string? chain { get; set; }
     public string? date { get; set; }
+    public string? block_hash { get; set; }
     public string? transaction_hash { get; set; }
     public string? token_id { get; set; }
     public string? event_kind { get; set; }
@@ -273,9 +274,9 @@ public class Transaction
 {
     [APIDescription("Hash of the transaction")]
     public string? hash { get; set; }
-
+    public string? block_hash { get; set; }
     [APIDescription("Height of the Block from the transaction")]
-    public string? blockHeight { get; set; }
+    public string? block_height { get; set; }
 
     [APIDescription("index in the Block from the transaction")]
     public int index { get; set; }
@@ -423,10 +424,10 @@ public class Platform
     public External[]? externals { get; set; }
 
     [APIDescription("local to external address")]
-    public PlatformInterop[]? platformInterops { get; set; }
+    public PlatformInterop[]? platform_interops { get; set; }
 
     [APIDescription("tokens on their system")]
-    public PlatformToken[]? platformTokens { get; set; }
+    public PlatformToken[]? platform_tokens { get; set; }
 }
 
 public class PlatformResult

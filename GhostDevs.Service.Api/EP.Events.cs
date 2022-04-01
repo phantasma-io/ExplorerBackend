@@ -236,7 +236,8 @@ public partial class Endpoints
                     {
                         chain = x.Chain.NAME.ToLower(),
                         date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
-                        transaction_hash = x.Transaction == null ? null : x.Transaction.HASH,
+                        block_hash = x.Transaction.Block.HASH,
+                        transaction_hash = x.Transaction.HASH,
                         token_id = x.TOKEN_ID,
                         event_kind = x.EventKind.NAME,
                         address = x.Address.ADDRESS,
@@ -275,12 +276,12 @@ public partial class Endpoints
                                 image = x.Nft.Series.IMAGE,
                                 royalties = x.Nft.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
                                 type = x.Nft.Series.TYPE,
-                                attrType1 = x.Nft.Series.ATTR_TYPE_1,
-                                attrValue1 = x.Nft.Series.ATTR_VALUE_1,
-                                attrType2 = x.Nft.Series.ATTR_TYPE_2,
-                                attrValue2 = x.Nft.Series.ATTR_VALUE_2,
-                                attrType3 = x.Nft.Series.ATTR_TYPE_3,
-                                attrValue3 = x.Nft.Series.ATTR_VALUE_3
+                                attr_type_1 = x.Nft.Series.ATTR_TYPE_1,
+                                attr_value_1 = x.Nft.Series.ATTR_VALUE_1,
+                                attr_type_2 = x.Nft.Series.ATTR_TYPE_2,
+                                attr_value_2 = x.Nft.Series.ATTR_VALUE_2,
+                                attr_type_3 = x.Nft.Series.ATTR_TYPE_3,
+                                attr_value_3 = x.Nft.Series.ATTR_VALUE_3
                             }
                             : null,
                         address_event = with_event_data == 1 && x.AddressEvent != null

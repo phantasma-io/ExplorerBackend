@@ -149,12 +149,12 @@ public partial class Endpoints
                         mode_name = x.SeriesMode != null ? x.SeriesMode.MODE_NAME ?? string.Empty : string.Empty,
                         royalties = x.ROYALTIES.ToString(CultureInfo.InvariantCulture),
                         type = x.TYPE,
-                        attrType1 = x.ATTR_TYPE_1,
-                        attrValue1 = x.ATTR_VALUE_1,
-                        attrType2 = x.ATTR_TYPE_2,
-                        attrValue2 = x.ATTR_VALUE_2,
-                        attrType3 = x.ATTR_TYPE_3,
-                        attrValue3 = x.ATTR_VALUE_3
+                        attr_type_1 = x.ATTR_TYPE_1,
+                        attr_value_1 = x.ATTR_VALUE_1,
+                        attr_type_2 = x.ATTR_TYPE_2,
+                        attr_value_2 = x.ATTR_VALUE_2,
+                        attr_type_3 = x.ATTR_TYPE_3,
+                        attr_value_3 = x.ATTR_VALUE_3
                     }).ToArray();
                 }
 
