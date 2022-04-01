@@ -49,10 +49,10 @@ public partial class Endpoints
                 if ( !ArgValidation.CheckLimit(limit) )
                     throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
+                if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash) )
                     throw new APIException("Unsupported value for 'hash' parameter.");
 
-                if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckAddress(hash_partial) )
+                if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial) )
                     throw new APIException("Unsupported value for 'hash_partial' parameter.");
 
                 if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
@@ -66,7 +66,7 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
                     throw new APIException("Unsupported value for 'date_greater' parameter.");
 
-                if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckString(block_hash) )
+                if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
                     throw new APIException("Unsupported value for 'block_hash' parameter.");
 
                 if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
@@ -78,10 +78,10 @@ public partial class Endpoints
 
 
                 if ( !string.IsNullOrEmpty(hash) )
-                    query = query.Where(x => string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
+                    query = query.Where(x => x.HASH == hash);
 
                 if ( !string.IsNullOrEmpty(hash_partial) )
-                    query = query.Where(x => x.HASH.ToUpper().Contains(hash_partial.ToUpper()));
+                    query = query.Where(x => x.HASH.Contains(hash_partial));
 
                 if ( !string.IsNullOrEmpty(date_less) )
                     query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
@@ -97,7 +97,7 @@ public partial class Endpoints
                 }
 
                 if ( !string.IsNullOrEmpty(block_hash) )
-                    query = query.Where(x => string.Equals(x.Block.HASH.ToUpper(), block_hash.ToUpper()));
+                    query = query.Where(x => x.Block.HASH == block_hash);
 
                 if ( !string.IsNullOrEmpty(block_height) )
                     query = query.Where(x => x.Block.HEIGHT == block_height);

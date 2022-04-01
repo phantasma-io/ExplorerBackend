@@ -77,4 +77,10 @@ public static class BlockMethods
         var id = dbContext.Blocks.Where(x => x.ChainId == chainId).Max(x => ( int? ) x.ID);
         return id != null ? Get(dbContext, ( int ) id) : null;
     }
+
+
+    public static Block GetByHash(MainDbContext databaseContext, string hash)
+    {
+        return databaseContext.Blocks.FirstOrDefault(x => x.HASH == hash);
+    }
 }

@@ -274,7 +274,9 @@ public class Transaction
 {
     [APIDescription("Hash of the transaction")]
     public string? hash { get; set; }
+
     public string? block_hash { get; set; }
+
     [APIDescription("Height of the Block from the transaction")]
     public string? block_height { get; set; }
 

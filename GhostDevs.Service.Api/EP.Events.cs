@@ -140,13 +140,13 @@ public partial class Endpoints
 
                 ContractMethods.Drop0x(ref address_partial);
 
-                if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckString(block_hash) )
+                if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
                     throw new APIException("Unsupported value for 'block_hash' parameter.");
 
                 if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
                     throw new APIException("Unsupported value for 'block_height' parameter.");
 
-                if ( !string.IsNullOrEmpty(transaction_hash) && !ArgValidation.CheckString(transaction_hash) )
+                if ( !string.IsNullOrEmpty(transaction_hash) && !ArgValidation.CheckHash(transaction_hash) )
                     throw new APIException("Unsupported value for 'transaction_hash' parameter.");
 
                 var startTime = DateTime.Now;
@@ -203,13 +203,13 @@ public partial class Endpoints
                                              x.Address.USER_NAME.ToUpper().Contains(address_partial.ToUpper()));
 
                 if ( !string.IsNullOrEmpty(block_hash) )
-                    query = query.Where(x => string.Equals(x.Transaction.Block.HASH.ToUpper(), block_hash.ToUpper()));
+                    query = query.Where(x => x.Transaction.Block.HASH == block_hash);
 
                 if ( !string.IsNullOrEmpty(block_height) )
                     query = query.Where(x => x.Transaction.Block.HEIGHT == block_height);
 
                 if ( !string.IsNullOrEmpty(transaction_hash) )
-                    query = query.Where(x => string.Equals(x.Transaction.HASH.ToUpper(), transaction_hash.ToUpper()));
+                    query = query.Where(x => x.Transaction.HASH == transaction_hash);
 
                 if ( with_total == 1 )
                     // Count total number of results before adding order and limit parts of query.

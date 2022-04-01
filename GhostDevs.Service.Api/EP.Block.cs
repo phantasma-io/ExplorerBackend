@@ -47,10 +47,10 @@ public partial class Endpoints
                 if ( !ArgValidation.CheckLimit(limit) )
                     throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
+                if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash) )
                     throw new APIException("Unsupported value for 'hash' parameter.");
 
-                if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckAddress(hash_partial) )
+                if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial) )
                     throw new APIException("Unsupported value for 'hash_partial' parameter.");
 
                 if ( !string.IsNullOrEmpty(height) && !ArgValidation.CheckNumber(height) )
@@ -62,10 +62,10 @@ public partial class Endpoints
                 var query = databaseContext.Blocks.AsQueryable();
 
                 if ( !string.IsNullOrEmpty(hash) )
-                    query = query.Where(x => string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
+                    query = query.Where(x => x.HASH == hash);
 
                 if ( !string.IsNullOrEmpty(hash_partial) )
-                    query = query.Where(x => x.HASH.ToUpper().Contains(hash_partial.ToUpper()));
+                    query = query.Where(x => x.HASH.Contains(hash_partial));
 
                 if ( !string.IsNullOrEmpty(height) )
                     query = query.Where(x => x.HEIGHT == height);

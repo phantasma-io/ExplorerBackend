@@ -298,4 +298,10 @@ public static class ArgValidation
     {
         return Regex.IsMatch(value, @"^[0-9]+$");
     }
+
+
+    public static bool CheckHash(string value)
+    {
+        return Regex.IsMatch(value, @"^[A-Z0-9]+$");
+    }
 }

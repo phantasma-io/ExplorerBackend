@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Database.Main;
@@ -66,5 +67,14 @@ public static class TransactionMethods
     public static Transaction GetByHash(MainDbContext dbContext, string hash)
     {
         return dbContext.Transactions.FirstOrDefault(x => x.HASH == hash);
+    }
+
+
+    public static List<int> GetTransactionsIdByBlockHash(MainDbContext databaseContext, string blockHash)
+    {
+        var block = BlockMethods.GetByHash(databaseContext, blockHash);
+        return block == null
+            ? null
+            : new List<int>(databaseContext.Transactions.Where(x => x.BlockId == block.ID).Select(x => x.ID));
     }
 }
