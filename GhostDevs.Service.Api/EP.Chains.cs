@@ -30,14 +30,12 @@ public partial class Endpoints
                 var query = databaseContext.Chains.AsQueryable();
 
                 if ( !string.IsNullOrEmpty(chain) )
-                    query = query.Where(x => string.Equals(x.NAME.ToUpper(), chain.ToUpper()));
+                    query = query.Where(x => x.NAME == chain);
 
                 if ( with_total == 1 )
                     totalResults = query.Count();
 
-                var queryResults = query.ToList();
-
-                chainArray = queryResults.Select(x => new Chain
+                chainArray = query.Select(x => new Chain
                 {
                     chain_name = x.NAME,
                     chain_height = x.CURRENT_HEIGHT

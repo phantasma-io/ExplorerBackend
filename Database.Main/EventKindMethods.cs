@@ -11,9 +11,7 @@ public static class EventKindMethods
     public static int Upsert(MainDbContext databaseContext, int chainId, string name)
     {
         int id;
-        var entry = databaseContext.EventKinds
-            .FirstOrDefault(x => x.ChainId == chainId &&
-                                 string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+        var entry = databaseContext.EventKinds.FirstOrDefault(x => x.ChainId == chainId && x.NAME == name);
 
         /*if (entry == null)
         {
@@ -45,8 +43,7 @@ public static class EventKindMethods
                     // We tried to create same event in two threads concurrently.
                     // Now we should just remove duplicating event and get an existing event.
                     databaseContext.EventKinds.Remove(entry);
-                    entry = databaseContext.EventKinds.First(x =>
-                        x.ChainId == chainId && string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+                    entry = databaseContext.EventKinds.First(x => x.ChainId == chainId && x.NAME == name);
                 }
                 else
                     // Unknown exception.

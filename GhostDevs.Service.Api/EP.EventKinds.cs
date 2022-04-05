@@ -44,8 +44,7 @@ public partial class Endpoints
 
                 var query = databaseContext.EventKinds.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(event_kind) )
-                    query = query.Where(x => string.Equals(x.NAME.ToUpper(), event_kind.ToUpper()));
+                if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.NAME == event_kind);
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )

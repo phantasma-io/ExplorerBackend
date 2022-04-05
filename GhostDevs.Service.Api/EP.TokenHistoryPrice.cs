@@ -58,7 +58,7 @@ public partial class Endpoints
                 var query = databaseContext.TokenDailyPrices.AsQueryable();
 
                 if ( !string.IsNullOrEmpty(symbol) )
-                    query = query.Where(x => string.Equals(x.Token.SYMBOL.ToUpper(), symbol.ToUpper()));
+                    query = query.Where(x => x.Token.SYMBOL == symbol);
 
                 //might work
                 if ( !string.IsNullOrEmpty(date_less) )

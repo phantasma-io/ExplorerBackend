@@ -38,6 +38,8 @@ public partial class Endpoints
         {
             try
             {
+                #region ArgValidation
+
                 if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
                     throw new APIException("Unsupported value for 'order_by' parameter.");
 
@@ -56,10 +58,14 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(height) && !ArgValidation.CheckNumber(height) )
                     throw new APIException("Unsupported value for 'height' parameter.");
 
+                #endregion
+
                 var startTime = DateTime.Now;
 
                 //just need that since we build the model so it knows what we can use
                 var query = databaseContext.Blocks.AsQueryable();
+
+                #region Filtering
 
                 if ( !string.IsNullOrEmpty(hash) )
                     query = query.Where(x => x.HASH == hash);
@@ -75,6 +81,8 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(date_greater) )
                     query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
+
+                #endregion
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
@@ -96,6 +104,8 @@ public partial class Endpoints
                         _ => query
                     };
 
+                #region ResultArray
+
                 blockArray = query.Skip(offset).Take(limit).Select(x => new Block
                 {
                     height = x.HEIGHT,
@@ -107,6 +117,7 @@ public partial class Endpoints
                     date = x.TIMESTAMP_UNIX_SECONDS.ToString()
                 }).ToArray();
 
+                #endregion
 
                 var responseTime = DateTime.Now - startTime;
                 Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));

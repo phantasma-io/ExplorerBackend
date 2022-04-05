@@ -58,8 +58,7 @@ public partial class Endpoints
 
                 query = query.Where(x => x.HIDDEN == false);
 
-                if ( !string.IsNullOrEmpty(name) )
-                    query = query.Where(x => string.Equals(x.NAME.ToUpper(), name.ToUpper()));
+                if ( !string.IsNullOrEmpty(name) ) query = query.Where(x => x.NAME == name);
 
                 if ( with_total == 1 )
                     totalResults = query.Count();

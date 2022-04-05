@@ -47,8 +47,7 @@ public partial class Endpoints
 
                 var query = databaseContext.Tokens.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(symbol) )
-                    query = query.Where(x => string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+                if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
 
 
                 // Count total number of results before adding order and limit parts of query.

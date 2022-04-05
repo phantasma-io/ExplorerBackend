@@ -47,6 +47,8 @@ public partial class Endpoints
         {
             try
             {
+                #region ArgValidations
+
                 if ( !ArgValidation.CheckLimit(limit) )
                     throw new APIException("Unsupported value for 'limit' parameter.");
 
@@ -66,7 +68,7 @@ public partial class Endpoints
 
                 ContractMethods.Drop0x(ref owner);
 
-                if ( !string.IsNullOrEmpty(contract_hash) && !ArgValidation.CheckAddress(contract_hash) )
+                if ( !string.IsNullOrEmpty(contract_hash) && !ArgValidation.CheckHash(contract_hash, true) )
                     throw new APIException("Unsupported value for 'contract' parameter.");
 
                 ContractMethods.Drop0x(ref contract_hash);
@@ -91,10 +93,16 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(status) && status != "all" && status != "active" && status != "infused" )
                     throw new APIException("Unsupported value for 'status' parameter.");
 
+                if ( !string.IsNullOrEmpty(owner) && string.IsNullOrEmpty(chain) )
+                    throw new APIException("Pass chain when using owner filter.");
+                
+                #endregion
+
                 var startTime = DateTime.Now;
 
-
                 var query = databaseContext.Nfts.AsQueryable();
+
+                #region Filtering
 
                 query = query.Where(x =>
                     x.NSFW == false && ( x.BURNED == null || x.BURNED == false ) && x.BLACKLISTED == false);
@@ -114,21 +122,27 @@ public partial class Endpoints
                     query = query.Where(x => ids.Contains(x.CreatorAddressId ?? 0));
                 }
 
-                if ( !string.IsNullOrEmpty(contract_hash) )
-                    query = query.Where(x => string.Equals(x.Contract.HASH.ToUpper(), contract_hash.ToUpper()));
+                if ( !string.IsNullOrEmpty(contract_hash) ) query = query.Where(x => x.Contract.HASH == contract_hash);
 
-                if ( !string.IsNullOrEmpty(chain) )
-                    query = query.Where(x => string.Equals(x.Chain.NAME.ToUpper(), chain.ToUpper()));
+                if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
 
-                if ( !string.IsNullOrEmpty(symbol) )
-                    query = query.Where(x => string.Equals(x.Contract.SYMBOL.ToUpper(), symbol.ToUpper()));
+                if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.Contract.SYMBOL == symbol);
 
-                if ( !string.IsNullOrEmpty(token_id) )
-                    query = query.Where(x => string.Equals(x.TOKEN_ID.ToUpper(), token_id.ToUpper()));
+                if ( !string.IsNullOrEmpty(token_id) ) query = query.Where(x => x.TOKEN_ID == token_id);
 
-                if ( !string.IsNullOrEmpty(series_id) )
-                    query = query.Where(x => x.Series.SERIES_ID == series_id);
+                if ( !string.IsNullOrEmpty(series_id) ) query = query.Where(x => x.Series.SERIES_ID == series_id);
 
+                if ( !string.IsNullOrEmpty(name) )
+                    query = query.Where(x => x.NAME.Contains(name) || x.DESCRIPTION.Contains(name));
+
+                if ( !string.IsNullOrEmpty(owner) )
+                {
+                    var ids = NftMethods.GetIdsByOwnerAddress(databaseContext, owner, chain);
+
+                    query = query.Where(x => ids.Contains(x.ID));
+                }
+
+                #endregion
 
                 if ( order_direction == "asc" )
                     query = order_by switch
@@ -147,6 +161,8 @@ public partial class Endpoints
 
                 if ( with_total == 1 )
                     totalResults = query.Count();
+
+                #region ResultArray
 
                 nftArray = query.Skip(offset).Take(limit).Select(x => new Nft
                 {
@@ -222,6 +238,8 @@ public partial class Endpoints
                         }
                         : null
                 }).ToArray();
+
+                #endregion
 
                 var responseTime = DateTime.Now - startTime;
 

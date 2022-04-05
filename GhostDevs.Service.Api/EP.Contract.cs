@@ -30,6 +30,8 @@ public partial class Endpoints
         {
             try
             {
+                #region ArgValidation
+
                 if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
                     throw new APIException("Unsupported value for 'order_by' parameter.");
 
@@ -45,15 +47,19 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
                     throw new APIException("Unsupported value for 'hash' parameter.");
 
+                #endregion
+
                 var startTime = DateTime.Now;
 
                 var query = databaseContext.Contracts.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(symbol) )
-                    query = query.Where(x => string.Equals(x.SYMBOL.ToUpper(), symbol.ToUpper()));
+                #region Filtering
 
-                if ( !string.IsNullOrEmpty(hash) )
-                    query = query.Where(x => string.Equals(x.HASH.ToUpper(), hash.ToUpper()));
+                if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
+
+                if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.HASH == hash);
+
+                #endregion
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )

@@ -53,11 +53,10 @@ public partial class Endpoints
 
                 var query = databaseContext.Organizations.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(organization_name) )
-                    query = query.Where(x => string.Equals(x.NAME.ToUpper(), organization_name.ToUpper()));
+                if ( !string.IsNullOrEmpty(organization_name) ) query = query.Where(x => x.NAME == organization_name);
 
                 if ( !string.IsNullOrEmpty(organization_name_partial) )
-                    query = query.Where(x => x.NAME.ToUpper().Contains(organization_name_partial.ToUpper()));
+                    query = query.Where(x => x.NAME.Contains(organization_name_partial));
 
                 if ( with_total == 1 )
                     totalResults = query.Count();

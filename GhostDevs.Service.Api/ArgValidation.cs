@@ -284,7 +284,7 @@ public static class ArgValidation
 
     public static bool CheckEventKind(string kind)
     {
-        return Regex.IsMatch(kind, @"^[_\-a-zA-Z0-9]+$");
+        return Regex.IsMatch(kind, @"^[a-zA-Z]+$");
     }
 
 
@@ -300,8 +300,8 @@ public static class ArgValidation
     }
 
 
-    public static bool CheckHash(string value)
+    public static bool CheckHash(string value, bool lowercase = false)
     {
-        return Regex.IsMatch(value, @"^[A-Z0-9]+$");
+        return Regex.IsMatch(value, lowercase ? @"^[a-zA-Z0-9]+$" : @"^[A-Z0-9]+$");
     }
 }

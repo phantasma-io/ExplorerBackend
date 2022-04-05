@@ -40,6 +40,8 @@ public partial class Endpoints
         {
             try
             {
+                #region ArgValidation
+
                 if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
                     throw new APIException("Unsupported value for 'order_by' parameter.");
 
@@ -72,10 +74,13 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
                     throw new APIException("Unsupported value for 'block_height' parameter.");
 
+                #endregion
+
                 var startTime = DateTime.Now;
 
                 var query = databaseContext.Transactions.AsQueryable();
 
+                #region Filtering
 
                 if ( !string.IsNullOrEmpty(hash) )
                     query = query.Where(x => x.HASH == hash);
@@ -102,6 +107,8 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(block_height) )
                     query = query.Where(x => x.Block.HEIGHT == block_height);
 
+                #endregion
+
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
                     totalResults = query.Count();
@@ -122,17 +129,15 @@ public partial class Endpoints
                         _ => query
                     };
 
+                transactionArray = query.Skip(offset).Take(limit).Select(x => new Transaction
+                {
+                    hash = x.HASH,
+                    block_hash = x.Block.HASH,
+                    block_height = x.Block.HEIGHT,
+                    index = x.INDEX,
+                    date = x.TIMESTAMP_UNIX_SECONDS.ToString()
+                }).ToArray();
 
-                transactionArray = ( from x in query.Skip(offset).Take(limit)
-                    let events = x.Events
-                    select new Transaction
-                    {
-                        hash = x.HASH,
-                        block_hash = x.Block.HASH,
-                        block_height = x.Block.HEIGHT,
-                        index = x.INDEX,
-                        date = x.TIMESTAMP_UNIX_SECONDS.ToString()
-                    } ).ToArray();
 
                 var responseTime = DateTime.Now - startTime;
 

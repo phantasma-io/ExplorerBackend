@@ -40,7 +40,7 @@ public partial class Endpoints
                 if ( !ArgValidation.CheckLimit(limit) )
                     throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckString(block_hash) )
+                if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
                     throw new APIException("Unsupported value for 'block_hash' parameter.");
 
                 if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
@@ -54,7 +54,7 @@ public partial class Endpoints
                 var query = databaseContext.BlockOracles.AsQueryable();
 
                 if ( !string.IsNullOrEmpty(block_hash) )
-                    query = query.Where(x => string.Equals(x.Block.HASH.ToUpper(), block_hash.ToUpper()));
+                    query = query.Where(x => x.Block.HASH == block_hash);
 
                 if ( !string.IsNullOrEmpty(block_height) )
                     query = query.Where(x => x.Block.HEIGHT == block_height);

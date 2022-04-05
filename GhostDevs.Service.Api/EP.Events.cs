@@ -87,6 +87,8 @@ public partial class Endpoints
         {
             try
             {
+                #region ArgValidation
+
                 if ( !ArgValidation.CheckLimit(limit) )
                     throw new APIException("Unsupported value for 'limit' parameter.");
 
@@ -99,12 +101,12 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                     throw new APIException("Unsupported value for 'chain' parameter.");
 
-                if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckAddress(contract) )
+                if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true) )
                     throw new APIException("Unsupported value for 'contract' parameter.");
 
                 ContractMethods.Drop0x(ref contract);
 
-                if ( !string.IsNullOrEmpty(token_id) && !Regex.IsMatch(token_id, @"^[_\-a-zA-Z0-9]+$") )
+                if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
                     throw new APIException("Unsupported value for 'token_id' parameter.");
 
                 if ( !string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$") )
@@ -116,11 +118,10 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
                     throw new APIException("Unsupported value for 'date_greater' parameter.");
 
-                if ( !string.IsNullOrEmpty(event_kind) && !Regex.IsMatch(event_kind, @"^[_\-a-zA-Z0-9]+$") )
+                if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckEventKind(event_kind) )
                     throw new APIException("Unsupported value for 'event_kind' parameter.");
 
-                if ( !string.IsNullOrEmpty(event_kind_partial) &&
-                     !Regex.IsMatch(event_kind_partial, @"^[_\-a-zA-Z0-9]+$") )
+                if ( !string.IsNullOrEmpty(event_kind_partial) && !ArgValidation.CheckEventKind(event_kind_partial) )
                     throw new APIException("Unsupported value for 'event_kind_partial' parameter.");
 
                 if ( !string.IsNullOrEmpty(nft_name_partial) && !ArgValidation.CheckName(nft_name_partial) )
@@ -135,6 +136,9 @@ public partial class Endpoints
 
                 ContractMethods.Drop0x(ref address);
 
+                if ( !string.IsNullOrEmpty(address) && string.IsNullOrEmpty(chain) )
+                    throw new APIException("Pass chain when using address filter.");
+                
                 if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
                     throw new APIException("Unsupported value for 'address_partial' parameter.");
 
@@ -149,11 +153,15 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(transaction_hash) && !ArgValidation.CheckHash(transaction_hash) )
                     throw new APIException("Unsupported value for 'transaction_hash' parameter.");
 
+                #endregion
+
                 var startTime = DateTime.Now;
                 var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
                 // Getting exchange rates in advance.
                 var query = databaseContext.Events.AsQueryable();
+
+                #region Filtering
 
                 if ( with_nsfw == 0 )
                     query = query.Where(x => x.NSFW != true);
@@ -161,13 +169,11 @@ public partial class Endpoints
                 if ( with_blacklisted == 0 )
                     query = query.Where(x => x.BLACKLISTED != true);
 
-                if ( !string.IsNullOrEmpty(chain) )
-                    query = query.Where(x => string.Equals(x.Chain.NAME.ToUpper(), chain.ToUpper()));
+                if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
 
                 if ( !string.IsNullOrEmpty(token_id) ) query = query.Where(x => x.TOKEN_ID == token_id);
 
-                if ( !string.IsNullOrEmpty(contract) )
-                    query = query.Where(x => string.Equals(x.Contract.HASH.ToUpper(), contract.ToUpper()));
+                if ( !string.IsNullOrEmpty(contract) ) query = query.Where(x => x.Contract.HASH == contract);
 
                 if ( !string.IsNullOrEmpty(date_day) )
                     query = query.Where(x => x.DATE_UNIX_SECONDS == UnixSeconds.FromDateTimeString(date_day));
@@ -178,17 +184,16 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(date_greater) )
                     query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
-                if ( !string.IsNullOrEmpty(event_kind) )
-                    query = query.Where(x => string.Equals(x.EventKind.NAME.ToUpper(), event_kind.ToUpper()));
+                if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.EventKind.NAME == event_kind);
 
                 if ( !string.IsNullOrEmpty(event_kind_partial) )
-                    query = query.Where(x => x.EventKind.NAME.ToUpper().Contains(event_kind_partial.ToUpper()));
+                    query = query.Where(x => x.EventKind.NAME.Contains(event_kind_partial));
 
                 if ( !string.IsNullOrEmpty(nft_name_partial) )
-                    query = query.Where(x => x.Nft.NAME.ToUpper().Contains(nft_name_partial.ToUpper()));
+                    query = query.Where(x => x.Nft.NAME.Contains(nft_name_partial));
 
                 if ( !string.IsNullOrEmpty(nft_description_partial) )
-                    query = query.Where(x => x.Nft.DESCRIPTION.ToUpper().Contains(nft_description_partial.ToUpper()));
+                    query = query.Where(x => x.Nft.DESCRIPTION.Contains(nft_description_partial));
 
                 if ( !string.IsNullOrEmpty(address) )
                 {
@@ -199,8 +204,8 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(address_partial) )
                     query = query.Where(x => x.Address.ADDRESS.Contains(address_partial) ||
-                                             x.Address.ADDRESS_NAME.ToUpper().Contains(address_partial.ToUpper()) ||
-                                             x.Address.USER_NAME.ToUpper().Contains(address_partial.ToUpper()));
+                                             x.Address.ADDRESS_NAME.Contains(address_partial) ||
+                                             x.Address.USER_NAME.Contains(address_partial));
 
                 if ( !string.IsNullOrEmpty(block_hash) )
                     query = query.Where(x => x.Transaction.Block.HASH == block_hash);
@@ -210,6 +215,8 @@ public partial class Endpoints
 
                 if ( !string.IsNullOrEmpty(transaction_hash) )
                     query = query.Where(x => x.Transaction.HASH == transaction_hash);
+
+                #endregion
 
                 if ( with_total == 1 )
                     // Count total number of results before adding order and limit parts of query.
@@ -231,6 +238,8 @@ public partial class Endpoints
                         "id" => query.OrderByDescending(x => x.ID),
                         _ => query
                     };
+
+                #region ResultArray
 
                 eventsArray = query.Skip(offset).Take(limit).Select(x => new Event
                     {
@@ -255,8 +264,8 @@ public partial class Endpoints
                                 description = x.Nft.DESCRIPTION,
                                 image = x.Nft.IMAGE,
                                 video = x.Nft.VIDEO,
-                                // rom = x.Nft.ROM,
-                                // ram = x.Nft.RAM,
+                                rom = x.Nft.ROM,
+                                ram = x.Nft.RAM,
                                 mint_date = x.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
                                 mint_number = x.Nft.MINT_NUMBER.ToString()
                             }
@@ -494,6 +503,8 @@ public partial class Endpoints
                             : null
                     }
                 ).ToArray();
+
+                #endregion
 
                 var responseTime = DateTime.Now - startTime;
 

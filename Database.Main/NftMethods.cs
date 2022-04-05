@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using GhostDevs.Commons;
 using Microsoft.EntityFrameworkCore;
@@ -181,5 +182,13 @@ public static class NftMethods
                 if ( saveChanges ) databaseContext.SaveChanges();
             }
         }
+    }
+
+
+    public static IEnumerable<int> GetIdsByOwnerAddress(MainDbContext databaseContext, string address, string chain)
+    {
+        var addressEntry = AddressMethods.Get(databaseContext, ChainMethods.Get(databaseContext, chain).ID, address);
+
+        return databaseContext.NftOwnerships.Where(x => x.Address == addressEntry).Select(x => x.NftId);
     }
 }

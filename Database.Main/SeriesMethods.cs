@@ -28,7 +28,7 @@ public static class SeriesMethods
 
     public static int SeriesModesGetId(MainDbContext databaseContext, string name)
     {
-        return databaseContext.SeriesModes.First(x => string.Equals(x.MODE_NAME.ToUpper(), name.ToUpper())).ID;
+        return databaseContext.SeriesModes.First(x => x.MODE_NAME == name).ID;
     }
 
 

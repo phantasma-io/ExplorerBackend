@@ -50,8 +50,7 @@ public static class FiatExchangeRateMethods
     public static decimal Convert(Dictionary<string, decimal> fiatPricesInUsd, decimal price, string fromSymbol,
         string toSymbol)
     {
-        if ( string.IsNullOrEmpty(fromSymbol) || string.IsNullOrEmpty(toSymbol) ||
-             string.Equals(fromSymbol.ToUpper(), toSymbol.ToUpper()) )
+        if ( string.IsNullOrEmpty(fromSymbol) || string.IsNullOrEmpty(toSymbol) || fromSymbol == toSymbol )
             return price; // No calculation is needed.
 
         var usdPrice = fiatPricesInUsd.Where(x => x.Key == fromSymbol).Select(x => x.Value).SingleOrDefault();
@@ -78,8 +77,7 @@ public static class FiatExchangeRateMethods
             return 0;
         }
 
-        if ( string.IsNullOrEmpty(fromSymbol) || string.IsNullOrEmpty(toSymbol) ||
-             string.Equals(fromSymbol.ToUpper(), toSymbol.ToUpper()) )
+        if ( string.IsNullOrEmpty(fromSymbol) || string.IsNullOrEmpty(toSymbol) || fromSymbol == toSymbol )
             return price; // No calculation is needed.
 
         var usdPrice = fiatPricesInUsd.Where(x => x.Key == fromSymbol).Select(x => x.Value).SingleOrDefault();

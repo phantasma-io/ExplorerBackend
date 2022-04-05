@@ -31,7 +31,7 @@ public static class ContractMethods
 
         if ( contract.Length <= 10 ) return contract;
 
-        if ( chainShortName != null && chainShortName.ToUpper() == "main" ) return contract;
+        if ( chainShortName is "main" ) return contract;
 
         return "0x" + contract;
     }

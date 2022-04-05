@@ -45,6 +45,8 @@ public partial class Endpoints
         {
             try
             {
+                #region ArgValidation
+
                 if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
                     throw new APIException("Unsupported value for 'order_by' parameter.");
 
@@ -70,18 +72,21 @@ public partial class Endpoints
                 if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
                     throw new APIException("Unsupported value for 'organization_name' parameter.");
 
+                #endregion
+
                 var startTime = DateTime.Now;
 
                 var query = databaseContext.Addresses.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(address) )
-                    query = query.Where(x => string.Equals(x.ADDRESS.ToUpper(), address.ToUpper()));
 
-                if ( !string.IsNullOrEmpty(address_name) )
-                    query = query.Where(x => string.Equals(x.ADDRESS_NAME.ToUpper(), address_name.ToUpper()));
+                #region Filtering
+
+                if ( !string.IsNullOrEmpty(address) ) query = query.Where(x => x.ADDRESS == address);
+
+                if ( !string.IsNullOrEmpty(address_name) ) query = query.Where(x => x.ADDRESS_NAME == address_name);
 
                 if ( !string.IsNullOrEmpty(address_partial) )
-                    query = query.Where(x => x.ADDRESS.ToUpper().Contains(address_partial.ToUpper()));
+                    query = query.Where(x => x.ADDRESS.Contains(address_partial));
 
                 if ( !string.IsNullOrEmpty(organization_name) )
                 {
@@ -89,6 +94,8 @@ public partial class Endpoints
                         .GetOrganizationAddressByOrganization(databaseContext, organization_name).ToList();
                     query = query.Where(x => x.OrganizationAddresses.Any(y => organizationAddresses.Contains(y)));
                 }
+
+                #endregion
 
                 // Count total number of results before adding order and limit parts of query.
                 if ( with_total == 1 )
@@ -111,6 +118,8 @@ public partial class Endpoints
                         "address_name" => query.OrderByDescending(x => x.ADDRESS_NAME),
                         _ => query
                     };
+
+                #region ResultArray
 
                 addressArray = query.Skip(offset).Take(limit).Select(x => new Address
                 {
@@ -166,6 +175,8 @@ public partial class Endpoints
                         ).ToArray()
                         : null
                 }).ToArray();
+
+                #endregion
 
                 var responseTime = DateTime.Now - startTime;
 

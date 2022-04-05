@@ -15,8 +15,7 @@ public static class ChainMethods
             throw new ArgumentException("Argument cannot be null or empty.", nameof(shortName));
 
         int chainId;
-        var chain = databaseContext.Chains.FirstOrDefault(x =>
-            string.Equals(x.SHORT_NAME.ToUpper(), shortName.ToUpper()));
+        var chain = databaseContext.Chains.FirstOrDefault(x => x.SHORT_NAME == shortName);
         if ( chain != null )
         {
             chainId = chain.ID;
@@ -44,8 +43,7 @@ public static class ChainMethods
                     // We tried to create same record in two threads concurrently.
                     // Now we should just remove duplicating record and get an existing record.
                     databaseContext.Chains.Remove(chain);
-                    chain = databaseContext.Chains.First(
-                        x => string.Equals(x.SHORT_NAME.ToUpper(), shortName.ToUpper()));
+                    chain = databaseContext.Chains.First(x => x.SHORT_NAME == shortName);
                 }
                 else
                     // Unknown exception.
@@ -64,8 +62,7 @@ public static class ChainMethods
         if ( string.IsNullOrEmpty(shortName) )
             throw new ArgumentException("Argument cannot be null or empty.", "shortName");
 
-        var chain = databaseContext.Chains.FirstOrDefault(x =>
-            string.Equals(x.SHORT_NAME.ToUpper(), shortName.ToUpper()));
+        var chain = databaseContext.Chains.FirstOrDefault(x => x.SHORT_NAME == shortName);
         return chain?.ID ?? 0;
     }
 
