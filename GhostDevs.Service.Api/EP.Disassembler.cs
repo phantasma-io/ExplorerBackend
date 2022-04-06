@@ -14,7 +14,6 @@ public partial class Endpoints
         long totalResults;
         Instruction[] instructionArray;
 
-
         try
         {
             if ( !string.IsNullOrEmpty(script_raw) && !ArgValidation.CheckString(script_raw) )

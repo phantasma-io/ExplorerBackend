@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Database.Main;
 using Foundatio.Messaging;
 using GhostDevs.Service.Infrastructure;
 
@@ -276,11 +277,13 @@ public struct APIModel
 
 public partial class Endpoints : ApiEndpointBase
 {
+    private readonly MainDbContext _context;
     private readonly IMessagePublisher _publisher;
 
 
-    public Endpoints(IMessagePublisher publisher)
+    public Endpoints(IMessagePublisher publisher, MainDbContext context)
     {
         _publisher = publisher;
+        _context = context;
     }
 }

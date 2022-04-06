@@ -1,10 +1,8 @@
 using System;
 using System.Linq;
-using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using EventKind = GhostDevs.Service.ApiResults.EventKind;
 
 namespace GhostDevs.Service;
 
@@ -24,67 +22,64 @@ public partial class Endpoints
         long totalResults = 0;
         EventKind[] eventKindArray;
 
-        using ( var databaseContext = new MainDbContext() )
+        try
         {
-            try
-            {
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
 
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckEventKind(event_kind) )
-                    throw new APIException("Unsupported value for 'event_kind' parameter.");
+            if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckEventKind(event_kind) )
+                throw new APIException("Unsupported value for 'event_kind' parameter.");
 
-                var startTime = DateTime.Now;
+            var startTime = DateTime.Now;
 
-                var query = databaseContext.EventKinds.AsQueryable();
+            var query = _context.EventKinds.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.NAME == event_kind);
+            if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.NAME == event_kind);
 
-                // Count total number of results before adding order and limit parts of query.
-                if ( with_total == 1 )
-                    totalResults = query.Count();
+            // Count total number of results before adding order and limit parts of query.
+            if ( with_total == 1 )
+                totalResults = query.Count();
 
-                //in case we add more to sort
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.ID),
-                        "name" => query.OrderBy(x => x.NAME),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.ID),
-                        "name" => query.OrderByDescending(x => x.NAME),
-                        _ => query
-                    };
-
-                eventKindArray = query.Skip(offset).Take(limit).Select(x => new EventKind
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
                 {
-                    kind = x.NAME
-                }).ToArray();
+                    "id" => query.OrderBy(x => x.ID),
+                    "name" => query.OrderBy(x => x.NAME),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "name" => query.OrderByDescending(x => x.NAME),
+                    _ => query
+                };
 
-                var responseTime = DateTime.Now - startTime;
-
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
-            }
-            catch ( APIException )
+            eventKindArray = query.Skip(offset).Take(limit).Select(x => new EventKind
             {
-                throw;
-            }
-            catch ( Exception exception )
-            {
-                var logMessage = LogEx.Exception("EventKind()", exception);
+                kind = x.NAME
+            }).ToArray();
 
-                throw new APIException(logMessage, exception);
-            }
+            var responseTime = DateTime.Now - startTime;
+
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+        }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("EventKind()", exception);
+
+            throw new APIException(logMessage, exception);
         }
 
         return new EventKindResult {total_results = with_total == 1 ? totalResults : null, eventKinds = eventKindArray};

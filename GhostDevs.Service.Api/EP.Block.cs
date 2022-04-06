@@ -1,10 +1,8 @@
 using System;
 using System.Linq;
-using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using Block = GhostDevs.Service.ApiResults.Block;
 
 namespace GhostDevs.Service;
 
@@ -34,105 +32,104 @@ public partial class Endpoints
         long totalResults = 0;
         Block[] blockArray;
 
-        using ( var databaseContext = new MainDbContext() )
+
+        try
         {
-            try
-            {
-                #region ArgValidation
+            #region ArgValidation
 
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
 
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash) )
-                    throw new APIException("Unsupported value for 'hash' parameter.");
+            if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash) )
+                throw new APIException("Unsupported value for 'hash' parameter.");
 
-                if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial) )
-                    throw new APIException("Unsupported value for 'hash_partial' parameter.");
+            if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial) )
+                throw new APIException("Unsupported value for 'hash_partial' parameter.");
 
-                if ( !string.IsNullOrEmpty(height) && !ArgValidation.CheckNumber(height) )
-                    throw new APIException("Unsupported value for 'height' parameter.");
+            if ( !string.IsNullOrEmpty(height) && !ArgValidation.CheckNumber(height) )
+                throw new APIException("Unsupported value for 'height' parameter.");
 
-                #endregion
+            #endregion
 
-                var startTime = DateTime.Now;
+            var startTime = DateTime.Now;
 
-                //just need that since we build the model so it knows what we can use
-                var query = databaseContext.Blocks.AsQueryable();
+            //just need that since we build the model so it knows what we can use
+            var query = _context.Blocks.AsQueryable();
 
-                #region Filtering
+            #region Filtering
 
-                if ( !string.IsNullOrEmpty(hash) )
-                    query = query.Where(x => x.HASH == hash);
+            if ( !string.IsNullOrEmpty(hash) )
+                query = query.Where(x => x.HASH == hash);
 
-                if ( !string.IsNullOrEmpty(hash_partial) )
-                    query = query.Where(x => x.HASH.Contains(hash_partial));
+            if ( !string.IsNullOrEmpty(hash_partial) )
+                query = query.Where(x => x.HASH.Contains(hash_partial));
 
-                if ( !string.IsNullOrEmpty(height) )
-                    query = query.Where(x => x.HEIGHT == height);
+            if ( !string.IsNullOrEmpty(height) )
+                query = query.Where(x => x.HEIGHT == height);
 
-                if ( !string.IsNullOrEmpty(date_less) )
-                    query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
+            if ( !string.IsNullOrEmpty(date_less) )
+                query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
 
-                if ( !string.IsNullOrEmpty(date_greater) )
-                    query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
+            if ( !string.IsNullOrEmpty(date_greater) )
+                query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
-                #endregion
+            #endregion
 
-                // Count total number of results before adding order and limit parts of query.
-                if ( with_total == 1 )
-                    totalResults = query.Count();
+            // Count total number of results before adding order and limit parts of query.
+            if ( with_total == 1 )
+                totalResults = query.Count();
 
-                //in case we add more to sort
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.ID),
-                        "hash" => query.OrderBy(x => x.HASH),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.ID),
-                        "hash" => query.OrderByDescending(x => x.HASH),
-                        _ => query
-                    };
-
-                #region ResultArray
-
-                blockArray = query.Skip(offset).Take(limit).Select(x => new Block
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
                 {
-                    height = x.HEIGHT,
-                    hash = x.HASH,
-                    previous_hash = x.PREVIOUS_HASH,
-                    protocol = x.PROTOCOL,
-                    chain_address = x.ChainAddress.ADDRESS,
-                    validator_address = x.ValidatorAddress.ADDRESS,
-                    date = x.TIMESTAMP_UNIX_SECONDS.ToString()
-                }).ToArray();
+                    "id" => query.OrderBy(x => x.ID),
+                    "hash" => query.OrderBy(x => x.HASH),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "hash" => query.OrderByDescending(x => x.HASH),
+                    _ => query
+                };
 
-                #endregion
+            #region ResultArray
 
-                var responseTime = DateTime.Now - startTime;
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
-            }
-            catch ( APIException )
+            blockArray = query.Skip(offset).Take(limit).Select(x => new Block
             {
-                throw;
-            }
-            catch ( Exception exception )
-            {
-                var logMessage = LogEx.Exception("Block()", exception);
+                height = x.HEIGHT,
+                hash = x.HASH,
+                previous_hash = x.PREVIOUS_HASH,
+                protocol = x.PROTOCOL,
+                chain_address = x.ChainAddress.ADDRESS,
+                validator_address = x.ValidatorAddress.ADDRESS,
+                date = x.TIMESTAMP_UNIX_SECONDS.ToString()
+            }).ToArray();
 
-                throw new APIException(logMessage, exception);
-            }
+            #endregion
+
+            var responseTime = DateTime.Now - startTime;
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("Block()", exception);
+
+            throw new APIException(logMessage, exception);
+        }
+
 
         return new BlockResult {total_results = with_total == 1 ? totalResults : null, blocks = blockArray};
     }

@@ -1,10 +1,8 @@
 using System;
 using System.Linq;
-using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using Oracle = GhostDevs.Service.ApiResults.Oracle;
 
 namespace GhostDevs.Service;
 
@@ -27,80 +25,77 @@ public partial class Endpoints
         long totalResults = 0;
         Oracle[] oracleArray;
 
-        using ( var databaseContext = new MainDbContext() )
+        try
         {
-            try
-            {
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
 
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
-                    throw new APIException("Unsupported value for 'block_hash' parameter.");
+            if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
+                throw new APIException("Unsupported value for 'block_hash' parameter.");
 
-                if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
-                    throw new APIException("Unsupported value for 'block_height' parameter.");
+            if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
+                throw new APIException("Unsupported value for 'block_height' parameter.");
 
-                if ( string.IsNullOrEmpty(block_hash) && string.IsNullOrEmpty(block_height) )
-                    throw new APIException("Need either block_hash or block_height != null");
+            if ( string.IsNullOrEmpty(block_hash) && string.IsNullOrEmpty(block_height) )
+                throw new APIException("Need either block_hash or block_height != null");
 
-                var startTime = DateTime.Now;
+            var startTime = DateTime.Now;
 
-                var query = databaseContext.BlockOracles.AsQueryable();
+            var query = _context.BlockOracles.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(block_hash) )
-                    query = query.Where(x => x.Block.HASH == block_hash);
+            if ( !string.IsNullOrEmpty(block_hash) )
+                query = query.Where(x => x.Block.HASH == block_hash);
 
-                if ( !string.IsNullOrEmpty(block_height) )
-                    query = query.Where(x => x.Block.HEIGHT == block_height);
+            if ( !string.IsNullOrEmpty(block_height) )
+                query = query.Where(x => x.Block.HEIGHT == block_height);
 
-                // Count total number of results before adding order and limit parts of query.
-                if ( with_total == 1 )
-                    totalResults = query.Count();
+            // Count total number of results before adding order and limit parts of query.
+            if ( with_total == 1 )
+                totalResults = query.Count();
 
-                //in case we add more to sort
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.Oracle.ID),
-                        "url" => query.OrderBy(x => x.Oracle.URL),
-                        "content" => query.OrderBy(x => x.Oracle.CONTENT),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.Oracle.ID),
-                        "url" => query.OrderByDescending(x => x.Oracle.URL),
-                        "content" => query.OrderByDescending(x => x.Oracle.CONTENT),
-                        _ => query
-                    };
-
-                oracleArray = query.Skip(offset).Take(limit).Select(x => new Oracle
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
                 {
-                    url = x.Oracle.URL,
-                    content = x.Oracle.URL
-                }).ToArray();
+                    "id" => query.OrderBy(x => x.Oracle.ID),
+                    "url" => query.OrderBy(x => x.Oracle.URL),
+                    "content" => query.OrderBy(x => x.Oracle.CONTENT),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.Oracle.ID),
+                    "url" => query.OrderByDescending(x => x.Oracle.URL),
+                    "content" => query.OrderByDescending(x => x.Oracle.CONTENT),
+                    _ => query
+                };
 
-                var responseTime = DateTime.Now - startTime;
-
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
-            }
-            catch ( APIException )
+            oracleArray = query.Skip(offset).Take(limit).Select(x => new Oracle
             {
-                throw;
-            }
-            catch ( Exception exception )
-            {
-                var logMessage = LogEx.Exception("Address()", exception);
+                url = x.Oracle.URL,
+                content = x.Oracle.URL
+            }).ToArray();
 
-                throw new APIException(logMessage, exception);
-            }
+            var responseTime = DateTime.Now - startTime;
+
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+        }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("Address()", exception);
+
+            throw new APIException(logMessage, exception);
         }
 
         return new OracleResult {total_results = with_total == 1 ? totalResults : null, oracles = oracleArray};

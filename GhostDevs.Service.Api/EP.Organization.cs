@@ -1,10 +1,8 @@
 using System;
 using System.Linq;
-using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using Organization = GhostDevs.Service.ApiResults.Organization;
 
 namespace GhostDevs.Service;
 
@@ -29,74 +27,71 @@ public partial class Endpoints
         long totalResults = 0;
         Organization[] organizationArray;
 
-        using ( var databaseContext = new MainDbContext() )
+        try
         {
-            try
-            {
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
 
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
-                    throw new APIException("Unsupported value for 'organization_name' parameter.");
+            if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
+                throw new APIException("Unsupported value for 'organization_name' parameter.");
 
-                if ( !string.IsNullOrEmpty(organization_name_partial) &&
-                     !ArgValidation.CheckString(organization_name_partial) )
-                    throw new APIException("Unsupported value for 'organization_name_partial' parameter.");
+            if ( !string.IsNullOrEmpty(organization_name_partial) &&
+                 !ArgValidation.CheckString(organization_name_partial) )
+                throw new APIException("Unsupported value for 'organization_name_partial' parameter.");
 
-                var startTime = DateTime.Now;
+            var startTime = DateTime.Now;
 
-                var query = databaseContext.Organizations.AsQueryable();
+            var query = _context.Organizations.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(organization_name) ) query = query.Where(x => x.NAME == organization_name);
+            if ( !string.IsNullOrEmpty(organization_name) ) query = query.Where(x => x.NAME == organization_name);
 
-                if ( !string.IsNullOrEmpty(organization_name_partial) )
-                    query = query.Where(x => x.NAME.Contains(organization_name_partial));
+            if ( !string.IsNullOrEmpty(organization_name_partial) )
+                query = query.Where(x => x.NAME.Contains(organization_name_partial));
 
-                if ( with_total == 1 )
-                    totalResults = query.Count();
+            if ( with_total == 1 )
+                totalResults = query.Count();
 
-                //in case we add more to sort
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.ID),
-                        "name" => query.OrderBy(x => x.NAME),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.ID),
-                        "name" => query.OrderByDescending(x => x.NAME),
-                        _ => query
-                    };
-
-                organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
                 {
-                    name = x.NAME
-                }).ToArray();
+                    "id" => query.OrderBy(x => x.ID),
+                    "name" => query.OrderBy(x => x.NAME),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "name" => query.OrderByDescending(x => x.NAME),
+                    _ => query
+                };
 
-
-                var responseTime = DateTime.Now - startTime;
-
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
-            }
-            catch ( APIException )
+            organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
             {
-                throw;
-            }
-            catch ( Exception exception )
-            {
-                var logMessage = LogEx.Exception("Organization()", exception);
+                name = x.NAME
+            }).ToArray();
 
-                throw new APIException(logMessage, exception);
-            }
+
+            var responseTime = DateTime.Now - startTime;
+
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+        }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("Organization()", exception);
+
+            throw new APIException(logMessage, exception);
         }
 
         return new OrganizationResult

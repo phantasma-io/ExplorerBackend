@@ -110,7 +110,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 });
                 blocksSyncThread.Start();
 
-                //we might not need it
+                //we do not want it
                 /*Thread eventsProcessThread = new(() =>
                 {
                     while ( _running )

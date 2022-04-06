@@ -41,157 +41,155 @@ public partial class Endpoints
         long totalResults = 0;
         Address[] addressArray;
 
-        using ( var databaseContext = new MainDbContext() )
+
+        try
         {
-            try
+            #region ArgValidation
+
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
+
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
+
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
+
+            if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
+                throw new APIException("Unsupported value for 'address' parameter.");
+
+            ContractMethods.Drop0x(ref address);
+
+            if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
+                throw new APIException("Unsupported value for 'address_partial' parameter.");
+
+            ContractMethods.Drop0x(ref address_partial);
+
+            if ( !string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name) )
+                throw new APIException("Unsupported value for 'address_name' parameter.");
+
+            if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
+                throw new APIException("Unsupported value for 'organization_name' parameter.");
+
+            #endregion
+
+            var startTime = DateTime.Now;
+
+            var query = _context.Addresses.AsQueryable();
+
+
+            #region Filtering
+
+            if ( !string.IsNullOrEmpty(address) ) query = query.Where(x => x.ADDRESS == address);
+
+            if ( !string.IsNullOrEmpty(address_name) ) query = query.Where(x => x.ADDRESS_NAME == address_name);
+
+            if ( !string.IsNullOrEmpty(address_partial) )
+                query = query.Where(x => x.ADDRESS.Contains(address_partial));
+
+            if ( !string.IsNullOrEmpty(organization_name) )
             {
-                #region ArgValidation
+                var organizationAddresses = OrganizationAddressMethods
+                    .GetOrganizationAddressByOrganization(_context, organization_name).ToList();
+                query = query.Where(x => x.OrganizationAddresses.Any(y => organizationAddresses.Contains(y)));
+            }
 
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
+            #endregion
 
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+            // Count total number of results before adding order and limit parts of query.
+            if ( with_total == 1 )
+                totalResults = query.Count();
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
-
-                if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
-                    throw new APIException("Unsupported value for 'address' parameter.");
-
-                ContractMethods.Drop0x(ref address);
-
-                if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
-                    throw new APIException("Unsupported value for 'address_partial' parameter.");
-
-                ContractMethods.Drop0x(ref address_partial);
-
-                if ( !string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name) )
-                    throw new APIException("Unsupported value for 'address_name' parameter.");
-
-                if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
-                    throw new APIException("Unsupported value for 'organization_name' parameter.");
-
-                #endregion
-
-                var startTime = DateTime.Now;
-
-                var query = databaseContext.Addresses.AsQueryable();
-
-
-                #region Filtering
-
-                if ( !string.IsNullOrEmpty(address) ) query = query.Where(x => x.ADDRESS == address);
-
-                if ( !string.IsNullOrEmpty(address_name) ) query = query.Where(x => x.ADDRESS_NAME == address_name);
-
-                if ( !string.IsNullOrEmpty(address_partial) )
-                    query = query.Where(x => x.ADDRESS.Contains(address_partial));
-
-                if ( !string.IsNullOrEmpty(organization_name) )
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
                 {
-                    var organizationAddresses = OrganizationAddressMethods
-                        .GetOrganizationAddressByOrganization(databaseContext, organization_name).ToList();
-                    query = query.Where(x => x.OrganizationAddresses.Any(y => organizationAddresses.Contains(y)));
-                }
-
-                #endregion
-
-                // Count total number of results before adding order and limit parts of query.
-                if ( with_total == 1 )
-                    totalResults = query.Count();
-
-                //in case we add more to sort
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.ID),
-                        "address" => query.OrderBy(x => x.ADDRESS),
-                        "address_name" => query.OrderBy(x => x.ADDRESS_NAME),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.ID),
-                        "address" => query.OrderByDescending(x => x.ADDRESS),
-                        "address_name" => query.OrderByDescending(x => x.ADDRESS_NAME),
-                        _ => query
-                    };
-
-                #region ResultArray
-
-                addressArray = query.Skip(offset).Take(limit).Select(x => new Address
+                    "id" => query.OrderBy(x => x.ID),
+                    "address" => query.OrderBy(x => x.ADDRESS),
+                    "address_name" => query.OrderBy(x => x.ADDRESS_NAME),
+                    _ => query
+                };
+            else
+                query = order_by switch
                 {
-                    address = x.ADDRESS,
-                    address_name = x.ADDRESS_NAME,
-                    validator_kind = x.AddressValidatorKind != null ? x.AddressValidatorKind.NAME : null,
-                    stake = x.STAKE,
-                    unclaimed = x.UNCLAIMED,
-                    relay = x.RELAY,
-                    storage = with_storage == 1 && x.AddressStorage != null
-                        ? new AddressStorage
-                        {
-                            available = x.AddressStorage.AVAILABLE,
-                            used = x.AddressStorage.USED,
-                            avatar = x.AddressStorage.AVATAR
-                        }
-                        : null,
-                    stakes = with_stakes == 1 && x.AddressStake != null
-                        ? new AddressStakes
-                        {
-                            amount = x.AddressStake.AMOUNT,
-                            time = x.AddressStake.TIME,
-                            unclaimed = x.AddressStake.UNCLAIMED
-                        }
-                        : null,
-                    balances = with_balance == 1 && x.AddressBalances != null
-                        ? x.AddressBalances.Select(b => new AddressBalance
-                            {
-                                token = b.Token != null
-                                    ? new Token
-                                    {
-                                        symbol = b.Token.SYMBOL,
-                                        fungible = b.Token.FUNGIBLE,
-                                        transferable = b.Token.TRANSFERABLE,
-                                        finite = b.Token.FINITE,
-                                        divisible = b.Token.DIVISIBLE,
-                                        fiat = b.Token.FIAT,
-                                        fuel = b.Token.FUEL,
-                                        swappable = b.Token.SWAPPABLE,
-                                        burnable = b.Token.BURNABLE,
-                                        stakable = b.Token.STAKABLE,
-                                        decimals = b.Token.DECIMALS
-                                    }
-                                    : null,
-                                chain = b.Chain != null
-                                    ? new Chain
-                                    {
-                                        chain_name = b.Chain.NAME
-                                    }
-                                    : null,
-                                amount = b.AMOUNT
-                            }
-                        ).ToArray()
-                        : null
-                }).ToArray();
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "address" => query.OrderByDescending(x => x.ADDRESS),
+                    "address_name" => query.OrderByDescending(x => x.ADDRESS_NAME),
+                    _ => query
+                };
 
-                #endregion
+            #region ResultArray
 
-                var responseTime = DateTime.Now - startTime;
-
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
-            }
-            catch ( APIException )
+            addressArray = query.Skip(offset).Take(limit).Select(x => new Address
             {
-                throw;
-            }
-            catch ( Exception exception )
-            {
-                var logMessage = LogEx.Exception("Address()", exception);
+                address = x.ADDRESS,
+                address_name = x.ADDRESS_NAME,
+                validator_kind = x.AddressValidatorKind != null ? x.AddressValidatorKind.NAME : null,
+                stake = x.STAKE,
+                unclaimed = x.UNCLAIMED,
+                relay = x.RELAY,
+                storage = with_storage == 1 && x.AddressStorage != null
+                    ? new AddressStorage
+                    {
+                        available = x.AddressStorage.AVAILABLE,
+                        used = x.AddressStorage.USED,
+                        avatar = x.AddressStorage.AVATAR
+                    }
+                    : null,
+                stakes = with_stakes == 1 && x.AddressStake != null
+                    ? new AddressStakes
+                    {
+                        amount = x.AddressStake.AMOUNT,
+                        time = x.AddressStake.TIME,
+                        unclaimed = x.AddressStake.UNCLAIMED
+                    }
+                    : null,
+                balances = with_balance == 1 && x.AddressBalances != null
+                    ? x.AddressBalances.Select(b => new AddressBalance
+                        {
+                            token = b.Token != null
+                                ? new Token
+                                {
+                                    symbol = b.Token.SYMBOL,
+                                    fungible = b.Token.FUNGIBLE,
+                                    transferable = b.Token.TRANSFERABLE,
+                                    finite = b.Token.FINITE,
+                                    divisible = b.Token.DIVISIBLE,
+                                    fiat = b.Token.FIAT,
+                                    fuel = b.Token.FUEL,
+                                    swappable = b.Token.SWAPPABLE,
+                                    burnable = b.Token.BURNABLE,
+                                    stakable = b.Token.STAKABLE,
+                                    decimals = b.Token.DECIMALS
+                                }
+                                : null,
+                            chain = b.Chain != null
+                                ? new Chain
+                                {
+                                    chain_name = b.Chain.NAME
+                                }
+                                : null,
+                            amount = b.AMOUNT
+                        }
+                    ).ToArray()
+                    : null
+            }).ToArray();
 
-                throw new APIException(logMessage, exception);
-            }
+            #endregion
+
+            var responseTime = DateTime.Now - startTime;
+
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+        }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("Address()", exception);
+
+            throw new APIException(logMessage, exception);
         }
 
         return new AddressResult {total_results = with_total == 1 ? totalResults : null, addresses = addressArray};

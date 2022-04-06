@@ -1,10 +1,8 @@
 using System;
 using System.Linq;
-using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using Token = GhostDevs.Service.ApiResults.Token;
 
 namespace GhostDevs.Service;
 
@@ -31,115 +29,113 @@ public partial class Endpoints
         long totalResults = 0;
         HistoryPrice[] historyArray;
 
-        using ( var databaseContext = new MainDbContext() )
+        try
         {
-            try
-            {
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
 
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
-                    throw new APIException("Unsupported value for 'address' parameter.");
+            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+                throw new APIException("Unsupported value for 'address' parameter.");
 
-                if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
-                    throw new APIException("Unsupported value for 'date_less' parameter.");
+            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
+                throw new APIException("Unsupported value for 'date_less' parameter.");
 
-                if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
-                    throw new APIException("Unsupported value for 'date_greater' parameter.");
+            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
+                throw new APIException("Unsupported value for 'date_greater' parameter.");
 
-                var startTime = DateTime.Now;
+            var startTime = DateTime.Now;
 
-                var query = databaseContext.TokenDailyPrices.AsQueryable();
+            var query = _context.TokenDailyPrices.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(symbol) )
-                    query = query.Where(x => x.Token.SYMBOL == symbol);
+            if ( !string.IsNullOrEmpty(symbol) )
+                query = query.Where(x => x.Token.SYMBOL == symbol);
 
-                //might work
-                if ( !string.IsNullOrEmpty(date_less) )
-                    query = query.Where(x => x.DATE_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
+            //might work
+            if ( !string.IsNullOrEmpty(date_less) )
+                query = query.Where(x => x.DATE_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
 
-                if ( !string.IsNullOrEmpty(date_greater) )
-                    query = query.Where(x => x.DATE_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
+            if ( !string.IsNullOrEmpty(date_greater) )
+                query = query.Where(x => x.DATE_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
 
-                if ( with_total == 1 )
-                    totalResults = query.Count();
+            if ( with_total == 1 )
+                totalResults = query.Count();
 
-                //in case we add more to sort
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.ID),
-                        "symbol" => query.OrderBy(x => x.Token.SYMBOL),
-                        "date" => query.OrderBy(x => x.DATE_UNIX_SECONDS),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.ID),
-                        "symbol" => query.OrderByDescending(x => x.Token.SYMBOL),
-                        "date" => query.OrderByDescending(x => x.DATE_UNIX_SECONDS),
-                        _ => query
-                    };
-
-                historyArray = query.Skip(offset).Take(limit).Select(x => new HistoryPrice
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
                 {
-                    symbol = x.Token != null ? x.Token.SYMBOL : null,
-                    price = new Price
+                    "id" => query.OrderBy(x => x.ID),
+                    "symbol" => query.OrderBy(x => x.Token.SYMBOL),
+                    "date" => query.OrderBy(x => x.DATE_UNIX_SECONDS),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "symbol" => query.OrderByDescending(x => x.Token.SYMBOL),
+                    "date" => query.OrderByDescending(x => x.DATE_UNIX_SECONDS),
+                    _ => query
+                };
+
+            historyArray = query.Skip(offset).Take(limit).Select(x => new HistoryPrice
+            {
+                symbol = x.Token != null ? x.Token.SYMBOL : null,
+                price = new Price
+                {
+                    date = x.DATE_UNIX_SECONDS.ToString(),
+                    usd = x.PRICE_USD != 0 ? x.PRICE_USD : null,
+                    eur = x.PRICE_EUR != 0 ? x.PRICE_EUR : null,
+                    gbp = x.PRICE_GBP != 0 ? x.PRICE_GBP : null,
+                    jpy = x.PRICE_JPY != 0 ? x.PRICE_JPY : null,
+                    cad = x.PRICE_CAD != 0 ? x.PRICE_CAD : null,
+                    aud = x.PRICE_AUD != 0 ? x.PRICE_AUD : null,
+                    cny = x.PRICE_CNY != 0 ? x.PRICE_CNY : null,
+                    rub = x.PRICE_RUB != 0 ? x.PRICE_RUB : null
+                },
+                token = with_token == 1 && x.Token != null
+                    ? new Token
                     {
-                        date = x.DATE_UNIX_SECONDS.ToString(),
-                        usd = x.PRICE_USD != 0 ? x.PRICE_USD : null,
-                        eur = x.PRICE_EUR != 0 ? x.PRICE_EUR : null,
-                        gbp = x.PRICE_GBP != 0 ? x.PRICE_GBP : null,
-                        jpy = x.PRICE_JPY != 0 ? x.PRICE_JPY : null,
-                        cad = x.PRICE_CAD != 0 ? x.PRICE_CAD : null,
-                        aud = x.PRICE_AUD != 0 ? x.PRICE_AUD : null,
-                        cny = x.PRICE_CNY != 0 ? x.PRICE_CNY : null,
-                        rub = x.PRICE_RUB != 0 ? x.PRICE_RUB : null
-                    },
-                    token = with_token == 1 && x.Token != null
-                        ? new Token
-                        {
-                            symbol = x.Token.SYMBOL,
-                            fungible = x.Token.FUNGIBLE,
-                            transferable = x.Token.TRANSFERABLE,
-                            finite = x.Token.FINITE,
-                            divisible = x.Token.DIVISIBLE,
-                            fiat = x.Token.FIAT,
-                            fuel = x.Token.FUEL,
-                            swappable = x.Token.SWAPPABLE,
-                            burnable = x.Token.BURNABLE,
-                            stakable = x.Token.STAKABLE,
-                            decimals = x.Token.DECIMALS,
-                            current_supply = x.Token.CURRENT_SUPPLY,
-                            max_supply = x.Token.MAX_SUPPLY,
-                            burned_supply = x.Token.BURNED_SUPPLY,
-                            script_raw = x.Token.SCRIPT_RAW
-                        }
-                        : null
-                }).ToArray();
+                        symbol = x.Token.SYMBOL,
+                        fungible = x.Token.FUNGIBLE,
+                        transferable = x.Token.TRANSFERABLE,
+                        finite = x.Token.FINITE,
+                        divisible = x.Token.DIVISIBLE,
+                        fiat = x.Token.FIAT,
+                        fuel = x.Token.FUEL,
+                        swappable = x.Token.SWAPPABLE,
+                        burnable = x.Token.BURNABLE,
+                        stakable = x.Token.STAKABLE,
+                        decimals = x.Token.DECIMALS,
+                        current_supply = x.Token.CURRENT_SUPPLY,
+                        max_supply = x.Token.MAX_SUPPLY,
+                        burned_supply = x.Token.BURNED_SUPPLY,
+                        script_raw = x.Token.SCRIPT_RAW
+                    }
+                    : null
+            }).ToArray();
 
-                var responseTime = DateTime.Now - startTime;
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
-            }
-            catch ( APIException )
-            {
-                throw;
-            }
-            catch ( Exception exception )
-            {
-                var logMessage = LogEx.Exception("Address()", exception);
-
-                throw new APIException(logMessage, exception);
-            }
+            var responseTime = DateTime.Now - startTime;
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("Address()", exception);
+
+            throw new APIException(logMessage, exception);
+        }
+
 
         return new HistoryPriceResult
             {total_results = with_total == 1 ? totalResults : null, history_prices = historyArray};

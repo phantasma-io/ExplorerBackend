@@ -1,10 +1,8 @@
 using System;
 using System.Linq;
-using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using Token = GhostDevs.Service.ApiResults.Token;
 
 namespace GhostDevs.Service;
 
@@ -27,93 +25,90 @@ public partial class Endpoints
         long totalResults = 0;
         Token[] tokenArray;
 
-        using ( var databaseContext = new MainDbContext() )
+        try
         {
-            try
-            {
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
 
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
-                    throw new APIException("Unsupported value for 'address' parameter.");
+            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+                throw new APIException("Unsupported value for 'address' parameter.");
 
-                var startTime = DateTime.Now;
+            var startTime = DateTime.Now;
 
-                var query = databaseContext.Tokens.AsQueryable();
+            var query = _context.Tokens.AsQueryable();
 
-                if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
+            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
 
 
-                // Count total number of results before adding order and limit parts of query.
-                if ( with_total == 1 )
-                    totalResults = query.Count();
+            // Count total number of results before adding order and limit parts of query.
+            if ( with_total == 1 )
+                totalResults = query.Count();
 
-                //in case we add more to sort
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.ID),
-                        "symbol" => query.OrderBy(x => x.SYMBOL),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.ID),
-                        "symbol" => query.OrderByDescending(x => x.SYMBOL),
-                        _ => query
-                    };
-
-                tokenArray = query.Skip(offset).Take(limit).Select(x => new Token
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
                 {
-                    symbol = x.SYMBOL,
-                    fungible = x.FUNGIBLE,
-                    transferable = x.TRANSFERABLE,
-                    finite = x.FINITE,
-                    divisible = x.DIVISIBLE,
-                    fiat = x.FIAT,
-                    fuel = x.FUEL,
-                    swappable = x.SWAPPABLE,
-                    burnable = x.BURNABLE,
-                    stakable = x.STAKABLE,
-                    decimals = x.DECIMALS,
-                    current_supply = x.CURRENT_SUPPLY,
-                    max_supply = x.MAX_SUPPLY,
-                    burned_supply = x.BURNED_SUPPLY,
-                    script_raw = x.SCRIPT_RAW,
-                    price = with_price == 1
-                        ? new Price
-                        {
-                            usd = x.PRICE_USD != 0 ? x.PRICE_USD : null,
-                            eur = x.PRICE_EUR != 0 ? x.PRICE_EUR : null,
-                            gbp = x.PRICE_GBP != 0 ? x.PRICE_GBP : null,
-                            jpy = x.PRICE_JPY != 0 ? x.PRICE_JPY : null,
-                            cad = x.PRICE_CAD != 0 ? x.PRICE_CAD : null,
-                            aud = x.PRICE_AUD != 0 ? x.PRICE_AUD : null,
-                            cny = x.PRICE_CNY != 0 ? x.PRICE_CNY : null,
-                            rub = x.PRICE_RUB != 0 ? x.PRICE_RUB : null
-                        }
-                        : null
-                }).ToArray();
-                var responseTime = DateTime.Now - startTime;
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
-            }
-            catch ( APIException )
-            {
-                throw;
-            }
-            catch ( Exception exception )
-            {
-                var logMessage = LogEx.Exception("Token()", exception);
+                    "id" => query.OrderBy(x => x.ID),
+                    "symbol" => query.OrderBy(x => x.SYMBOL),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "symbol" => query.OrderByDescending(x => x.SYMBOL),
+                    _ => query
+                };
 
-                throw new APIException(logMessage, exception);
-            }
+            tokenArray = query.Skip(offset).Take(limit).Select(x => new Token
+            {
+                symbol = x.SYMBOL,
+                fungible = x.FUNGIBLE,
+                transferable = x.TRANSFERABLE,
+                finite = x.FINITE,
+                divisible = x.DIVISIBLE,
+                fiat = x.FIAT,
+                fuel = x.FUEL,
+                swappable = x.SWAPPABLE,
+                burnable = x.BURNABLE,
+                stakable = x.STAKABLE,
+                decimals = x.DECIMALS,
+                current_supply = x.CURRENT_SUPPLY,
+                max_supply = x.MAX_SUPPLY,
+                burned_supply = x.BURNED_SUPPLY,
+                script_raw = x.SCRIPT_RAW,
+                price = with_price == 1
+                    ? new Price
+                    {
+                        usd = x.PRICE_USD != 0 ? x.PRICE_USD : null,
+                        eur = x.PRICE_EUR != 0 ? x.PRICE_EUR : null,
+                        gbp = x.PRICE_GBP != 0 ? x.PRICE_GBP : null,
+                        jpy = x.PRICE_JPY != 0 ? x.PRICE_JPY : null,
+                        cad = x.PRICE_CAD != 0 ? x.PRICE_CAD : null,
+                        aud = x.PRICE_AUD != 0 ? x.PRICE_AUD : null,
+                        cny = x.PRICE_CNY != 0 ? x.PRICE_CNY : null,
+                        rub = x.PRICE_RUB != 0 ? x.PRICE_RUB : null
+                    }
+                    : null
+            }).ToArray();
+            var responseTime = DateTime.Now - startTime;
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+        }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("Token()", exception);
+
+            throw new APIException(logMessage, exception);
         }
 
         return new TokenResult {total_results = with_total == 1 ? totalResults : null, tokens = tokenArray};

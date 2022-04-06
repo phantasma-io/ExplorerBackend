@@ -35,142 +35,139 @@ public partial class Endpoints
         long totalResults = 0;
         Series[] seriesArray;
 
-        using ( var databaseContext = new MainDbContext() )
+        try
         {
-            try
+            #region ArgValidation
+
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
+
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
+
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
+
+            if ( !string.IsNullOrEmpty(id) && !ArgValidation.CheckSeriesId(id) )
+                throw new APIException("Unsupported value for 'id' parameter.");
+
+            if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
+                throw new APIException("Unsupported value for 'creator' parameter.");
+
+            ContractMethods.Drop0x(ref creator);
+
+            if ( !string.IsNullOrEmpty(creator) && string.IsNullOrEmpty(chain) )
+                throw new APIException("Pass chain when using creator filter.");
+
+            if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
+                throw new APIException("Unsupported value for 'name' parameter.");
+
+            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+                throw new APIException("Unsupported value for 'chain' parameter.");
+
+            if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true) )
+                throw new APIException("Unsupported value for 'contract' parameter.");
+
+            ContractMethods.Drop0x(ref contract);
+
+            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+                throw new APIException("Unsupported value for 'symbol' parameter.");
+
+            #endregion
+
+            var startTime = DateTime.Now;
+
+            var query = _context.Serieses.AsQueryable();
+
+            #region Filtering
+
+            query = query.Where(x => x.BLACKLISTED != true);
+
+            // Searching for series using SERIES_ID.
+            if ( !string.IsNullOrEmpty(id) ) query = query.Where(x => x.SERIES_ID == id);
+
+            if ( !string.IsNullOrEmpty(creator) )
             {
-                #region ArgValidation
+                var ids = AddressMethods.GetIdsFromExtendedFormat(_context, creator, true, chain);
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
-
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
-
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
-
-                if ( !string.IsNullOrEmpty(id) && !ArgValidation.CheckSeriesId(id) )
-                    throw new APIException("Unsupported value for 'id' parameter.");
-
-                if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
-                    throw new APIException("Unsupported value for 'creator' parameter.");
-
-                ContractMethods.Drop0x(ref creator);
-
-                if ( !string.IsNullOrEmpty(creator) && string.IsNullOrEmpty(chain) )
-                    throw new APIException("Pass chain when using creator filter.");
-
-                if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
-                    throw new APIException("Unsupported value for 'name' parameter.");
-
-                if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
-                    throw new APIException("Unsupported value for 'chain' parameter.");
-
-                if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true) )
-                    throw new APIException("Unsupported value for 'contract' parameter.");
-
-                ContractMethods.Drop0x(ref contract);
-
-                if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
-                    throw new APIException("Unsupported value for 'symbol' parameter.");
-
-                #endregion
-
-                var startTime = DateTime.Now;
-
-                var query = databaseContext.Serieses.AsQueryable();
-
-                #region Filtering
-
-                query = query.Where(x => x.BLACKLISTED != true);
-
-                // Searching for series using SERIES_ID.
-                if ( !string.IsNullOrEmpty(id) ) query = query.Where(x => x.SERIES_ID == id);
-
-                if ( !string.IsNullOrEmpty(creator) )
-                {
-                    var ids = AddressMethods.GetIdsFromExtendedFormat(databaseContext, creator, true, chain);
-
-                    query = query.Where(x => ids.Contains(x.CreatorAddress.ID));
-                }
-
-                if ( !string.IsNullOrEmpty(name) )
-                {
-                    var collectionsIds = databaseContext.Serieses.Where(
-                            x => x.NAME.Contains(name) || x.DESCRIPTION.Contains(name)).Select(x => x.ID).Distinct()
-                        .ToList();
-
-                    query = query.Where(x => collectionsIds.Contains(x.ID));
-                }
-
-                // Searching for series using given chain.
-                if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Contract.Chain.NAME == chain);
-
-                if ( !string.IsNullOrEmpty(contract) ) query = query.Where(x => x.Contract.HASH == contract);
-
-                // Searching for series by symbol.
-                if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.Contract.SYMBOL == symbol);
-
-                #endregion
-
-                // Count total number of results before adding order and limit parts of query.
-                if ( with_total == 1 )
-                    totalResults = query.Count();
-
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.SERIES_ID),
-                        "name" => query.OrderBy(x => x.NAME),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.SERIES_ID),
-                        "name" => query.OrderByDescending(x => x.NAME),
-                        _ => query
-                    };
-
-                #region ResultArray
-
-                seriesArray = query.Skip(offset).Take(limit).Select(x => new Series
-                {
-                    id = x.SERIES_ID ?? "",
-                    creator = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
-                    name = x.NAME,
-                    description = x.DESCRIPTION,
-                    image = x.IMAGE,
-                    current_supply = x.CURRENT_SUPPLY,
-                    max_supply = x.MAX_SUPPLY,
-                    mode_name = x.SeriesMode != null ? x.SeriesMode.MODE_NAME ?? string.Empty : string.Empty,
-                    royalties = x.ROYALTIES.ToString(CultureInfo.InvariantCulture),
-                    type = x.TYPE,
-                    attr_type_1 = x.ATTR_TYPE_1,
-                    attr_value_1 = x.ATTR_VALUE_1,
-                    attr_type_2 = x.ATTR_TYPE_2,
-                    attr_value_2 = x.ATTR_VALUE_2,
-                    attr_type_3 = x.ATTR_TYPE_3,
-                    attr_value_3 = x.ATTR_VALUE_3
-                }).ToArray();
-
-                #endregion
-
-                var responseTime = DateTime.Now - startTime;
-
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+                query = query.Where(x => ids.Contains(x.CreatorAddress.ID));
             }
-            catch ( APIException )
+
+            if ( !string.IsNullOrEmpty(name) )
             {
-                throw;
-            }
-            catch ( Exception e )
-            {
-                var logMessage = LogEx.Exception("Series()", e);
+                var collectionsIds = _context.Serieses.Where(
+                        x => x.NAME.Contains(name) || x.DESCRIPTION.Contains(name)).Select(x => x.ID).Distinct()
+                    .ToList();
 
-                throw new APIException(logMessage, e);
+                query = query.Where(x => collectionsIds.Contains(x.ID));
             }
+
+            // Searching for series using given chain.
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Contract.Chain.NAME == chain);
+
+            if ( !string.IsNullOrEmpty(contract) ) query = query.Where(x => x.Contract.HASH == contract);
+
+            // Searching for series by symbol.
+            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.Contract.SYMBOL == symbol);
+
+            #endregion
+
+            // Count total number of results before adding order and limit parts of query.
+            if ( with_total == 1 )
+                totalResults = query.Count();
+
+            if ( order_direction == "asc" )
+                query = order_by switch
+                {
+                    "id" => query.OrderBy(x => x.SERIES_ID),
+                    "name" => query.OrderBy(x => x.NAME),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.SERIES_ID),
+                    "name" => query.OrderByDescending(x => x.NAME),
+                    _ => query
+                };
+
+            #region ResultArray
+
+            seriesArray = query.Skip(offset).Take(limit).Select(x => new Series
+            {
+                id = x.SERIES_ID ?? "",
+                creator = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
+                name = x.NAME,
+                description = x.DESCRIPTION,
+                image = x.IMAGE,
+                current_supply = x.CURRENT_SUPPLY,
+                max_supply = x.MAX_SUPPLY,
+                mode_name = x.SeriesMode != null ? x.SeriesMode.MODE_NAME ?? string.Empty : string.Empty,
+                royalties = x.ROYALTIES.ToString(CultureInfo.InvariantCulture),
+                type = x.TYPE,
+                attr_type_1 = x.ATTR_TYPE_1,
+                attr_value_1 = x.ATTR_VALUE_1,
+                attr_type_2 = x.ATTR_TYPE_2,
+                attr_value_2 = x.ATTR_VALUE_2,
+                attr_type_3 = x.ATTR_TYPE_3,
+                attr_value_3 = x.ATTR_VALUE_3
+            }).ToArray();
+
+            #endregion
+
+            var responseTime = DateTime.Now - startTime;
+
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+        }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception e )
+        {
+            var logMessage = LogEx.Exception("Series()", e);
+
+            throw new APIException(logMessage, e);
         }
 
         return new SeriesResult {total_results = with_total == 1 ? totalResults : null, series = seriesArray};

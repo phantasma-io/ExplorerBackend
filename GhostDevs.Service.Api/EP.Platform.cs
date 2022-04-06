@@ -1,15 +1,8 @@
 using System;
 using System.Linq;
-using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Serilog;
-using Address = GhostDevs.Service.ApiResults.Address;
-using External = GhostDevs.Service.ApiResults.External;
-using Platform = GhostDevs.Service.ApiResults.Platform;
-using PlatformInterop = GhostDevs.Service.ApiResults.PlatformInterop;
-using PlatformToken = GhostDevs.Service.ApiResults.PlatformToken;
-using Token = GhostDevs.Service.ApiResults.Token;
 
 namespace GhostDevs.Service;
 
@@ -36,115 +29,113 @@ public partial class Endpoints
     {
         long totalResults = 0;
         Platform[] platformArray;
-        using ( var databaseContext = new MainDbContext() )
+
+        try
         {
-            try
-            {
-                if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                    throw new APIException("Unsupported value for 'order_by' parameter.");
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new APIException("Unsupported value for 'order_by' parameter.");
 
-                if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                    throw new APIException("Unsupported value for 'order_direction' parameter.");
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-                if ( !ArgValidation.CheckLimit(limit) )
-                    throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimit(limit) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
-                if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckString(name) )
-                    throw new APIException("Unsupported value for 'name' parameter.");
+            if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckString(name) )
+                throw new APIException("Unsupported value for 'name' parameter.");
 
-                var startTime = DateTime.Now;
+            var startTime = DateTime.Now;
 
-                var query = databaseContext.Platforms.AsQueryable();
+            var query = _context.Platforms.AsQueryable();
 
-                query = query.Where(x => x.HIDDEN == false);
+            query = query.Where(x => x.HIDDEN == false);
 
-                if ( !string.IsNullOrEmpty(name) ) query = query.Where(x => x.NAME == name);
+            if ( !string.IsNullOrEmpty(name) ) query = query.Where(x => x.NAME == name);
 
-                if ( with_total == 1 )
-                    totalResults = query.Count();
+            if ( with_total == 1 )
+                totalResults = query.Count();
 
-                //in case we add more to sort
-                if ( order_direction == "asc" )
-                    query = order_by switch
-                    {
-                        "id" => query.OrderBy(x => x.ID),
-                        "name" => query.OrderBy(x => x.NAME),
-                        _ => query
-                    };
-                else
-                    query = order_by switch
-                    {
-                        "id" => query.OrderByDescending(x => x.ID),
-                        "name" => query.OrderByDescending(x => x.NAME),
-                        _ => query
-                    };
-
-                platformArray = query.Skip(offset).Take(limit).Select(x => new Platform
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
                 {
-                    name = x.NAME,
-                    chain = x.CHAIN,
-                    fuel = x.FUEL,
-                    externals = with_external == 1 && x.Externals != null
-                        ? x.Externals.Select(e => new External
-                        {
-                            hash = e.HASH,
-                            token = e.Token != null
-                                ? new Token
-                                {
-                                    symbol = e.Token.SYMBOL,
-                                    fungible = e.Token.FUNGIBLE,
-                                    transferable = e.Token.TRANSFERABLE,
-                                    finite = e.Token.FINITE,
-                                    divisible = e.Token.DIVISIBLE,
-                                    fiat = e.Token.FIAT,
-                                    fuel = e.Token.FUEL,
-                                    swappable = e.Token.SWAPPABLE,
-                                    burnable = e.Token.BURNABLE,
-                                    stakable = e.Token.STAKABLE,
-                                    decimals = e.Token.DECIMALS,
-                                    current_supply = e.Token.CURRENT_SUPPLY,
-                                    max_supply = e.Token.MAX_SUPPLY,
-                                    burned_supply = e.Token.BURNED_SUPPLY,
-                                    script_raw = e.Token.SCRIPT_RAW
-                                }
-                                : null
-                        }).ToArray()
-                        : null,
-                    platform_interops = with_interops == 1 && x.PlatformInterops != null
-                        ? x.PlatformInterops.Select(i => new PlatformInterop
-                        {
-                            external_address = i.EXTERNAL,
-                            local_address = i.LocalAddress != null
-                                ? new Address
-                                {
-                                    address = i.LocalAddress.ADDRESS,
-                                    address_name = i.LocalAddress.ADDRESS_NAME
-                                }
-                                : null
-                        }).ToArray()
-                        : null,
-                    platform_tokens = with_token == 1 && x.PlatformTokens != null
-                        ? x.PlatformTokens.Select(t => new PlatformToken
-                        {
-                            name = t.NAME
-                        }).ToArray()
-                        : null
-                }).ToArray();
+                    "id" => query.OrderBy(x => x.ID),
+                    "name" => query.OrderBy(x => x.NAME),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "name" => query.OrderByDescending(x => x.NAME),
+                    _ => query
+                };
 
-                var responseTime = DateTime.Now - startTime;
-
-                Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
-            }
-            catch ( APIException )
+            platformArray = query.Skip(offset).Take(limit).Select(x => new Platform
             {
-                throw;
-            }
-            catch ( Exception exception )
-            {
-                var logMessage = LogEx.Exception("Organization()", exception);
+                name = x.NAME,
+                chain = x.CHAIN,
+                fuel = x.FUEL,
+                externals = with_external == 1 && x.Externals != null
+                    ? x.Externals.Select(e => new External
+                    {
+                        hash = e.HASH,
+                        token = e.Token != null
+                            ? new Token
+                            {
+                                symbol = e.Token.SYMBOL,
+                                fungible = e.Token.FUNGIBLE,
+                                transferable = e.Token.TRANSFERABLE,
+                                finite = e.Token.FINITE,
+                                divisible = e.Token.DIVISIBLE,
+                                fiat = e.Token.FIAT,
+                                fuel = e.Token.FUEL,
+                                swappable = e.Token.SWAPPABLE,
+                                burnable = e.Token.BURNABLE,
+                                stakable = e.Token.STAKABLE,
+                                decimals = e.Token.DECIMALS,
+                                current_supply = e.Token.CURRENT_SUPPLY,
+                                max_supply = e.Token.MAX_SUPPLY,
+                                burned_supply = e.Token.BURNED_SUPPLY,
+                                script_raw = e.Token.SCRIPT_RAW
+                            }
+                            : null
+                    }).ToArray()
+                    : null,
+                platform_interops = with_interops == 1 && x.PlatformInterops != null
+                    ? x.PlatformInterops.Select(i => new PlatformInterop
+                    {
+                        external_address = i.EXTERNAL,
+                        local_address = i.LocalAddress != null
+                            ? new Address
+                            {
+                                address = i.LocalAddress.ADDRESS,
+                                address_name = i.LocalAddress.ADDRESS_NAME
+                            }
+                            : null
+                    }).ToArray()
+                    : null,
+                platform_tokens = with_token == 1 && x.PlatformTokens != null
+                    ? x.PlatformTokens.Select(t => new PlatformToken
+                    {
+                        name = t.NAME
+                    }).ToArray()
+                    : null
+            }).ToArray();
 
-                throw new APIException(logMessage, exception);
-            }
+            var responseTime = DateTime.Now - startTime;
+
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+        }
+        catch ( APIException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("Organization()", exception);
+
+            throw new APIException(logMessage, exception);
         }
 
         return new PlatformResult {total_results = with_total == 1 ? totalResults : null, platforms = platformArray};
