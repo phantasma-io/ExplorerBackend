@@ -48,16 +48,13 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !string.IsNullOrEmpty(id) && !ArgValidation.CheckSeriesId(id) )
+            if ( !string.IsNullOrEmpty(id) && !ArgValidation.CheckNumber(id) )
                 throw new APIException("Unsupported value for 'id' parameter.");
 
             if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
                 throw new APIException("Unsupported value for 'creator' parameter.");
 
             ContractMethods.Drop0x(ref creator);
-
-            if ( !string.IsNullOrEmpty(creator) && string.IsNullOrEmpty(chain) )
-                throw new APIException("Pass chain when using creator filter.");
 
             if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
                 throw new APIException("Unsupported value for 'name' parameter.");
@@ -86,12 +83,7 @@ public partial class Endpoints
             // Searching for series using SERIES_ID.
             if ( !string.IsNullOrEmpty(id) ) query = query.Where(x => x.SERIES_ID == id);
 
-            if ( !string.IsNullOrEmpty(creator) )
-            {
-                var ids = AddressMethods.GetIdsFromExtendedFormat(_context, creator, true, chain);
-
-                query = query.Where(x => ids.Contains(x.CreatorAddress.ID));
-            }
+            if ( !string.IsNullOrEmpty(creator) ) query = query.Where(x => x.CreatorAddress.ADDRESS == creator);
 
             if ( !string.IsNullOrEmpty(name) )
             {

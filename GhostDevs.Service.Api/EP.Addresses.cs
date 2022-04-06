@@ -22,6 +22,8 @@ public partial class Endpoints
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
+        [APIParameter("Chain name (ex. 'main')", "string")]
+        string chain = "",
         [APIParameter("address", "string")] string address = "",
         [APIParameter("address_name (ex. 'genesis')", "string")]
         string address_name = "",
@@ -29,6 +31,8 @@ public partial class Endpoints
         string address_partial = "",
         [APIParameter("Organization Name", "string")]
         string organization_name = "",
+        [APIParameter("Validator Kind (ex. 'Primary')", "string")]
+        string validator_kind = "",
         [APIParameter("Returns with storage", "integer")]
         int with_storage = 0,
         [APIParameter("Returns with stake", "integer")]
@@ -71,6 +75,12 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
                 throw new APIException("Unsupported value for 'organization_name' parameter.");
 
+            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+                throw new APIException("Unsupported value for 'chain' parameter.");
+
+            if ( !string.IsNullOrEmpty(validator_kind) && !ArgValidation.CheckString(validator_kind, true) )
+                throw new APIException("Unsupported value for 'validator_kind' parameter.");
+
             #endregion
 
             var startTime = DateTime.Now;
@@ -93,6 +103,11 @@ public partial class Endpoints
                     .GetOrganizationAddressByOrganization(_context, organization_name).ToList();
                 query = query.Where(x => x.OrganizationAddresses.Any(y => organizationAddresses.Contains(y)));
             }
+
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+
+            if ( !string.IsNullOrEmpty(validator_kind) )
+                query = query.Where(x => x.AddressValidatorKind.NAME == validator_kind);
 
             #endregion
 

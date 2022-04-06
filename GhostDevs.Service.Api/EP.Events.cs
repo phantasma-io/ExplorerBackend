@@ -109,16 +109,16 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$") )
                 throw new APIException("Unsupported value for 'date_day' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
+            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
                 throw new APIException("Unsupported value for 'date_less' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
+            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
                 throw new APIException("Unsupported value for 'date_greater' parameter.");
 
-            if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckEventKind(event_kind) )
+            if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckString(event_kind, true) )
                 throw new APIException("Unsupported value for 'event_kind' parameter.");
 
-            if ( !string.IsNullOrEmpty(event_kind_partial) && !ArgValidation.CheckEventKind(event_kind_partial) )
+            if ( !string.IsNullOrEmpty(event_kind_partial) && !ArgValidation.CheckString(event_kind_partial, true) )
                 throw new APIException("Unsupported value for 'event_kind_partial' parameter.");
 
             if ( !string.IsNullOrEmpty(nft_name_partial) && !ArgValidation.CheckName(nft_name_partial) )
@@ -192,12 +192,7 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(nft_description_partial) )
                 query = query.Where(x => x.Nft.DESCRIPTION.Contains(nft_description_partial));
 
-            if ( !string.IsNullOrEmpty(address) )
-            {
-                var ids = AddressMethods.GetIdsFromExtendedFormat(_context, address, true, chain);
-
-                query = query.Where(x => ids.Contains(x.AddressId));
-            }
+            if ( !string.IsNullOrEmpty(address) ) query = query.Where(x => x.Address.ADDRESS == address);
 
             if ( !string.IsNullOrEmpty(address_partial) )
                 query = query.Where(x => x.Address.ADDRESS.Contains(address_partial) ||

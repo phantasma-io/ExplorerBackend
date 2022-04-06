@@ -43,10 +43,10 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                 throw new APIException("Unsupported value for 'address' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
+            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
                 throw new APIException("Unsupported value for 'date_less' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
+            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
                 throw new APIException("Unsupported value for 'date_greater' parameter.");
 
             var startTime = DateTime.Now;
@@ -131,7 +131,7 @@ public partial class Endpoints
         }
         catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("Address()", exception);
+            var logMessage = LogEx.Exception("TokenHistoryPrice()", exception);
 
             throw new APIException(logMessage, exception);
         }

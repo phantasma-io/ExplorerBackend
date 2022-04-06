@@ -85,14 +85,11 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
                 throw new APIException("Unsupported value for 'token_id' parameter.");
 
-            if ( !string.IsNullOrEmpty(series_id) && !ArgValidation.CheckSeriesId(series_id) )
+            if ( !string.IsNullOrEmpty(series_id) && !ArgValidation.CheckNumber(series_id) )
                 throw new APIException("Unsupported value for 'series_id' parameter.");
 
             if ( !string.IsNullOrEmpty(status) && status != "all" && status != "active" && status != "infused" )
                 throw new APIException("Unsupported value for 'status' parameter.");
-
-            if ( !string.IsNullOrEmpty(owner) && string.IsNullOrEmpty(chain) )
-                throw new APIException("Pass chain when using owner filter.");
 
             #endregion
 
@@ -113,12 +110,7 @@ public partial class Endpoints
                     _ => query
                 };
 
-            if ( !string.IsNullOrEmpty(creator) )
-            {
-                var ids = AddressMethods.GetIdsFromExtendedFormat(_context, creator, true, chain);
-
-                query = query.Where(x => ids.Contains(x.CreatorAddressId ?? 0));
-            }
+            if ( !string.IsNullOrEmpty(creator) ) query = query.Where(x => x.CreatorAddress.ADDRESS == creator);
 
             if ( !string.IsNullOrEmpty(contract_hash) ) query = query.Where(x => x.Contract.HASH == contract_hash);
 

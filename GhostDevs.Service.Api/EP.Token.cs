@@ -17,6 +17,8 @@ public partial class Endpoints
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("symbol", "string")] string symbol = "",
+        [APIParameter("Chain name (ex. 'main')", "string")]
+        string chain = "",
         [APIParameter("with prices", "integer")]
         int with_price = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
@@ -39,12 +41,16 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                 throw new APIException("Unsupported value for 'address' parameter.");
 
+            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+                throw new APIException("Unsupported value for 'chain' parameter.");
+
             var startTime = DateTime.Now;
 
             var query = _context.Tokens.AsQueryable();
 
             if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
 
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )

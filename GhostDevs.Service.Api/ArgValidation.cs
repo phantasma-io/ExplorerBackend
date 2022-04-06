@@ -143,14 +143,6 @@ public static class ArgValidation
     }
 
 
-    public static bool CheckSeriesId(string value)
-    {
-        // We allow for series id:
-        // Digits
-        return Regex.IsMatch(value, @"^[0-9]+$");
-    }
-
-
     public static bool CheckLink(string value)
     {
         var result = Uri.TryCreate(value, UriKind.Absolute, out var uriResult)
@@ -282,21 +274,9 @@ public static class ArgValidation
     }
 
 
-    public static bool CheckEventKind(string kind)
+    public static bool CheckString(string value, bool charactersOnly = false)
     {
-        return Regex.IsMatch(kind, @"^[a-zA-Z]+$");
-    }
-
-
-    public static bool CheckString(string value)
-    {
-        return Regex.IsMatch(value, @"^[a-zA-Z0-9]+$");
-    }
-
-
-    public static bool CheckDateString(string value)
-    {
-        return Regex.IsMatch(value, @"^[0-9]+$");
+        return Regex.IsMatch(value, charactersOnly ? @"^[a-zA-Z]+$" : @"^[a-zA-Z0-9]+$");
     }
 
 

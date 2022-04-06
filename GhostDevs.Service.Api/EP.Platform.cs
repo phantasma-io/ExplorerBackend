@@ -133,7 +133,7 @@ public partial class Endpoints
         }
         catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("Organization()", exception);
+            var logMessage = LogEx.Exception("Platform()", exception);
 
             throw new APIException(logMessage, exception);
         }

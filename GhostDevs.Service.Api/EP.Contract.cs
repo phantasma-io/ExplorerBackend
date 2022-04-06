@@ -20,6 +20,8 @@ public partial class Endpoints
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("symbol", "string")] string symbol = "",
         [APIParameter("hash", "string")] string hash = "",
+        [APIParameter("Chain name (ex. 'main')", "string")]
+        string chain = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -45,6 +47,9 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
                 throw new APIException("Unsupported value for 'hash' parameter.");
 
+            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+                throw new APIException("Unsupported value for 'chain' parameter.");
+
             #endregion
 
             var startTime = DateTime.Now;
@@ -56,6 +61,8 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
 
             if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.HASH == hash);
+
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
 
             #endregion
 
@@ -99,7 +106,7 @@ public partial class Endpoints
         }
         catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("Address()", exception);
+            var logMessage = LogEx.Exception("Contract()", exception);
 
             throw new APIException(logMessage, exception);
         }

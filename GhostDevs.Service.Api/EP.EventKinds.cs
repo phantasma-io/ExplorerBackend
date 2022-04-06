@@ -16,6 +16,8 @@ public partial class Endpoints
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("eventKind name (ex. 'TokenMint')", "string")]
         string event_kind = "",
+        [APIParameter("Chain name (ex. 'main')", "string")]
+        string chain = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -33,14 +35,19 @@ public partial class Endpoints
             if ( !ArgValidation.CheckLimit(limit) )
                 throw new APIException("Unsupported value for 'limit' parameter.");
 
-            if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckEventKind(event_kind) )
+            if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckString(event_kind, true) )
                 throw new APIException("Unsupported value for 'event_kind' parameter.");
+
+            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+                throw new APIException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
 
             var query = _context.EventKinds.AsQueryable();
 
             if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.NAME == event_kind);
+
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
@@ -77,7 +84,7 @@ public partial class Endpoints
         }
         catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("EventKind()", exception);
+            var logMessage = LogEx.Exception("EventKinds()", exception);
 
             throw new APIException(logMessage, exception);
         }

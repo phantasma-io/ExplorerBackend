@@ -60,10 +60,10 @@ public partial class Endpoints
 
             ContractMethods.Drop0x(ref address);
 
-            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckDateString(date_less) )
+            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
                 throw new APIException("Unsupported value for 'date_less' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckDateString(date_greater) )
+            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
                 throw new APIException("Unsupported value for 'date_greater' parameter.");
 
             if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )

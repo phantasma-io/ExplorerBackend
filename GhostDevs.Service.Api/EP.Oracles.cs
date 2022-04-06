@@ -19,6 +19,8 @@ public partial class Endpoints
         [APIParameter("Block Hash", "string")] string block_hash = "",
         [APIParameter("Block Height", "string")]
         string block_height = "",
+        [APIParameter("Chain name (ex. 'main')", "string")]
+        string chain = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -45,6 +47,9 @@ public partial class Endpoints
             if ( string.IsNullOrEmpty(block_hash) && string.IsNullOrEmpty(block_height) )
                 throw new APIException("Need either block_hash or block_height != null");
 
+            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+                throw new APIException("Unsupported value for 'chain' parameter.");
+
             var startTime = DateTime.Now;
 
             var query = _context.BlockOracles.AsQueryable();
@@ -54,6 +59,8 @@ public partial class Endpoints
 
             if ( !string.IsNullOrEmpty(block_height) )
                 query = query.Where(x => x.Block.HEIGHT == block_height);
+
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Block.Chain.NAME == chain);
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
@@ -93,7 +100,7 @@ public partial class Endpoints
         }
         catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("Address()", exception);
+            var logMessage = LogEx.Exception("Oracles()", exception);
 
             throw new APIException(logMessage, exception);
         }
