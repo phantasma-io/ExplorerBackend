@@ -9,7 +9,9 @@ namespace GhostDevs.Service;
 public partial class Endpoints
 {
     [APIInfo(typeof(ChainResult), "Returns the chains on the backend.", false, 10)]
-    public ChainResult Chains([APIParameter("Chain name (ex. 'main')", "string")] string chain = "",
+    public ChainResult Chains([APIParameter("Offset", "integer")] int offset = 0,
+        [APIParameter("Limit", "integer")] int limit = 50,
+        [APIParameter("Chain name (ex. 'main')", "string")] string chain = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -21,6 +23,9 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new APIException("Unsupported value for 'chain' parameter.");
 
+            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
+                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
+
             var startTime = DateTime.Now;
 
             var query = _context.Chains.AsQueryable();
@@ -30,6 +35,8 @@ public partial class Endpoints
 
             if ( with_total == 1 )
                 totalResults = query.Count();
+
+            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
 
             chainArray = query.Select(x => new Chain
             {

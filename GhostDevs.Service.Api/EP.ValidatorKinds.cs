@@ -8,24 +8,19 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(OrganizationResult), "Returns the token on the backend.", false, 10)]
-    public OrganizationResult Organizations(
-        [APIParameter("Order by [id, name]", "string")]
-        string order_by = "name",
+    [APIInfo(typeof(ValidatorKindResult), "Returns the eventKinds on the backend.", false, 10)]
+    public ValidatorKindResult ValidatorKinds([APIParameter("Order by [id, name]", "string")] string order_by = "id",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Organization name", "string")]
-        string organization_name = "",
-        [APIParameter("Organization name (partial)", "string")]
-        string organization_name_partial = "",
+        [APIParameter("validatorKind name (ex. 'Invalid')", "string")]
+        string validator_kind = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0
-    )
+        int with_total = 0)
     {
         long totalResults = 0;
-        Organization[] organizationArray;
+        ValidatorKind[] validatorKindArray;
 
         try
         {
@@ -38,22 +33,16 @@ public partial class Endpoints
             if ( !ArgValidation.CheckLimitOffset(limit, offset) )
                 throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
-                throw new APIException("Unsupported value for 'organization_name' parameter.");
-
-            if ( !string.IsNullOrEmpty(organization_name_partial) &&
-                 !ArgValidation.CheckString(organization_name_partial) )
-                throw new APIException("Unsupported value for 'organization_name_partial' parameter.");
+            if ( !string.IsNullOrEmpty(validator_kind) && !ArgValidation.CheckString(validator_kind, true) )
+                throw new APIException("Unsupported value for 'validator_kind' parameter.");
 
             var startTime = DateTime.Now;
 
-            var query = _context.Organizations.AsQueryable();
+            var query = _context.AddressValidatorKinds.AsQueryable();
 
-            if ( !string.IsNullOrEmpty(organization_name) ) query = query.Where(x => x.NAME == organization_name);
+            if ( !string.IsNullOrEmpty(validator_kind) ) query = query.Where(x => x.NAME == validator_kind);
 
-            if ( !string.IsNullOrEmpty(organization_name_partial) )
-                query = query.Where(x => x.NAME.Contains(organization_name_partial));
-
+            // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
                 totalResults = query.Count();
 
@@ -75,11 +64,10 @@ public partial class Endpoints
 
             if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
 
-            organizationArray = query.Select(x => new Organization
+            validatorKindArray = query.Select(x => new ValidatorKind
             {
                 name = x.NAME
             }).ToArray();
-
 
             var responseTime = DateTime.Now - startTime;
 
@@ -91,12 +79,12 @@ public partial class Endpoints
         }
         catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("Organization()", exception);
+            var logMessage = LogEx.Exception("ValidatorKinds()", exception);
 
             throw new APIException(logMessage, exception);
         }
 
-        return new OrganizationResult
-            {total_results = with_total == 1 ? totalResults : null, organizations = organizationArray};
+        return new ValidatorKindResult
+            {total_results = with_total == 1 ? totalResults : null, validator_kinds = validatorKindArray};
     }
 }

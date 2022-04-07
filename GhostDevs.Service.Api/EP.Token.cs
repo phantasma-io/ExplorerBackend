@@ -35,8 +35,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
+                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                 throw new APIException("Unsupported value for 'address' parameter.");
@@ -72,7 +72,9 @@ public partial class Endpoints
                     _ => query
                 };
 
-            tokenArray = query.Skip(offset).Take(limit).Select(x => new Token
+            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
+
+            tokenArray = query.Select(x => new Token
             {
                 symbol = x.SYMBOL,
                 fungible = x.FUNGIBLE,

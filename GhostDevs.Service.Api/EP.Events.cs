@@ -86,8 +86,8 @@ public partial class Endpoints
         {
             #region ArgValidation
 
-            if ( !ArgValidation.CheckLimit(limit) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
+                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
                 throw new APIException("Unsupported value for 'order_by' parameter.");
@@ -233,7 +233,9 @@ public partial class Endpoints
 
             #region ResultArray
 
-            eventsArray = query.Skip(offset).Take(limit).Select(x => new Event
+            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
+
+            eventsArray = query.Select(x => new Event
                 {
                     chain = x.Chain.NAME.ToLower(),
                     date = x.TIMESTAMP_UNIX_SECONDS.ToString(),

@@ -45,8 +45,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
+                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash) )
                 throw new APIException("Unsupported value for 'hash' parameter.");
@@ -111,7 +111,9 @@ public partial class Endpoints
 
             #region ResultArray
 
-            blockArray = query.Skip(offset).Take(limit).Select(x => new Block
+            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
+
+            blockArray = query.Select(x => new Block
             {
                 height = x.HEIGHT,
                 hash = x.HASH,

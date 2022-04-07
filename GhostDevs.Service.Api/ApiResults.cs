@@ -157,9 +157,7 @@ public class ChainResult
 public class EventKind
 {
     [APIDescription("Returns the kind name")]
-    public string? kind { get; set; }
-
-    //TODO maybe add chain here too
+    public string? name { get; set; }
 }
 
 public class EventKindResult
@@ -168,7 +166,7 @@ public class EventKindResult
     public long? total_results { get; set; }
 
     [APIDescription("List of available eventKinds")]
-    public EventKind[]? eventKinds { get; set; }
+    public EventKind[]? event_kinds { get; set; }
 }
 
 public class Address
@@ -585,4 +583,19 @@ public class AddressBalance
     public Token? token { get; set; }
     public Chain? chain { get; set; }
     public string? amount { get; set; }
+}
+
+public class ValidatorKind
+{
+    [APIDescription("Returns the kind name")]
+    public string? name { get; set; }
+}
+
+public class ValidatorKindResult
+{
+    [APIDescription("Total number of found validator kinds")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of available validator kinds")]
+    public ValidatorKind[]? validator_kinds { get; set; }
 }

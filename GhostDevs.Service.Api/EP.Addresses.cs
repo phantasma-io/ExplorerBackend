@@ -56,8 +56,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
+                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                 throw new APIException("Unsupported value for 'address' parameter.");
@@ -135,7 +135,9 @@ public partial class Endpoints
 
             #region ResultArray
 
-            addressArray = query.Skip(offset).Take(limit).Select(x => new Address
+            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
+            
+            addressArray = query.Select(x => new Address
             {
                 address = x.ADDRESS,
                 address_name = x.ADDRESS_NAME,

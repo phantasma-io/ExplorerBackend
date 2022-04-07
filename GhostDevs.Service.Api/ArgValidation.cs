@@ -64,6 +64,12 @@ public static class ArgValidation
     }
 
 
+    public static bool CheckLimitOffset(int limit, int offset)
+    {
+        return limit == -1 && offset == -1 || limit > 0 && offset >= 0;
+    }
+
+
     public static bool CheckFieldName(string value)
     {
         // We allow for names:

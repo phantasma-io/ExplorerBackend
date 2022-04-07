@@ -32,8 +32,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
+                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckString(event_kind, true) )
                 throw new APIException("Unsupported value for 'event_kind' parameter.");
@@ -69,9 +69,11 @@ public partial class Endpoints
                     _ => query
                 };
 
-            eventKindArray = query.Skip(offset).Take(limit).Select(x => new EventKind
+            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
+
+            eventKindArray = query.Select(x => new EventKind
             {
-                kind = x.NAME
+                name = x.NAME
             }).ToArray();
 
             var responseTime = DateTime.Now - startTime;
@@ -89,6 +91,7 @@ public partial class Endpoints
             throw new APIException(logMessage, exception);
         }
 
-        return new EventKindResult {total_results = with_total == 1 ? totalResults : null, eventKinds = eventKindArray};
+        return new EventKindResult
+            {total_results = with_total == 1 ? totalResults : null, event_kinds = eventKindArray};
     }
 }
