@@ -38,8 +38,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
-                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
+            if ( !ArgValidation.CheckLimit(limit, false) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
             if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckString(name) )
                 throw new APIException("Unsupported value for 'name' parameter.");
@@ -71,9 +71,8 @@ public partial class Endpoints
                     _ => query
                 };
 
-            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
 
-            platformArray = query.Select(x => new Platform
+            platformArray = query.Skip(offset).Take(limit).Select(x => new Platform
             {
                 name = x.NAME,
                 chain = x.CHAIN,

@@ -17,14 +17,14 @@ public partial class Endpoints
     {
         long totalResults = 0;
         Chain[] chainArray;
-
+        
         try
         {
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new APIException("Unsupported value for 'chain' parameter.");
 
-            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
-                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
+            if ( !ArgValidation.CheckLimit(limit, false) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
             var startTime = DateTime.Now;
 
@@ -35,10 +35,8 @@ public partial class Endpoints
 
             if ( with_total == 1 )
                 totalResults = query.Count();
-
-            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
-
-            chainArray = query.Select(x => new Chain
+            
+            chainArray = query.Skip(offset).Take(limit).Select(x => new Chain
             {
                 chain_name = x.NAME,
                 chain_height = x.CURRENT_HEIGHT

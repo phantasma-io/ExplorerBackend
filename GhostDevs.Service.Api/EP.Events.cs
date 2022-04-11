@@ -82,12 +82,21 @@ public partial class Endpoints
         Event[] eventsArray;
         const string fiatCurrency = "USD";
 
+        //chain is not considered a filter atm
+        var filter = !string.IsNullOrEmpty(contract) || !string.IsNullOrEmpty(token_id) ||
+                     !string.IsNullOrEmpty(date_day) || !string.IsNullOrEmpty(date_less) ||
+                     !string.IsNullOrEmpty(date_greater) || !string.IsNullOrEmpty(event_kind) ||
+                     !string.IsNullOrEmpty(event_kind_partial) || !string.IsNullOrEmpty(nft_name_partial) ||
+                     !string.IsNullOrEmpty(nft_description_partial) || !string.IsNullOrEmpty(address_partial) ||
+                     !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height) ||
+                     !string.IsNullOrEmpty(transaction_hash);
+
         try
         {
             #region ArgValidation
 
-            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
-                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
+            if ( !ArgValidation.CheckLimit(limit, filter) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
                 throw new APIException("Unsupported value for 'order_by' parameter.");
@@ -233,7 +242,7 @@ public partial class Endpoints
 
             #region ResultArray
 
-            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
+            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
             eventsArray = query.Select(x => new Event
                 {

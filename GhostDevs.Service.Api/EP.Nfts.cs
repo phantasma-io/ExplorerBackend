@@ -47,8 +47,8 @@ public partial class Endpoints
         {
             #region ArgValidations
 
-            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
-                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
+            if ( !ArgValidation.CheckLimit(limit, false) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
                 throw new APIException("Unsupported value for 'order_by' parameter.");
@@ -153,10 +153,8 @@ public partial class Endpoints
                 totalResults = query.Count();
 
             #region ResultArray
-
-            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
             
-            nftArray = query.Select(x => new Nft
+            nftArray = query.Skip(offset).Take(limit).Select(x => new Nft
             {
                 token_id = x.TOKEN_ID,
                 chain = x.Chain.NAME,

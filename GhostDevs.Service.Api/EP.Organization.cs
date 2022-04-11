@@ -26,7 +26,7 @@ public partial class Endpoints
     {
         long totalResults = 0;
         Organization[] organizationArray;
-
+        
         try
         {
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
@@ -35,8 +35,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
-                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
+            if ( !ArgValidation.CheckLimit(limit, false) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
             if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
                 throw new APIException("Unsupported value for 'organization_name' parameter.");
@@ -72,10 +72,8 @@ public partial class Endpoints
                     "name" => query.OrderByDescending(x => x.NAME),
                     _ => query
                 };
-
-            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
-
-            organizationArray = query.Select(x => new Organization
+            
+            organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
             {
                 name = x.NAME
             }).ToArray();

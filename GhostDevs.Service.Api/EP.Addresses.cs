@@ -45,6 +45,9 @@ public partial class Endpoints
         long totalResults = 0;
         Address[] addressArray;
 
+        //chain is not considered a filter atm
+        var filter = !string.IsNullOrEmpty(address) || !string.IsNullOrEmpty(address_partial) ||
+                     !string.IsNullOrEmpty(organization_name) || !string.IsNullOrEmpty(validator_kind);
 
         try
         {
@@ -56,8 +59,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
-                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
+            if ( !ArgValidation.CheckLimit(limit, filter) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                 throw new APIException("Unsupported value for 'address' parameter.");
@@ -135,8 +138,9 @@ public partial class Endpoints
 
             #region ResultArray
 
-            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
-            
+            //limit -1 is just allowed if a filter is set
+            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
+
             addressArray = query.Select(x => new Address
             {
                 address = x.ADDRESS,

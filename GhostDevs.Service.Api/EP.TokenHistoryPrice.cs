@@ -17,17 +17,19 @@ public partial class Endpoints
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
         [APIParameter("symbol", "string")] string symbol = "SOUL",
-        [APIParameter("with token info", "integer")]
-        int with_token = 0,
         [APIParameter("Date (less than)", "string")]
         string date_less = "",
         [APIParameter("Date (greater than)", "string")]
         string date_greater = "",
+        [APIParameter("with token info", "integer")]
+        int with_token = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
         long totalResults = 0;
         HistoryPrice[] historyArray;
+        var filter = !string.IsNullOrEmpty(symbol) || !string.IsNullOrEmpty(date_less) ||
+                     !string.IsNullOrEmpty(date_greater);
 
         try
         {
@@ -37,8 +39,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimitOffset(limit, offset) )
-                throw new APIException("Unsupported value for 'limit' and/or 'offset' parameter.");
+            if ( !ArgValidation.CheckLimit(limit, filter) )
+                throw new APIException("Unsupported value for 'limit' parameter.");
 
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                 throw new APIException("Unsupported value for 'address' parameter.");
@@ -85,7 +87,7 @@ public partial class Endpoints
                     _ => query
                 };
 
-            if ( limit > 0 && offset >= 0 ) query = query.Skip(offset).Take(limit);
+            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
             historyArray = query.Select(x => new HistoryPrice
             {
