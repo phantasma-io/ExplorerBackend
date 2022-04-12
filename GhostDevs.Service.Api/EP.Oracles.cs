@@ -26,7 +26,7 @@ public partial class Endpoints
     {
         long totalResults = 0;
         Oracle[] oracleArray;
-        
+
         var filter = !string.IsNullOrEmpty(block_hash);
 
         try
@@ -91,7 +91,7 @@ public partial class Endpoints
             oracleArray = query.Select(x => new Oracle
             {
                 url = x.Oracle.URL,
-                content = x.Oracle.URL
+                content = x.Oracle.CONTENT
             }).ToArray();
 
             var responseTime = DateTime.Now - startTime;

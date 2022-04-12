@@ -161,7 +161,7 @@ public partial class Endpoints
                 chain_address = x.ChainAddress.ADDRESS,
                 validator_address = x.ValidatorAddress.ADDRESS,
                 date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
-                transactions = filter && with_transactions == 1 && x.Transactions != null
+                transactions = with_transactions == 1 && x.Transactions != null
                     ? x.Transactions.Select(t => new Transaction
                     {
                         hash = t.HASH,
@@ -367,7 +367,7 @@ public partial class Endpoints
                                         organization = e.OrganizationEvent.Organization != null
                                             ? new Organization
                                             {
-                                                name = e.OrganizationEvent.Organization.NAME,
+                                                name = e.OrganizationEvent.Organization.NAME
                                             }
                                             : null,
                                         address = e.OrganizationEvent.Address != null

@@ -124,7 +124,7 @@ public partial class Endpoints
                 };
 
             #region ResultArray
-            
+
             seriesArray = query.Skip(offset).Take(limit).Select(x => new Series
             {
                 id = x.SERIES_ID ?? "",

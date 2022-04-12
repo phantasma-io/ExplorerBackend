@@ -66,10 +66,7 @@ public static class ArgValidation
 
     public static bool CheckLimit(int value, bool filterSet)
     {
-        if ( filterSet )
-        {
-            return value >= -1;
-        }
+        if ( filterSet ) return value >= -1;
         return value > 0;
     }
 

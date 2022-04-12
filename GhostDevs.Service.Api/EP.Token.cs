@@ -71,7 +71,7 @@ public partial class Endpoints
                     "symbol" => query.OrderByDescending(x => x.SYMBOL),
                     _ => query
                 };
-            
+
             tokenArray = query.Skip(offset).Take(limit).Select(x => new Token
             {
                 symbol = x.SYMBOL,

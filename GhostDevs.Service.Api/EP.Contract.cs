@@ -88,7 +88,7 @@ public partial class Endpoints
                     _ => query
                 };
 
-            
+
             contractArray = query.Skip(offset).Take(limit).Select(x => new Contract
                 {
                     name = x.NAME,

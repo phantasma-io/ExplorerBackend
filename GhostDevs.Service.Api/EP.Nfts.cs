@@ -153,7 +153,7 @@ public partial class Endpoints
                 totalResults = query.Count();
 
             #region ResultArray
-            
+
             nftArray = query.Skip(offset).Take(limit).Select(x => new Nft
             {
                 token_id = x.TOKEN_ID,

@@ -26,7 +26,7 @@ public partial class Endpoints
     {
         long totalResults = 0;
         Organization[] organizationArray;
-        
+
         try
         {
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
@@ -72,7 +72,7 @@ public partial class Endpoints
                     "name" => query.OrderByDescending(x => x.NAME),
                     _ => query
                 };
-            
+
             organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
             {
                 name = x.NAME

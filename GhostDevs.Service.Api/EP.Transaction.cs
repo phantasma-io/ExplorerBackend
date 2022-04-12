@@ -170,7 +170,7 @@ public partial class Endpoints
                 block_height = x.Block.HEIGHT,
                 index = x.INDEX,
                 date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
-                events = filter && with_events == 1 && x.Events != null
+                events = with_events == 1 && x.Events != null
                     ? x.Events.Select(e => new Event
                     {
                         chain = e.Chain.NAME.ToLower(),
@@ -367,7 +367,7 @@ public partial class Endpoints
                                 organization = e.OrganizationEvent.Organization != null
                                     ? new Organization
                                     {
-                                        name = e.OrganizationEvent.Organization.NAME,
+                                        name = e.OrganizationEvent.Organization.NAME
                                     }
                                     : null,
                                 address = e.OrganizationEvent.Address != null

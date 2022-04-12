@@ -11,13 +11,14 @@ public partial class Endpoints
     [APIInfo(typeof(ChainResult), "Returns the chains on the backend.", false, 10)]
     public ChainResult Chains([APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Chain name (ex. 'main')", "string")] string chain = "",
+        [APIParameter("Chain name (ex. 'main')", "string")]
+        string chain = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
         long totalResults = 0;
         Chain[] chainArray;
-        
+
         try
         {
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
@@ -35,7 +36,7 @@ public partial class Endpoints
 
             if ( with_total == 1 )
                 totalResults = query.Count();
-            
+
             chainArray = query.Skip(offset).Take(limit).Select(x => new Chain
             {
                 chain_name = x.NAME,

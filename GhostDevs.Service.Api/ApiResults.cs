@@ -282,7 +282,7 @@ public class Transaction
 
     [APIDescription("timestamp of the transaction in unixseconds")]
     public string? date { get; set; }
-    
+
     [APIDescription("List of Events from the transaction")]
     public Event[]? events { get; set; }
 }
@@ -365,7 +365,7 @@ public class Block
 
     [APIDescription("timestamp of the block in unixseconds")]
     public string? date { get; set; }
-    
+
     [APIDescription("list of transactions")]
     public Transaction[]? transactions { get; set; }
 }
