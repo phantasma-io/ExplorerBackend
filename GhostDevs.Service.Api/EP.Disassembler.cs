@@ -10,6 +10,7 @@ namespace GhostDevs.Service;
 public partial class Endpoints
 {
     [APIInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script", false, 10)]
+    [HttpPost]
     public DisassemblerResult Instructions([FromBody] Script script)
     {
         long totalResults;

@@ -137,11 +137,11 @@ public static class Api
         var httpMethods = new List<Type>
         {
             //typeof(HttpDeleteAttribute),
-            typeof(HttpGetAttribute)
+            typeof(HttpGetAttribute),
             //typeof(HttpHeadAttribute),
             //typeof(HttpOptionsAttribute),
             //typeof(HttpPatchAttribute),
-            //typeof(HttpPostAttribute),
+            typeof(HttpPostAttribute),
             //typeof(HttpPutAttribute)
         };
 
