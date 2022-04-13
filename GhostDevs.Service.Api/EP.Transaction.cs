@@ -30,7 +30,7 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 10)]
+    [APIInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 10, cacheTag: "transactions")]
     public TransactionResult Transactions(
         [APIParameter("Order by [id, hash]", "string")]
         string order_by = "id",

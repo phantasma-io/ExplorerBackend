@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
 namespace GhostDevs.Service;
@@ -9,19 +10,22 @@ namespace GhostDevs.Service;
 public partial class Endpoints
 {
     [APIInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script", false, 10)]
-    public DisassemblerResult Instructions([APIParameter("script in raw version", "string")] string script_raw = "")
+    public DisassemblerResult Instructions([FromBody] Script script)
     {
         long totalResults;
         Instruction[] instructionArray;
 
         try
         {
-            if ( !string.IsNullOrEmpty(script_raw) && !ArgValidation.CheckString(script_raw) )
+            if ( script == null )
+                throw new APIException("Unsupported value for 'script' parameter.");
+
+            if ( !string.IsNullOrEmpty(script.script_raw) && !ArgValidation.CheckString(script.script_raw) )
                 throw new APIException("Unsupported value for 'script_raw' parameter.");
 
             var startTime = DateTime.Now;
 
-            var instructions = Utils.GetInstructionsFromScript(script_raw);
+            var instructions = Utils.GetInstructionsFromScript(script.script_raw);
 
 
             totalResults = instructions.Count;

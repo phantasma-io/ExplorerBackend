@@ -11,7 +11,7 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(SeriesResult), "Returns series of NFTs available on the backend.", false, 10)]
+    [APIInfo(typeof(SeriesResult), "Returns series of NFTs available on the backend.", false, 10, cacheTag: "serieses")]
     public SeriesResult Series([APIParameter("Order by [id, name]", "string")] string order_by = "id",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",

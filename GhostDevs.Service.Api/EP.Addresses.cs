@@ -14,7 +14,7 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10)]
+    [APIInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]
     public AddressResult Addresses(
         [APIParameter("Order by [id, address, address_name]", "string")]
         string order_by = "id",

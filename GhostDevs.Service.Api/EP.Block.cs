@@ -31,7 +31,7 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(BlockResult), "Returns the block information from backend.", false, 10)]
+    [APIInfo(typeof(BlockResult), "Returns the block information from backend.", false, 10, cacheTag: "block")]
     public BlockResult Blocks(
         [APIParameter("Order by [id, hash]", "string")]
         string order_by = "id",

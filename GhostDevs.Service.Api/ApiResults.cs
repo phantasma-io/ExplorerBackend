@@ -322,6 +322,11 @@ public class Instruction
     [APIDescription("Instruction")] public string? instruction { get; set; }
 }
 
+public class Script
+{
+    [APIDescription("Script")] public string? script_raw { get; set; }
+}
+
 public class DisassemblerResult
 {
     [APIDescription("Total number of Instructions of the parsed Script")]

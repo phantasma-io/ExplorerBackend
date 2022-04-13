@@ -30,7 +30,7 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10)]
+    [APIInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10, cacheTag: "events")]
     public EventsResult Events([APIParameter("Order by [date, token_id, id]", "string")] string order_by = "id",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
