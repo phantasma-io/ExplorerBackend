@@ -165,6 +165,8 @@ public partial class Endpoints
             var startTime = DateTime.Now;
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(_context);
 
+            
+            
             // Getting exchange rates in advance.
             var query = _context.Events.AsQueryable().AsNoTracking();
 

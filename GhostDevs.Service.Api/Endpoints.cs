@@ -5,6 +5,7 @@ using System.Reflection;
 using Database.Main;
 using Foundatio.Messaging;
 using GhostDevs.Service.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GhostDevs.Service;
 
@@ -281,9 +282,9 @@ public partial class Endpoints : ApiEndpointBase
     private readonly IMessagePublisher _publisher;
 
 
-    public Endpoints(IMessagePublisher publisher, MainDbContext context)
+    public Endpoints(IMessagePublisher publisher, IServiceScopeFactory factory)
     {
         _publisher = publisher;
-        _context = context;
+        _context = factory.CreateScope().ServiceProvider.GetRequiredService<MainDbContext>();
     }
 }
