@@ -21,8 +21,6 @@ public partial class Endpoints
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0,
         [APIParameter("Address of asset creator", "string")]
         string creator = "",
         [APIParameter("Address of asset owner", "string")]
@@ -38,7 +36,9 @@ public partial class Endpoints
         [APIParameter("Token ID", "string")] string token_id = "",
         [APIParameter("Series ID", "string")] string series_id = "",
         [APIParameter("Infusion status (all/active/infused)", "string")]
-        string status = "all")
+        string status = "all",
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0)
     {
         // Results of the query
         long totalResults = 0;

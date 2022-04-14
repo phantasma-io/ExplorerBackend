@@ -69,14 +69,14 @@ public partial class Endpoints
         int with_metadata = 0,
         [APIParameter("Return NFT series with events", "integer")]
         int with_series = 0,
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0,
         [APIParameter("Return with fiat_prices (only at market_event)", "integer")]
         int with_fiat = 0,
         [APIParameter("Return with events marked nsfw as well", "integer")]
         int with_nsfw = 0,
         [APIParameter("Return blacklisted events as well", "integer")]
-        int with_blacklisted = 0)
+        int with_blacklisted = 0,
+        [APIParameter("Return total (slower) or not (faster)", "integer")]
+        int with_total = 0)
     {
         // Results of the query
         long totalResults = 0;
@@ -165,8 +165,7 @@ public partial class Endpoints
             var startTime = DateTime.Now;
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(_context);
 
-            
-            
+
             // Getting exchange rates in advance.
             var query = _context.Events.AsQueryable().AsNoTracking();
 

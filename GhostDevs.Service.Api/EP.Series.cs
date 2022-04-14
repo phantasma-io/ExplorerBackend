@@ -29,6 +29,7 @@ public partial class Endpoints
         string contract = "",
         [APIParameter("Symbol (ex. 'SOUL')", "string")]
         string symbol = "",
+        [APIParameter("Token ID", "string")] string token_id = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -71,6 +72,9 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                 throw new APIException("Unsupported value for 'symbol' parameter.");
 
+            if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
+                throw new APIException("Unsupported value for 'token_id' parameter.");
+
             #endregion
 
             var startTime = DateTime.Now;
@@ -102,6 +106,12 @@ public partial class Endpoints
 
             // Searching for series by symbol.
             if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.Contract.SYMBOL == symbol);
+
+            if ( !string.IsNullOrEmpty(token_id) )
+            {
+                var ids = NftMethods.GetSeriesIdsByTokenId(_context, token_id);
+                query = query.Where(x => ids.Contains(x.ID));
+            }
 
             #endregion
 

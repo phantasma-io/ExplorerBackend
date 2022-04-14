@@ -191,4 +191,10 @@ public static class NftMethods
 
         return databaseContext.NftOwnerships.Where(x => x.Address == addressEntry).Select(x => x.NftId);
     }
+
+
+    public static IEnumerable<int?> GetSeriesIdsByTokenId(MainDbContext databaseContext, string tokenId)
+    {
+        return databaseContext.Nfts.Where(x => x.TOKEN_ID == tokenId && x.SeriesId != null).Select(x => x.SeriesId);
+    }
 }
