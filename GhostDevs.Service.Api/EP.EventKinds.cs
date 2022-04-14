@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace GhostDevs.Service;
@@ -43,7 +44,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.EventKinds.AsQueryable();
+            var query = _context.EventKinds.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.NAME == event_kind);
 

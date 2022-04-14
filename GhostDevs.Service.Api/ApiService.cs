@@ -141,7 +141,7 @@ public static class Api
             //typeof(HttpHeadAttribute),
             //typeof(HttpOptionsAttribute),
             //typeof(HttpPatchAttribute),
-            typeof(HttpPostAttribute),
+            typeof(HttpPostAttribute)
             //typeof(HttpPutAttribute)
         };
 

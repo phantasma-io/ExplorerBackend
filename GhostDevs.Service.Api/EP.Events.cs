@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
 using AddressEvent = GhostDevs.Service.ApiResults.AddressEvent;
@@ -165,7 +166,7 @@ public partial class Endpoints
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(_context);
 
             // Getting exchange rates in advance.
-            var query = _context.Events.AsQueryable();
+            var query = _context.Events.AsQueryable().AsNoTracking();
 
             #region Filtering
 

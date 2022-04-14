@@ -4,6 +4,7 @@ using System.Linq;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
 using AddressEvent = GhostDevs.Service.ApiResults.AddressEvent;
@@ -110,7 +111,7 @@ public partial class Endpoints
             var startTime = DateTime.Now;
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(_context);
 
-            var query = _context.Transactions.AsQueryable();
+            var query = _context.Transactions.AsQueryable().AsNoTracking();
 
             #region Filtering
 

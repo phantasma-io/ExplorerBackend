@@ -4,6 +4,7 @@ using System.Linq;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
 using AddressEvent = GhostDevs.Service.ApiResults.AddressEvent;
@@ -105,7 +106,7 @@ public partial class Endpoints
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(_context);
 
             //just need that since we build the model so it knows what we can use
-            var query = _context.Blocks.AsQueryable();
+            var query = _context.Blocks.AsQueryable().AsNoTracking();
 
             #region Filtering
 

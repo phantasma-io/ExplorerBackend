@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace GhostDevs.Service;
@@ -54,7 +55,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.BlockOracles.AsQueryable();
+            var query = _context.BlockOracles.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(block_hash) )
                 query = query.Where(x => x.Block.HASH == block_hash);

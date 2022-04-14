@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace GhostDevs.Service;
@@ -46,7 +47,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.Tokens.AsQueryable();
+            var query = _context.Tokens.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
 

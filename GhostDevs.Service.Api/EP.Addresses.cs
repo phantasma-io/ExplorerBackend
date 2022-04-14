@@ -3,6 +3,7 @@ using System.Linq;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
 using AddressBalance = GhostDevs.Service.ApiResults.AddressBalance;
@@ -88,7 +89,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.Addresses.AsQueryable();
+            var query = _context.Addresses.AsQueryable().AsNoTracking();
 
 
             #region Filtering

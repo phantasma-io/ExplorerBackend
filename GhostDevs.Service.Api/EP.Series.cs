@@ -4,6 +4,7 @@ using System.Linq;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Series = GhostDevs.Service.ApiResults.Series;
 
@@ -74,7 +75,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.Serieses.AsQueryable();
+            var query = _context.Serieses.AsQueryable().AsNoTracking();
 
             #region Filtering
 

@@ -4,6 +4,7 @@ using System.Linq;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Contract = GhostDevs.Service.ApiResults.Contract;
 using Infusion = GhostDevs.Service.ApiResults.Infusion;
@@ -95,7 +96,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.Nfts.AsQueryable();
+            var query = _context.Nfts.AsQueryable().AsNoTracking();
 
             #region Filtering
 
