@@ -100,7 +100,8 @@ public static class Api
         //obsolete note told me I should use IHostBuilder, instead of IWebHostBuilder for serilog
         builder.Host.UseSerilog();
 
-        builder.Services.AddDbContext<MainDbContext>(options => options.UseNpgsql(MainDbContext.GetConnectionString()));
+        builder.Services.AddDbContext<MainDbContext>(options => options.UseNpgsql(MainDbContext.GetConnectionString()),
+            ServiceLifetime.Transient);
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
