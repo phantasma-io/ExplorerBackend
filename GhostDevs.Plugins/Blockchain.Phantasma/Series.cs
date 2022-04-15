@@ -38,14 +38,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     token = Client.APIRequest<JsonDocument>(
                         $"{Settings.Default.GetRest()}/api/getToken?symbol=" + series.Contract.SYMBOL +
-                        "&extended=true", out var stringResponse, null, 10);
+                        "&extended=true", out var stringResponse, null, 30);
                     if ( token != null ) tokenCache.Add(series.Contract.SYMBOL, token);
                 }
 
                 if ( token == null )
                 {
                     Log.Error("[{Name}] Series update failed: token is null", Name);
-                    return;
+                    continue;
                 }
 
                 var downloadTime = DateTime.Now - startTime;

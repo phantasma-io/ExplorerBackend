@@ -14,6 +14,7 @@ using Phantasma.Numerics;
 using Phantasma.VM;
 using Serilog;
 using Address = Phantasma.Cryptography.Address;
+using Nft = Database.Main.Nft;
 using NftMethods = Database.ApiCache.NftMethods;
 
 namespace GhostDevs.Blockchain;
@@ -27,7 +28,7 @@ public struct TokenProperty
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     // When we reach this number of loaded ROMs/RAMs, we save received/processed results.
-    private static readonly int maxRomRamUpdatesForOneSession = 100;
+    private const int MaxRomRamUpdatesForOneSession = 100;
 
 
     private static string GetPropertyValue(IEnumerable<TokenProperty> properties, string key)
@@ -50,24 +51,22 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 // First we take GHOST NFTs
                 var nfts = databaseContext.Nfts
                     .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true &&
-                                x.Contract.SYMBOL.ToUpper() == "GHOST").Take(maxRomRamUpdatesForOneSession).ToList();
+                                x.Contract.SYMBOL.ToUpper() == "GHOST").Take(MaxRomRamUpdatesForOneSession).ToList();
 
                 // If we have available quota per iteration, adding other NFTs
                 // 0.7 to avoid doing 2nd query for just couple or so NFTs
-                if ( nfts.Count() < 0.7 * maxRomRamUpdatesForOneSession )
+                if ( nfts.Count < 0.7 * MaxRomRamUpdatesForOneSession )
                 {
                     var nftsOthers = databaseContext.Nfts
                         .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true &&
                                     x.Contract.SYMBOL.ToUpper() != "GHOST")
-                        .Take(maxRomRamUpdatesForOneSession - nfts.Count).ToList();
+                        .Take(MaxRomRamUpdatesForOneSession - nfts.Count).ToList();
                     nfts.AddRange(nftsOthers);
                 }
 
                 updatedNftCount = 0;
-                for ( var i = 0; i < nfts.Count; i++ )
+                foreach ( var nft in nfts )
                 {
-                    var nft = nfts[i];
-
                     Log.Verbose("[{Name}] checking NFT, Symbol {Symbol}, Token Id {Token}", Name, nft.Contract.SYMBOL,
                         nft.TOKEN_ID);
                     var url = $"{Settings.Default.GetRest()}/api/getNFT?symbol=" + nft.Contract.SYMBOL.ToUpper() +
@@ -185,9 +184,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     nft.RAM = response.RootElement.GetProperty("ram").GetString();
 
                     // Pasring ROM
-                    IRom parsedRom;
                     var romBytes = nft.ROM.Decode();
-                    parsedRom = nft.Contract.SYMBOL switch
+                    IRom parsedRom = nft.Contract.SYMBOL switch
                     {
                         "CROWN" => new CrownRom(romBytes),
                         "TTRS" => new DummyRom(romBytes),
@@ -236,7 +234,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                     updatedNftCount++;
 
-                    if ( updatedNftCount == maxRomRamUpdatesForOneSession ) break;
+                    if ( updatedNftCount == MaxRomRamUpdatesForOneSession ) break;
                 }
 
                 try
@@ -278,8 +276,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     public class CrownRom : IRom
     {
-        public long date;
-        public Address staker;
+        private long _date;
+        private Address _staker;
 
 
         public CrownRom(byte[] rom)
@@ -304,7 +302,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         public long GetDate()
         {
-            return date;
+            return _date;
         }
 
 
@@ -322,8 +320,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         private void UnserializeData(BinaryReader reader)
         {
-            staker = reader.ReadAddress();
-            date = reader.ReadUInt32();
+            _staker = reader.ReadAddress();
+            _date = reader.ReadUInt32();
         }
     }
 
