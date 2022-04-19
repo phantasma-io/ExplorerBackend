@@ -5,16 +5,14 @@ using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Address = GhostDevs.Service.ApiResults.Address;
 using Contract = GhostDevs.Service.ApiResults.Contract;
-using Token = GhostDevs.Service.ApiResults.Token;
 
 namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(ContractResult), "Returns the contracts on the backend.", false, 10, cacheTag: "contracts")]
-    public ContractResult Contracts(
+    [APIInfo(typeof(ContractMethodHistoryResult), "Returns the contractmethods on the backend.", false, 10)]
+    public ContractMethodHistoryResult ContractMethodHistories(
         [APIParameter("Order by [id, name, symbol]", "string")]
         string order_by = "id",
         [APIParameter("Order direction [asc, desc]", "string")]
@@ -25,13 +23,11 @@ public partial class Endpoints
         [APIParameter("hash", "string")] string hash = "",
         [APIParameter("Chain name (ex. 'main')", "string")]
         string chain = "",
-        [APIParameter("show methods", "integer")]
-        int with_methods = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
         long totalResults = 0;
-        Contract[] contractArray;
+        ContractMethodHistory[] contractMethodHistoryArray;
 
         try
         {
@@ -59,15 +55,16 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.Contracts.AsQueryable().AsNoTracking();
+
+            var query = _context.ContractMethods.AsQueryable().AsNoTracking();
 
             #region Filtering
 
-            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
+            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.Contract.SYMBOL == symbol);
 
-            if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.HASH == hash);
+            if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.Contract.HASH == hash);
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Contract.Chain.NAME == chain);
 
             #endregion
 
@@ -80,52 +77,33 @@ public partial class Endpoints
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.ID),
-                    "symbol" => query.OrderBy(x => x.SYMBOL),
-                    "name" => query.OrderBy(x => x.NAME),
+                    "symbol" => query.OrderBy(x => x.Contract.SYMBOL),
+                    "name" => query.OrderBy(x => x.Contract.NAME),
                     _ => query
                 };
             else
                 query = order_by switch
                 {
                     "id" => query.OrderByDescending(x => x.ID),
-                    "symbol" => query.OrderByDescending(x => x.SYMBOL),
-                    "name" => query.OrderByDescending(x => x.NAME),
+                    "symbol" => query.OrderByDescending(x => x.Contract.SYMBOL),
+                    "name" => query.OrderByDescending(x => x.Contract.NAME),
                     _ => query
                 };
 
 
-            contractArray = query.Skip(offset).Take(limit).Select(x => new Contract
+            contractMethodHistoryArray = query.Skip(offset).Take(limit).Select(x => new ContractMethodHistory
                 {
-                    name = x.NAME,
-                    hash = ContractMethods.Prepend0x(x.HASH, x.Chain.NAME),
-                    symbol = x.SYMBOL,
-                    address = x.Address != null
-                        ? new Address
-                        {
-                            address = x.Address.ADDRESS,
-                            address_name = x.Address.ADDRESS_NAME
-                        }
-                        : null,
-                    script_raw = x.SCRIPT_RAW,
-                    methods = with_methods == 1 && x.ContractMethod != null ? x.ContractMethod.METHODS : null,
-                    token = x.Token != null
-                        ? new Token
-                        {
-                            symbol = x.Token.SYMBOL,
-                            fungible = x.Token.FUNGIBLE,
-                            transferable = x.Token.TRANSFERABLE,
-                            finite = x.Token.FINITE,
-                            divisible = x.Token.DIVISIBLE,
-                            fiat = x.Token.FIAT,
-                            fuel = x.Token.FUEL,
-                            swappable = x.Token.SWAPPABLE,
-                            burnable = x.Token.BURNABLE,
-                            stakable = x.Token.STAKABLE,
-                            decimals = x.Token.DECIMALS
-                        }
-                        : null
+                    contract = new Contract
+                    {
+                        name = x.Contract.NAME,
+                        hash = ContractMethods.Prepend0x(x.Contract.HASH, x.Contract.Chain.NAME),
+                        symbol = x.Contract.SYMBOL,
+                        methods = x.Contract.ContractMethod != null ? x.Contract.ContractMethod.METHODS : null
+                    },
+                    date = x.TIMESTAMP_UNIX_SECONDS.ToString()
                 }
             ).ToArray();
+
 
             var responseTime = DateTime.Now - startTime;
 
@@ -142,6 +120,10 @@ public partial class Endpoints
             throw new APIException(logMessage, exception);
         }
 
-        return new ContractResult {total_results = with_total == 1 ? totalResults : null, contracts = contractArray};
+        return new ContractMethodHistoryResult
+        {
+            total_results = with_total == 1 ? totalResults : null,
+            Contract_method_histories = contractMethodHistoryArray
+        };
     }
 }

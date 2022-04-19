@@ -4,34 +4,6 @@ namespace Database.Main;
 
 public static class SeriesMethods
 {
-    public static void SeriesModesInit(MainDbContext databaseContext, bool saveChanges = true)
-    {
-        var seriesModeUnique =
-            databaseContext.SeriesModes.FirstOrDefault(x => x.MODE_NAME.ToUpper() == "UNIQUE");
-        if ( seriesModeUnique == null )
-        {
-            seriesModeUnique = new SeriesMode {MODE_NAME = "UNIQUE"};
-            databaseContext.SeriesModes.Add(seriesModeUnique);
-            if ( saveChanges ) databaseContext.SaveChanges();
-        }
-
-        var seriesModeDuplicate = databaseContext.SeriesModes
-            .FirstOrDefault(x => x.MODE_NAME.ToUpper() == "DUPLICATE");
-
-        if ( seriesModeDuplicate != null ) return;
-
-        seriesModeDuplicate = new SeriesMode {MODE_NAME = "DUPLICATED"};
-        databaseContext.SeriesModes.Add(seriesModeDuplicate);
-        if ( saveChanges ) databaseContext.SaveChanges();
-    }
-
-
-    public static int SeriesModesGetId(MainDbContext databaseContext, string name)
-    {
-        return databaseContext.SeriesModes.First(x => x.MODE_NAME == name).ID;
-    }
-
-
     // Checks if "Series" table has entry,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
@@ -59,7 +31,7 @@ public static class SeriesMethods
         if ( maxSupply != null ) series.MAX_SUPPLY = ( int ) maxSupply;
 
         if ( !string.IsNullOrEmpty(seriesModeName) )
-            series.SeriesModeId = SeriesModesGetId(databaseContext, seriesModeName);
+            series.SeriesMode = SeriesModeMethods.Upsert(databaseContext, seriesModeName, false);
 
         if ( !string.IsNullOrEmpty(name) ) series.NAME = name;
 

@@ -14,7 +14,6 @@ using Phantasma.Numerics;
 using Phantasma.VM;
 using Serilog;
 using Address = Phantasma.Cryptography.Address;
-using Nft = Database.Main.Nft;
 using NftMethods = Database.ApiCache.NftMethods;
 
 namespace GhostDevs.Blockchain;

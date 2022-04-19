@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 #nullable enable
 namespace GhostDevs.Service.ApiResults;
 
@@ -304,8 +306,20 @@ public class Contract
     [APIDescription("Hash of the contract")]
     public string? hash { get; set; }
 
-    [APIDescription("Symbol of the contract, if there is one")]
+    [APIDescription("Symbol of the contract")]
     public string? symbol { get; set; }
+
+    [APIDescription("address of the contract")]
+    public Address? address { get; set; }
+
+    [APIDescription("script of the contract")]
+    public string? script_raw { get; set; }
+
+    [APIDescription("token of the contract")]
+    public Token? token { get; set; }
+
+    [APIDescription("methods of the contract")]
+    public JsonElement? methods { get; set; }
 }
 
 public class ContractResult
@@ -547,7 +561,6 @@ public class FiatPrice
 
 public class Price
 {
-    public string? date { get; set; }
     public decimal? usd { get; set; }
     public decimal? eur { get; set; }
     public decimal? gbp { get; set; }
@@ -563,6 +576,9 @@ public class HistoryPrice
     public string? symbol { get; set; }
     public Token? token { get; set; }
     public Price? price { get; set; }
+
+    [APIDescription("timestamp of the block in unixseconds")]
+    public string? date { get; set; }
 }
 
 public class HistoryPriceResult
@@ -608,4 +624,21 @@ public class ValidatorKindResult
 
     [APIDescription("List of available validator kinds")]
     public ValidatorKind[]? validator_kinds { get; set; }
+}
+
+public class ContractMethodHistory
+{
+    public Contract? contract { get; set; }
+
+    [APIDescription("timestamp of the block in unixseconds")]
+    public string? date { get; set; }
+}
+
+public class ContractMethodHistoryResult
+{
+    [APIDescription("Total number of found contracts")]
+    public long? total_results { get; set; }
+
+    [APIDescription("List of available contracts")]
+    public ContractMethodHistory[]? Contract_method_histories { get; set; }
 }

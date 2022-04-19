@@ -136,4 +136,20 @@ public static class ContractMethods
 
         return contract;
     }
+
+
+    public static Contract Get(MainDbContext databaseContext, Chain chain, string name, string hash)
+    {
+        Drop0x(ref hash);
+
+        return databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.NAME == name && x.HASH == hash);
+    }
+
+
+    public static Contract Get(MainDbContext databaseContext, Chain chain, string hash)
+    {
+        Drop0x(ref hash);
+
+        return databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
+    }
 }

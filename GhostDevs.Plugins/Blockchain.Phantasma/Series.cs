@@ -66,8 +66,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             int.Parse(entry.GetProperty("currentSupply").GetString() ?? string.Empty);
                         seriesToUpdate.MAX_SUPPLY =
                             int.Parse(entry.GetProperty("maxSupply").GetString() ?? string.Empty);
-                        seriesToUpdate.SeriesModeId = SeriesMethods.SeriesModesGetId(databaseContext,
-                            entry.GetProperty("mode").GetString());
+                        seriesToUpdate.SeriesMode =
+                            SeriesModeMethods.Upsert(databaseContext, entry.GetProperty("mode").GetString(), false);
                     }
 
                 updatedSeriesCount++;

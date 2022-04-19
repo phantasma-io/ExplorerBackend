@@ -150,8 +150,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             // Block in main database
             var block = Database.Main.BlockMethods.Upsert(databaseContext, chainEntry, blockHeight,
-                timestampUnixSeconds,
-                blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward, false);
+                timestampUnixSeconds, blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward,
+                false);
 
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
@@ -253,12 +253,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             Event evnt = new(kind, addr, contract, data);
 
                             //create here the event, and below update the data if needed
-                            transactionStart = DateTime.Now;
-                            var contractEntry = ContractMethods.Upsert(databaseContext, contract, chainEntry,
-                                evnt.Contract, null, false);
-                            transactionEnd = DateTime.Now - transactionStart;
-                            Log.Verbose("[{Name}] Added Contract {Contract} in {Time} sec",
-                                Name, contract, Math.Round(transactionEnd.TotalSeconds, 3));
+                            var contractEntry =
+                                ContractMethods.Get(databaseContext, chainEntry, contract, evnt.Contract);
+                            if ( contractEntry == null )
+                            {
+                                transactionStart = DateTime.Now;
+                                contractEntry = ContractMethods.Upsert(databaseContext, contract, chainEntry,
+                                    evnt.Contract, null, false);
+                                transactionEnd = DateTime.Now - transactionStart;
+                                Log.Verbose("[{Name}] Added Contract {Contract} in {Time} sec",
+                                    Name, contract, Math.Round(transactionEnd.TotalSeconds, 3));
+                            }
 
                             transactionStart = DateTime.Now;
                             var addressEntry = AddressMethods.Upsert(databaseContext, chainEntry, addressString, false);
@@ -506,6 +511,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     //databaseEvent we need it here, so check it
                                     if ( eventEntry != null )
                                         StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
+
+                                    if ( kind == EventKind.ContractUpgrade )
+                                    {
+                                        var queueTuple = new Tuple<string, int, long>(stringData, chainId,
+                                            timestampUnixSeconds);
+                                        if ( !_methodQueue.Contains(queueTuple) )
+                                        {
+                                            Log.Verbose("[{Name}] got {Kind} adding Contract {Contract} to Queue", Name,
+                                                kind, stringData);
+                                            _methodQueue.Enqueue(queueTuple);
+                                        }
+                                    }
 
                                     break;
                                 }

@@ -71,6 +71,7 @@ public class MainDbContext : DbContext
     public DbSet<AddressStorage> AddressStorages { get; set; }
     public DbSet<AddressBalance> AddressBalances { get; set; }
     public DbSet<AddressValidatorKind> AddressValidatorKinds { get; set; }
+    public DbSet<ContractMethod> ContractMethods { get; set; }
 
 
     public static string GetConnectionString()
@@ -140,6 +141,16 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Chain)
             .WithMany(y => y.Contracts)
             .HasForeignKey(x => x.ChainId);
+
+        modelBuilder.Entity<Contract>()
+            .HasOne(x => x.Address)
+            .WithMany(y => y.Contracts)
+            .HasForeignKey(x => x.AddressId);
+
+        modelBuilder.Entity<Contract>()
+            .HasOne(x => x.ContractMethod)
+            .WithMany(y => y.Contracts)
+            .HasForeignKey(x => x.ContractMethodId);
 
         // Indexes
 
@@ -387,11 +398,6 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.ChainId);
 
         modelBuilder.Entity<Token>()
-            .HasOne(x => x.Contract)
-            .WithOne(y => y.Token)
-            .HasForeignKey<Token>(x => x.ContractId);
-
-        modelBuilder.Entity<Token>()
             .HasOne(x => x.Address)
             .WithMany(y => y.Tokens)
             .HasForeignKey(x => x.AddressId);
@@ -406,6 +412,11 @@ public class MainDbContext : DbContext
             .WithOne(y => y.Token)
             .HasForeignKey<TokenPriceState>(x => x.TokenId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Token>()
+            .HasOne(x => x.Contract)
+            .WithOne(y => y.Token)
+            .HasForeignKey<Contract>(x => x.TokenId);
 
         // Indexes
 
@@ -516,7 +527,8 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<SeriesMode>()
-            .HasIndex(x => x.MODE_NAME);
+            .HasIndex(x => x.MODE_NAME)
+            .IsUnique();
 
         //////////////////////
         // Series
@@ -1023,6 +1035,18 @@ public class MainDbContext : DbContext
         // Indexes
         modelBuilder.Entity<AddressValidatorKind>()
             .HasIndex(x => x.NAME);
+
+        //////////////////////
+        // ContractMethod
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<ContractMethod>()
+            .HasOne(x => x.Contract)
+            .WithMany(y => y.ContractMethods)
+            .HasForeignKey(x => x.ContractId);
+
+        // Indexes
     }
 }
 
@@ -1056,13 +1080,20 @@ public class Contract
     // We store string representation of contract hash without "0x".
     public string HASH { get; set; }
     public string SYMBOL { get; set; }
+    public string SCRIPT_RAW { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
-    public int? TokenId { get; set; } //TODO maybe fill data
-    public virtual Token Token { get; set; }
+    public int? AddressId { get; set; }
+    public virtual Address Address { get; set; }
+    public int? ContractMethodId { get; set; }
+    public virtual ContractMethod ContractMethod { get; set; }
+    public long LAST_UPDATED_UNIX_SECONDS { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<Nft> Nfts { get; set; }
     public virtual List<Series> Series { get; set; }
+    public virtual List<ContractMethod> ContractMethods { get; set; }
+    public int? TokenId { get; set; }
+    public virtual Token Token { get; set; }
 }
 
 public class Block
@@ -1142,6 +1173,7 @@ public class Address
     public virtual AddressValidatorKind AddressValidatorKind { get; set; }
     public virtual List<Token> Tokens { get; set; }
     public virtual List<Token> TokenOwners { get; set; }
+    public virtual List<Contract> Contracts { get; set; }
 }
 
 public class Event
@@ -1217,7 +1249,6 @@ public class Token
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
     public int ContractId { get; set; }
-
     public virtual Contract Contract { get; set; }
     public virtual List<TokenDailyPrice> TokenDailyPrices { get; set; }
     public virtual List<Infusion> Infusions { get; set; }
@@ -1675,4 +1706,14 @@ public class AddressValidatorKind
     public int ID { get; set; }
     public string NAME { get; set; }
     public virtual List<Address> Addresses { get; set; }
+}
+
+public class ContractMethod
+{
+    public int ID { get; set; }
+    public int ContractId { get; set; }
+    public virtual Contract Contract { get; set; }
+    public JsonElement METHODS { get; set; }
+    public long TIMESTAMP_UNIX_SECONDS { get; set; }
+    public virtual List<Contract> Contracts { get; set; }
 }

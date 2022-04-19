@@ -21,6 +21,8 @@ namespace GhostDevs.Blockchain;
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private static List<Chain> _chainList;
+
+    private readonly Queue<Tuple<string, int, long>> _methodQueue = new();
     private bool _running = true;
     public override string Name => "PHA";
     public string[] ChainNames { get; private set; }
@@ -57,13 +59,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 //init tokens once too, cause we might need them, to keep them update, thread them later
 
                 foreach ( var chain in _chainList ) InitNexusData(chain.ID);
-            }
-
-            using ( MainDbContext databaseContext = new() )
-            {
-                SeriesMethods.SeriesModesInit(databaseContext);
-
-                databaseContext.SaveChanges();
             }
 
             Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, _chainList.Count);
@@ -109,26 +104,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         }
                 });
                 blocksSyncThread.Start();
-
-                //we do not want it
-                /*Thread eventsProcessThread = new(() =>
-                {
-                    while ( _running )
-                        try
-                        {
-                            MergeSendReceiveToTransfer(chain.ID);
-
-                            Thread.Sleep(Settings.Default.EventsProcessingInterval *
-                                         1000); // We process events every EventsProcessingInterval seconds
-                        }
-                        catch ( Exception e )
-                        {
-                            LogEx.Exception("Events processing", e);
-
-                            Thread.Sleep(Settings.Default.EventsProcessingInterval * 1000);
-                        }
-                });
-                eventsProcessThread.Start();*/
 
                 Thread romRamSyncThread = new(() =>
                 {
@@ -188,24 +163,62 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 infusionsSyncThread.Start();
 
 
-                Thread namesSyncThread = new(() =>
+                Thread addressSyncThread = new(() =>
                 {
                     while ( _running )
                         try
                         {
-                            NameSync(chain.ID);
+                            AddressDataSync(chain.ID);
 
                             Thread.Sleep(Settings.Default.NamesSyncInterval *
                                          1000); // We sync names every NamesSyncInterval seconds
                         }
                         catch ( Exception e )
                         {
-                            LogEx.Exception("Names sync", e);
+                            LogEx.Exception("Address sync", e);
 
                             Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
                         }
                 });
-                namesSyncThread.Start();
+                addressSyncThread.Start();
+
+                Thread contractSyncThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            ContractDataSync(chain.ID);
+
+                            Thread.Sleep(Settings.Default.NamesSyncInterval *
+                                         1000); // We sync names every NamesSyncInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("Contract sync", e);
+
+                            Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
+                        }
+                });
+                contractSyncThread.Start();
+
+                Thread contractMethodSyncThread = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            ContractMethodSync();
+
+                            Thread.Sleep(Settings.Default.NamesSyncInterval *
+                                         1000); // We sync names every NamesSyncInterval seconds
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("ContractMethod sync", e);
+
+                            Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
+                        }
+                });
+                contractMethodSyncThread.Start();
             }
         });
         mainThread.Start();

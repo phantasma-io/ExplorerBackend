@@ -11,7 +11,7 @@ namespace GhostDevs.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private void NameSync(int chainId)
+    private void AddressDataSync(int chainId)
     {
         var startTime = DateTime.Now;
         var unixSecondsNow = UnixSeconds.Now();

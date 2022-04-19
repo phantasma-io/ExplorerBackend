@@ -95,7 +95,6 @@ public partial class Endpoints
                 symbol = x.Token != null ? x.Token.SYMBOL : null,
                 price = new Price
                 {
-                    date = x.DATE_UNIX_SECONDS.ToString(),
                     usd = x.PRICE_USD != 0 ? x.PRICE_USD : null,
                     eur = x.PRICE_EUR != 0 ? x.PRICE_EUR : null,
                     gbp = x.PRICE_GBP != 0 ? x.PRICE_GBP : null,
@@ -124,7 +123,8 @@ public partial class Endpoints
                         burned_supply = x.Token.BURNED_SUPPLY,
                         script_raw = x.Token.SCRIPT_RAW
                     }
-                    : null
+                    : null,
+                date = x.DATE_UNIX_SECONDS.ToString()
             }).ToArray();
 
             var responseTime = DateTime.Now - startTime;

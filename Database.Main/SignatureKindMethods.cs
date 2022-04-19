@@ -8,9 +8,10 @@ public static class SignatureKindMethods
     public static SignatureKind Upsert(MainDbContext databaseContext, string name, bool saveChanges = true)
     {
         var signatureKind = databaseContext.SignatureKinds.FirstOrDefault(x => x.NAME == name);
+        if ( signatureKind != null ) return signatureKind;
 
-        if ( signatureKind != null )
-            return signatureKind;
+        signatureKind = DbHelper.GetTracked<SignatureKind>(databaseContext).FirstOrDefault(x => x.NAME == name);
+        if ( signatureKind != null ) return signatureKind;
 
         signatureKind = new SignatureKind {NAME = name};
 
