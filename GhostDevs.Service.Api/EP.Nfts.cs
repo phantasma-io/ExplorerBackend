@@ -160,8 +160,8 @@ public partial class Endpoints
                 token_id = x.TOKEN_ID,
                 chain = x.Chain.NAME,
                 symbol = x.Contract.SYMBOL,
-                creator_address = x.CreatorAddress.ADDRESS,
-                creator_onchain_name = x.CreatorAddress.ADDRESS_NAME,
+                creator_address = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
+                creator_onchain_name = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS_NAME : null,
                 owners = x.NftOwnerships != null
                     ? x.NftOwnerships.Select(n => new NftOwnershipResult
                     {
@@ -189,25 +189,27 @@ public partial class Endpoints
                     mint_date = x.NAME != null ? x.MINT_DATE_UNIX_SECONDS.ToString() : null,
                     mint_number = x.NAME != null ? x.MINT_NUMBER.ToString() : null
                 },
-                series = new Series
-                {
-                    id = x.Series.SERIES_ID.ToString(),
-                    creator = x.Series.CreatorAddress.ADDRESS,
-                    current_supply = x.Series.CURRENT_SUPPLY,
-                    max_supply = x.Series.MAX_SUPPLY,
-                    mode_name = x.Series.SeriesMode.MODE_NAME,
-                    name = x.Series.NAME,
-                    description = x.Series.DESCRIPTION,
-                    image = x.Series.IMAGE,
-                    royalties = x.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
-                    type = x.Series.TYPE,
-                    attr_type_1 = x.Series.ATTR_TYPE_1,
-                    attr_value_1 = x.Series.ATTR_VALUE_1,
-                    attr_type_2 = x.Series.ATTR_TYPE_2,
-                    attr_value_2 = x.Series.ATTR_VALUE_2,
-                    attr_type_3 = x.Series.ATTR_TYPE_3,
-                    attr_value_3 = x.Series.ATTR_VALUE_3
-                },
+                series = x.Series != null
+                    ? new Series
+                    {
+                        id = x.Series.SERIES_ID.ToString(),
+                        creator = x.Series.CreatorAddress.ADDRESS,
+                        current_supply = x.Series.CURRENT_SUPPLY,
+                        max_supply = x.Series.MAX_SUPPLY,
+                        mode_name = x.Series.SeriesMode.MODE_NAME,
+                        name = x.Series.NAME,
+                        description = x.Series.DESCRIPTION,
+                        image = x.Series.IMAGE,
+                        royalties = x.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
+                        type = x.Series.TYPE,
+                        attr_type_1 = x.Series.ATTR_TYPE_1,
+                        attr_value_1 = x.Series.ATTR_VALUE_1,
+                        attr_type_2 = x.Series.ATTR_TYPE_2,
+                        attr_value_2 = x.Series.ATTR_VALUE_2,
+                        attr_type_3 = x.Series.ATTR_TYPE_3,
+                        attr_value_3 = x.Series.ATTR_VALUE_3
+                    }
+                    : null,
                 infusion = x.Infusions != null
                     ? x.Infusions.Select(i => new Infusion
                     {
