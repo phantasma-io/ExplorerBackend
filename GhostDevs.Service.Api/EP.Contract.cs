@@ -27,6 +27,10 @@ public partial class Endpoints
         string chain = "",
         [APIParameter("show methods", "integer")]
         int with_methods = 0,
+        [APIParameter("show scripts", "integer")]
+        int with_script = 0,
+        [APIParameter("show token", "integer")]
+        int with_token = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -106,9 +110,9 @@ public partial class Endpoints
                             address_name = x.Address.ADDRESS_NAME
                         }
                         : null,
-                    script_raw = x.SCRIPT_RAW,
+                    script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
                     methods = with_methods == 1 && x.ContractMethod != null ? x.ContractMethod.METHODS : null,
-                    token = x.Token != null
+                    token = with_token == 1 && x.Token != null
                         ? new Token
                         {
                             symbol = x.Token.SYMBOL,
