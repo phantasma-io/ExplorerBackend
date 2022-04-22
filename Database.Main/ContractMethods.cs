@@ -6,11 +6,11 @@ namespace Database.Main;
 
 public static class ContractMethods
 {
-    public static string Drop0x(string hash)
+    private static string Drop0x(string hash)
     {
         if ( string.IsNullOrEmpty(hash) ) return hash;
 
-        if ( hash.StartsWith("0x") ) hash = hash.Substring(2);
+        if ( hash.StartsWith("0x") ) hash = hash[2..];
 
         // For comma-separated values
         hash = hash.Replace(",0x", ",");
@@ -90,10 +90,9 @@ public static class ContractMethods
 
 
     public static void InsertIfNotExistList(MainDbContext databaseContext, List<Tuple<string, string>> contractInfoList,
-        int chainId, string symbol, bool saveChanges = true)
+        Chain chain, string symbol, bool saveChanges = true)
     {
         if ( !contractInfoList.Any() || string.IsNullOrEmpty(symbol) ) return;
-        var chain = ChainMethods.Get(databaseContext, chainId);
 
         var contractList = new List<Contract>();
         //name, hash
@@ -101,8 +100,11 @@ public static class ContractMethods
         {
             var hashString = hash;
             Drop0x(ref hashString);
-            var contract = databaseContext.Contracts.FirstOrDefault(x =>
-                x.ChainId == chainId && x.HASH == hashString && x.SYMBOL == symbol);
+            var contract =
+                databaseContext.Contracts.FirstOrDefault(x =>
+                    x.Chain == chain && x.HASH == hashString && x.SYMBOL == symbol) ?? DbHelper
+                    .GetTracked<Contract>(databaseContext).FirstOrDefault(x =>
+                        x.Chain == chain && x.HASH == hashString && x.SYMBOL == symbol);
 
             if ( contract != null ) continue;
 
@@ -142,7 +144,9 @@ public static class ContractMethods
     {
         Drop0x(ref hash);
 
-        return databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.NAME == name && x.HASH == hash);
+        return databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.NAME == name && x.HASH == hash) ??
+               DbHelper.GetTracked<Contract>(databaseContext)
+                   .FirstOrDefault(x => x.Chain == chain && x.NAME == name && x.HASH == hash);
     }
 
 
@@ -150,6 +154,11 @@ public static class ContractMethods
     {
         Drop0x(ref hash);
 
-        return databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
+        var contract = databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
+        if ( contract != null ) return contract;
+
+        contract = DbHelper.GetTracked<Contract>(databaseContext)
+            .FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
+        return contract;
     }
 }

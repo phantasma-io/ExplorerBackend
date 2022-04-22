@@ -84,7 +84,8 @@ public static class ContractMethods
     }
 
 
-    public static void InsertIfNotExists(ApiCacheDbContext databaseContext, List<string> contractInfoList, int chainId)
+    public static void InsertIfNotExists(ApiCacheDbContext databaseContext, List<string> contractInfoList, Chain chain,
+        bool saveChanges = true)
     {
         if ( !contractInfoList.Any() ) return;
 
@@ -95,15 +96,37 @@ public static class ContractMethods
             var hashString = hash;
             Drop0x(ref hashString);
 
-            var contract = databaseContext.Contracts.FirstOrDefault(x => x.ChainId == chainId && x.HASH == hash);
+            var contract = databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
 
             if ( contract != null ) continue;
 
-            contract = new Contract {ChainId = chainId, HASH = hash};
+            contract = new Contract {Chain = chain, HASH = hash};
             contractList.Add(contract);
         }
 
         databaseContext.Contracts.AddRange(contractList);
-        databaseContext.SaveChanges();
+        if ( saveChanges ) databaseContext.SaveChanges();
+    }
+
+
+    public static Contract Upsert(ApiCacheDbContext databaseContext, Chain chain, string hashOrName,
+        bool saveChanges = true)
+    {
+        Drop0x(ref hashOrName);
+
+        if ( string.IsNullOrEmpty(hashOrName) )
+            throw new ArgumentException("Argument cannot be null or empty.", "hashOrName");
+
+
+        var contract = databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hashOrName);
+
+        if ( contract != null ) return contract;
+
+        contract = new Contract {Chain = chain, HASH = hashOrName};
+
+        databaseContext.Contracts.Add(contract);
+        if ( saveChanges ) databaseContext.SaveChanges();
+
+        return contract;
     }
 }

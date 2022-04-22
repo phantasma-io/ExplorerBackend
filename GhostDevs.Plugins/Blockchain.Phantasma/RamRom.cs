@@ -128,7 +128,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         else
                         {
                             if ( error.Contains("nft does not exists") ||
-                                 error.Contains("nft") && error.Contains("does not exist") )
+                                 ( error.Contains("nft") && error.Contains("does not exist") ) )
                             {
                                 // NFT was burned, marking it.
                                 nft.BURNED = true;

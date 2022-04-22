@@ -1,9 +1,14 @@
 using System;
 using System.Linq;
+using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Contract = GhostDevs.Service.ApiResults.Contract;
+using Event = GhostDevs.Service.ApiResults.Event;
+using Organization = GhostDevs.Service.ApiResults.Organization;
+using StringEvent = GhostDevs.Service.ApiResults.StringEvent;
 
 namespace GhostDevs.Service;
 
@@ -21,6 +26,8 @@ public partial class Endpoints
         string organization_name = "",
         [APIParameter("Organization name (partial)", "string")]
         string organization_name_partial = "",
+        [APIParameter("return data with event of the creation", "integer")]
+        int with_creation_event = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0
     )
@@ -76,7 +83,32 @@ public partial class Endpoints
 
             organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
             {
-                name = x.NAME
+                name = x.NAME,
+                create_event = with_creation_event == 1 && x.CreateEvent != null
+                    ? new Event
+                    {
+                        chain = x.CreateEvent.Chain.NAME.ToLower(),
+                        date = x.CreateEvent.TIMESTAMP_UNIX_SECONDS.ToString(),
+                        block_hash = x.CreateEvent.Transaction.Block.HASH,
+                        transaction_hash = x.CreateEvent.Transaction.HASH,
+                        token_id = x.CreateEvent.TOKEN_ID,
+                        event_kind = x.CreateEvent.EventKind.NAME,
+                        address = x.CreateEvent.Address.ADDRESS,
+                        address_name = x.CreateEvent.Address.ADDRESS_NAME,
+                        contract = new Contract
+                        {
+                            name = x.CreateEvent.Contract.NAME,
+                            hash = ContractMethods.Prepend0x(x.CreateEvent.Contract.HASH, x.CreateEvent.Chain.NAME),
+                            symbol = x.CreateEvent.Contract.SYMBOL
+                        },
+                        string_event = x.CreateEvent.StringEvent != null
+                            ? new StringEvent
+                            {
+                                string_value = x.CreateEvent.StringEvent.STRING_VALUE
+                            }
+                            : null
+                    }
+                    : null
             }).ToArray();
 
 

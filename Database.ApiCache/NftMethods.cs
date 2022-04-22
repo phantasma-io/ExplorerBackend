@@ -9,13 +9,14 @@ public static class NftMethods
     // Checks if "Nft" table has entry with given contract/token id,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry.
-    private static Nft Upsert(ApiCacheDbContext databaseContext, int contractId, string tokenId, out bool newNftCreated)
+    private static Nft Upsert(ApiCacheDbContext databaseContext, Contract contract, string tokenId,
+        out bool newNftCreated)
     {
         newNftCreated = false;
 
-        var nft = databaseContext.Nfts.FirstOrDefault(x => x.ContractId == contractId && x.TOKEN_ID == tokenId);
+        var nft = databaseContext.Nfts.FirstOrDefault(x => x.Contract == contract && x.TOKEN_ID == tokenId);
         if ( nft != null ) return nft;
-        nft = new Nft {ContractId = contractId, TOKEN_ID = tokenId};
+        nft = new Nft {Contract = contract, TOKEN_ID = tokenId};
         databaseContext.Nfts.Add(nft);
 
         newNftCreated = true;
@@ -47,10 +48,10 @@ public static class NftMethods
     public static void SetApiResponses(ApiCacheDbContext databaseContext, string chainShortName, string contractHash,
         string tokenId, JsonDocument offchainApiResponse, JsonDocument chainApiResponse, bool saveChanges = false)
     {
-        var chainId = ChainMethods.Upsert(databaseContext, chainShortName);
-        var contractId = ContractMethods.Upsert(databaseContext, chainId, contractHash);
+        var chain = ChainMethods.Upsert(databaseContext, chainShortName, false);
+        var contract = ContractMethods.Upsert(databaseContext, chain, contractHash, false);
 
-        var nft = Upsert(databaseContext, contractId, tokenId, out var newNftCreated);
+        var nft = Upsert(databaseContext, contract, tokenId, out var newNftCreated);
 
         if ( offchainApiResponse != null )
         {

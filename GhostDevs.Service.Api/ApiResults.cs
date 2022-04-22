@@ -1,6 +1,6 @@
+#nullable enable
 using System.Text.Json;
 
-#nullable enable
 namespace GhostDevs.Service.ApiResults;
 
 //since we got different naming in the API
@@ -258,6 +258,9 @@ public class Token
 
     [APIDescription("Returns currency price information")]
     public Price? price { get; set; }
+
+    [APIDescription("Event of the creation of the token")]
+    public Event? create_event { get; set; }
 }
 
 public class TokenResult
@@ -320,6 +323,9 @@ public class Contract
 
     [APIDescription("methods of the contract")]
     public JsonElement? methods { get; set; }
+
+    [APIDescription("Event of the creation of the contract")]
+    public Event? create_event { get; set; }
 }
 
 public class ContractResult
@@ -354,6 +360,9 @@ public class Organization
 {
     [APIDescription("Name of the organization")]
     public string? name { get; set; }
+
+    [APIDescription("Event of the creation of the organization")]
+    public Event? create_event { get; set; }
 }
 
 public class OrganizationResult
@@ -452,6 +461,9 @@ public class Platform
 
     [APIDescription("tokens on their system")]
     public PlatformToken[]? platform_tokens { get; set; }
+
+    [APIDescription("Event of the creation of the platform")]
+    public Event? create_event { get; set; }
 }
 
 public class PlatformResult

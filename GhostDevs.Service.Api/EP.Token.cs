@@ -1,9 +1,14 @@
 using System;
 using System.Linq;
+using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Contract = GhostDevs.Service.ApiResults.Contract;
+using Event = GhostDevs.Service.ApiResults.Event;
+using StringEvent = GhostDevs.Service.ApiResults.StringEvent;
+using Token = GhostDevs.Service.ApiResults.Token;
 
 namespace GhostDevs.Service;
 
@@ -22,6 +27,8 @@ public partial class Endpoints
         string chain = "",
         [APIParameter("with prices", "integer")]
         int with_price = 0,
+        [APIParameter("return data with event of the creation", "integer")]
+        int with_creation_event = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -101,6 +108,31 @@ public partial class Endpoints
                         aud = x.PRICE_AUD != 0 ? x.PRICE_AUD : null,
                         cny = x.PRICE_CNY != 0 ? x.PRICE_CNY : null,
                         rub = x.PRICE_RUB != 0 ? x.PRICE_RUB : null
+                    }
+                    : null,
+                create_event = with_creation_event == 1 && x.CreateEvent != null
+                    ? new Event
+                    {
+                        chain = x.CreateEvent.Chain.NAME.ToLower(),
+                        date = x.CreateEvent.TIMESTAMP_UNIX_SECONDS.ToString(),
+                        block_hash = x.CreateEvent.Transaction.Block.HASH,
+                        transaction_hash = x.CreateEvent.Transaction.HASH,
+                        token_id = x.CreateEvent.TOKEN_ID,
+                        event_kind = x.CreateEvent.EventKind.NAME,
+                        address = x.CreateEvent.Address.ADDRESS,
+                        address_name = x.CreateEvent.Address.ADDRESS_NAME,
+                        contract = new Contract
+                        {
+                            name = x.CreateEvent.Contract.NAME,
+                            hash = ContractMethods.Prepend0x(x.CreateEvent.Contract.HASH, x.CreateEvent.Chain.NAME),
+                            symbol = x.CreateEvent.Contract.SYMBOL
+                        },
+                        string_event = x.CreateEvent.StringEvent != null
+                            ? new StringEvent
+                            {
+                                string_value = x.CreateEvent.StringEvent.STRING_VALUE
+                            }
+                            : null
                     }
                     : null
             }).ToArray();

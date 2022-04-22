@@ -9,20 +9,17 @@ public static class ChainMethods
     // Checks if "Chains" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static int Upsert(ApiCacheDbContext databaseContext, string shortName)
+    public static Chain Upsert(ApiCacheDbContext databaseContext, string shortName, bool saveChanges = true)
     {
         if ( string.IsNullOrEmpty(shortName) )
             throw new ArgumentException("Argument cannot be null or empty.", nameof(shortName));
 
-        int chainId;
         var chain = databaseContext.Chains.FirstOrDefault(x => x.SHORT_NAME == shortName);
         if ( chain != null )
         {
-            chainId = chain.ID;
-
             chain.SHORT_NAME = shortName;
 
-            databaseContext.SaveChanges();
+            if ( saveChanges ) databaseContext.SaveChanges();
         }
         else
         {
@@ -32,7 +29,7 @@ public static class ChainMethods
 
             try
             {
-                databaseContext.SaveChanges();
+                if ( saveChanges ) databaseContext.SaveChanges();
             }
             catch ( Exception ex )
             {
@@ -49,11 +46,9 @@ public static class ChainMethods
                     // Unknown exception.
                     throw;
             }
-
-            chainId = chain.ID;
         }
 
-        return chainId;
+        return chain;
     }
 
 

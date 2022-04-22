@@ -373,6 +373,26 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Events)
             .HasForeignKey(x => x.NftId);
 
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.CreateToken)
+            .WithOne(y => y.CreateEvent)
+            .HasForeignKey<Token>(x => x.CreateEventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.CreatePlatform)
+            .WithOne(y => y.CreateEvent)
+            .HasForeignKey<Platform>(x => x.CreateEventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.CreateContract)
+            .WithOne(y => y.CreateEvent)
+            .HasForeignKey<Contract>(x => x.CreateEventId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(x => x.CreateOrganization)
+            .WithOne(y => y.CreateEvent)
+            .HasForeignKey<Organization>(x => x.CreateEventId);
+
         // Indexes
 
         modelBuilder.Entity<Event>()
@@ -1094,6 +1114,8 @@ public class Contract
     public virtual List<ContractMethod> ContractMethods { get; set; }
     public int? TokenId { get; set; }
     public virtual Token Token { get; set; }
+    public int? CreateEventId { get; set; }
+    public virtual Event CreateEvent { get; set; }
 }
 
 public class Block
@@ -1214,6 +1236,10 @@ public class Event
     public virtual TokenEvent TokenEvent { get; set; }
     public virtual InfusionEvent InfusionEvent { get; set; }
     public virtual MarketEvent MarketEvent { get; set; }
+    public virtual Token CreateToken { get; set; }
+    public virtual Platform CreatePlatform { get; set; }
+    public virtual Contract CreateContract { get; set; }
+    public virtual Organization CreateOrganization { get; set; }
 }
 
 public class Token
@@ -1260,6 +1286,8 @@ public class Token
     public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
     public virtual TokenPriceState TokenPriceState { get; set; }
     public virtual List<AddressBalance> AddressBalances { get; set; }
+    public int? CreateEventId { get; set; }
+    public virtual Event CreateEvent { get; set; }
 }
 
 public class TokenDailyPrice
@@ -1414,6 +1442,8 @@ public class Platform
     public virtual List<External> Externals { get; set; }
     public virtual List<PlatformInterop> PlatformInterops { get; set; }
     public virtual List<PlatformToken> PlatformTokens { get; set; }
+    public int? CreateEventId { get; set; }
+    public virtual Event CreateEvent { get; set; }
 }
 
 public class PlatformToken
@@ -1450,6 +1480,8 @@ public class Organization
     public string NAME { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
+    public int? CreateEventId { get; set; }
+    public virtual Event CreateEvent { get; set; }
 }
 
 public class OrganizationEvent

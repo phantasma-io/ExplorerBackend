@@ -23,6 +23,10 @@ public partial class Endpoints
         [APIParameter("hash", "string")] string hash = "",
         [APIParameter("Chain name (ex. 'main')", "string")]
         string chain = "",
+        [APIParameter("Date (less than)", "string")]
+        string date_less = "",
+        [APIParameter("Date (greater than)", "string")]
+        string date_greater = "",
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -51,6 +55,12 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new APIException("Unsupported value for 'chain' parameter.");
 
+            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
+                throw new APIException("Unsupported value for 'date_less' parameter.");
+
+            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
+                throw new APIException("Unsupported value for 'date_greater' parameter.");
+
             #endregion
 
             var startTime = DateTime.Now;
@@ -65,6 +75,12 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.Contract.HASH == hash);
 
             if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Contract.Chain.NAME == chain);
+
+            if ( !string.IsNullOrEmpty(date_less) )
+                query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
+
+            if ( !string.IsNullOrEmpty(date_greater) )
+                query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
             #endregion
 

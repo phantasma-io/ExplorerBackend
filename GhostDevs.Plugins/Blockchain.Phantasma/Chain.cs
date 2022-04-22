@@ -38,12 +38,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 //var currentChainHeight = element.GetProperty("height").GetInt64();
                 Log.Information("[{Name}] Chain name is {NameChain}", Name, chainName);
 
-                var id = ChainMethods.Upsert(databaseContext, chainName);
+                var chain = ChainMethods.Upsert(databaseContext, chainName, false);
 
-                var apiId = Database.ApiCache.ChainMethods.Upsert(apiCacheDbContext, chainName);
+                var apiChain = Database.ApiCache.ChainMethods.Upsert(apiCacheDbContext, chainName);
 
                 Log.Verbose("[{Name}] chain {ChainName} with Database Id {Id} processed, go on with Contracts",
-                    Name, chainName, id);
+                    Name, chainName, chain.ID);
 
                 if ( element.TryGetProperty("contracts", out var contractsProperty) )
                 {
@@ -53,8 +53,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         new Tuple<string, string>(contract.ToString(), contract.ToString())).ToList();
                     var hashList = contractList.Select(tuple => tuple.Item1).ToList();
 
-                    ContractMethods.InsertIfNotExists(apiCacheDbContext, hashList, apiId);
-                    Database.Main.ContractMethods.InsertIfNotExistList(databaseContext, contractList, id, null);
+                    ContractMethods.InsertIfNotExists(apiCacheDbContext, hashList, apiChain, false);
+                    Database.Main.ContractMethods.InsertIfNotExistList(databaseContext, contractList, chain, null,
+                        false);
 
                     var transactionEnd = DateTime.Now - transactionStart;
                     Log.Verbose("[{Name}] Processed {Count} Contracts in {Time} sec", Name,
@@ -65,7 +66,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
-        if ( updatedChainsCount > 0 ) databaseContext.SaveChanges();
+        if ( updatedChainsCount > 0 )
+        {
+            apiCacheDbContext.SaveChanges();
+            databaseContext.SaveChanges();
+        }
 
 
         var updateTime = DateTime.Now - startTime;

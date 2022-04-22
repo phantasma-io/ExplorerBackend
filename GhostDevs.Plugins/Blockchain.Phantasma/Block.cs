@@ -354,7 +354,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.TokenMint or EventKind.TokenClaim or EventKind.TokenBurn
                                     or EventKind.TokenSend or EventKind.TokenReceive or EventKind.TokenStake
-                                    or EventKind.CrownRewards:
+                                    or EventKind.CrownRewards or EventKind.Inflation:
                                 {
                                     var tokenEventData = evnt.GetContent<TokenEventData>();
 
@@ -426,8 +426,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     break;
                                 }
-                                case EventKind.OrderCancelled or EventKind.OrderClosed
-                                    or EventKind.OrderCreated or EventKind.OrderFilled or EventKind.OrderBid:
+                                case EventKind.OrderCancelled or EventKind.OrderClosed or EventKind.OrderCreated
+                                    or EventKind.OrderFilled or EventKind.OrderBid:
                                 {
                                     Log.Verbose("[{Name}] getting MarketEventData for {Kind}", Name, kind);
 
@@ -501,7 +501,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.ChainCreate or EventKind.TokenCreate or EventKind.ContractUpgrade
                                     or EventKind.AddressRegister or EventKind.ContractDeploy or EventKind.PlatformCreate
-                                    or EventKind.OrganizationCreate:
+                                    or EventKind.OrganizationCreate or EventKind.Log or EventKind.AddressUnregister:
                                 {
                                     var stringData = evnt.GetContent<string>();
 
@@ -512,15 +512,75 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     if ( eventEntry != null )
                                         StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
 
-                                    if ( kind == EventKind.ContractUpgrade )
+                                    switch ( kind )
                                     {
-                                        var queueTuple = new Tuple<string, int, long>(stringData, chainId,
-                                            timestampUnixSeconds);
-                                        if ( !_methodQueue.Contains(queueTuple) )
+                                        case EventKind.ContractUpgrade:
                                         {
-                                            Log.Verbose("[{Name}] got {Kind} adding Contract {Contract} to Queue", Name,
-                                                kind, stringData);
-                                            _methodQueue.Enqueue(queueTuple);
+                                            var queueTuple = new Tuple<string, int, long>(stringData, chainId,
+                                                timestampUnixSeconds);
+                                            if ( !_methodQueue.Contains(queueTuple) )
+                                            {
+                                                Log.Verbose("[{Name}] got {Kind} adding Contract {Contract} to Queue",
+                                                    Name, kind, stringData);
+                                                _methodQueue.Enqueue(queueTuple);
+                                            }
+
+                                            break;
+                                        }
+                                        case EventKind.TokenCreate:
+                                        {
+                                            var token = TokenMethods.Get(databaseContext, chainEntry, stringData);
+                                            if ( token != null )
+                                            {
+                                                Log.Verbose("[{Name}] Linking Event to Token {Token}", Name,
+                                                    token.SYMBOL);
+                                                token.CreateEvent = eventEntry;
+                                            }
+
+                                            break;
+                                        }
+                                        case EventKind.PlatformCreate:
+                                        {
+                                            var platform = PlatformMethods.Get(databaseContext, stringData);
+                                            if ( platform != null )
+                                            {
+                                                Log.Verbose("[{Name}] Linking Event to Platform {Platform}", Name,
+                                                    platform.NAME);
+                                                platform.CreateEvent = eventEntry;
+                                            }
+
+                                            break;
+                                        }
+                                        case EventKind.ContractDeploy:
+                                        {
+                                            //we might have to create the contract here, better be sure
+                                            var contractItem = ContractMethods.Upsert(databaseContext, stringData,
+                                                chainEntry, stringData,
+                                                null, false);
+                                            //we do it like this, to be sure it is only set here
+                                            contractItem.CreateEvent = eventEntry;
+
+                                            Log.Verbose("[{Name}] Linked Event to Contract {Contract}", Name,
+                                                contractItem.NAME);
+
+                                            break;
+                                        }
+                                        case EventKind.OrganizationCreate:
+                                        {
+                                            var organization = OrganizationMethods.Get(databaseContext, stringData);
+                                            if ( organization != null )
+                                            {
+                                                Log.Verbose("[{Name}] Linking Event to Organization {Organization}",
+                                                    Name, organization.NAME);
+                                                organization.CreateEvent = eventEntry;
+                                            }
+
+                                            break;
+                                        }
+                                        case EventKind.ChainCreate:
+                                        {
+                                            //fill data
+                                            break;
                                         }
                                     }
 
@@ -578,6 +638,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     break;
                                 }
+                                //TODO
                                 case EventKind.ValidatorSwitch:
                                 {
                                     Log.Verbose("[{Name}] getting nothing for {Kind}", Name, kind);
@@ -652,8 +713,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     break;
                                 }
                                 //TODO
-                                case EventKind.Inflation or EventKind.Log or EventKind.LeaderboardCreate
-                                    or EventKind.Custom or EventKind.AddressUnregister:
+                                case EventKind.LeaderboardCreate or EventKind.Custom:
                                 {
                                     Log.Verbose("[{Name}] Currently not processing EventKind {Kind} in Block #{Block}",
                                         Name, kind, blockHeight);

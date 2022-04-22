@@ -96,9 +96,14 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(height) && !ArgValidation.CheckNumber(height) )
                 throw new APIException("Unsupported value for 'height' parameter.");
 
-
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new APIException("Unsupported value for 'chain' parameter.");
+
+            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
+                throw new APIException("Unsupported value for 'date_less' parameter.");
+
+            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
+                throw new APIException("Unsupported value for 'date_greater' parameter.");
 
             #endregion
 
