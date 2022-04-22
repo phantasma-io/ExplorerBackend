@@ -96,6 +96,7 @@ public class NftsResult
 
 public class Event
 {
+    public int event_id { get; set; }
     public string? chain { get; set; }
     public string? date { get; set; }
     public string? block_hash { get; set; }

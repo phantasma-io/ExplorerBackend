@@ -177,6 +177,7 @@ public partial class Endpoints
                         events = with_events == 1 && t.Events != null
                             ? t.Events.Select(e => new Event
                             {
+                                event_id = e.ID,
                                 chain = e.Chain.NAME.ToLower(),
                                 date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
                                 transaction_hash = x.HASH, //a bit redundant in that case

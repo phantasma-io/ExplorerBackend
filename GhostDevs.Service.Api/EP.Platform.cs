@@ -138,6 +138,7 @@ public partial class Endpoints
                 create_event = with_creation_event == 1 && x.CreateEvent != null
                     ? new Event
                     {
+                        event_id = x.ID,
                         chain = x.CreateEvent.Chain.NAME.ToLower(),
                         date = x.CreateEvent.TIMESTAMP_UNIX_SECONDS.ToString(),
                         block_hash = x.CreateEvent.Transaction.Block.HASH,

@@ -63,6 +63,7 @@ public partial class Endpoints
         string block_height = "",
         [APIParameter("Transaction Hash", "string")]
         string transaction_hash = "",
+        [APIParameter("Event ID", "string")] string event_id = "",
         [APIParameter("Return event data of events", "integer")]
         int with_event_data = 0,
         [APIParameter("Return NFT metadata with events", "integer")]
@@ -160,6 +161,9 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(transaction_hash) && !ArgValidation.CheckHash(transaction_hash) )
                 throw new APIException("Unsupported value for 'transaction_hash' parameter.");
 
+            if ( !string.IsNullOrEmpty(event_id) && !ArgValidation.CheckNumber(event_id) )
+                throw new APIException("Unsupported value for 'event_id' parameter.");
+
             #endregion
 
             var startTime = DateTime.Now;
@@ -219,6 +223,9 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(transaction_hash) )
                 query = query.Where(x => x.Transaction.HASH == transaction_hash);
 
+            if ( !string.IsNullOrEmpty(event_id) && int.TryParse(event_id, out var parsedEventId) )
+                query = query.Where(x => x.ID == parsedEventId);
+
             #endregion
 
             if ( with_total == 1 )
@@ -248,6 +255,7 @@ public partial class Endpoints
 
             eventsArray = query.Select(x => new Event
                 {
+                    event_id = x.ID,
                     chain = x.Chain.NAME.ToLower(),
                     date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
                     block_hash = x.Transaction.Block.HASH,
