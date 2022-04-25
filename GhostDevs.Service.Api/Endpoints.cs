@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Database.Main;
 using Foundatio.Messaging;
 using GhostDevs.Service.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -278,13 +277,11 @@ public struct APIModel
 
 public partial class Endpoints : ApiEndpointBase
 {
-    private readonly MainDbContext _context;
     private readonly IMessagePublisher _publisher;
 
 
     public Endpoints(IMessagePublisher publisher, IServiceScopeFactory factory)
     {
         _publisher = publisher;
-        _context = factory.CreateScope().ServiceProvider.GetRequiredService<MainDbContext>();
     }
 }

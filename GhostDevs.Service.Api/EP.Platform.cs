@@ -58,8 +58,8 @@ public partial class Endpoints
                 throw new APIException("Unsupported value for 'name' parameter.");
 
             var startTime = DateTime.Now;
-
-            var query = _context.Platforms.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.Platforms.AsQueryable().AsNoTracking();
 
             query = query.Where(x => x.HIDDEN == false);
 

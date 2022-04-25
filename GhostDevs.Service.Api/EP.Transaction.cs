@@ -109,9 +109,10 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-            var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(_context);
+            using MainDbContext databaseContext = new();
+            var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
-            var query = _context.Transactions.AsQueryable().AsNoTracking();
+            var query = databaseContext.Transactions.AsQueryable().AsNoTracking();
 
             #region Filtering
 
@@ -130,7 +131,7 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(address) )
             {
                 var addressTransactions = AddressTransactionMethods
-                    .GetAddressTransactionsByAddress(_context, address).ToList();
+                    .GetAddressTransactionsByAddress(databaseContext, address).ToList();
                 query = query.Where(x => x.AddressTransactions.Any(y => addressTransactions.Contains(y)));
             }
 

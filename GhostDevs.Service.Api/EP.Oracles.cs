@@ -1,9 +1,11 @@
 using System;
 using System.Linq;
+using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Oracle = GhostDevs.Service.ApiResults.Oracle;
 
 namespace GhostDevs.Service;
 
@@ -54,8 +56,8 @@ public partial class Endpoints
                 throw new APIException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
-
-            var query = _context.BlockOracles.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.BlockOracles.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(block_hash) )
                 query = query.Where(x => x.Block.HASH == block_hash);

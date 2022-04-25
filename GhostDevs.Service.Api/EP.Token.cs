@@ -53,8 +53,8 @@ public partial class Endpoints
                 throw new APIException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
-
-            var query = _context.Tokens.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.Tokens.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
 

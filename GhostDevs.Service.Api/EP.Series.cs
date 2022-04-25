@@ -78,8 +78,8 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-
-            var query = _context.Serieses.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.Serieses.AsQueryable().AsNoTracking();
 
             #region Filtering
 
@@ -92,7 +92,7 @@ public partial class Endpoints
 
             if ( !string.IsNullOrEmpty(name) )
             {
-                var collectionsIds = _context.Serieses.Where(
+                var collectionsIds = databaseContext.Serieses.Where(
                         x => x.NAME.Contains(name) || x.DESCRIPTION.Contains(name)).Select(x => x.ID).Distinct()
                     .ToList();
 
@@ -109,7 +109,7 @@ public partial class Endpoints
 
             if ( !string.IsNullOrEmpty(token_id) )
             {
-                var ids = NftMethods.GetSeriesIdsByTokenId(_context, token_id);
+                var ids = NftMethods.GetSeriesIdsByTokenId(databaseContext, token_id);
                 query = query.Where(x => ids.Contains(x.ID));
             }
 

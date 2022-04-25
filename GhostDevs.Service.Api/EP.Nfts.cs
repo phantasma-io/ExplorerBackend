@@ -95,8 +95,8 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-
-            var query = _context.Nfts.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.Nfts.AsQueryable().AsNoTracking();
 
             #region Filtering
 
@@ -128,7 +128,7 @@ public partial class Endpoints
 
             if ( !string.IsNullOrEmpty(owner) )
             {
-                var ids = NftMethods.GetIdsByOwnerAddress(_context, owner, chain);
+                var ids = NftMethods.GetIdsByOwnerAddress(databaseContext, owner, chain);
 
                 query = query.Where(x => ids.Contains(x.ID));
             }

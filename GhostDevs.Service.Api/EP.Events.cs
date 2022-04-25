@@ -167,11 +167,12 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-            var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(_context);
+            using MainDbContext databaseContext = new();
+            var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
 
             // Getting exchange rates in advance.
-            var query = _context.Events.AsQueryable().AsNoTracking();
+            var query = databaseContext.Events.AsQueryable().AsNoTracking();
 
             #region Filtering
 

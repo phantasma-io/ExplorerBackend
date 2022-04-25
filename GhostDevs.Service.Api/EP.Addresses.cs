@@ -89,7 +89,9 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.Addresses.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+
+            var query = databaseContext.Addresses.AsQueryable().AsNoTracking();
 
 
             #region Filtering
@@ -104,7 +106,7 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(organization_name) )
             {
                 var organizationAddresses = OrganizationAddressMethods
-                    .GetOrganizationAddressByOrganization(_context, organization_name).ToList();
+                    .GetOrganizationAddressByOrganization(databaseContext, organization_name).ToList();
                 query = query.Where(x => x.OrganizationAddresses.Any(y => organizationAddresses.Contains(y)));
             }
 

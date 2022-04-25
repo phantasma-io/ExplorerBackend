@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Microsoft.EntityFrameworkCore;
@@ -38,8 +39,8 @@ public partial class Endpoints
                 throw new APIException("Unsupported value for 'validator_kind' parameter.");
 
             var startTime = DateTime.Now;
-
-            var query = _context.AddressValidatorKinds.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.AddressValidatorKinds.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(validator_kind) ) query = query.Where(x => x.NAME == validator_kind);
 

@@ -54,8 +54,8 @@ public partial class Endpoints
                 throw new APIException("Unsupported value for 'organization_name_partial' parameter.");
 
             var startTime = DateTime.Now;
-
-            var query = _context.Organizations.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.Organizations.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(organization_name) ) query = query.Where(x => x.NAME == organization_name);
 

@@ -20,7 +20,6 @@ using GhostDevs.Service.Middleware;
 using GhostDevs.Service.Swagger;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -99,9 +98,6 @@ public static class Api
         //builder.WebHost.UseSerilog();
         //obsolete note told me I should use IHostBuilder, instead of IWebHostBuilder for serilog
         builder.Host.UseSerilog();
-
-        builder.Services.AddDbContext<MainDbContext>(options => options.UseNpgsql(MainDbContext.GetConnectionString()),
-            ServiceLifetime.Transient);
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();

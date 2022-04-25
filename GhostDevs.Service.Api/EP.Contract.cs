@@ -67,7 +67,8 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var query = _context.Contracts.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.Contracts.AsQueryable().AsNoTracking();
 
             #region Filtering
 

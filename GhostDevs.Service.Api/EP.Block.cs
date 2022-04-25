@@ -108,10 +108,12 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-            var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(_context);
+
+            using MainDbContext databaseContext = new();
+            var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
             //just need that since we build the model so it knows what we can use
-            var query = _context.Blocks.AsQueryable().AsNoTracking();
+            var query = databaseContext.Blocks.AsQueryable().AsNoTracking();
 
             #region Filtering
 

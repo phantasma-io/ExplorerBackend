@@ -1,9 +1,11 @@
 using System;
 using System.Linq;
+using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Token = GhostDevs.Service.ApiResults.Token;
 
 namespace GhostDevs.Service;
 
@@ -53,8 +55,8 @@ public partial class Endpoints
                 throw new APIException("Unsupported value for 'date_greater' parameter.");
 
             var startTime = DateTime.Now;
-
-            var query = _context.TokenDailyPrices.AsQueryable().AsNoTracking();
+            using MainDbContext databaseContext = new();
+            var query = databaseContext.TokenDailyPrices.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(symbol) )
                 query = query.Where(x => x.Token.SYMBOL == symbol);
