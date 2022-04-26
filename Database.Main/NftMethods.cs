@@ -187,7 +187,7 @@ public static class NftMethods
 
     public static IEnumerable<int> GetIdsByOwnerAddress(MainDbContext databaseContext, string address, string chain)
     {
-        var addressEntry = AddressMethods.Get(databaseContext, ChainMethods.Get(databaseContext, chain).ID, address);
+        var addressEntry = AddressMethods.Get(databaseContext, ChainMethods.Get(databaseContext, chain), address);
 
         return databaseContext.NftOwnerships.Where(x => x.Address == addressEntry).Select(x => x.NftId);
     }

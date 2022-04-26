@@ -109,21 +109,18 @@ public static class AddressMethods
     }
 
 
-    public static Address Get(MainDbContext databaseContext, int chainId, string address)
+    public static Address Get(MainDbContext databaseContext, Chain chain, string address)
     {
         ContractMethods.Drop0x(ref address);
 
-        var entry = databaseContext.Addresses
-            .FirstOrDefault(x => x.ChainId == chainId &&
-                                 x.ADDRESS == address);
+        var entry = databaseContext.Addresses.FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
 
         if ( entry != null ) return entry;
 
         // Checking if entry has been added already
         // but not yet inserted into database.
         entry = DbHelper.GetTracked<Address>(databaseContext)
-            .FirstOrDefault(x => x.ChainId == chainId &&
-                                 x.ADDRESS == address);
+            .FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
 
         return entry;
     }

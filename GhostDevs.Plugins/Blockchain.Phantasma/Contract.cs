@@ -46,7 +46,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             if ( response.RootElement.TryGetProperty("address", out var addressProperty) )
             {
                 var address = addressProperty.GetString();
-                var addressEntry = AddressMethods.Get(databaseContext, chainId, address);
+                var addressEntry = AddressMethods.Get(databaseContext, chainEntry, address);
                 if ( addressEntry != null )
                     if ( contract.Address != addressEntry )
                         contract.Address = addressEntry;

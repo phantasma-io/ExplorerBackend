@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using LunarLabs.Parser;
 using Phantasma.Numerics;
 using Phantasma.VM;
@@ -8,7 +9,7 @@ using Serilog;
 
 namespace GhostDevs.Blockchain;
 
-internal class Utils
+internal static class Utils
 {
     private static void PrintAuctionsMaxFieldLengths(DataNode auctions)
     {
@@ -52,14 +53,15 @@ internal class Utils
             ramMaxLength = Math.Max(ramMaxLength, ram.Length);
         }
 
-        Log.Information($"creatorAddressMaxLength: {creatorAddressMaxLength}\n" +
-                        $"chainAddressMaxLength: {chainAddressMaxLength}\n" +
-                        $"baseSymbolMaxLength: {baseSymbolMaxLength}\n" +
-                        $"quoteSymbolMaxLength: {quoteSymbolMaxLength}\n" +
-                        $"tokenIdMaxLength: {tokenIdMaxLength}\n" +
-                        $"priceMaxLength: {priceMaxLength}\n" +
-                        $"romMaxLength: {romMaxLength}\n" +
-                        $"ramMaxLength: {ramMaxLength}");
+        Log.Information("creatorAddressMaxLength: {CreatorAddressMaxLength}\n" +
+                        "chainAddressMaxLength: {ChainAddressMaxLength}\n" +
+                        "baseSymbolMaxLength: {BaseSymbolMaxLength}\n" +
+                        "quoteSymbolMaxLength: {QuoteSymbolMaxLength}\n" +
+                        "tokenIdMaxLength: {TokenIdMaxLength}\n" +
+                        "priceMaxLength: {PriceMaxLength}\n" +
+                        "romMaxLength: {RomMaxLength}\n" +
+                        "ramMaxLength: {RamMaxLength}", creatorAddressMaxLength, chainAddressMaxLength,
+            baseSymbolMaxLength, quoteSymbolMaxLength, tokenIdMaxLength, priceMaxLength, romMaxLength, ramMaxLength);
     }
 
 
@@ -68,5 +70,27 @@ internal class Utils
         var disassembler = new Disassembler(scriptRaw.Decode());
         var instructions = disassembler.Instructions.ToList();
         return instructions.Select(instruction => instruction.ToString()).ToList();
+    }
+
+
+    public static void ReplaceCharacter(ref string stringResponse, ref JsonDocument response, string toReplace,
+        string logString)
+    {
+        if ( !stringResponse.Contains(toReplace) ) return;
+
+        stringResponse = stringResponse.Replace(toReplace, "");
+
+        Log.Verbose("[{Name}] Hack tried to remove {Chars}", logString, toReplace);
+
+        try
+        {
+            response = JsonDocument.Parse(stringResponse);
+        }
+        catch ( Exception e )
+        {
+            Log.Error(
+                "[{Name}] hack tried to replace not set unicode character, parsing error:\n{Message}\nHacked response: {StringResponse}",
+                logString, e.Message, stringResponse);
+        }
     }
 }

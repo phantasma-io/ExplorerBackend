@@ -34,6 +34,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void FetchBlocks(int chainId, string chainName)
     {
+        //not needed anymore, normally 
         CheckData(chainId);
 
         do

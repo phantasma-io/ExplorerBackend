@@ -104,6 +104,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             }
                         }
 
+
+                        //would make json invalid, should be fixed on the node 
+                        Utils.ReplaceCharacter(ref stringResponse, ref response, @"\u000X", Name);
+
                         if ( response == null ) continue;
                     }
 
