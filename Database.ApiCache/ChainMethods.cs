@@ -52,16 +52,6 @@ public static class ChainMethods
     }
 
 
-    public static int GetId(ApiCacheDbContext databaseContext, string shortName)
-    {
-        if ( string.IsNullOrEmpty(shortName) )
-            throw new ArgumentException("Argument cannot be null or empty.", "shortName");
-
-        var chain = databaseContext.Chains.FirstOrDefault(x => x.SHORT_NAME == shortName);
-        return chain?.ID ?? 0;
-    }
-
-
     public static Chain Get(ApiCacheDbContext databaseContext, int id)
     {
         return databaseContext.Chains.Single(x => x.ID == id);
@@ -78,10 +68,18 @@ public static class ChainMethods
     }
 
 
-    public static void SetLastProcessedBlock(ApiCacheDbContext databaseContext, int chainId, BigInteger height,
+    public static Chain Get(ApiCacheDbContext databaseContext, string shortName)
+    {
+        if ( string.IsNullOrEmpty(shortName) )
+            throw new ArgumentException("Argument cannot be null or empty.", "shortName");
+
+        return databaseContext.Chains.FirstOrDefault(x => x.SHORT_NAME == shortName);
+    }
+
+
+    public static void SetLastProcessedBlock(ApiCacheDbContext databaseContext, Chain chain, BigInteger height,
         bool saveChanges = true)
     {
-        var chain = Get(databaseContext, chainId);
         chain.CURRENT_HEIGHT = height.ToString();
 
         if ( saveChanges ) databaseContext.SaveChanges();

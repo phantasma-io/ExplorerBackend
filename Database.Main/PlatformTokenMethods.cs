@@ -5,7 +5,7 @@ namespace Database.Main;
 
 public static class PlatformTokenMethods
 {
-    public static void Upsert(MainDbContext databaseContext, string name, Platform platform)
+    public static void Upsert(MainDbContext databaseContext, string name, Platform platform, bool saveChanges = true)
     {
         var platformToken =
             databaseContext.PlatformTokens.FirstOrDefault(x => x.NAME == name);
@@ -15,18 +15,18 @@ public static class PlatformTokenMethods
         platformToken = new PlatformToken {NAME = name, Platform = platform};
 
         databaseContext.PlatformTokens.Add(platformToken);
-        databaseContext.SaveChanges();
+        if ( !saveChanges ) databaseContext.SaveChanges();
     }
 
 
     public static PlatformToken Get(MainDbContext databaseContext, string name)
     {
-        return databaseContext.PlatformTokens
-            .FirstOrDefault(x => x.NAME == name);
+        return databaseContext.PlatformTokens.FirstOrDefault(x => x.NAME == name);
     }
 
 
-    public static void InsertIfNotExists(MainDbContext databaseContext, List<string> names, Platform platform)
+    public static void InsertIfNotExists(MainDbContext databaseContext, IEnumerable<string> names, Platform platform,
+        bool saveChanges = true)
     {
         var tokens =
             ( from name in names
@@ -35,6 +35,6 @@ public static class PlatformTokenMethods
                 select new PlatformToken {NAME = name, Platform = platform} ).ToList();
 
         databaseContext.PlatformTokens.AddRange(tokens);
-        databaseContext.SaveChanges();
+        if ( !saveChanges ) databaseContext.SaveChanges();
     }
 }

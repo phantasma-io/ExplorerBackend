@@ -11,71 +11,6 @@ public static class EventMethods
     // Checks if "Events" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static Event Upsert(MainDbContext databaseContext,
-        out bool newEventCreated,
-        long timestampUnixSeconds,
-        int index,
-        int chainId,
-        Transaction transaction,
-        int contractId,
-        int eventKindId,
-        string address,
-        bool saveChanges = true)
-    {
-        newEventCreated = false;
-
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, saveChanges);
-
-        var evnt = databaseContext.Events.FirstOrDefault(x =>
-            x.ChainId == chainId && x.Transaction == transaction && x.INDEX == index);
-
-        if ( evnt == null )
-        {
-            evnt = new Event
-            {
-                DM_UNIX_SECONDS = UnixSeconds.Now(),
-                TIMESTAMP_UNIX_SECONDS = timestampUnixSeconds,
-                DATE_UNIX_SECONDS = UnixSeconds.GetDate(timestampUnixSeconds),
-                INDEX = index,
-                ChainId = chainId,
-                Transaction = transaction,
-                ContractId = contractId,
-                EventKindId = eventKindId,
-                Address = addressEntry
-            };
-
-            databaseContext.Events.Add(evnt);
-
-            newEventCreated = true;
-        }
-        else
-        {
-            evnt.DM_UNIX_SECONDS = UnixSeconds.Now();
-            evnt.TIMESTAMP_UNIX_SECONDS = timestampUnixSeconds;
-            evnt.DATE_UNIX_SECONDS = UnixSeconds.GetDate(timestampUnixSeconds);
-            evnt.INDEX = index;
-            evnt.ChainId = chainId;
-            evnt.Transaction = transaction;
-            evnt.ContractId = contractId;
-            evnt.EventKindId = eventKindId;
-            evnt.Address = addressEntry;
-        }
-
-        return evnt;
-    }
-
-
-    public static void UpdateOnEventMerge(MainDbContext databaseContext, int id, int eventKindId, int sourceAddressId,
-        bool hidden)
-    {
-        /*var evnt = databaseContext.Events.Single(x => x.ID == id);
-
-        evnt.EventKindId = eventKindId;
-        evnt.SourceAddressId = sourceAddressId;
-        evnt.HIDDEN = hidden;
-
-        evnt.DM_UNIX_SECONDS = UnixSeconds.Now();*/
-    }
 
 
     public static void DeleteByNftId(MainDbContext databaseContext, int nftId, bool saveChanges = true)
@@ -84,37 +19,6 @@ public static class EventMethods
         foreach ( var tokenEvent in tokenEvents ) databaseContext.Entry(tokenEvent).State = EntityState.Deleted;
 
         if ( saveChanges ) databaseContext.SaveChanges();
-    }
-
-
-    public static Event UpdateValues(MainDbContext databaseContext, out bool eventUpdated, Event eventItem, Nft nft,
-        string tokenId, int chainId, int eventKindId, int contractId)
-    {
-        eventUpdated = false;
-
-        if ( eventItem == null ) return null;
-
-        eventItem.ChainId = chainId;
-        eventItem.ContractId = contractId;
-        eventItem.EventKindId = eventKindId;
-        eventItem.TOKEN_ID = tokenId;
-        eventItem.Nft = nft;
-
-        eventUpdated = true;
-
-        var burnEvent = databaseContext.EventKinds
-            .FirstOrDefault(x => x.NAME == "TokenBurn" && x.ChainId == chainId);
-        if ( burnEvent == null || eventKindId != burnEvent.ID || nft == null ) return eventItem;
-
-        //TODO check if always needed
-        // For burns we must release all infused nfts.
-
-        var startTime = DateTime.Now;
-        ProcessBurnedNft(databaseContext, nft);
-        var updateTime = DateTime.Now - startTime;
-        Log.Verbose("Process Burned, processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
-
-        return eventItem;
     }
 
 

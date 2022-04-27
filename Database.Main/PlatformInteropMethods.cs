@@ -28,8 +28,7 @@ public static class PlatformInteropMethods
 
     public static PlatformInterop Get(MainDbContext databaseContext, string externalAddress)
     {
-        return databaseContext.PlatformInterops
-            .FirstOrDefault(x => x.EXTERNAL == externalAddress);
+        return databaseContext.PlatformInterops.FirstOrDefault(x => x.EXTERNAL == externalAddress);
     }
 
 

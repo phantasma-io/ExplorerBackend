@@ -88,8 +88,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( useCache )
                 {
-                    var block = BlockMethods.GetByHeight(databaseApiCacheContext, chainId,
-                        blockHeight.ToString());
+                    var block = BlockMethods.GetByHeight(databaseApiCacheContext, chainId, blockHeight.ToString());
                     blockData = block.DATA;
                 }
             }
@@ -103,9 +102,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             if ( response == null ) return false;
 
             downloadTime = DateTime.Now - startTime;
-
             startTime = DateTime.Now;
-
 
             var error = "";
             if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
@@ -156,9 +153,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
-                var apiId = Database.ApiCache.ChainMethods.GetId(databaseApiCacheContext, chainName);
-                BlockMethods.Upsert(databaseApiCacheContext, chainName, blockHeight.ToString(), timestampUnixSeconds,
-                    blockData, apiId);
+                BlockMethods.Upsert(databaseApiCacheContext, blockHeight.ToString(), timestampUnixSeconds, blockData,
+                    Database.ApiCache.ChainMethods.Get(databaseApiCacheContext, chainName));
             }
 
             DateTime transactionStart;

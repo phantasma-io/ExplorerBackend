@@ -60,7 +60,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             transactionStart = DateTime.Now;
                             var tokenList = platformTokenProperty.EnumerateArray().Select(token => token.ToString())
                                 .ToList();
-                            PlatformTokenMethods.InsertIfNotExists(databaseContext, tokenList, platformItem);
+                            PlatformTokenMethods.InsertIfNotExists(databaseContext, tokenList, platformItem, false);
                             transactionEnd = DateTime.Now - transactionStart;
                             Log.Verbose("[{Name}] Processed {Count} PlatformTokens in {Time} sec", Name,
                                 tokenList.Count, Math.Round(transactionEnd.TotalSeconds, 3));

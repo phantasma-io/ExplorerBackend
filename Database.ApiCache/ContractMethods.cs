@@ -6,17 +6,17 @@ namespace Database.ApiCache;
 
 public static class ContractMethods
 {
-    public static string Drop0x(string hash)
+    private static string Drop0x(string hash)
     {
         if ( string.IsNullOrEmpty(hash) ) return hash;
 
-        if ( hash.StartsWith("0x") ) hash = hash.Substring(2);
+        if ( hash.StartsWith("0x") ) hash = hash[2..];
 
         return hash;
     }
 
 
-    public static void Drop0x(ref string hash)
+    private static void Drop0x(ref string hash)
     {
         hash = Drop0x(hash);
     }
@@ -25,63 +25,6 @@ public static class ContractMethods
     // Checks if "Contracts" table has entry with given hash,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static int Upsert(ApiCacheDbContext databaseContext, int chainId, string hashOrName)
-    {
-        Drop0x(ref hashOrName);
-
-        if ( string.IsNullOrEmpty(hashOrName) )
-            throw new ArgumentException("Argument cannot be null or empty.", "hashOrName");
-
-        int contractId;
-
-        var contract = databaseContext.Contracts
-            .FirstOrDefault(x => x.ChainId == chainId && x.HASH == hashOrName);
-
-        if ( contract != null )
-            contractId = contract.ID;
-        else
-        {
-            contract = new Contract {ChainId = chainId, HASH = hashOrName};
-
-            databaseContext.Contracts.Add(contract);
-
-            databaseContext.SaveChanges();
-
-            contractId = contract.ID;
-        }
-
-        return contractId;
-    }
-
-
-    public static Contract UpsertWOSave(ApiCacheDbContext databaseContext, int chainId, string hashOrName)
-    {
-        Drop0x(ref hashOrName);
-
-        var contract = databaseContext.Contracts.FirstOrDefault(x => x.ChainId == chainId && x.HASH == hashOrName);
-
-        if ( contract != null ) return contract;
-
-        contract = new Contract {ChainId = chainId, HASH = hashOrName};
-
-        databaseContext.Contracts.Add(contract);
-        databaseContext.SaveChanges();
-
-        return contract;
-    }
-
-
-    public static int GetId(ApiCacheDbContext databaseContext, string chainShortName, string hash)
-    {
-        Drop0x(ref hash);
-
-        var chainId = ChainMethods.GetId(databaseContext, chainShortName);
-
-        var contract = databaseContext.Contracts
-            .FirstOrDefault(x => x.ChainId == chainId && string.Equals(x.HASH, hash));
-
-        return contract?.ID ?? 0;
-    }
 
 
     public static void InsertIfNotExists(ApiCacheDbContext databaseContext, List<string> contractInfoList, Chain chain,
@@ -128,5 +71,14 @@ public static class ContractMethods
         if ( saveChanges ) databaseContext.SaveChanges();
 
         return contract;
+    }
+
+
+    public static Contract Get(ApiCacheDbContext databaseContext, string chainShortName, string hash)
+    {
+        Drop0x(ref hash);
+
+        var chain = ChainMethods.Get(databaseContext, chainShortName);
+        return databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
     }
 }

@@ -46,31 +46,6 @@ public static class ContractMethods
     // Checks if "Contracts" table has entry with given hash,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static int Upsert(MainDbContext databaseContext, string name, int chain, string hash, string symbol,
-        bool saveChanges = true)
-    {
-        Drop0x(ref hash);
-
-        int contractId;
-
-        var contract =
-            databaseContext.Contracts.FirstOrDefault(x => x.ChainId == chain && x.HASH == hash && x.SYMBOL == symbol);
-
-        if ( contract != null )
-            contractId = contract.ID;
-        else
-        {
-            contract = new Contract {NAME = name, ChainId = chain, HASH = hash, SYMBOL = symbol};
-
-            databaseContext.Contracts.Add(contract);
-
-            if ( saveChanges ) databaseContext.SaveChanges();
-
-            contractId = contract.ID;
-        }
-
-        return contractId;
-    }
 
 
     public static Contract Get(MainDbContext databaseContext, int chainId, string hash)

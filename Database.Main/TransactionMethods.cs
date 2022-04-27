@@ -1,20 +1,9 @@
-using System.Collections.Generic;
 using System.Linq;
 
 namespace Database.Main;
 
 public static class TransactionMethods
 {
-    public static string Prepend0x(string address, string chainShortName = null)
-    {
-        if ( string.IsNullOrEmpty(address) ) return address;
-
-        // return "0x" + address;
-
-        return address;
-    }
-
-
     // Checks if "Transactions" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
@@ -67,14 +56,5 @@ public static class TransactionMethods
     public static Transaction GetByHash(MainDbContext dbContext, string hash)
     {
         return dbContext.Transactions.FirstOrDefault(x => x.HASH == hash);
-    }
-
-
-    public static List<int> GetTransactionsIdByBlockHash(MainDbContext databaseContext, string blockHash)
-    {
-        var block = BlockMethods.GetByHash(databaseContext, blockHash);
-        return block == null
-            ? null
-            : new List<int>(databaseContext.Transactions.Where(x => x.BlockId == block.ID).Select(x => x.ID));
     }
 }

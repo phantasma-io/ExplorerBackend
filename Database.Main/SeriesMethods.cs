@@ -57,9 +57,8 @@ public static class SeriesMethods
     }
 
 
-    public static Series Get(MainDbContext databaseContext, int contractId, string seriesId)
+    public static Series Get(MainDbContext databaseContext, Contract contract, string seriesId)
     {
-        return databaseContext.Serieses
-            .FirstOrDefault(x => x.ContractId == contractId && x.SERIES_ID == seriesId);
+        return databaseContext.Serieses.FirstOrDefault(x => x.Contract == contract && x.SERIES_ID == seriesId);
     }
 }

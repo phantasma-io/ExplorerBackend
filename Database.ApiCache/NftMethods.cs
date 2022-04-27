@@ -28,9 +28,9 @@ public static class NftMethods
     public static JsonDocument GetOffchainApiResponse(ApiCacheDbContext databaseContext, string chainShortName,
         string contractHash, string tokenId)
     {
-        var contractId = ContractMethods.GetId(databaseContext, chainShortName, contractHash);
+        var contract = ContractMethods.Get(databaseContext, chainShortName, contractHash);
 
-        var nft = databaseContext.Nfts.FirstOrDefault(x => x.ContractId == contractId && x.TOKEN_ID == tokenId);
+        var nft = databaseContext.Nfts.FirstOrDefault(x => x.Contract == contract && x.TOKEN_ID == tokenId);
         return nft?.OFFCHAIN_API_RESPONSE;
     }
 
@@ -38,9 +38,9 @@ public static class NftMethods
     public static JsonDocument GetChainApiResponse(ApiCacheDbContext databaseContext, string chainShortName,
         string contractHash, string tokenId)
     {
-        var contractId = ContractMethods.GetId(databaseContext, chainShortName, contractHash);
+        var contract = ContractMethods.Get(databaseContext, chainShortName, contractHash);
 
-        var nft = databaseContext.Nfts.FirstOrDefault(x => x.ContractId == contractId && x.TOKEN_ID == tokenId);
+        var nft = databaseContext.Nfts.FirstOrDefault(x => x.Contract == contract && x.TOKEN_ID == tokenId);
         return nft?.CHAIN_API_RESPONSE;
     }
 

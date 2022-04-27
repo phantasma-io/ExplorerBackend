@@ -14,9 +14,8 @@ public static class BlockMethods
         string hash, string previousHash, int protocol, string chainAddress, string validatorAddress, string reward,
         bool saveChanges = true)
     {
-        var entry = databaseContext.Blocks
-            .FirstOrDefault(x => x.Chain == chain && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds &&
-                                 x.HEIGHT == height.ToString());
+        var entry = databaseContext.Blocks.FirstOrDefault(x =>
+            x.Chain == chain && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds && x.HEIGHT == height.ToString());
 
         /*if (entry == null)
         {
@@ -55,13 +54,6 @@ public static class BlockMethods
     public static Block Get(MainDbContext databaseContext, int dbBlockId)
     {
         return databaseContext.Blocks.FirstOrDefault(x => x.ID == dbBlockId);
-    }
-
-
-    public static Block GetByHeight(MainDbContext databaseContext, int chainId, BigInteger height)
-    {
-        return databaseContext.Blocks
-            .FirstOrDefault(x => x.ChainId == chainId && x.HEIGHT == height.ToString());
     }
 
 

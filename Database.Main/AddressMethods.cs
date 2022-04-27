@@ -126,54 +126,6 @@ public static class AddressMethods
     }
 
 
-    public static int GetId(MainDbContext databaseContext, int chainId, string address)
-    {
-        ContractMethods.Drop0x(ref address);
-
-        var id = 0;
-        var entry = databaseContext.Addresses
-            .FirstOrDefault(x => x.ChainId == chainId &&
-                                 x.ADDRESS == address);
-
-        if ( entry != null ) id = entry.ID;
-
-        return id;
-    }
-
-
-    public static int[] GetIdsFromExtendedFormat(MainDbContext databaseContext, string addresses,
-        bool returnNonexistentAddressIfNoneFound = true, string defaultChain = null)
-    {
-        var values = ParseExtendedFormat(addresses, defaultChain);
-
-        // Getting owners' ids.
-        var ids = new List<int>();
-        for ( var i = 0; i < values.Length; i++ )
-            // Address query is case insensitive only for BSC
-            // TODO: check through special chain settings table
-
-            if ( string.IsNullOrEmpty(values[i].chain) )
-                ids.AddRange(databaseContext.Addresses.Where(x =>
-                    ( values[i].caseSensitive
-                        ? x.ADDRESS == values[i].address
-                        : string.Equals(x.ADDRESS.ToUpper(), values[i].address.ToUpper()) ) ||
-                    string.Equals(x.ADDRESS_NAME.ToUpper(), values[i].address.ToUpper()) ||
-                    string.Equals(x.USER_NAME.ToUpper(), values[i].address.ToUpper())).Select(x => x.ID).ToArray());
-            else
-                ids.AddRange(databaseContext.Addresses.Where(x =>
-                    ( ( values[i].caseSensitive
-                          ? x.ADDRESS == values[i].address
-                          : string.Equals(x.ADDRESS.ToUpper(), values[i].address.ToUpper()) ) ||
-                      string.Equals(x.ADDRESS_NAME.ToUpper(), values[i].address.ToUpper()) ||
-                      string.Equals(x.USER_NAME.ToUpper(), values[i].address.ToUpper()) ) &&
-                    string.Equals(x.Chain.NAME.ToUpper(), values[i].chain.ToUpper())).Select(x => x.ID).ToArray());
-
-        if ( returnNonexistentAddressIfNoneFound && !ids.Any() ) ids.Add(0);
-
-        return ids.ToArray();
-    }
-
-
     public static Dictionary<string, Address> InsertIfNotExists(MainDbContext databaseContext, Chain chain,
         List<string> addresses, bool saveChanges = true)
     {
