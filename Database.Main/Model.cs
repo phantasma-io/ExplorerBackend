@@ -72,6 +72,8 @@ public class MainDbContext : DbContext
     public DbSet<AddressBalance> AddressBalances { get; set; }
     public DbSet<AddressValidatorKind> AddressValidatorKinds { get; set; }
     public DbSet<ContractMethod> ContractMethods { get; set; }
+    public DbSet<TokenLogo> TokenLogos { get; set; }
+    public DbSet<TokenLogoType> TokenLogoTypes { get; set; }
 
 
     public static string GetConnectionString()
@@ -1067,6 +1069,38 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.ContractId);
 
         // Indexes
+
+
+        //////////////////////
+        // TokenLogos
+        //////////////////////
+
+        // FKs
+        modelBuilder.Entity<TokenLogo>()
+            .HasOne(x => x.TokenLogoType)
+            .WithMany(y => y.TokenLogos)
+            .HasForeignKey(x => x.TokenLogoTypeId);
+
+        modelBuilder.Entity<TokenLogo>()
+            .HasOne(x => x.Token)
+            .WithMany(y => y.TokenLogos)
+            .HasForeignKey(x => x.TokenId);
+
+        // Indexes
+        modelBuilder.Entity<TokenLogo>()
+            .HasIndex(x => new {x.TokenId, x.TokenLogoTypeId})
+            .IsUnique();
+
+
+        //////////////////////
+        // TokenLogoType
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+        modelBuilder.Entity<TokenLogoType>()
+            .HasIndex(x => x.NAME);
     }
 }
 
@@ -1288,6 +1322,7 @@ public class Token
     public virtual List<AddressBalance> AddressBalances { get; set; }
     public int? CreateEventId { get; set; }
     public virtual Event CreateEvent { get; set; }
+    public virtual List<TokenLogo> TokenLogos { get; set; }
 }
 
 public class TokenDailyPrice
@@ -1748,4 +1783,21 @@ public class ContractMethod
     public JsonElement METHODS { get; set; }
     public long TIMESTAMP_UNIX_SECONDS { get; set; }
     public virtual List<Contract> Contracts { get; set; }
+}
+
+public class TokenLogoType
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public virtual List<TokenLogo> TokenLogos { get; set; }
+}
+
+public class TokenLogo
+{
+    public int ID { get; set; }
+    public int TokenId { get; set; }
+    public virtual Token Token { get; set; }
+    public int TokenLogoTypeId { get; set; }
+    public virtual TokenLogoType TokenLogoType { get; set; }
+    public string URL { get; set; }
 }

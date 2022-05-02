@@ -208,6 +208,7 @@ public static class TokenMethods
         if ( !double.TryParse(priceInTokens, out var priceInTokensDouble) )
             throw new Exception($"{priceInTokens} price cannot be parced.");
 
+        //TODO
         switch ( tokenSymbol.ToUpper() )
         {
             case "SOUL":
@@ -306,6 +307,43 @@ public static class TokenMethods
     public static Token Get(MainDbContext databaseContext, Chain chain, string symbol)
     {
         return databaseContext.Tokens.SingleOrDefault(x => x.Chain == chain && x.SYMBOL == symbol);
+    }
+
+
+    public static void SetPrice(MainDbContext databaseContext, Token token, string fiatPairSymbol, decimal price,
+        bool saveChanges = true)
+    {
+        switch ( fiatPairSymbol.ToUpper() )
+        {
+            case "AUD":
+                token.PRICE_AUD = price;
+                break;
+            case "CAD":
+                token.PRICE_CAD = price;
+                break;
+            case "CNY":
+                token.PRICE_CNY = price;
+                break;
+            case "EUR":
+                token.PRICE_EUR = price;
+                break;
+            case "GBP":
+                token.PRICE_GBP = price;
+                break;
+            case "JPY":
+                token.PRICE_JPY = price;
+                break;
+            case "RUB":
+                token.PRICE_RUB = price;
+                break;
+            case "USD":
+                token.PRICE_USD = price;
+                break;
+            default:
+                throw new Exception($"Unknown FIAT currency with symbol '{fiatPairSymbol}', cannot set the price");
+        }
+
+        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
 

@@ -68,12 +68,8 @@ public static class TokenDailyPricesMethods
     }
 
 
-    public static decimal Get(MainDbContext databaseContext, int chainId, long dateUnixSeconds, string symbol,
-        string priceSymbol)
+    public static decimal Get(MainDbContext databaseContext, Token token, long dateUnixSeconds, string priceSymbol)
     {
-        var token = TokenMethods.Get(databaseContext, chainId, symbol);
-        if ( token == null ) return 0;
-
         // Ensure it's a date without time
         dateUnixSeconds = UnixSeconds.GetDate(dateUnixSeconds);
 
@@ -99,18 +95,11 @@ public static class TokenDailyPricesMethods
     }
 
 
-    public static decimal Calculate(MainDbContext databaseContext, int chainId, long dateUnixSeconds,
+    public static decimal Calculate(MainDbContext databaseContext, Chain chain, long dateUnixSeconds,
         string tokenSymbol, string priceInTokens, string outPriceSymbol)
     {
-        return Get(databaseContext, chainId, dateUnixSeconds, tokenSymbol, outPriceSymbol) *
+        return Get(databaseContext, chain, dateUnixSeconds, tokenSymbol, outPriceSymbol) *
                TokenMethods.ToDecimal(priceInTokens, tokenSymbol);
-    }
-
-
-    public static decimal Calculate(MainDbContext databaseContext, int chainId, long dateUnixSeconds,
-        string tokenSymbol, decimal priceInTokens, string outPriceSymbol)
-    {
-        return Get(databaseContext, chainId, dateUnixSeconds, tokenSymbol, outPriceSymbol) * priceInTokens;
     }
 
 
@@ -169,5 +158,12 @@ public static class TokenDailyPricesMethods
         if ( outTokenPriceInUsd == 0 ) return 0;
 
         return priceInUsd / outTokenPriceInUsd;
+    }
+
+
+    public static decimal Get(MainDbContext databaseContext, Chain chain, long dateUnixSeconds, string symbol,
+        string priceSymbol)
+    {
+        return Get(databaseContext, TokenMethods.Get(databaseContext, chain, symbol), dateUnixSeconds, priceSymbol);
     }
 }

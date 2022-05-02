@@ -9,6 +9,7 @@ using Contract = GhostDevs.Service.ApiResults.Contract;
 using Event = GhostDevs.Service.ApiResults.Event;
 using StringEvent = GhostDevs.Service.ApiResults.StringEvent;
 using Token = GhostDevs.Service.ApiResults.Token;
+using TokenLogo = GhostDevs.Service.ApiResults.TokenLogo;
 
 namespace GhostDevs.Service;
 
@@ -29,6 +30,8 @@ public partial class Endpoints
         int with_price = 0,
         [APIParameter("return data with event of the creation", "integer")]
         int with_creation_event = 0,
+        [APIParameter("return data with logo information", "integer")]
+        int with_logo = 0,
         [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0)
     {
@@ -135,6 +138,13 @@ public partial class Endpoints
                             }
                             : null
                     }
+                    : null,
+                token_logos = with_logo == 1 && x.TokenLogos != null
+                    ? x.TokenLogos.Select(t => new TokenLogo
+                    {
+                        type = t.TokenLogoType.NAME,
+                        url = t.URL
+                    }).ToArray()
                     : null
             }).ToArray();
             var responseTime = DateTime.Now - startTime;

@@ -262,6 +262,8 @@ public class Token
 
     [APIDescription("Event of the creation of the token")]
     public Event? create_event { get; set; }
+
+    [APIDescription("Logos of the token")] public TokenLogo[]? token_logos { get; set; }
 }
 
 public class TokenResult
@@ -654,4 +656,10 @@ public class ContractMethodHistoryResult
 
     [APIDescription("List of available contracts")]
     public ContractMethodHistory[]? Contract_method_histories { get; set; }
+}
+
+public class TokenLogo
+{
+    public string? type { get; set; }
+    public string? url { get; set; }
 }
