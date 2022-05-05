@@ -138,7 +138,8 @@ public partial class Endpoints
 
             seriesArray = query.Skip(offset).Take(limit).Select(x => new Series
             {
-                id = x.SERIES_ID ?? "",
+                id = x.ID,
+                series_id = x.SERIES_ID ?? "",
                 creator = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
                 name = x.NAME,
                 description = x.DESCRIPTION,

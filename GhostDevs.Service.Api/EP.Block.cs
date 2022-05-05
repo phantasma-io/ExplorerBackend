@@ -209,7 +209,8 @@ public partial class Endpoints
                                 series = with_nft == 1 && e.Nft != null && e.Nft.Series != null
                                     ? new Series
                                     {
-                                        id = e.Nft.Series.SERIES_ID,
+                                        id = e.Nft.Series.ID,
+                                        series_id = e.Nft.Series.SERIES_ID,
                                         creator = e.Nft.Series.CreatorAddress != null
                                             ? e.Nft.Series.CreatorAddress.ADDRESS
                                             : null,

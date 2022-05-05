@@ -46,7 +46,8 @@ public class NftOwnershipResult
 
 public class Series
 {
-    public string? id { get; set; }
+    public int id { get; set; }
+    public string? series_id { get; set; }
     public string? creator { get; set; }
     public int current_supply { get; set; }
     public int max_supply { get; set; }

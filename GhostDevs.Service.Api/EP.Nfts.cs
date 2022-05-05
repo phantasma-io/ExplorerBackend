@@ -192,7 +192,8 @@ public partial class Endpoints
                 series = x.Series != null
                     ? new Series
                     {
-                        id = x.Series.SERIES_ID.ToString(),
+                        id = x.Series.ID,
+                        series_id = x.Series.SERIES_ID,
                         creator = x.Series.CreatorAddress.ADDRESS,
                         current_supply = x.Series.CURRENT_SUPPLY,
                         max_supply = x.Series.MAX_SUPPLY,
