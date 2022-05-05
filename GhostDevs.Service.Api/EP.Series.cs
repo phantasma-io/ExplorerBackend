@@ -13,12 +13,13 @@ namespace GhostDevs.Service;
 public partial class Endpoints
 {
     [APIInfo(typeof(SeriesResult), "Returns series of NFTs available on the backend.", false, 10, cacheTag: "serieses")]
-    public SeriesResult Series([APIParameter("Order by [id, name]", "string")] string order_by = "id",
+    public SeriesResult Series([APIParameter("Order by [id, series_id, name]", "string")] string order_by = "id",
         [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
         [APIParameter("Offset", "integer")] int offset = 0,
         [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Series ID", "string")] string id = "",
+        [APIParameter("ID", "string")] string id = "",
+        [APIParameter("Series ID", "string")] string series_id = "",
         [APIParameter("Creator of series", "string")]
         string creator = "",
         [APIParameter("Series name/description filter (partial match)", "string")]
@@ -50,8 +51,8 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new APIException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !string.IsNullOrEmpty(id) && !ArgValidation.CheckNumber(id) )
-                throw new APIException("Unsupported value for 'id' parameter.");
+            if ( !string.IsNullOrEmpty(series_id) && !ArgValidation.CheckNumber(series_id) )
+                throw new APIException("Unsupported value for 'series_id' parameter.");
 
             if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
                 throw new APIException("Unsupported value for 'creator' parameter.");
@@ -75,6 +76,9 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
                 throw new APIException("Unsupported value for 'token_id' parameter.");
 
+            if ( !string.IsNullOrEmpty(id) && !ArgValidation.CheckNumber(id) )
+                throw new APIException("Unsupported value for 'id' parameter.");
+
             #endregion
 
             var startTime = DateTime.Now;
@@ -85,8 +89,11 @@ public partial class Endpoints
 
             query = query.Where(x => x.BLACKLISTED != true);
 
+            if ( !string.IsNullOrEmpty(id) && int.TryParse(id, out var parsedId) )
+                query = query.Where(x => x.ID == parsedId);
+
             // Searching for series using SERIES_ID.
-            if ( !string.IsNullOrEmpty(id) ) query = query.Where(x => x.SERIES_ID == id);
+            if ( !string.IsNullOrEmpty(series_id) ) query = query.Where(x => x.SERIES_ID == series_id);
 
             if ( !string.IsNullOrEmpty(creator) ) query = query.Where(x => x.CreatorAddress.ADDRESS == creator);
 
@@ -122,14 +129,16 @@ public partial class Endpoints
             if ( order_direction == "asc" )
                 query = order_by switch
                 {
-                    "id" => query.OrderBy(x => x.SERIES_ID),
+                    "id" => query.OrderBy(x => x.ID),
+                    "series_id" => query.OrderBy(x => x.SERIES_ID),
                     "name" => query.OrderBy(x => x.NAME),
                     _ => query
                 };
             else
                 query = order_by switch
                 {
-                    "id" => query.OrderByDescending(x => x.SERIES_ID),
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "series_id" => query.OrderByDescending(x => x.SERIES_ID),
                     "name" => query.OrderByDescending(x => x.NAME),
                     _ => query
                 };
