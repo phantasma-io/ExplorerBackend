@@ -6,6 +6,8 @@ using System.Text.Json;
 using Phantasma.Numerics;
 using Phantasma.VM;
 
+#pragma warning disable CS1591
+
 namespace GhostDevs.Service;
 
 public static class Utils

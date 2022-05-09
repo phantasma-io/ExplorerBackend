@@ -18,6 +18,7 @@ rm -r $OUT_BIN_FOLDER/GhostDevs.Commons/obj
 cp -a GhostDevs.Service.Api/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
 cp -a GhostDevs.Service.Api/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
 cp -a GhostDevs.Service.Api/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
+cp -a GhostDevs.Service.Api/bin/$NET_SUBFOLDER/*.xml $OUT_BIN_FOLDER
 
 cp -a GhostDevs.Service.DataFetcher/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
 cp -a GhostDevs.Service.DataFetcher/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER

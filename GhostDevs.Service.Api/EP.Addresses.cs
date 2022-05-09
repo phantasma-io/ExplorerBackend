@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
@@ -15,33 +17,48 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns the addresses on the backend
+    /// </summary>
+    /// <remarks>
+    ///     More description
+    /// </remarks>
+    /// <param name="order_by">accepted values are id, address or address_name</param>
+    /// <param name="order_direction">accepted values are asc or desc</param>
+    /// <param name="offset">positive numeric value, represents the value how much values should be skipped</param>
+    /// <param name="limit">how much results will be pulled</param>
+    /// <param name="chain">Chain name (ex. 'main')</param>
+    /// <param name="address">hash of an address</param>
+    /// <param name="address_name">Name of an Address, if is has one</param>
+    /// <param name="address_partial">partial hash of an address</param>
+    /// <param name="organization_name">Filter for an Organization Name"</param>
+    /// <param name="validator_kind">Filter for a Validator Kind (ex. 'Primary')</param>
+    /// <param name="with_storage">returns data with AddressStorage</param>
+    /// <param name="with_stakes">returns data with AddressStake</param>
+    /// <param name="with_balance">returns data with AddressBalances</param>
+    /// <param name="with_total">returns data with total_count (slower) or not (faster)</param>
+    [ProducesResponseType(typeof(AddressResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
     [APIInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]
     public AddressResult Addresses(
-        [APIParameter("Order by [id, address, address_name]", "string")]
+        // ReSharper disable InconsistentNaming
         string order_by = "id",
-        [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Chain name (ex. 'main')", "string")]
+        int offset = 0,
+        int limit = 50,
         string chain = "",
-        [APIParameter("address", "string")] string address = "",
-        [APIParameter("address_name (ex. 'genesis')", "string")]
+        string address = "",
         string address_name = "",
-        [APIParameter("Address (partial match)", "string")]
         string address_partial = "",
-        [APIParameter("Organization Name", "string")]
         string organization_name = "",
-        [APIParameter("Validator Kind (ex. 'Primary')", "string")]
         string validator_kind = "",
-        [APIParameter("Returns with storage", "integer")]
         int with_storage = 0,
-        [APIParameter("Returns with stake", "integer")]
         int with_stakes = 0,
-        [APIParameter("Returns with balances", "integer")]
         int with_balance = 0,
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         long totalResults = 0;
         Address[] addressArray;

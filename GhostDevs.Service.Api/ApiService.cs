@@ -1,3 +1,4 @@
+#pragma warning disable CS1591
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,10 +33,10 @@ namespace GhostDevs.Service.Api;
 
 public static class Api
 {
-    private static readonly string ConfigDirectory =
+    private static readonly string configDirectory =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
 
-    private static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
+    private static string ConfigFile => Path.Combine(configDirectory, "explorer-backend-config.json");
 
 
     private static void Main(string[] args)
@@ -127,6 +128,8 @@ public static class Api
             c.SwaggerDoc("v1",
                 new OpenApiInfo {Title = "Phantasma Explorer API", Description = "", Version = "v1"});
             c.DocumentFilter<InternalDocumentFilter>();
+            var filePath = Path.Combine(AppContext.BaseDirectory, "GhostDevs.Service.Api.xml");
+            c.IncludeXmlComments(filePath);
         });
         var app = builder.Build();
 
