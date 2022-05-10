@@ -1,9 +1,11 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Series = GhostDevs.Service.ApiResults.Series;
@@ -12,27 +14,47 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns series of NFTs available on the backend.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-SeriesResult'>SeriesResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are id, series_id or name</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="id">Internal ID</param>
+    /// <param name="series_id">Series ID</param>
+    /// <param name="creator">Creator of series (Address)</param>
+    /// <param name="name">Series name/description filter (partial match)</param>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="contract" example="SOUL">Token contract hash</param>
+    /// <param name="symbol" example="SOUL"></param>
+    /// <param name="token_id">Token ID</param>
+    /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(SeriesResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
     [APIInfo(typeof(SeriesResult), "Returns series of NFTs available on the backend.", false, 10, cacheTag: "serieses")]
-    public SeriesResult Series([APIParameter("Order by [id, series_id, name]", "string")] string order_by = "id",
-        [APIParameter("Order direction [asc, desc]", "string")]
+    public SeriesResult Series(
+        // ReSharper disable InconsistentNaming
+        string order_by = "id",
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("ID", "string")] string id = "",
-        [APIParameter("Series ID", "string")] string series_id = "",
-        [APIParameter("Creator of series", "string")]
+        int offset = 0,
+        int limit = 50,
+        string id = "",
+        string series_id = "",
         string creator = "",
-        [APIParameter("Series name/description filter (partial match)", "string")]
         string name = "",
-        [APIParameter("Chain name (ex. 'PHA')", "string")]
         string chain = "",
-        [APIParameter("Token contract hash", "string")]
         string contract = "",
-        [APIParameter("Symbol (ex. 'SOUL')", "string")]
         string symbol = "",
-        [APIParameter("Token ID", "string")] string token_id = "",
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        string token_id = "",
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         // Results of the query
         long totalResults = 0;

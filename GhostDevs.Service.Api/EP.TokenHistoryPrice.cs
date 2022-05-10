@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Token = GhostDevs.Service.ApiResults.Token;
@@ -11,23 +13,39 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(HistoryPriceResult), "Returns the token on the backend.", false, 10)]
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns the Token Price History on the backend.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-HistoryPriceResult'>HistoryPriceResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are id or name</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="symbol" example="SOUL"></param>
+    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
+    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
+    /// <param name="with_token" example="0">Return Data with <a href='#model-Token'>Token</a></param>
+    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(HistoryPriceResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
+    [APIInfo(typeof(HistoryPriceResult), "Returns the Token Price History on the backend.", false, 10)]
     public HistoryPriceResult HistoryPrices(
-        [APIParameter("Order by [id, symbol, date]", "string")]
+        // ReSharper disable InconsistentNaming
         string order_by = "date",
-        [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("symbol", "string")] string symbol = "SOUL",
-        [APIParameter("Date (less than)", "string")]
+        int offset = 0,
+        int limit = 50,
+        string symbol = "SOUL",
         string date_less = "",
-        [APIParameter("Date (greater than)", "string")]
         string date_greater = "",
-        [APIParameter("with token info", "integer")]
         int with_token = 0,
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         long totalResults = 0;
         HistoryPrice[] historyArray;

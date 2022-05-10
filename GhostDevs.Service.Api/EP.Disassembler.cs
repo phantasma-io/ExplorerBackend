@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Net;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
 using Microsoft.AspNetCore.Mvc;
@@ -9,8 +10,15 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
+    /// <summary>
+    ///     Returns the disassembled version of the Script.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-DisassemblerResult'>DisassemblerResult</a>
+    /// </remarks>
+    [ProducesResponseType(typeof(DisassemblerResult), ( int ) HttpStatusCode.OK)]
+    [HttpPost("{script}")]
     [APIInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script", false, 10)]
-    [HttpPost]
     public DisassemblerResult Instructions([FromBody] Script script)
     {
         long totalResults;

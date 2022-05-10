@@ -1,9 +1,11 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Contract = GhostDevs.Service.ApiResults.Contract;
@@ -15,30 +17,49 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns NFTs available on Phantasma blockchain.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-NftsResult'>SeriesResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are id or mint_date</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="creator">Address of asset creator</param>
+    /// <param name="owner">Address of asset owner</param>
+    /// <param name="contract_hash" example="SOUL">Token contract hash</param>
+    /// <param name="name">Asset name/description filter (partial match)</param>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="symbol" example="TTRS"></param>
+    /// <param name="token_id">Token ID</param>
+    /// <param name="series_id">Series ID</param>
+    /// <param name="status" example="all">Infusion status (all/active/infused)</param>
+    /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(NftsResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
     [APIInfo(typeof(NftsResult), "Returns NFTs available on Phantasma blockchain.", false, 10, cacheTag: "nfts")]
-    public NftsResult Nfts([APIParameter("Order by [mint_date, id]", "string")] string order_by = "mint_date",
-        [APIParameter("Order direction [asc, desc]", "string")]
+    public NftsResult Nfts(
+        // ReSharper disable InconsistentNaming
+        string order_by = "mint_date",
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Address of asset creator", "string")]
+        int offset = 0,
+        int limit = 50,
         string creator = "",
-        [APIParameter("Address of asset owner", "string")]
         string owner = "",
-        [APIParameter("Token contract hash", "string")]
         string contract_hash = "",
-        [APIParameter("Asset name/description filter (partial match)", "string")]
         string name = "",
-        [APIParameter("Chain name (ex. 'main')", "string")]
         string chain = "",
-        [APIParameter("Symbol (ex. 'TTRS')", "string")]
         string symbol = "",
-        [APIParameter("Token ID", "string")] string token_id = "",
-        [APIParameter("Series ID", "string")] string series_id = "",
-        [APIParameter("Infusion status (all/active/infused)", "string")]
+        string token_id = "",
+        string series_id = "",
         string status = "all",
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         // Results of the query
         long totalResults = 0;

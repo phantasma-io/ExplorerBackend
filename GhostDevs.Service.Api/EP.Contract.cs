@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
@@ -15,28 +17,45 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns the Contracts on the backend.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-ContractResult'>ContractResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are id, name or symbol</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="symbol" example="SOUL"></param>
+    /// <param name="hash" example="SOUL"></param>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="with_methods" example="0">Return Data with methods</param>
+    /// <param name="with_script" example="0">Return Data with raw script, use instructions to disassemble</param>
+    /// <param name="with_token" example="0">Return Data with <a href='#model-Token'>Token</a></param>
+    /// <param name="with_creation_event" example="0">Return data with <a href='#model-Event'>Event</a> of the creation</param>
+    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(BlockResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
     [APIInfo(typeof(ContractResult), "Returns the contracts on the backend.", false, 10, cacheTag: "contracts")]
     public ContractResult Contracts(
-        [APIParameter("Order by [id, name, symbol]", "string")]
+        // ReSharper disable InconsistentNaming
         string order_by = "id",
-        [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("symbol", "string")] string symbol = "",
-        [APIParameter("hash", "string")] string hash = "",
-        [APIParameter("Chain name (ex. 'main')", "string")]
+        int offset = 0,
+        int limit = 50,
+        string symbol = "",
+        string hash = "",
         string chain = "",
-        [APIParameter("show methods", "integer")]
         int with_methods = 0,
-        [APIParameter("show scripts", "integer")]
         int with_script = 0,
-        [APIParameter("show token", "integer")]
         int with_token = 0,
-        [APIParameter("return data with event of the creation", "integer")]
         int with_creation_event = 0,
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         long totalResults = 0;
         Contract[] contractArray;

@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Oracle = GhostDevs.Service.ApiResults.Oracle;
@@ -11,21 +13,37 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(OracleResult), "Returns the addresses on the backend.", false, 10)]
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns the Oracles on the backend.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-OracleResult'>OracleResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are id, url or content]</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="block_hash"><a href='#model-Block'>Block</a> hash</param>
+    /// <param name="block_height">height of the <a href='#model-Block'>Block</a></param>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(OracleResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
+    [APIInfo(typeof(OracleResult), "Returns the Oracles on the backend.", false, 10)]
     public OracleResult Oracles(
-        [APIParameter("Order by [id, url, content]", "string")]
+        // ReSharper disable InconsistentNaming
         string order_by = "id",
-        [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Block Hash", "string")] string block_hash = "",
-        [APIParameter("Block Height", "string")]
+        int offset = 0,
+        int limit = 50,
+        string block_hash = "",
         string block_height = "",
-        [APIParameter("Chain name (ex. 'main')", "string")]
         string chain = "",
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         long totalResults = 0;
         Oracle[] oracleArray;

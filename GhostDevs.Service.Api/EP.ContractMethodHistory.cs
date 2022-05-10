@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Contract = GhostDevs.Service.ApiResults.Contract;
@@ -11,24 +13,41 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(ContractMethodHistoryResult), "Returns the contractmethods on the backend.", false, 10)]
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns the Contract Methods on the backend.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-ContractMethodHistoryResult'>ContractMethodHistoryResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are id, name or symbol</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="symbol" example="SOUL"></param>
+    /// <param name="hash" example="SOUL"></param>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
+    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
+    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(ContractMethodHistoryResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
+    [APIInfo(typeof(ContractMethodHistoryResult), "Returns the contract methods on the backend.", false, 10)]
     public ContractMethodHistoryResult ContractMethodHistories(
-        [APIParameter("Order by [id, name, symbol]", "string")]
+        // ReSharper disable InconsistentNaming
         string order_by = "id",
-        [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("symbol", "string")] string symbol = "",
-        [APIParameter("hash", "string")] string hash = "",
-        [APIParameter("Chain name (ex. 'main')", "string")]
+        int offset = 0,
+        int limit = 50,
+        string symbol = "",
+        string hash = "",
         string chain = "",
-        [APIParameter("Date (less than)", "string")]
         string date_less = "",
-        [APIParameter("Date (greater than)", "string")]
         string date_greater = "",
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         long totalResults = 0;
         ContractMethodHistory[] contractMethodHistoryArray;

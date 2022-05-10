@@ -1,21 +1,11 @@
 #nullable enable
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
 namespace GhostDevs.Service.ApiResults;
 
 //since we got different naming in the API
 // ReSharper disable InconsistentNaming
-public class JsonResult
-{
-    public string? json { get; set; }
-}
-
-[APIDescription("Result of action, if success has a value of false it should be considered an error")]
-public class BooleanResult
-{
-    public bool success { get; set; }
-}
-
 /// <summary>
 ///     Ntf Metadata Infomation
 /// </summary>
@@ -848,6 +838,7 @@ public class Script
     /// <summary>
     ///     Script Raw
     /// </summary>
+    [Required]
     public string? script_raw { get; set; }
 }
 
@@ -900,7 +891,7 @@ public class OrganizationResult
 }
 
 /// <summary>
-///     Base Information of an Organization
+///     Base Information of an Block
 /// </summary>
 public class Block
 {

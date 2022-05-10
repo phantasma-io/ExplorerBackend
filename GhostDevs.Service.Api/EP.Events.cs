@@ -1,10 +1,12 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
@@ -31,53 +33,78 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns events available on the backend.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-EventsResult'>EventsResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are date, token_id or id</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="contract" example="SOUL">Token contract hash</param>
+    /// <param name="token_id">Token ID</param>
+    /// <param name="date_day">Date day match (matches whole given day)</param>
+    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
+    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
+    /// <param name="event_kind" example="TokenMint">Event kind name</param>
+    /// <param name="event_kind_partial" example="Token">Event kind (partial match)</param>
+    /// <param name="nft_name_partial">Nft name (partial match)</param>
+    /// <param name="nft_description_partial">Nft description (partial match))</param>
+    /// <param name="address">Address (Hash)</param>
+    /// <param name="address_partial">Address (partial match) (Hash)</param>
+    /// <param name="block_hash"><a href='#model-Block'>Block</a> hash</param>
+    /// <param name="block_height">height of the <a href='#model-Block'>Block</a></param>
+    /// <param name="transaction_hash"><a href='#model-Transaction'>Transaction</a> hash</param>
+    /// <param name="event_id">Internal ID</param>
+    /// <param name="with_event_data" example="0">Return event data with more details, needs with_events to be set</param>
+    /// <param name="with_metadata" example="0">Return data with <a href='#model-NftMetadata'>nft metadata</a></param>
+    /// <param name="with_series" example="0">Return NFT <a href='#model-Series'>Series</a></param>
+    /// <param name="with_fiat" example="0">
+    ///     Return with <a href='#model-FiatPrice'>fiat_prices</a> (only
+    ///     <a href='#model-MarketEvent'>market_event</a>)
+    /// </param>
+    /// <param name="with_nsfw" example="0">Include Data that has been marked NSFW</param>
+    /// <param name="with_blacklisted" example="0">Include Data that has been marked Blacklisted</param>
+    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(EventsResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
     [APIInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10, cacheTag: "events")]
-    public EventsResult Events([APIParameter("Order by [date, token_id, id]", "string")] string order_by = "id",
-        [APIParameter("Order direction [asc, desc]", "string")]
+    public EventsResult Events(
+        // ReSharper disable InconsistentNaming
+        string order_by = "id",
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Chain name (ex. 'main')", "string")]
+        int offset = 0,
+        int limit = 50,
         string chain = "",
-        [APIParameter("Token contract hash", "string")]
         string contract = "",
-        [APIParameter("Token ID", "string")] string token_id = "",
-        [APIParameter("Date day match (matches whole given day)", "string")]
+        string token_id = "",
         string date_day = "",
-        [APIParameter("Date (less than)", "string")]
         string date_less = "",
-        [APIParameter("Date (greater than)", "string")]
         string date_greater = "",
-        [APIParameter("Event kind", "string")] string event_kind = "",
-        [APIParameter("Event kind (parial match)", "string")]
+        string event_kind = "",
         string event_kind_partial = "",
-        [APIParameter("Nft name (parial match)", "string")]
         string nft_name_partial = "",
-        [APIParameter("Nft description (parial match)", "string")]
         string nft_description_partial = "",
-        [APIParameter("Address", "string")] string address = "",
-        [APIParameter("Address (partial match)", "string")]
+        string address = "",
         string address_partial = "",
-        [APIParameter("Block Hash", "string")] string block_hash = "",
-        [APIParameter("Block Height", "string")]
+        string block_hash = "",
         string block_height = "",
-        [APIParameter("Transaction Hash", "string")]
         string transaction_hash = "",
-        [APIParameter("Event ID", "string")] string event_id = "",
-        [APIParameter("Return event data of events", "integer")]
+        string event_id = "",
         int with_event_data = 0,
-        [APIParameter("Return NFT metadata with events", "integer")]
         int with_metadata = 0,
-        [APIParameter("Return NFT series with events", "integer")]
         int with_series = 0,
-        [APIParameter("Return with fiat_prices (only at market_event)", "integer")]
         int with_fiat = 0,
-        [APIParameter("Return with events marked nsfw as well", "integer")]
         int with_nsfw = 0,
-        [APIParameter("Return blacklisted events as well", "integer")]
         int with_blacklisted = 0,
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         // Results of the query
         long totalResults = 0;

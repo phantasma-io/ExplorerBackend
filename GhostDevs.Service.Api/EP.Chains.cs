@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Chain = GhostDevs.Service.ApiResults.Chain;
@@ -11,13 +13,28 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
+    /// <summary>
+    ///     Returns the Chains on the backend.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-ChainResult'>ChainResult</a>
+    /// </remarks>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(BlockResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
     [APIInfo(typeof(ChainResult), "Returns the chains on the backend.", false, 10)]
-    public ChainResult Chains([APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("Chain name (ex. 'main')", "string")]
+    public ChainResult Chains(
+        // ReSharper disable InconsistentNaming
+        int offset = 0,
+        int limit = 50,
         string chain = "",
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
-        int with_total = 0)
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
     {
         long totalResults = 0;
         Chain[] chainArray;

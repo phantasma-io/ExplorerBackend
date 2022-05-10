@@ -19,25 +19,27 @@ public partial class Endpoints
 {
     //TODO change order_by and order_direction maybe to enum
     /// <summary>
-    ///     Returns the addresses on the backend
+    ///     Returns the Addresses on the backend.
     /// </summary>
     /// <remarks>
-    ///     More description
+    ///     <a href='#model-AddressResult'>AddressResult</a>
     /// </remarks>
-    /// <param name="order_by">accepted values are id, address or address_name</param>
-    /// <param name="order_direction">accepted values are asc or desc</param>
-    /// <param name="offset">positive numeric value, represents the value how much values should be skipped</param>
-    /// <param name="limit">how much results will be pulled</param>
-    /// <param name="chain">Chain name (ex. 'main')</param>
+    /// <param name="order_by" example="id">accepted values are id, address or address_name</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="chain" example="main">Chain name</param>
     /// <param name="address">hash of an address</param>
     /// <param name="address_name">Name of an Address, if is has one</param>
     /// <param name="address_partial">partial hash of an address</param>
     /// <param name="organization_name">Filter for an Organization Name"</param>
-    /// <param name="validator_kind">Filter for a Validator Kind (ex. 'Primary')</param>
-    /// <param name="with_storage">returns data with AddressStorage</param>
-    /// <param name="with_stakes">returns data with AddressStake</param>
-    /// <param name="with_balance">returns data with AddressBalances</param>
-    /// <param name="with_total">returns data with total_count (slower) or not (faster)</param>
+    /// <param name="validator_kind" example="Primary">Filter for a Validator Kind</param>
+    /// <param name="with_storage" example="0">returns data with <a href='#model-AddressStorage'>AddressStorage</a></param>
+    /// <param name="with_stakes" example="0">returns data with <a href='#model-AddressStake'>AddressStake</a></param>
+    /// <param name="with_balance" example="0">returns data with <a href='#model-AddressBalances'>AddressBalances</a></param>
+    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    /// <response code="400">Bad Request</response>
     [ProducesResponseType(typeof(AddressResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [APIInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]

@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.Service.ApiResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Address = GhostDevs.Service.ApiResults.Address;
@@ -19,25 +21,40 @@ namespace GhostDevs.Service;
 
 public partial class Endpoints
 {
-    [APIInfo(typeof(PlatformResult), "Returns the token on the backend.", false, 10)]
+    //TODO change order_by and order_direction maybe to enum
+    /// <summary>
+    ///     Returns the Platform on the backend.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-PlatformResult'>PlatformResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are id or name</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
+    /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="name" example="neo">Platform name</param>
+    /// <param name="with_external" example="0">Return Data with <a href='#model-External'>External</a></param>
+    /// <param name="with_interops" example="0">Return Data with <a href='#model-PlatformInterop'>Interops</a></param>
+    /// <param name="with_token" example="0">Return Data with <a href='#model-Token'>Token</a></param>
+    /// <param name="with_creation_event" example="0">Return data with <a href='#model-Event'>Event</a> of the creation</param>
+    /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Ok</response>
+    [ProducesResponseType(typeof(PlatformResult), ( int ) HttpStatusCode.OK)]
+    [HttpGet]
+    [APIInfo(typeof(PlatformResult), "Returns the Platform on the backend.", false, 10)]
     public PlatformResult Platforms(
-        [APIParameter("Order by [id, name]", "string")]
+        // ReSharper disable InconsistentNaming
         string order_by = "id",
-        [APIParameter("Order direction [asc, desc]", "string")]
         string order_direction = "asc",
-        [APIParameter("Offset", "integer")] int offset = 0,
-        [APIParameter("Limit", "integer")] int limit = 50,
-        [APIParameter("name", "string")] string name = "",
-        [APIParameter("Return with external", "integer")]
+        int offset = 0,
+        int limit = 50,
+        string name = "",
         int with_external = 0,
-        [APIParameter("Return with interops", "integer")]
         int with_interops = 0,
-        [APIParameter("Return with token", "integer")]
         int with_token = 0,
-        [APIParameter("return data with event of the creation", "integer")]
         int with_creation_event = 0,
-        [APIParameter("Return total (slower) or not (faster)", "integer")]
         int with_total = 0
+        // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
