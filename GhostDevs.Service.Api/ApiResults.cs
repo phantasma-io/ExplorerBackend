@@ -1545,3 +1545,35 @@ public class TokenLogo
     /// </summary>
     public string? url { get; set; }
 }
+
+/// <summary>
+///     Information what Endpoint might deliver a Result
+/// </summary>
+public class Search
+{
+    /// <summary>
+    ///     Name of the Endpoint
+    /// </summary>
+    public string? endpoint_name { get; set; }
+
+    /// <summary>
+    ///     Name of the Parameter
+    /// </summary>
+    public string? endpoint_parameter { get; set; }
+
+    /// <summary>
+    ///     Was it found
+    /// </summary>
+    public bool found { get; set; }
+}
+
+/// <summary>
+///     Search Result
+/// </summary>
+public class SearchResult
+{
+    /// <summary>
+    ///     Search Result List
+    /// </summary>
+    public Search[]? result { get; set; }
+}
