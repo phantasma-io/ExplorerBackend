@@ -24,7 +24,7 @@ public partial class Endpoints
     /// <param name="chain" example="main">Chain name</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Ok</response>
-    [ProducesResponseType(typeof(BlockResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ChainResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [APIInfo(typeof(ChainResult), "Returns the chains on the backend.", false, 10)]
     public ChainResult Chains(

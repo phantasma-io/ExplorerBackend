@@ -37,7 +37,7 @@ public partial class Endpoints
     /// <param name="with_creation_event" example="0">Return data with <a href='#model-Event'>Event</a> of the creation</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Ok</response>
-    [ProducesResponseType(typeof(BlockResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ContractResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [APIInfo(typeof(ContractResult), "Returns the contracts on the backend.", false, 10, cacheTag: "contracts")]
     public ContractResult Contracts(
