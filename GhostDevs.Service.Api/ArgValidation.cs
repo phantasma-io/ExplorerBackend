@@ -73,7 +73,7 @@ public static class ArgValidation
 
     public static bool CheckOffset(int value)
     {
-        return value > 0;
+        return value >= 0;
     }
 
 
