@@ -38,11 +38,12 @@ public partial class Endpoints
     /// <param name="with_stakes" example="0">returns data with <a href='#model-AddressStake'>AddressStake</a></param>
     /// <param name="with_balance" example="0">returns data with <a href='#model-AddressBalances'>AddressBalances</a></param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(AddressResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]
+    [ApiInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]
     public AddressResult Addresses(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -74,35 +75,38 @@ public partial class Endpoints
             #region ArgValidation
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                throw new APIException("Unsupported value for 'order_by' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                throw new APIException("Unsupported value for 'order_direction' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
             if ( !ArgValidation.CheckLimit(limit, filter) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
-                throw new APIException("Unsupported value for 'address' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
             ContractMethods.Drop0x(ref address);
 
             if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
-                throw new APIException("Unsupported value for 'address_partial' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
 
             ContractMethods.Drop0x(ref address_partial);
 
             if ( !string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name) )
-                throw new APIException("Unsupported value for 'address_name' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address_name' parameter.");
 
             if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
-                throw new APIException("Unsupported value for 'organization_name' parameter.");
+                throw new ApiParameterException("Unsupported value for 'organization_name' parameter.");
 
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
-                throw new APIException("Unsupported value for 'chain' parameter.");
+                throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             if ( !string.IsNullOrEmpty(validator_kind) && !ArgValidation.CheckString(validator_kind, true) )
-                throw new APIException("Unsupported value for 'validator_kind' parameter.");
+                throw new ApiParameterException("Unsupported value for 'validator_kind' parameter.");
 
             #endregion
 
@@ -224,15 +228,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
         catch ( Exception exception )
         {
             var logMessage = LogEx.Exception("Address()", exception);
-
-            throw new APIException(logMessage, exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new AddressResult {total_results = with_total == 1 ? totalResults : null, addresses = addressArray};

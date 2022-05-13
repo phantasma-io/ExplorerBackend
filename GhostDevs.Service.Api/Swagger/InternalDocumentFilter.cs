@@ -11,15 +11,18 @@ public class InternalDocumentFilter : IDocumentFilter
     {
         foreach ( var description in context.ApiDescriptions )
         {
-            var attribute = description.ActionDescriptor.EndpointMetadata.OfType<APIInfoAttribute>()
+            var attribute = description.ActionDescriptor.EndpointMetadata.OfType<ApiInfoAttribute>()
                 .FirstOrDefault();
 
-            if ( attribute == null || !attribute.InternalEndpoint ) continue;
+            if ( attribute is not {InternalEndpoint: true} ) continue;
 
             var key = "/" + description.RelativePath?.TrimEnd('/');
-            var operation = ( OperationType ) Enum.Parse(typeof(OperationType), description.HttpMethod, true);
+            if ( description.HttpMethod != null )
+            {
+                var operation = ( OperationType ) Enum.Parse(typeof(OperationType), description.HttpMethod, true);
 
-            swaggerDoc.Paths[key].Operations.Remove(operation);
+                swaggerDoc.Paths[key].Operations.Remove(operation);
+            }
 
             // Drop the entire route of there are no operations left
             if ( !swaggerDoc.Paths[key].Operations.Any() ) swaggerDoc.Paths.Remove(key);

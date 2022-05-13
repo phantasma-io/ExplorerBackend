@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -29,7 +30,7 @@ public class ErrorLoggingMiddleware
         {
             await _next(httpContext);
         }
-        catch ( APIException e )
+        catch ( Exception e ) when ( e is ApiParameterException or ApiUnexpectedException )
         {
             // If there is no inner exception, it is likely just a field validation error so we won't log it
 
@@ -40,6 +41,9 @@ public class ErrorLoggingMiddleware
                 new JsonSerializerOptions {IncludeFields = true});
             var response = Encoding.UTF8.GetBytes(body);
             httpContext.Response.ContentType = "application/json; charset=utf-8";
+            httpContext.Response.StatusCode = e is ApiParameterException
+                ? ( int ) HttpStatusCode.BadRequest
+                : ( int ) HttpStatusCode.InternalServerError;
             await httpContext.Response.Body.WriteAsync(response);
         }
         catch ( Exception e )

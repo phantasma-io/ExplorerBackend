@@ -70,10 +70,12 @@ public partial class Endpoints
     /// <param name="with_nsfw" example="0">Include Data that has been marked NSFW</param>
     /// <param name="with_blacklisted" example="0">Include Data that has been marked Blacklisted</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(EventsResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10, cacheTag: "events")]
+    [ApiInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10, cacheTag: "events")]
     public EventsResult Events(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -125,71 +127,74 @@ public partial class Endpoints
             #region ArgValidation
 
             if ( !ArgValidation.CheckLimit(limit, filter) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                throw new APIException("Unsupported value for 'order_by' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                throw new APIException("Unsupported value for 'order_direction' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
-                throw new APIException("Unsupported value for 'chain' parameter.");
+                throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true) )
-                throw new APIException("Unsupported value for 'contract' parameter.");
+                throw new ApiParameterException("Unsupported value for 'contract' parameter.");
 
             ContractMethods.Drop0x(ref contract);
 
             if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
-                throw new APIException("Unsupported value for 'token_id' parameter.");
+                throw new ApiParameterException("Unsupported value for 'token_id' parameter.");
 
             if ( !string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$") )
-                throw new APIException("Unsupported value for 'date_day' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_day' parameter.");
 
             if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
-                throw new APIException("Unsupported value for 'date_less' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
             if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
-                throw new APIException("Unsupported value for 'date_greater' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
             if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckString(event_kind, true) )
-                throw new APIException("Unsupported value for 'event_kind' parameter.");
+                throw new ApiParameterException("Unsupported value for 'event_kind' parameter.");
 
             if ( !string.IsNullOrEmpty(event_kind_partial) && !ArgValidation.CheckString(event_kind_partial, true) )
-                throw new APIException("Unsupported value for 'event_kind_partial' parameter.");
+                throw new ApiParameterException("Unsupported value for 'event_kind_partial' parameter.");
 
             if ( !string.IsNullOrEmpty(nft_name_partial) && !ArgValidation.CheckName(nft_name_partial) )
-                throw new APIException("Unsupported value for 'nft_name_partial' parameter.");
+                throw new ApiParameterException("Unsupported value for 'nft_name_partial' parameter.");
 
             if ( !string.IsNullOrEmpty(nft_description_partial) &&
                  !Regex.IsMatch(nft_description_partial, @"^[_\-a-zA-Z0-9]+$") )
-                throw new APIException("Unsupported value for 'nft_description_partial' parameter.");
+                throw new ApiParameterException("Unsupported value for 'nft_description_partial' parameter.");
 
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
-                throw new APIException("Unsupported value for 'address' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
             ContractMethods.Drop0x(ref address);
 
             if ( !string.IsNullOrEmpty(address) && string.IsNullOrEmpty(chain) )
-                throw new APIException("Pass chain when using address filter.");
+                throw new ApiParameterException("Pass chain when using address filter.");
 
             if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
-                throw new APIException("Unsupported value for 'address_partial' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
 
             ContractMethods.Drop0x(ref address_partial);
 
             if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
-                throw new APIException("Unsupported value for 'block_hash' parameter.");
+                throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
 
             if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
-                throw new APIException("Unsupported value for 'block_height' parameter.");
+                throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
 
             if ( !string.IsNullOrEmpty(transaction_hash) && !ArgValidation.CheckHash(transaction_hash) )
-                throw new APIException("Unsupported value for 'transaction_hash' parameter.");
+                throw new ApiParameterException("Unsupported value for 'transaction_hash' parameter.");
 
             if ( !string.IsNullOrEmpty(event_id) && !ArgValidation.CheckNumber(event_id) )
-                throw new APIException("Unsupported value for 'event_id' parameter.");
+                throw new ApiParameterException("Unsupported value for 'event_id' parameter.");
 
             #endregion
 
@@ -552,15 +557,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
-        catch ( Exception e )
+        catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("Events()", e);
-
-            throw new APIException(logMessage, e);
+            var logMessage = LogEx.Exception("Events()", exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new EventsResult {total_results = with_total == 1 ? totalResults : null, events = eventsArray};

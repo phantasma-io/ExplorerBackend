@@ -16,9 +16,12 @@ public partial class Endpoints
     /// <remarks>
     ///     <a href='#model-DisassemblerResult'>DisassemblerResult</a>
     /// </remarks>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(DisassemblerResult), ( int ) HttpStatusCode.OK)]
     [HttpPost("{script}")]
-    [APIInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script", false, 10)]
+    [ApiInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script", false, 10)]
     public DisassemblerResult Instructions([FromBody] Script script)
     {
         long totalResults;
@@ -27,10 +30,10 @@ public partial class Endpoints
         try
         {
             if ( script == null )
-                throw new APIException("Unsupported value for 'script' parameter.");
+                throw new ApiParameterException("Unsupported value for 'script' parameter.");
 
             if ( !string.IsNullOrEmpty(script.script_raw) && !ArgValidation.CheckString(script.script_raw) )
-                throw new APIException("Unsupported value for 'script_raw' parameter.");
+                throw new ApiParameterException("Unsupported value for 'script_raw' parameter.");
 
             var startTime = DateTime.Now;
 
@@ -48,15 +51,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
         catch ( Exception exception )
         {
             var logMessage = LogEx.Exception("Disassembler()", exception);
-
-            throw new APIException(logMessage, exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new DisassemblerResult {total_results = totalResults, Instructions = instructionArray};

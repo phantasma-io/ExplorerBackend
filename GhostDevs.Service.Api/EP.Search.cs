@@ -23,10 +23,12 @@ public partial class Endpoints
     ///     Will be checked if it is an Address, a Block, a Chain, a Contract, an Organization, a Platform or a
     ///     Token
     /// </param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(SearchResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(SearchResult), "Returns the ValidatorKinds on the backend.", false, 10)]
+    [ApiInfo(typeof(SearchResult), "Returns the ValidatorKinds on the backend.", false, 10)]
     public SearchResult Searches(
         // ReSharper disable InconsistentNaming
         [Required] string value
@@ -38,7 +40,7 @@ public partial class Endpoints
         try
         {
             if ( string.IsNullOrEmpty(value) || !ArgValidation.CheckString(value) || value.Length < 3 )
-                throw new APIException("Unsupported value for 'value' parameter.");
+                throw new ApiParameterException("Unsupported value for 'value' parameter.");
 
             var startTime = DateTime.Now;
             using MainDbContext databaseContext = new();
@@ -76,15 +78,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
         catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("ValidatorKinds()", exception);
-
-            throw new APIException(logMessage, exception);
+            var logMessage = LogEx.Exception("Search()", exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new SearchResult {result = searchList.ToArray()};

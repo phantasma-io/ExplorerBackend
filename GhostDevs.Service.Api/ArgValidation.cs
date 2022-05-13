@@ -71,6 +71,12 @@ public static class ArgValidation
     }
 
 
+    public static bool CheckOffset(int value)
+    {
+        return value > 0;
+    }
+
+
     public static bool CheckFieldName(string value)
     {
         // We allow for names:

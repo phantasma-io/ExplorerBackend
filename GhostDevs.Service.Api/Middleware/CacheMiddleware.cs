@@ -33,7 +33,7 @@ public class CacheMiddleware
             return;
         }
 
-        if ( endpoint.Metadata.FirstOrDefault(m => m is APIInfoAttribute) is not APIInfoAttribute apiInfoMeta )
+        if ( endpoint.Metadata.FirstOrDefault(m => m is ApiInfoAttribute) is not ApiInfoAttribute apiInfoMeta )
         {
             await _next(httpContext);
 

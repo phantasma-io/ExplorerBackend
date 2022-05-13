@@ -38,10 +38,12 @@ public partial class Endpoints
     /// <param name="series_id">Series ID</param>
     /// <param name="status" example="all">Infusion status (all/active/infused)</param>
     /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(NftsResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(NftsResult), "Returns NFTs available on Phantasma blockchain.", false, 10, cacheTag: "nfts")]
+    [ApiInfo(typeof(NftsResult), "Returns NFTs available on Phantasma blockchain.", false, 10, cacheTag: "nfts")]
     public NftsResult Nfts(
         // ReSharper disable InconsistentNaming
         string order_by = "mint_date",
@@ -70,48 +72,51 @@ public partial class Endpoints
             #region ArgValidations
 
             if ( !ArgValidation.CheckLimit(limit, false) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                throw new APIException("Unsupported value for 'order_by' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                throw new APIException("Unsupported value for 'order_direction' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
             if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
-                throw new APIException("Unsupported value for 'creator' parameter.");
+                throw new ApiParameterException("Unsupported value for 'creator' parameter.");
 
             ContractMethods.Drop0x(ref creator);
 
             if ( !string.IsNullOrEmpty(owner) && !ArgValidation.CheckAddress(owner) )
-                throw new APIException("Unsupported value for 'owner' parameter.");
+                throw new ApiParameterException("Unsupported value for 'owner' parameter.");
 
             ContractMethods.Drop0x(ref owner);
 
             if ( !string.IsNullOrEmpty(contract_hash) && !ArgValidation.CheckHash(contract_hash, true) )
-                throw new APIException("Unsupported value for 'contract' parameter.");
+                throw new ApiParameterException("Unsupported value for 'contract' parameter.");
 
             ContractMethods.Drop0x(ref contract_hash);
             if ( !string.IsNullOrEmpty(contract_hash) && string.IsNullOrEmpty(chain) )
-                throw new APIException("Pass chain when using contract filter.");
+                throw new ApiParameterException("Pass chain when using contract filter.");
 
             if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
-                throw new APIException("Unsupported value for 'name' parameter.");
+                throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
-                throw new APIException("Unsupported value for 'chain' parameter.");
+                throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
-                throw new APIException("Unsupported value for 'symbol' parameter.");
+                throw new ApiParameterException("Unsupported value for 'symbol' parameter.");
 
             if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
-                throw new APIException("Unsupported value for 'token_id' parameter.");
+                throw new ApiParameterException("Unsupported value for 'token_id' parameter.");
 
             if ( !string.IsNullOrEmpty(series_id) && !ArgValidation.CheckNumber(series_id) )
-                throw new APIException("Unsupported value for 'series_id' parameter.");
+                throw new ApiParameterException("Unsupported value for 'series_id' parameter.");
 
             if ( !string.IsNullOrEmpty(status) && status != "all" && status != "active" && status != "infused" )
-                throw new APIException("Unsupported value for 'status' parameter.");
+                throw new ApiParameterException("Unsupported value for 'status' parameter.");
 
             #endregion
 
@@ -260,15 +265,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
-        catch ( Exception e )
+        catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("Nfts()", e);
-
-            throw new APIException(logMessage, e);
+            var logMessage = LogEx.Exception("Nfts()", exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new NftsResult {total_results = with_total == 1 ? totalResults : null, nfts = nftArray};

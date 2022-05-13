@@ -59,10 +59,12 @@ public partial class Endpoints
     ///     <a href='#model-MarketEvent'>market_event</a>)
     /// </param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(TransactionResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 10, cacheTag: "transactions")]
+    [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 10, cacheTag: "transactions")]
     public TransactionResult Transactions(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -97,36 +99,39 @@ public partial class Endpoints
             #region ArgValidation
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                throw new APIException("Unsupported value for 'order_by' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                throw new APIException("Unsupported value for 'order_direction' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
             if ( !ArgValidation.CheckLimit(limit, filter) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash) )
-                throw new APIException("Unsupported value for 'hash' parameter.");
+                throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
             if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial) )
-                throw new APIException("Unsupported value for 'hash_partial' parameter.");
+                throw new ApiParameterException("Unsupported value for 'hash_partial' parameter.");
 
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
-                throw new APIException("Unsupported value for 'address' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
             ContractMethods.Drop0x(ref address);
 
             if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
-                throw new APIException("Unsupported value for 'date_less' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
             if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
-                throw new APIException("Unsupported value for 'date_greater' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
             if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
-                throw new APIException("Unsupported value for 'block_hash' parameter.");
+                throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
 
             if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
-                throw new APIException("Unsupported value for 'block_height' parameter.");
+                throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
 
             #endregion
 
@@ -465,15 +470,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
         catch ( Exception exception )
         {
             var logMessage = LogEx.Exception("Transaction()", exception);
-
-            throw new APIException(logMessage, exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new TransactionResult

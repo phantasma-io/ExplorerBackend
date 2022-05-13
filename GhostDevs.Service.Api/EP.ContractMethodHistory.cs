@@ -30,10 +30,12 @@ public partial class Endpoints
     /// <param name="date_less">Date (greater than), UTC unixseconds</param>
     /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(ContractMethodHistoryResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(ContractMethodHistoryResult), "Returns the contract methods on the backend.", false, 10)]
+    [ApiInfo(typeof(ContractMethodHistoryResult), "Returns the contract methods on the backend.", false, 10)]
     public ContractMethodHistoryResult ContractMethodHistories(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -57,28 +59,31 @@ public partial class Endpoints
             #region ArgValidation
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                throw new APIException("Unsupported value for 'order_by' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                throw new APIException("Unsupported value for 'order_direction' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
             if ( !ArgValidation.CheckLimit(limit, false) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
-                throw new APIException("Unsupported value for 'address' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
             if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
-                throw new APIException("Unsupported value for 'hash' parameter.");
+                throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
-                throw new APIException("Unsupported value for 'chain' parameter.");
+                throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
-                throw new APIException("Unsupported value for 'date_less' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
             if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
-                throw new APIException("Unsupported value for 'date_greater' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
             #endregion
 
@@ -144,15 +149,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
         catch ( Exception exception )
         {
-            var logMessage = LogEx.Exception("Contract()", exception);
-
-            throw new APIException(logMessage, exception);
+            var logMessage = LogEx.Exception("ContractMethodHistoryResult()", exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new ContractMethodHistoryResult

@@ -36,10 +36,12 @@ public partial class Endpoints
     /// <param name="with_token" example="0">Return Data with <a href='#model-Token'>Token</a></param>
     /// <param name="with_creation_event" example="0">Return data with <a href='#model-Event'>Event</a> of the creation</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(ContractResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(ContractResult), "Returns the contracts on the backend.", false, 10, cacheTag: "contracts")]
+    [ApiInfo(typeof(ContractResult), "Returns the contracts on the backend.", false, 10, cacheTag: "contracts")]
     public ContractResult Contracts(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -65,22 +67,25 @@ public partial class Endpoints
             #region ArgValidation
 
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                throw new APIException("Unsupported value for 'order_by' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                throw new APIException("Unsupported value for 'order_direction' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
             if ( !ArgValidation.CheckLimit(limit, false) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
-                throw new APIException("Unsupported value for 'address' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
             if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
-                throw new APIException("Unsupported value for 'hash' parameter.");
+                throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
-                throw new APIException("Unsupported value for 'chain' parameter.");
+                throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             #endregion
 
@@ -185,15 +190,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
         catch ( Exception exception )
         {
             var logMessage = LogEx.Exception("Contract()", exception);
-
-            throw new APIException(logMessage, exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new ContractResult {total_results = with_total == 1 ? totalResults : null, contracts = contractArray};

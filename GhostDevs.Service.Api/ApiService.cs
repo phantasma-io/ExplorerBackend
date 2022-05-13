@@ -38,7 +38,7 @@ public static class Api
     private static string ConfigFile => Path.Combine(configDirectory, "explorer-backend-config.json");
 
 
-    private static void Main(string[] args)
+    private static void Main()
     {
         LoggingSettings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
             .GetSection("Logging"));
@@ -127,9 +127,12 @@ public static class Api
             c.SwaggerDoc("v1",
                 new OpenApiInfo {Title = "Phantasma Explorer API", Description = "", Version = "v1"});
             c.DocumentFilter<InternalDocumentFilter>();
-            var filePath = Path.Combine(AppContext.BaseDirectory, "GhostDevs.Service.Api.xml");
+
+            var filePath = Path.Combine(AppContext.BaseDirectory,
+                $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
             c.IncludeXmlComments(filePath);
         });
+
         var app = builder.Build();
 
         const string basePath = "/api/v1";
@@ -146,7 +149,7 @@ public static class Api
 
         var type = typeof(Endpoints);
         var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance).Where(m =>
-            m.GetCustomAttributes<APIInfoAttribute>().Any()).ToArray();
+            m.GetCustomAttributes<ApiInfoAttribute>().Any()).ToArray();
 
         using var scope = app.Services.CreateScope();
         foreach ( var method in methods )

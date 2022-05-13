@@ -25,10 +25,12 @@ public partial class Endpoints
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="validator_kind" example="Invalid">validatorKind name</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(ValidatorKindResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(ValidatorKindResult), "Returns the ValidatorKinds on the backend.", false, 10)]
+    [ApiInfo(typeof(ValidatorKindResult), "Returns the ValidatorKinds on the backend.", false, 10)]
     public ValidatorKindResult ValidatorKinds(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -46,16 +48,19 @@ public partial class Endpoints
         try
         {
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                throw new APIException("Unsupported value for 'order_by' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                throw new APIException("Unsupported value for 'order_direction' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
             if ( !ArgValidation.CheckLimit(limit, false) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(validator_kind) && !ArgValidation.CheckString(validator_kind, true) )
-                throw new APIException("Unsupported value for 'validator_kind' parameter.");
+                throw new ApiParameterException("Unsupported value for 'validator_kind' parameter.");
 
             var startTime = DateTime.Now;
             using MainDbContext databaseContext = new();
@@ -92,15 +97,14 @@ public partial class Endpoints
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
         catch ( Exception exception )
         {
             var logMessage = LogEx.Exception("ValidatorKinds()", exception);
-
-            throw new APIException(logMessage, exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new ValidatorKindResult

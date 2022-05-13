@@ -10,54 +10,56 @@ namespace GhostDevs.Service;
 
 #region SERVICE CLASSES
 
-public class APIException : Exception
+public class ApiParameterException : Exception
 {
-    public APIException(string msg) : base(msg)
-    {
-    }
-
-
-    public APIException(string msg, Exception innerException) : base(msg, innerException)
+    public ApiParameterException(string msg) : base(msg)
     {
     }
 }
 
-public class APIDescriptionAttribute : Attribute
+public class ApiUnexpectedException : Exception
+{
+    public ApiUnexpectedException(string msg, Exception innerException) : base(msg, innerException)
+    {
+    }
+}
+
+public class ApiDescriptionAttribute : Attribute
 {
     public readonly string Description;
 
 
-    public APIDescriptionAttribute(string description)
+    public ApiDescriptionAttribute(string description)
     {
         Description = description;
     }
 }
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-public class APIFailCaseAttribute : APIDescriptionAttribute
+public class ApiFailCaseAttribute : ApiDescriptionAttribute
 {
     public readonly string Value;
 
 
-    public APIFailCaseAttribute(string description, string value) : base(description)
+    public ApiFailCaseAttribute(string description, string value) : base(description)
     {
         Value = value;
     }
 }
 
 [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Property, AllowMultiple = true)]
-public class APIParameterAttribute : APIDescriptionAttribute
+public class ApiParameterAttribute : ApiDescriptionAttribute
 {
     public readonly string Value;
 
 
-    public APIParameterAttribute(string description, string value) : base(description)
+    public ApiParameterAttribute(string description, string value) : base(description)
     {
         Value = value;
     }
 }
 
-public class APIInfoAttribute : APIDescriptionAttribute
+public class ApiInfoAttribute : ApiDescriptionAttribute
 {
     public readonly int CacheDuration;
     public readonly string CacheTag;
@@ -66,7 +68,7 @@ public class APIInfoAttribute : APIDescriptionAttribute
     public readonly Type ReturnType;
 
 
-    public APIInfoAttribute(Type returnType, string description, bool paginated = false, int cacheDuration = 0,
+    public ApiInfoAttribute(Type returnType, string description, bool paginated = false, int cacheDuration = 0,
         bool internalEndpoint = false, string cacheTag = null) : base(description)
     {
         ReturnType = returnType;
@@ -77,7 +79,7 @@ public class APIInfoAttribute : APIDescriptionAttribute
     }
 }
 
-public struct APIValue
+public struct ApiValue
 {
     public readonly Type Type;
     public readonly string Name;
@@ -87,7 +89,7 @@ public struct APIValue
     public readonly bool HasDefaultValue;
 
 
-    public APIValue(Type type, string name, string description, string exampleValue, object defaultValue,
+    public ApiValue(Type type, string name, string description, string exampleValue, object defaultValue,
         bool hasDefaultValue)
     {
         Type = type;
@@ -99,7 +101,7 @@ public struct APIValue
     }
 }
 
-public struct APIModelValue
+public struct ApiModelValue
 {
     public readonly Type Type;
     public readonly string Name;
@@ -107,7 +109,7 @@ public struct APIModelValue
     public readonly bool IsArray;
 
 
-    public APIModelValue(Type type, string name, string description, bool isArray)
+    public ApiModelValue(Type type, string name, string description, bool isArray)
     {
         Type = type;
         Name = name;
@@ -116,10 +118,10 @@ public struct APIModelValue
     }
 }
 
-public struct APIEntry
+public struct ApiEntry
 {
     public readonly string Name;
-    public readonly List<APIValue> Parameters;
+    public readonly List<ApiValue> Parameters;
 
     public readonly Type ReturnType;
     public readonly string ReturnTypeDescription;
@@ -130,7 +132,7 @@ public struct APIEntry
 
     public readonly bool IsPost;
 
-    public readonly APIFailCaseAttribute[] FailCases;
+    public readonly ApiFailCaseAttribute[] FailCases;
 
     private readonly Endpoints _api;
     private readonly MethodInfo _info;
@@ -155,7 +157,7 @@ public struct APIEntry
     }
 
 
-    public APIEntry(Endpoints api, MethodInfo info)
+    public ApiEntry(Endpoints api, MethodInfo info)
     {
         _api = api;
         _info = info;
@@ -164,13 +166,13 @@ public struct APIEntry
         IsPost = false;
 
         var parameters = info.GetParameters();
-        Parameters = new List<APIValue>();
+        Parameters = new List<ApiValue>();
         foreach ( var entry in parameters )
         {
             string description;
             string exampleValue;
 
-            var descAttr = entry.GetCustomAttribute<APIParameterAttribute>();
+            var descAttr = entry.GetCustomAttribute<ApiParameterAttribute>();
             if ( descAttr != null )
             {
                 description = descAttr.Description;
@@ -184,22 +186,22 @@ public struct APIEntry
 
             var defaultValue = entry.HasDefaultValue ? entry.DefaultValue : null;
 
-            Parameters.Add(new APIValue(entry.ParameterType, entry.Name, description, exampleValue, defaultValue,
+            Parameters.Add(new ApiValue(entry.ParameterType, entry.Name, description, exampleValue, defaultValue,
                 entry.HasDefaultValue));
         }
 
         try
         {
-            FailCases = info.GetCustomAttributes<APIFailCaseAttribute>().ToArray();
+            FailCases = info.GetCustomAttributes<ApiFailCaseAttribute>().ToArray();
         }
         catch
         {
-            FailCases = Array.Empty<APIFailCaseAttribute>();
+            FailCases = Array.Empty<ApiFailCaseAttribute>();
         }
 
         try
         {
-            var attr = info.GetCustomAttribute<APIInfoAttribute>();
+            var attr = info.GetCustomAttribute<ApiInfoAttribute>();
             if ( attr == null )
             {
                 ReturnType = null;
@@ -212,7 +214,7 @@ public struct APIEntry
 
             ReturnType = attr.ReturnType;
 
-            var returnTypeDescAttr = attr.ReturnType.GetCustomAttribute<APIDescriptionAttribute>();
+            var returnTypeDescAttr = attr.ReturnType.GetCustomAttribute<ApiDescriptionAttribute>();
             ReturnTypeDescription = returnTypeDescAttr != null ? returnTypeDescAttr.Description : "TODO document me";
 
             Description = attr.Description;
@@ -236,23 +238,23 @@ public struct APIEntry
     }
 }
 
-public struct APIModel
+public struct ApiModel
 {
     public readonly string Name;
-    public readonly List<APIModelValue> Fields;
+    public readonly List<ApiModelValue> Fields;
     public bool InternalOnly { get; set; }
 
 
-    public APIModel(string name, IEnumerable<FieldInfo> fields, bool internalOnly) : this()
+    public ApiModel(string name, IEnumerable<FieldInfo> fields, bool internalOnly) : this()
     {
         Name = name;
-        Fields = new List<APIModelValue>();
+        Fields = new List<ApiModelValue>();
         InternalOnly = internalOnly;
         foreach ( var entry in fields )
         {
             string description = null;
 
-            var descAttr = entry.GetCustomAttribute<APIDescriptionAttribute>();
+            var descAttr = entry.GetCustomAttribute<ApiDescriptionAttribute>();
             if ( descAttr != null ) description = descAttr.Description;
 
             var isArray = false;
@@ -268,7 +270,7 @@ public struct APIModel
             else
                 type = entry.FieldType;
 
-            Fields.Add(new APIModelValue(type, entry.Name, description, isArray));
+            Fields.Add(new ApiModelValue(type, entry.Name, description, isArray));
         }
     }
 }

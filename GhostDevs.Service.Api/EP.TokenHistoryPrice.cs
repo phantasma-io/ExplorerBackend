@@ -29,10 +29,12 @@ public partial class Endpoints
     /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
     /// <param name="with_token" example="0">Return Data with <a href='#model-Token'>Token</a></param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Ok</response>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(HistoryPriceResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
-    [APIInfo(typeof(HistoryPriceResult), "Returns the Token Price History on the backend.", false, 10)]
+    [ApiInfo(typeof(HistoryPriceResult), "Returns the Token Price History on the backend.", false, 10)]
     public HistoryPriceResult HistoryPrices(
         // ReSharper disable InconsistentNaming
         string order_by = "date",
@@ -55,22 +57,25 @@ public partial class Endpoints
         try
         {
             if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
-                throw new APIException("Unsupported value for 'order_by' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
-                throw new APIException("Unsupported value for 'order_direction' parameter.");
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
             if ( !ArgValidation.CheckLimit(limit, filter) )
-                throw new APIException("Unsupported value for 'limit' parameter.");
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
-                throw new APIException("Unsupported value for 'address' parameter.");
+                throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
             if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
-                throw new APIException("Unsupported value for 'date_less' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
             if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
-                throw new APIException("Unsupported value for 'date_greater' parameter.");
+                throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
             var startTime = DateTime.Now;
             using MainDbContext databaseContext = new();
@@ -150,17 +155,15 @@ public partial class Endpoints
             var responseTime = DateTime.Now - startTime;
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( APIException )
+        catch ( ApiParameterException )
         {
             throw;
         }
         catch ( Exception exception )
         {
             var logMessage = LogEx.Exception("TokenHistoryPrice()", exception);
-
-            throw new APIException(logMessage, exception);
+            throw new ApiUnexpectedException(logMessage, exception);
         }
-
 
         return new HistoryPriceResult
             {total_results = with_total == 1 ? totalResults : null, history_prices = historyArray};
