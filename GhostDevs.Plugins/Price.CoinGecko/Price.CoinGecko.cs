@@ -535,6 +535,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
         Log.Debug("[{Name}] plugin: done updating Coin Information, Tokens Updated {Count}", Name, tokenUpdated);
 
+        /*
         var tokenUrlCount = 0;
         foreach ( var cryptoSymbol in cryptoList.Where(x => !string.IsNullOrEmpty(x.ApiSymbol)) )
         {
@@ -575,5 +576,6 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
         if ( tokenUrlCount > 0 ) databaseContext.SaveChanges();
         Log.Information("[{Name}] plugin: {Count} Token for Urls processed", Name, tokenUrlCount);
+        */
     }
 }

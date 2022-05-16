@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -191,6 +192,14 @@ public static class Api
         app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
         app.UseMiddleware<ErrorLoggingMiddleware>();
         app.UseMiddleware<CacheMiddleware>();
+
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(
+                Path.Combine(builder.Environment.ContentRootPath, "../img")),
+            RequestPath = "/img"
+        });
+
         app.Run();
     }
 }

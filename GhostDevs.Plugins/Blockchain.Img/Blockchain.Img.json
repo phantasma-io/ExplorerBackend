@@ -1,0 +1,10 @@
+{
+  "PluginConfiguration": {
+    "enabled": true,
+    "runInterval": 600,
+    "startDelay": 30,
+    "folder": "img",
+    "fileEnding": "png",
+    "hostName": "https://api.phantasma.io:8001/"
+  }
+}

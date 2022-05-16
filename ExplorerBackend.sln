@@ -59,6 +59,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{334C7941-9
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GhostDevs.Service.Api.Tests", "test\GhostDevs.Service.Api.Tests\GhostDevs.Service.Api.Tests.csproj", "{614E87B8-5DD5-490C-923A-D46649A9766B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blockchain.Img", "GhostDevs.Plugins\Blockchain.Img\Blockchain.Img.csproj", "{43B0938D-7807-4CEE-846C-8962CCC09C12}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -161,6 +163,10 @@ Global
 		{614E87B8-5DD5-490C-923A-D46649A9766B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{614E87B8-5DD5-490C-923A-D46649A9766B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{614E87B8-5DD5-490C-923A-D46649A9766B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43B0938D-7807-4CEE-846C-8962CCC09C12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43B0938D-7807-4CEE-846C-8962CCC09C12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43B0938D-7807-4CEE-846C-8962CCC09C12}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43B0938D-7807-4CEE-846C-8962CCC09C12}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -174,6 +180,7 @@ Global
 		{F528C6F4-6F92-41B4-A9AB-0F78FFCFFF30} = {0D63434D-27F4-43C3-B21D-0BCF7B1FB486}
 		{4993428A-F574-4D54-B3C1-FD060B0B5DF7} = {334C7941-96F6-41B9-9989-349F08234B7C}
 		{614E87B8-5DD5-490C-923A-D46649A9766B} = {334C7941-96F6-41B9-9989-349F08234B7C}
+		{43B0938D-7807-4CEE-846C-8962CCC09C12} = {0D63434D-27F4-43C3-B21D-0BCF7B1FB486}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3ECD1C9B-197A-43E0-8741-AAB80D29C5C3}

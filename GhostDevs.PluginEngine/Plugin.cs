@@ -17,7 +17,7 @@ public abstract class Plugin : IDisposable
     public static readonly List<IBlockchainPlugin> BlockchainPlugins = new();
 
     public static readonly string PluginsDirectory =
-        Combine(GetDirectoryName(Assembly.GetEntryAssembly().Location), "Plugins");
+        Combine(GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? string.Empty, "Plugins");
 
     private static readonly FileSystemWatcher configWatcher;
 
@@ -124,11 +124,18 @@ public abstract class Plugin : IDisposable
 
         var filename = an.Name + ".dll";
         var path = filename;
-        if ( !File.Exists(path) ) path = Combine(GetDirectoryName(Assembly.GetEntryAssembly().Location), filename);
+        if ( !File.Exists(path) )
+            path = Combine(GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? string.Empty, filename);
 
         if ( !File.Exists(path) ) path = Combine(PluginsDirectory, filename);
 
-        if ( !File.Exists(path) ) path = Combine(PluginsDirectory, args.RequestingAssembly.GetName().Name, filename);
+        if ( !File.Exists(path) )
+            if ( args.RequestingAssembly != null )
+            {
+                var path2 = args.RequestingAssembly.GetName().Name;
+                if ( path2 != null )
+                    path = Combine(PluginsDirectory, path2, filename);
+            }
 
         if ( !File.Exists(path) ) return null;
 

@@ -10,7 +10,7 @@ cd publish
 sudo cp -r * /opt/ExplorerBackend/
 
 cd ../overwrite
-sudo cp * /opt/ExplorerBackend/
+sudo cp -r * /opt/ExplorerBackend/
 
 cd ..
 sudo cp data-fetcher.service /usr/lib/systemd/system/
@@ -20,5 +20,5 @@ sudo systemctl daemon-reload
 sudo systemctl start data-fetcher.service
 sudo systemctl start api-service.service
 
-sudo systemctl enable data-fetcher.service
-sudo systemctl enable api-service.service
+#sudo systemctl enable data-fetcher.service
+#sudo systemctl enable api-service.service
