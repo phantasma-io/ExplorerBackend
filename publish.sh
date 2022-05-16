@@ -38,6 +38,11 @@ cp -a GhostDevs.Plugins/Price.CoinGecko/*.json $OUT_FOLDER
 cp -a GhostDevs.Plugins/Price.ExchangeRatesApiIo/bin/Debug/$NET_SUBFOLDER/Price.ExchangeRatesApiIo.* $OUT_BIN_FOLDER/Plugins
 cp -a GhostDevs.Plugins/Price.ExchangeRatesApiIo/*.json $OUT_FOLDER
 
+cp -a GhostDevs.Plugins/Blockchain.Img/bin/Debug/$NET_SUBFOLDER/Blockchain.Img.* $OUT_BIN_FOLDER/Plugins
+cp -a GhostDevs.Plugins/Blockchain.Img/*.json $OUT_FOLDER
+
+
+
 cp -a Database.Main $OUT_BIN_FOLDER/
 rm -r $OUT_BIN_FOLDER/Database.Main/bin
 rm -r $OUT_BIN_FOLDER/Database.Main/obj
@@ -53,3 +58,5 @@ cp -a database-recreate.sh $OUT_FOLDER
 cp -a database-update.sh $OUT_FOLDER
 cp -a start-api-service.sh $OUT_FOLDER
 cp -a start-data-fetcher.sh $OUT_FOLDER
+
+mkdir -p $OUT_FOLDER/img 

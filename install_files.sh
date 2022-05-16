@@ -20,5 +20,5 @@ sudo systemctl daemon-reload
 sudo systemctl start data-fetcher.service
 sudo systemctl start api-service.service
 
-#sudo systemctl enable data-fetcher.service
-#sudo systemctl enable api-service.service
+sudo systemctl enable data-fetcher.service
+sudo systemctl enable api-service.service
