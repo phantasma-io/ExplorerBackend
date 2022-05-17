@@ -3,11 +3,11 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.ApiResults;
+using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Oracle = GhostDevs.Service.ApiResults.Oracle;
+using Oracle = GhostDevs.Service.Api.Oracle;
 
 namespace GhostDevs.Service;
 

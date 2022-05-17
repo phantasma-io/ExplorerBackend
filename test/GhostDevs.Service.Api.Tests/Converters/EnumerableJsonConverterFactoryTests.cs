@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using GhostDevs.Service.ApiResults;
+using GhostDevs.Service.Api;
 using Shouldly;
 using Xunit;
 

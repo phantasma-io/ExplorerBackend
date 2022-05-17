@@ -175,8 +175,8 @@ public class Fetch
         for ( var i = 0; i < ids.Count; i += NftLoadPageSize )
         {
             var idsPage = ids.GetRange(i, Math.Min(NftLoadPageSize, ids.Count - i));
-            var response = Client.APIRequest<JsonNode>(url, out var stringResponse, null, 0,
-                "{\"ids\":[" + "\"" + string.Join("\", \"", idsPage) + "\"" + "]}", Client.RequestType.POST);
+            var response = Client.ApiRequest<JsonNode>(url, out var stringResponse, null, 0,
+                "{\"ids\":[" + "\"" + string.Join("\", \"", idsPage) + "\"" + "]}", Client.RequestType.Post);
             if ( response == null )
             {
                 Log.Error("TTRS error: Parsed response is null, raw response: '{Response}'", stringResponse);
@@ -208,7 +208,7 @@ public class Fetch
 
             if ( string.IsNullOrEmpty(id) ) return;
 
-            var response = Client.APIRequest<JsonNode>(url + id, out var stringResponse);
+            var response = Client.ApiRequest<JsonNode>(url + id, out var stringResponse);
             if ( response == null )
             {
                 Log.Error("GAME meta: null response for {ID}, returning", id);

@@ -23,7 +23,7 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <RootNamespace>GhostDevs.TemplatePlugin</RootNamespace>
+    <RootNamespace>GhostDevs.Nft</RootNamespace>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 

@@ -12,13 +12,13 @@ public static class Client
 {
     public enum RequestType
     {
-        GET,
-        POST
+        Get,
+        Post
     }
 
 
-    public static T APIRequest<T>(string url, out string stringResponse, Action<string> errorHandlingCallback = null,
-        int timeoutInSeconds = 0, string postString = "", RequestType requestType = RequestType.GET)
+    public static T ApiRequest<T>(string url, out string stringResponse, Action<string> errorHandlingCallback = null,
+        int timeoutInSeconds = 0, string postString = "", RequestType requestType = RequestType.Get)
     {
         stringResponse = null;
 
@@ -35,7 +35,7 @@ public static class Client
                     var startTime = DateTime.Now;
                     switch ( requestType )
                     {
-                        case RequestType.GET:
+                        case RequestType.Get:
                             var response = wc.GetAsync(url).Result;
                             using ( var content = response.Content )
                             {
@@ -43,7 +43,7 @@ public static class Client
                             }
 
                             break;
-                        case RequestType.POST:
+                        case RequestType.Post:
                         {
                             var content = new StringContent(postString, Encoding.UTF8, "application/json");
                             var responseContent = wc.PostAsync(url, content).Result.Content;
@@ -161,8 +161,8 @@ public static class Client
 
         Log.Debug("RPC request\nurl: {Url}\njson: {Json}", url, json);
 
-        return APIRequest<JsonDocument>(url, out stringResponse, errorHandlingCallback, timeoutInSeconds, json,
-            RequestType.POST);
+        return ApiRequest<JsonDocument>(url, out stringResponse, errorHandlingCallback, timeoutInSeconds, json,
+            RequestType.Post);
     }
 
 

@@ -81,7 +81,7 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
         var url = "https://api.exchangeratesapi.io/latest?base=USD&access_key=" +
                   Settings.Default.ApiKeys.GetValue(rnd.Next(Settings.Default.ApiKeys.Length));
 
-        var response = Client.APIRequest<JsonDocument>(url, out var stringResponse);
+        var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse);
         if ( response == null ) return;
 
         var pricesUpdated = 0;

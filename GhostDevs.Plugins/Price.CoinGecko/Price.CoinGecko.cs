@@ -201,7 +201,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                           .Distinct()
                           .ToList()) + "&vs_currencies=" + string.Join(separator, fiatSymbols);
 
-        var response = Client.APIRequest<JsonDocument>(url, out var stringResponse);
+        var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse);
         if ( response == null ) return;
 
         var pricesUpdated = 0;
@@ -308,7 +308,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     var url = "https://api.coingecko.com/api/v3/coins/" + cryptoSymbol.ApiSymbol + "/history?date=" +
                               lastLoadedDateString;
 
-                    var response = Client.APIRequest<JsonDocument>(url, out var stringResponse,
+                    var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse,
                         error =>
                         {
                             Log.Information(
@@ -495,7 +495,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
         //first check what coins coingecko supports
         const string urlList = "https://api.coingecko.com/api/v3/coins/list";
-        var responseList = Client.APIRequest<JsonDocument>(urlList, out var stringListResponse, error =>
+        var responseList = Client.ApiRequest<JsonDocument>(urlList, out var stringListResponse, error =>
         {
             Log.Information("[{Name}] plugin: We might have reached request limit", Name);
             databaseContext.SaveChanges();

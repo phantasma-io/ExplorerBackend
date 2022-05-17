@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using Blockchain.Img;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.PluginEngine;
@@ -9,7 +10,7 @@ using Serilog;
 using static System.IO.Path;
 
 
-namespace Blockchain.Img;
+namespace GhostDevs.Blockchain;
 
 public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
 {

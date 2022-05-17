@@ -16,10 +16,10 @@ public static class DataFetcher
 {
     private static int _fetchInterval = 30;
 
-    private static readonly string ConfigDirectory =
+    private static readonly string configDirectory =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
 
-    private static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
+    private static string ConfigFile => Path.Combine(configDirectory, "explorer-backend-config.json");
 
 
     private static void Main()

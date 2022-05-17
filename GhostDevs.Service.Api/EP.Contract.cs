@@ -3,15 +3,15 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.ApiResults;
+using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Address = GhostDevs.Service.ApiResults.Address;
-using Contract = GhostDevs.Service.ApiResults.Contract;
-using Event = GhostDevs.Service.ApiResults.Event;
-using StringEvent = GhostDevs.Service.ApiResults.StringEvent;
-using Token = GhostDevs.Service.ApiResults.Token;
+using Address = GhostDevs.Service.Api.Address;
+using Contract = GhostDevs.Service.Api.Contract;
+using Event = GhostDevs.Service.Api.Event;
+using StringEvent = GhostDevs.Service.Api.StringEvent;
+using Token = GhostDevs.Service.Api.Token;
 
 namespace GhostDevs.Service;
 

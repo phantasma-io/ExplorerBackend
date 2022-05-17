@@ -4,7 +4,7 @@ namespace GhostDevs.Blockchain;
 
 internal class Settings
 {
-    private Settings(IConfigurationSection section)
+    private Settings(IConfiguration section)
     {
         Enabled = section.GetSection("enabled").Get<bool>();
 

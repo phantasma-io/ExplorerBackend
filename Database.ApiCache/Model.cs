@@ -7,15 +7,18 @@ using Microsoft.Extensions.Configuration;
 
 namespace Database.ApiCache;
 
+//since we build our db struct here, we have a different naming as well
+// ReSharper disable InconsistentNaming
+// ReSharper disable UnusedAutoPropertyAccessor.Global
 public class ApiCacheDbContext : DbContext
 {
     // Keeping DB configs on same level as "bin" folder.
     // If path contains "Database.ApiCache" - it means we are running database update.
-    private static readonly string ConfigDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.ApiCache")
+    private static readonly string configDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.ApiCache")
         ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..")
         : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
 
-    private static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
+    private static string ConfigFile => Path.Combine(configDirectory, "explorer-backend-config.json");
 
     public DbSet<Chain> Chains { get; set; }
     public DbSet<Contract> Contracts { get; set; }
@@ -61,7 +64,7 @@ public class ApiCacheDbContext : DbContext
         // Here we add relations between tables and indexes.
 
         //////////////////////
-        /// Chain
+        // Chain
         //////////////////////
 
         // Indexes
@@ -71,7 +74,7 @@ public class ApiCacheDbContext : DbContext
             .IsUnique();
 
         //////////////////////
-        /// Contract
+        // Contract
         //////////////////////
 
         // FKs
@@ -88,7 +91,7 @@ public class ApiCacheDbContext : DbContext
             .IsUnique();
 
         //////////////////////
-        /// Nfts
+        // Nfts
         //////////////////////
 
         // FKs
@@ -105,7 +108,7 @@ public class ApiCacheDbContext : DbContext
             .IsUnique();
 
         //////////////////////
-        /// Block
+        // Block
         //////////////////////
 
         // FKs

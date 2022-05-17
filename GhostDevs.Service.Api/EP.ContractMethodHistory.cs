@@ -3,11 +3,11 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.ApiResults;
+using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Contract = GhostDevs.Service.ApiResults.Contract;
+using Contract = GhostDevs.Service.Api.Contract;
 
 namespace GhostDevs.Service;
 

@@ -3,15 +3,15 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.ApiResults;
+using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Address = GhostDevs.Service.ApiResults.Address;
-using AddressBalance = GhostDevs.Service.ApiResults.AddressBalance;
-using AddressStorage = GhostDevs.Service.ApiResults.AddressStorage;
-using Chain = GhostDevs.Service.ApiResults.Chain;
-using Token = GhostDevs.Service.ApiResults.Token;
+using Address = GhostDevs.Service.Api.Address;
+using AddressBalance = GhostDevs.Service.Api.AddressBalance;
+using AddressStorage = GhostDevs.Service.Api.AddressStorage;
+using Chain = GhostDevs.Service.Api.Chain;
+using Token = GhostDevs.Service.Api.Token;
 
 namespace GhostDevs.Service;
 

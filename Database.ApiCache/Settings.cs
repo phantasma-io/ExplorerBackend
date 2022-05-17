@@ -9,7 +9,7 @@ internal class Settings
     public int ConnectRetryTimeout;
 
 
-    private Settings(IConfigurationSection section)
+    private Settings(IConfiguration section)
     {
         var connectionSettings =
             section.GetSection("ApiCache").Get<DatabaseConnectionSettings>();

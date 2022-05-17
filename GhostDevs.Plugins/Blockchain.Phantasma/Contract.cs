@@ -35,7 +35,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             var url =
                 $"{Settings.Default.GetRest()}/api/getContract?chainAddressOrName={chainEntry.NAME}&contractName={contract.NAME}";
-            var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
+            var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response == null )
             {
                 Log.Error("[{Name}] Contract sync: null result", Name);

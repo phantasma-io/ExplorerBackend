@@ -4,14 +4,14 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.ApiResults;
+using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Contract = GhostDevs.Service.ApiResults.Contract;
-using Infusion = GhostDevs.Service.ApiResults.Infusion;
-using Nft = GhostDevs.Service.ApiResults.Nft;
-using Series = GhostDevs.Service.ApiResults.Series;
+using Contract = GhostDevs.Service.Api.Contract;
+using Infusion = GhostDevs.Service.Api.Infusion;
+using Nft = GhostDevs.Service.Api.Nft;
+using Series = GhostDevs.Service.Api.Series;
 
 namespace GhostDevs.Service;
 

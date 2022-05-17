@@ -34,7 +34,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             var chainEntry = ChainMethods.Get(databaseContext, chainId);
 
-            var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
+            var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response != null )
             {
                 if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
@@ -180,7 +180,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         //getting addresses
                         var urlOrg = $"{Settings.Default.GetRest()}/api/getOrganization/{orgItem.NAME}";
-                        var responseOrg = Client.APIRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
+                        var responseOrg = Client.ApiRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
                         if ( responseOrg != null )
                         {
                             if ( responseOrg.RootElement.TryGetProperty("error", out var errorPropertyOrg) )

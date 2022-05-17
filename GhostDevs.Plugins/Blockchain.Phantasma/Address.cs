@@ -29,7 +29,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             foreach ( var address in addressesToUpdate )
             {
                 var url = $"{Settings.Default.GetRest()}/api/getAccount?account={address.ADDRESS}";
-                var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
+                var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
                 if ( response == null )
                 {
                     Log.Error("[{Name}] Names sync: null result", Name);

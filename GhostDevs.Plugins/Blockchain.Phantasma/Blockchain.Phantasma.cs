@@ -327,7 +327,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var url = $"{Settings.Default.GetRest()}/api/getNFT?symbol=" + contractHash + "&IDtext=" + tokenId +
                   "&extended=true";
 
-        var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, null, 10);
+        var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
         if ( response == null ) return null;
 
         if ( response.RootElement.TryGetProperty("error", out var errorProperty) ) error = errorProperty.GetString();

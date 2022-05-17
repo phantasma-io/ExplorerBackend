@@ -24,18 +24,16 @@ public abstract class Plugin : IDisposable
 
     static Plugin()
     {
-        if ( Directory.Exists(PluginsDirectory) )
+        if ( !Directory.Exists(PluginsDirectory) ) return;
+        configWatcher = new FileSystemWatcher(PluginsDirectory)
         {
-            configWatcher = new FileSystemWatcher(PluginsDirectory)
-            {
-                EnableRaisingEvents = true,
-                IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite | NotifyFilters.Size
-            };
-            configWatcher.Changed += Plugin_Changed;
-            configWatcher.Created += Plugin_Changed;
-            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
-        }
+            EnableRaisingEvents = true,
+            IncludeSubdirectories = true,
+            NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite | NotifyFilters.Size
+        };
+        configWatcher.Changed += Plugin_Changed;
+        configWatcher.Created += Plugin_Changed;
+        AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
     }
 
 
@@ -72,9 +70,9 @@ public abstract class Plugin : IDisposable
     private static Assembly AssemblyLoadWrapper(string path)
     {
         var pdbFilePath = ChangeExtension(path, "pdb");
-        if ( File.Exists(pdbFilePath) ) return Assembly.Load(File.ReadAllBytes(path), File.ReadAllBytes(pdbFilePath));
-
-        return Assembly.Load(File.ReadAllBytes(path));
+        return File.Exists(pdbFilePath)
+            ? Assembly.Load(File.ReadAllBytes(path), File.ReadAllBytes(pdbFilePath))
+            : Assembly.Load(File.ReadAllBytes(path));
     }
 
 
@@ -103,6 +101,7 @@ public abstract class Plugin : IDisposable
                 }
                 catch
                 {
+                    // ignored
                 }
 
                 break;
@@ -116,9 +115,8 @@ public abstract class Plugin : IDisposable
 
         var an = new AssemblyName(args.Name);
 
-        var assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.FullName == args.Name);
-        if ( assembly is null )
-            assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == an.Name);
+        var assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.FullName == args.Name) ??
+                       AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == an.Name);
 
         if ( assembly != null ) return assembly;
 
@@ -181,7 +179,7 @@ public abstract class Plugin : IDisposable
                     {
                         // Retrying every minute for 10 minutes.
                         Thread.Sleep(60000);
-                        Log.Warning($"Retrying again, retry #{retries}");
+                        Log.Warning("Retrying again, retry #{Retries}", retries);
                     }
                     else
                         break;
@@ -196,7 +194,7 @@ public abstract class Plugin : IDisposable
     {
         if ( !Directory.Exists(PluginsDirectory) )
         {
-            Log.Error($"LoadPlugins(): PluginsDirectory {PluginsDirectory} not exists");
+            Log.Error("LoadPlugins(): PluginsDirectory {PluginsDirectory} not exists", PluginsDirectory);
             return;
         }
 
@@ -209,7 +207,7 @@ public abstract class Plugin : IDisposable
             }
             catch ( Exception ex )
             {
-                Log.Error(ex, $"LoadPlugins(): Plugin load '{filename}' exception");
+                Log.Error(ex, "LoadPlugins(): Plugin load '{Filename}' exception", filename);
             }
 
         foreach ( var assembly in assemblies ) LoadPlugin(assembly);

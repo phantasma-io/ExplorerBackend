@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Configuration;
 
-namespace GhostDevs;
+namespace GhostDevs.Nft;
 
 internal class Settings
 {
-    private Settings(IConfigurationSection section)
+    private Settings(IConfiguration section)
     {
         Enabled = section.GetSection("enabled").Get<bool>();
         StartDelay = section.GetValue<int>("startDelay");

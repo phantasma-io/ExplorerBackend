@@ -3,14 +3,14 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.ApiResults;
+using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Contract = GhostDevs.Service.ApiResults.Contract;
-using Event = GhostDevs.Service.ApiResults.Event;
-using Organization = GhostDevs.Service.ApiResults.Organization;
-using StringEvent = GhostDevs.Service.ApiResults.StringEvent;
+using Contract = GhostDevs.Service.Api.Contract;
+using Event = GhostDevs.Service.Api.Event;
+using Organization = GhostDevs.Service.Api.Organization;
+using StringEvent = GhostDevs.Service.Api.StringEvent;
 
 namespace GhostDevs.Service;
 
