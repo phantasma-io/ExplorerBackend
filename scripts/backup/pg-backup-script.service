@@ -1,0 +1,12 @@
+[Unit]
+Description=runs daily and weekly backup scripts for postgres database
+Wants=pg-backup-script.timer
+
+[Service]
+Type=oneshot
+ExecStart=/home/backend/tools/backup/run_backup.sh
+
+User=backend
+
+[Install]
+WantedBy=multi-user.target

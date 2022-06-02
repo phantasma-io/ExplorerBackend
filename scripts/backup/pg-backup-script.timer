@@ -1,0 +1,10 @@
+[Unit]
+Description=runs daily and weekly backup scripts for postgres database
+Requires=pg-backup-script.service
+
+[Timer]
+Unit=pg-backup-script.service
+OnCalendar=*-*-* 00:15:30
+
+[Install]
+WantedBy=timers.target
