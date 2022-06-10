@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Blockchain.Img;
+using Castle.Core.Internal;
 using Database.Main;
 using GhostDevs.Commons;
 using GhostDevs.PluginEngine;
@@ -81,12 +82,18 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
 
         //TODO fix
         var chain = ChainMethods.Get(databaseContext, "main");
+        var defaultImg = "";
 
         var baseLink = Settings.Default.HostName + Settings.Default.Folder;
         foreach ( var file in files )
         {
             var token = GetFileNameWithoutExtension(file.Name);
             Log.Verbose("[{Name}] Processing Image for Token {Token}, File Name {File}", Name, token, file.Name);
+
+            if ( token == Settings.Default.DefaultImage )
+            {
+                defaultImg = file.Name;
+            }
 
             if ( string.IsNullOrEmpty(token) ) continue;
             var tokenEntry = TokenMethods.Get(databaseContext, chain, token);
@@ -97,6 +104,19 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
             TokenLogoMethods.InsertIfNotExistList(databaseContext, tokenEntry,
                 new Dictionary<string, string> {{"logo", baseLink + "/" + file.Name}}, false);
             tokenUrlCount++;
+        }
+
+        var tokensWithoutLogo = TokenMethods.GetTokensWithoutLogo(databaseContext);
+        if ( !defaultImg.IsNullOrEmpty() )
+        {
+            Log.Verbose("[{Name}] building Links for Tokens with default Image", Name);
+            foreach ( var token in tokensWithoutLogo )
+            {
+                Log.Verbose("[{Name}] building and adding Link for Token {Token}", Name, token.SYMBOL);
+                TokenLogoMethods.InsertIfNotExistList(databaseContext, token,
+                    new Dictionary<string, string> {{"logo", baseLink + "/" + defaultImg}}, false);
+                tokenUrlCount++;
+            }
         }
 
         if ( tokenUrlCount > 0 ) databaseContext.SaveChanges();

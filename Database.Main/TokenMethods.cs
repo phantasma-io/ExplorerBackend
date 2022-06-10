@@ -363,4 +363,10 @@ public static class TokenMethods
         public decimal Price;
         public string Symbol; // Token symbol, ex. "SOUL".
     }
+    
+    public static IEnumerable<Token> GetTokensWithoutLogo(MainDbContext databaseContext)
+    {
+        return databaseContext.Tokens.Where(x => !x.TokenLogos.Any()).ToList();
+    }
+
 }

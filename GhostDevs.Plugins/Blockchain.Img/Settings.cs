@@ -12,6 +12,7 @@ internal class Settings
         Folder = section.GetValue<string>("folder");
         FileEnding = section.GetValue<string>("fileEnding");
         HostName = section.GetValue<string>("hostName");
+        DefaultImage = section.GetValue<string>("defaultImage");
     }
 
 
@@ -21,6 +22,7 @@ internal class Settings
     public string Folder { get; }
     public string FileEnding { get; }
     public string HostName { get; }
+    public string DefaultImage { get; }
 
 
     public static Settings Default { get; private set; }
