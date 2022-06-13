@@ -21,7 +21,7 @@ public partial class Endpoints
     /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(DisassemblerResult), ( int ) HttpStatusCode.OK)]
     [HttpPost("{script}")]
-    [ApiInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script", false, 10)]
+    [ApiInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script", false, 0)]
     public DisassemblerResult Instructions([FromBody] Script script)
     {
         long totalResults;
@@ -34,7 +34,7 @@ public partial class Endpoints
 
             if ( !string.IsNullOrEmpty(script.script_raw) && !ArgValidation.CheckString(script.script_raw) )
                 throw new ApiParameterException("Unsupported value for 'script_raw' parameter.");
-
+            
             var startTime = DateTime.Now;
 
             var instructions = Utils.GetInstructionsFromScript(script.script_raw);

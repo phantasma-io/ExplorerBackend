@@ -110,7 +110,13 @@ public static class Api
         });
         builder.Services.AddCors(options =>
         {
-            options.AddDefaultPolicy(policyBuilder => { policyBuilder.AllowAnyOrigin(); });
+            //options.AddDefaultPolicy(policyBuilder => { policyBuilder.AllowAnyOrigin(); });
+            options.AddDefaultPolicy(policyBuilder =>
+            {
+                policyBuilder.AllowAnyOrigin();
+                policyBuilder.AllowAnyHeader();
+                policyBuilder.AllowAnyMethod();
+            });
         });
         builder.Services.AddTransient<IApiEndpoint, Endpoints>();
         builder.Services.AddSingleton<ICacheClient>(sp => new InMemoryCacheClient(optionsBuilder =>
@@ -141,8 +147,8 @@ public static class Api
         {
             //typeof(HttpDeleteAttribute),
             typeof(HttpGetAttribute),
-            //typeof(HttpHeadAttribute),
-            //typeof(HttpOptionsAttribute),
+            typeof(HttpHeadAttribute),
+            typeof(HttpOptionsAttribute),
             //typeof(HttpPatchAttribute),
             typeof(HttpPostAttribute)
             //typeof(HttpPutAttribute)

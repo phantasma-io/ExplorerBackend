@@ -90,10 +90,7 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
             var token = GetFileNameWithoutExtension(file.Name);
             Log.Verbose("[{Name}] Processing Image for Token {Token}, File Name {File}", Name, token, file.Name);
 
-            if ( token == Settings.Default.DefaultImage )
-            {
-                defaultImg = file.Name;
-            }
+            if ( token == Settings.Default.DefaultImage ) defaultImg = file.Name;
 
             if ( string.IsNullOrEmpty(token) ) continue;
             var tokenEntry = TokenMethods.Get(databaseContext, chain, token);
