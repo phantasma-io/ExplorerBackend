@@ -2,13 +2,13 @@
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GhostDevs.Service.Caching;
+using GhostDevs.Service.Api.Caching;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 
-namespace GhostDevs.Service.Middleware;
+namespace GhostDevs.Service.Api.Middleware;
 
 public class CacheMiddleware
 {

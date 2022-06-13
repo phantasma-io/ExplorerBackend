@@ -3,7 +3,7 @@ using System.Linq;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace GhostDevs.Service.Swagger;
+namespace GhostDevs.Service.Api.Swagger;
 
 public class InternalDocumentFilter : IDocumentFilter
 {

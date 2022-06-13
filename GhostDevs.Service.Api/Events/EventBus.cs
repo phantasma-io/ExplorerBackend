@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Foundatio.Messaging;
-using GhostDevs.Service.Caching;
+using GhostDevs.Service.Api.Caching;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace GhostDevs.Service.Events;
+namespace GhostDevs.Service.Api.Events;
 
 public class EventBus : IEventBus
 {

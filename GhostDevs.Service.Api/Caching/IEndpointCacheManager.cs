@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.Extensions.Primitives;
 
-namespace GhostDevs.Service.Caching;
+namespace GhostDevs.Service.Api.Caching;
 
 public interface IEndpointCacheManager
 {

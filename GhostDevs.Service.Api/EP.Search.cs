@@ -5,11 +5,10 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 public partial class Endpoints
 {

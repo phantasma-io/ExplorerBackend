@@ -2,7 +2,7 @@ using System;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 public static class ArgValidation
 {

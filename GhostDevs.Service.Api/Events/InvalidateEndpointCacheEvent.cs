@@ -1,4 +1,4 @@
-﻿namespace GhostDevs.Service.Events;
+﻿namespace GhostDevs.Service.Api.Events;
 
 public class InvalidateEndpointCacheEvent
 {

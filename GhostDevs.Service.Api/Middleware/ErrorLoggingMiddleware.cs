@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Phantasma.Domain;
 
-namespace GhostDevs.Service.Middleware;
+namespace GhostDevs.Service.Api.Middleware;
 
 public class ErrorLoggingMiddleware
 {

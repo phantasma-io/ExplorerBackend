@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace GhostDevs.Service.Converters;
+namespace GhostDevs.Service.Api.Converters;
 
 public class EnumerableJsonConverter<TValue> : JsonConverter<IEnumerable<TValue>> where TValue : struct
 {

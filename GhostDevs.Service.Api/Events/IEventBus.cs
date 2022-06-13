@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 
-namespace GhostDevs.Service.Events;
+namespace GhostDevs.Service.Api.Events;
 
 public interface IEventBus
 {

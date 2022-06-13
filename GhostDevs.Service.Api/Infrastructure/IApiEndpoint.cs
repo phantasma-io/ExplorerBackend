@@ -1,4 +1,4 @@
-﻿namespace GhostDevs.Service.Infrastructure;
+﻿namespace GhostDevs.Service.Api.Infrastructure;
 
 public interface IApiEndpoint
 {

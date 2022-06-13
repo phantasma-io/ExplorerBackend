@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace GhostDevs.Service.Converters;
+namespace GhostDevs.Service.Api.Converters;
 
 public class EnumerableJsonConverterFactory : JsonConverterFactory
 {

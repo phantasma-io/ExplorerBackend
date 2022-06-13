@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 internal class Settings
 {

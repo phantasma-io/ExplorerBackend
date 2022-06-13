@@ -7,7 +7,7 @@ using Foundatio.Caching;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
-namespace GhostDevs.Service.Caching;
+namespace GhostDevs.Service.Api.Caching;
 
 public class EndpointCacheManager : IEndpointCacheManager
 {

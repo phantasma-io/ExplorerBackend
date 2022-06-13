@@ -4,16 +4,11 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Contract = GhostDevs.Service.Api.Contract;
-using Infusion = GhostDevs.Service.Api.Infusion;
-using Nft = GhostDevs.Service.Api.Nft;
-using Series = GhostDevs.Service.Api.Series;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 public partial class Endpoints
 {

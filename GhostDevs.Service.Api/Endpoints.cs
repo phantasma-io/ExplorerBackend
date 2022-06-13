@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Foundatio.Messaging;
-using GhostDevs.Service.Infrastructure;
+using GhostDevs.Service.Api.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 #region SERVICE CLASSES
 

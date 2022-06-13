@@ -6,7 +6,7 @@ using System.Text.Json;
 using Phantasma.Numerics;
 using Phantasma.VM;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 public static class Utils
 {

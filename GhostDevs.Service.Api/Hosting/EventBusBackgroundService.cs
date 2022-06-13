@@ -1,9 +1,9 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using GhostDevs.Service.Events;
+using GhostDevs.Service.Api.Events;
 using Microsoft.Extensions.Hosting;
 
-namespace GhostDevs.Service.Hosting;
+namespace GhostDevs.Service.Api.Hosting;
 
 public class EventBusBackgroundService : BackgroundService
 {

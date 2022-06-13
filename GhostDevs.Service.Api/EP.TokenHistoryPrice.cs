@@ -3,13 +3,11 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Token = GhostDevs.Service.Api.Token;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 public partial class Endpoints
 {

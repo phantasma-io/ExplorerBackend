@@ -11,13 +11,13 @@ using Foundatio.Caching;
 using Foundatio.Messaging;
 using GhostDevs.Commons;
 using GhostDevs.PluginEngine;
-using GhostDevs.Service.Caching;
-using GhostDevs.Service.Converters;
-using GhostDevs.Service.Events;
-using GhostDevs.Service.Hosting;
-using GhostDevs.Service.Infrastructure;
-using GhostDevs.Service.Middleware;
-using GhostDevs.Service.Swagger;
+using GhostDevs.Service.Api.Caching;
+using GhostDevs.Service.Api.Converters;
+using GhostDevs.Service.Api.Events;
+using GhostDevs.Service.Api.Hosting;
+using GhostDevs.Service.Api.Infrastructure;
+using GhostDevs.Service.Api.Middleware;
+using GhostDevs.Service.Api.Swagger;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -64,14 +64,14 @@ public static class Api
         Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
             .GetSection("ApiServiceConfiguration"));
 
-        PostgreSQLConnector pgConnection = null;
+        PostgreSQLConnector.PostgreSQLConnector pgConnection = null;
 
         var max = MainDbContext.GetConnectionMaxRetries();
         var timeout = MainDbContext.GetConnectionRetryTimeout();
         for ( var i = 1; i <= max; i++ )
             try
             {
-                pgConnection = new PostgreSQLConnector(MainDbContext.GetConnectionString());
+                pgConnection = new PostgreSQLConnector.PostgreSQLConnector(MainDbContext.GetConnectionString());
             }
             catch ( Exception e )
             {

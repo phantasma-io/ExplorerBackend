@@ -6,7 +6,7 @@ using Npgsql;
 using Serilog;
 using Serilog.Events;
 
-namespace GhostDevs;
+namespace GhostDevs.PostgreSQLConnector;
 
 public class PostgreSQLConnector
 {

@@ -50,7 +50,7 @@ public static class DataFetcher
 
         using ( var database = new MainDbContext() )
         {
-            PostgreSQLConnector pgConnection = null;
+            PostgreSQLConnector.PostgreSQLConnector pgConnection = null;
             var max = MainDbContext.GetConnectionMaxRetries();
             var timeout = MainDbContext.GetConnectionRetryTimeout();
 
@@ -59,7 +59,7 @@ public static class DataFetcher
             for ( var i = 1; i <= max; i++ )
                 try
                 {
-                    pgConnection = new PostgreSQLConnector(MainDbContext.GetConnectionString());
+                    pgConnection = new PostgreSQLConnector.PostgreSQLConnector(MainDbContext.GetConnectionString());
                 }
                 catch ( Exception e )
                 {

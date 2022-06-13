@@ -3,21 +3,11 @@ using System.Linq;
 using System.Net;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Address = GhostDevs.Service.Api.Address;
-using Contract = GhostDevs.Service.Api.Contract;
-using Event = GhostDevs.Service.Api.Event;
-using External = GhostDevs.Service.Api.External;
-using Platform = GhostDevs.Service.Api.Platform;
-using PlatformInterop = GhostDevs.Service.Api.PlatformInterop;
-using PlatformToken = GhostDevs.Service.Api.PlatformToken;
-using StringEvent = GhostDevs.Service.Api.StringEvent;
-using Token = GhostDevs.Service.Api.Token;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 public partial class Endpoints
 {

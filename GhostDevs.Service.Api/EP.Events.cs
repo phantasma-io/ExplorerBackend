@@ -5,31 +5,11 @@ using System.Net;
 using System.Text.RegularExpressions;
 using Database.Main;
 using GhostDevs.Commons;
-using GhostDevs.Service.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Address = GhostDevs.Service.Api.Address;
-using AddressEvent = GhostDevs.Service.Api.AddressEvent;
-using Chain = GhostDevs.Service.Api.Chain;
-using ChainEvent = GhostDevs.Service.Api.ChainEvent;
-using Contract = GhostDevs.Service.Api.Contract;
-using Event = GhostDevs.Service.Api.Event;
-using GasEvent = GhostDevs.Service.Api.GasEvent;
-using HashEvent = GhostDevs.Service.Api.HashEvent;
-using InfusionEvent = GhostDevs.Service.Api.InfusionEvent;
-using MarketEvent = GhostDevs.Service.Api.MarketEvent;
-using Organization = GhostDevs.Service.Api.Organization;
-using OrganizationEvent = GhostDevs.Service.Api.OrganizationEvent;
-using Platform = GhostDevs.Service.Api.Platform;
-using SaleEvent = GhostDevs.Service.Api.SaleEvent;
-using Series = GhostDevs.Service.Api.Series;
-using StringEvent = GhostDevs.Service.Api.StringEvent;
-using Token = GhostDevs.Service.Api.Token;
-using TokenEvent = GhostDevs.Service.Api.TokenEvent;
-using TransactionSettleEvent = GhostDevs.Service.Api.TransactionSettleEvent;
 
-namespace GhostDevs.Service;
+namespace GhostDevs.Service.Api;
 
 public partial class Endpoints
 {

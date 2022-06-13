@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Microsoft.OpenApi.Models;
 
-namespace GhostDevs.Service.Swagger;
+namespace GhostDevs.Service.Api.Swagger;
 
 public static class SwaggerExtensions
 {
