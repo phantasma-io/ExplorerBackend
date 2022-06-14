@@ -90,7 +90,9 @@ public class Fetch
                     foreach ( var id in ids )
                     {
                         var item = storeNft[id];
-                        if ( item == null ) continue;
+
+                        if (item is not JsonObject) continue;
+
                         var itemInfo = item["item_info"];
 
                         var nft = NftMethods.Get(databaseContext, _chainId, _contractId, id);
@@ -217,10 +219,12 @@ public class Fetch
             }
 
             var meta = response["meta"];
-            if ( meta == null )
+            if (meta is not JsonObject)
             {
                 Log.Error("GAME meta: null meta for {ID}, returning", id);
                 return;
+                /*Log.Warning("GAME meta: null meta for {ID}, continue with next", id);
+                continue;*/
             }
 
             var metadataKey = ( string ) response["nfts"][0]["parsed_rom"]["metadata"];
