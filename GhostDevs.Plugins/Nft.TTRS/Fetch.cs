@@ -54,18 +54,19 @@ namespace GhostDevs.Nft;
 public class Fetch
 {
     private static readonly int NftLoadPageSize = 100; // Max number of nfts in a single query.
-    private static int ChainId;
+    private static int _chainId;
     private static readonly string nftSymbol = "TTRS";
-    private static int ContractId;
-    private static int GameContractId;
+    private static int _contractId;
+    private static int _gameContractId;
 
 
     public static void Init()
     {
         using MainDbContext databaseContext = new();
-        ChainId = ChainMethods.GetId(databaseContext, "Phantasma");
-        ContractId = ContractMethods.GetId(databaseContext, ChainId, "TTRS");
-        GameContractId = ContractMethods.GetId(databaseContext, ChainId, "GAME");
+        //_chainId = ChainMethods.GetId(databaseContext, "Phantasma");
+        _chainId = ChainMethods.GetId(databaseContext, "main");
+        _contractId = ContractMethods.GetId(databaseContext, _chainId, "TTRS");
+        _gameContractId = ContractMethods.GetId(databaseContext, _chainId, "GAME");
 
         databaseContext.SaveChanges();
     }
@@ -92,7 +93,7 @@ public class Fetch
                         if ( item == null ) continue;
                         var itemInfo = item["item_info"];
 
-                        var nft = NftMethods.Get(databaseContext, ChainId, ContractId, id);
+                        var nft = NftMethods.Get(databaseContext, _chainId, _contractId, id);
 
                         if ( nft == null ) continue;
                         updatedNftsCount++;
@@ -150,7 +151,7 @@ public class Fetch
         var responseTime = DateTime.Now - startTime;
 
         Log.Information(
-            "DB: {nftSymbol} nfts update took {ResponseTime} sec, {UpdatedNftsCount} records added",
+            "DB: {NftSymbol} nfts update took {ResponseTime} sec, {UpdatedNftsCount} records added",
             nftSymbol, Math.Round(responseTime.TotalSeconds, 3), updatedNftsCount);
     }
 
@@ -166,7 +167,7 @@ public class Fetch
             // Select TOKEN_IDs which have no corresponding OFFCHAIN_API_RESPONSE -> they should be loaded.
             // Also check that series != null - to avoid troubles first we deal with chain api, then with offchain api.
             ids = databaseContext.Nfts
-                .Where(x => x.BURNED != true && x.ChainId == ChainId && x.ContractId == ContractId &&
+                .Where(x => x.BURNED != true && x.ChainId == _chainId && x.ContractId == _contractId &&
                             x.Series != null && x.OFFCHAIN_API_RESPONSE == null).Select(x => x.TOKEN_ID).ToList();
         }
 
@@ -201,7 +202,7 @@ public class Fetch
                 // Select TOKEN_IDs which have no corresponding OFFCHAIN_API_RESPONSE -> they should be loaded.
                 // Also check that series != null - to avoid troubles first we deal with chain api, then with offchain api.
                 id = databaseContext.Nfts
-                    .Where(x => x.BURNED != true && x.ChainId == ChainId && x.ContractId == GameContractId &&
+                    .Where(x => x.BURNED != true && x.ChainId == _chainId && x.ContractId == _gameContractId &&
                                 x.Series != null && x.OFFCHAIN_API_RESPONSE == null).Select(x => x.TOKEN_ID)
                     .FirstOrDefault();
             }
@@ -234,7 +235,7 @@ public class Fetch
 
             using ( MainDbContext databaseContext = new() )
             {
-                var nft = NftMethods.Get(databaseContext, ChainId, GameContractId, id);
+                var nft = NftMethods.Get(databaseContext, _chainId, _gameContractId, id);
                 nft.OFFCHAIN_API_RESPONSE = metaJsonDocument;
 
                 databaseContext.SaveChanges();
