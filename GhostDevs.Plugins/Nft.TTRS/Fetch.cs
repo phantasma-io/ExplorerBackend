@@ -53,9 +53,11 @@ namespace GhostDevs.Nft;
 
 public class Fetch
 {
-    private static readonly int NftLoadPageSize = 100; // Max number of nfts in a single query.
+    private const int NftLoadPageSize = 100; // Max number of nfts in a single query.
+    private const string NtfHash = "TTRS";
+    private const string ChainName = "main";
+    private const string GameHash = "GAME";
     private static int _chainId;
-    private static readonly string nftSymbol = "TTRS";
     private static int _contractId;
     private static int _gameContractId;
 
@@ -63,10 +65,9 @@ public class Fetch
     public static void Init()
     {
         using MainDbContext databaseContext = new();
-        //_chainId = ChainMethods.GetId(databaseContext, "Phantasma");
-        _chainId = ChainMethods.GetId(databaseContext, "main");
-        _contractId = ContractMethods.GetId(databaseContext, _chainId, "TTRS");
-        _gameContractId = ContractMethods.GetId(databaseContext, _chainId, "GAME");
+        _chainId = ChainMethods.GetId(databaseContext, ChainName);
+        _contractId = ContractMethods.GetId(databaseContext, _chainId, NtfHash);
+        _gameContractId = ContractMethods.GetId(databaseContext, _chainId, GameHash);
 
         databaseContext.SaveChanges();
     }
@@ -91,7 +92,7 @@ public class Fetch
                     {
                         var item = storeNft[id];
 
-                        if (item is not JsonObject) continue;
+                        if ( item is not JsonObject ) continue;
 
                         var itemInfo = item["item_info"];
 
@@ -100,6 +101,7 @@ public class Fetch
                         if ( nft == null ) continue;
                         updatedNftsCount++;
 
+                        //TODO maybe we should not do that
                         if ( ( ( string ) item["type"] )!.Contains("System object") )
                         {
                             // We found "system" NFT, which is an internal non-tradable object.
@@ -107,7 +109,7 @@ public class Fetch
                             EventMethods.DeleteByNftId(databaseContext, nft.ID, false);
                             NftMethods.Delete(databaseContext, nft.ID);
                             Log.Information(
-                                "DB: Deleting {NftSymbol} system NFT with type '{Type}'", nftSymbol,
+                                "DB: Deleting {NftSymbol} system NFT with type '{Type}'", NtfHash,
                                 ( string ) item["type"]);
                         }
                         else
@@ -116,8 +118,8 @@ public class Fetch
                             // we don't use them on database resync.
 
                             using ApiCacheDbContext databaseApiCacheContext = new();
-                            Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, "main",
-                                "TTRS", nft.TOKEN_ID, JsonDocument.Parse(item.ToJsonString()), null, true);
+                            Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, ChainName, NtfHash,
+                                nft.TOKEN_ID, JsonDocument.Parse(item.ToJsonString()), null, true);
 
 
                             if ( itemInfo != null )
@@ -154,7 +156,7 @@ public class Fetch
 
         Log.Information(
             "DB: {NftSymbol} nfts update took {ResponseTime} sec, {UpdatedNftsCount} records added",
-            nftSymbol, Math.Round(responseTime.TotalSeconds, 3), updatedNftsCount);
+            NtfHash, Math.Round(responseTime.TotalSeconds, 3), updatedNftsCount);
     }
 
 
@@ -162,7 +164,7 @@ public class Fetch
     {
         const string url = "https://www.22series.com/api/store/nft";
 
-        List<string> ids = null;
+        List<string> ids;
 
         using ( MainDbContext databaseContext = new() )
         {
@@ -219,7 +221,7 @@ public class Fetch
             }
 
             var meta = response["meta"];
-            if (meta is not JsonObject)
+            if ( meta is not JsonObject )
             {
                 Log.Error("GAME meta: null meta for {ID}, returning", id);
                 return;
@@ -233,7 +235,7 @@ public class Fetch
 
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
-                Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, "main", "GAME", id,
+                Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, ChainName, GameHash, id,
                     metaJsonDocument, null, true);
             }
 
