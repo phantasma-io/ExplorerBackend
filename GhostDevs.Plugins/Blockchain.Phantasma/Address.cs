@@ -16,6 +16,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var startTime = DateTime.Now;
         var unixSecondsNow = UnixSeconds.Now();
 
+        const int saveAfterCount = 100;
+
         var namesUpdatedCount = 0;
         var processed = 0;
 
@@ -107,6 +109,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 address.AddressValidatorKind = validatorKind;
 
                 processed++;
+                if ( processed % saveAfterCount != 0 ) continue;
+                transactionStart = DateTime.Now;
+                databaseContext.SaveChanges();
+                transactionEnd = DateTime.Now - transactionStart;
+                Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name,
+                    Math.Round(transactionEnd.TotalSeconds, 3));
             }
 
             transactionStart = DateTime.Now;
