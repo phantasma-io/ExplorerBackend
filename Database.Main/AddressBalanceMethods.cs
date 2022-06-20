@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using Phantasma.Numerics;
 
 namespace Database.Main;
 
@@ -42,34 +44,42 @@ public static class AddressBalanceMethods
     {
         if ( !balances.Any() || address == null ) return;
 
+        var currentBalances = databaseContext.AddressBalances.Where(x => x.Address == address).ToList();
+
         var balanceList = new List<AddressBalance>();
         foreach ( var (chainName, symbol, amount) in balances )
         {
             var chain = ChainMethods.Get(databaseContext, chainName);
             if ( chain == null ) continue;
 
-            var token = TokenMethods.Get(databaseContext, chain.ID, symbol);
+            var token = TokenMethods.Get(databaseContext, chain, symbol);
             if ( token == null ) continue;
 
             var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
                 x.Address == address && x.Chain == chain && x.Token == token);
 
+            var amountConverted =
+                UnitConversion.ToDecimal(amount, token.DECIMALS).ToString(CultureInfo.InvariantCulture);
             if ( entry != null )
-                entry.AMOUNT = amount;
+                entry.AMOUNT = amountConverted;
             else
             {
                 entry = new AddressBalance
                 {
                     Token = token,
-                    Chain = chain,
                     Address = address,
-                    AMOUNT = amount
+                    Chain = chain,
+                    AMOUNT = amountConverted
                 };
                 balanceList.Add(entry);
             }
         }
 
         databaseContext.AddressBalances.AddRange(balanceList);
+
+        //removes balances that have not been added with that call
+        databaseContext.AddressBalances.RemoveRange(currentBalances.Where(x =>
+            balanceList.All(y => y.Token != x.Token)));
         if ( saveChanges ) databaseContext.SaveChanges();
     }
 }

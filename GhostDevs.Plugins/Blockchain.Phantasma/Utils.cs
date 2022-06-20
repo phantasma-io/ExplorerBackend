@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
+using Database.Main;
 using LunarLabs.Parser;
 using Phantasma.Numerics;
 using Phantasma.VM;
@@ -92,5 +94,11 @@ internal static class Utils
                 "[{Name}] hack tried to replace not set unicode character, parsing error:\n{Message}\nHacked response: {StringResponse}",
                 logString, e.Message, stringResponse);
         }
+    }
+
+
+    public static string ToDecimal(string amount, Token token)
+    {
+        return UnitConversion.ToDecimal(amount, token.DECIMALS).ToString(CultureInfo.InvariantCulture);
     }
 }
