@@ -44,7 +44,7 @@ public static class AddressBalanceMethods
     {
         if ( !balances.Any() || address == null ) return;
 
-        var currentBalances = databaseContext.AddressBalances.Where(x => x.Address == address).ToList();
+        var currentBalances = databaseContext.AddressBalances.Where(x => x.Address == address);
 
         var balanceList = new List<AddressBalance>();
         foreach ( var (chainName, symbol, amount) in balances )
@@ -77,9 +77,20 @@ public static class AddressBalanceMethods
 
         databaseContext.AddressBalances.AddRange(balanceList);
 
-        //removes balances that have not been added with that call
-        databaseContext.AddressBalances.RemoveRange(currentBalances.Where(x =>
-            balanceList.All(y => y.Token != x.Token)));
+        var removeList = new List<AddressBalance>();
+        foreach ( var balance in currentBalances )
+        {
+            if ( balanceList.All(x => x.Token != balance.Token) )
+            {
+                removeList.Add(balance);
+            }
+        }
+
+        if ( !removeList.Any() )
+        {
+            databaseContext.AddressBalances.RemoveRange(removeList);
+        }
+
         if ( saveChanges ) databaseContext.SaveChanges();
     }
 }

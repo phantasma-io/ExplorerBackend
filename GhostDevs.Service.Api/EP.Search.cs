@@ -38,7 +38,7 @@ public partial class Endpoints
 
         try
         {
-            if ( string.IsNullOrEmpty(value) || !ArgValidation.CheckString(value) || value.Length < 3 )
+            if ( string.IsNullOrEmpty(value) || !ArgValidation.CheckSearch(value) || value.Length < 3 )
                 throw new ApiParameterException("Unsupported value for 'value' parameter.");
 
             var startTime = DateTime.Now;
@@ -62,10 +62,10 @@ public partial class Endpoints
                     "addresses" => databaseContext.Addresses.Any(x => x.ADDRESS == value),
                     "blocks" => databaseContext.Blocks.Any(x => x.HASH == value),
                     "chains" => databaseContext.Chains.Any(x => x.NAME == value),
-                    "contracts" => databaseContext.Contracts.Any(x => x.HASH == value),
+                    "contracts" => databaseContext.Contracts.Any(x => x.HASH == value.ToUpper()),
                     "organizations" => databaseContext.Organizations.Any(x => x.NAME == value),
                     "platforms" => databaseContext.Platforms.Any(x => x.NAME == value),
-                    "tokens" => databaseContext.Tokens.Any(x => x.SYMBOL == value),
+                    "tokens" => databaseContext.Tokens.Any(x => x.SYMBOL == value.ToUpper()),
                     _ => false
                 };
 
