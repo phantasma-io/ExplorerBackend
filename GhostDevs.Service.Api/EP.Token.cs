@@ -76,7 +76,7 @@ public partial class Endpoints
             using MainDbContext databaseContext = new();
             var query = databaseContext.Tokens.AsQueryable().AsNoTracking();
 
-            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol);
+            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol.ToUpper());
 
             if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
 
