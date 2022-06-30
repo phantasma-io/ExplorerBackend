@@ -6,6 +6,7 @@ using Database.Main;
 using GhostDevs.Commons;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Phantasma.Numerics;
 using Serilog;
 
 namespace GhostDevs.Service.Api;
@@ -120,6 +121,7 @@ public partial class Endpoints
 
             using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
+            var tokenKcal = TokenMethods.Get(databaseContext, ChainMethods.Get(databaseContext, chain), "KCAL");
 
             //just need that since we build the model so it knows what we can use
             var query = databaseContext.Blocks.AsQueryable().AsNoTracking();
@@ -178,13 +180,21 @@ public partial class Endpoints
                 chain_address = x.ChainAddress.ADDRESS,
                 validator_address = x.ValidatorAddress.ADDRESS,
                 date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
+                reward = x.REWARD,
                 transactions = with_transactions == 1 && x.Transactions != null
                     ? x.Transactions.Select(t => new Transaction
                     {
                         hash = t.HASH,
+                        block_hash = x.HASH,
                         block_height = x.HEIGHT,
                         index = t.INDEX,
                         date = t.TIMESTAMP_UNIX_SECONDS.ToString(),
+                        fee = UnitConversion.ToDecimal(t.FEE, tokenKcal.DECIMALS)
+                            .ToString(CultureInfo.InvariantCulture),
+                        script_raw = t.SCRIPT_RAW,
+                        result = t.RESULT,
+                        payload = t.PAYLOAD,
+                        expiration = t.EXPIRATION.ToString(),
                         events = with_events == 1 && t.Events != null
                             ? t.Events.Select(e => new Event
                             {

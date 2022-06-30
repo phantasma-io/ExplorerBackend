@@ -6,6 +6,7 @@ using Database.Main;
 using GhostDevs.Commons;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Phantasma.Numerics;
 using Serilog;
 
 namespace GhostDevs.Service.Api;
@@ -30,6 +31,7 @@ public partial class Endpoints
     /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
     /// <param name="block_hash"><a href='#model-Block'>Block</a> hash</param>
     /// <param name="block_height">height of the <a href='#model-Block'>Block</a></param>
+    /// <param name="chain" example="main">Chain name</param>
     /// <param name="with_nft" example="0">Return data with <a href='#model-NftMetadata'>nft metadata</a></param>
     /// <param name="with_events" example="0">Return event data of <a href='#model-EventsResult'>events</a></param>
     /// <param name="with_event_data" example="0">Return event data with more details, needs with_events to be set</param>
@@ -57,6 +59,7 @@ public partial class Endpoints
         string date_greater = "",
         string block_hash = "",
         string block_height = "",
+        string chain = "",
         int with_nft = 0,
         int with_events = 0,
         int with_event_data = 0,
@@ -112,11 +115,15 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
                 throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
 
+            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+                throw new ApiParameterException("Unsupported value for 'chain' parameter.");
+
             #endregion
 
             var startTime = DateTime.Now;
             using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
+            var tokenKcal = TokenMethods.Get(databaseContext, ChainMethods.Get(databaseContext, chain), "KCAL");
 
             var query = databaseContext.Transactions.AsQueryable().AsNoTracking();
 
@@ -146,6 +153,8 @@ public partial class Endpoints
 
             if ( !string.IsNullOrEmpty(block_height) )
                 query = query.Where(x => x.Block.HEIGHT == block_height);
+
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Block.Chain.NAME == chain);
 
             #endregion
 
@@ -178,6 +187,11 @@ public partial class Endpoints
                 block_height = x.Block.HEIGHT,
                 index = x.INDEX,
                 date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
+                fee = UnitConversion.ToDecimal(x.FEE, tokenKcal.DECIMALS).ToString(CultureInfo.InvariantCulture),
+                script_raw = x.SCRIPT_RAW,
+                result = x.RESULT,
+                payload = x.PAYLOAD,
+                expiration = x.EXPIRATION.ToString(),
                 events = with_events == 1 && x.Events != null
                     ? x.Events.Select(e => new Event
                     {

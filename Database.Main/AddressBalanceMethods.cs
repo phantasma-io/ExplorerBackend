@@ -79,17 +79,10 @@ public static class AddressBalanceMethods
 
         var removeList = new List<AddressBalance>();
         foreach ( var balance in currentBalances )
-        {
             if ( balanceList.All(x => x.Token != balance.Token) )
-            {
                 removeList.Add(balance);
-            }
-        }
 
-        if ( !removeList.Any() )
-        {
-            databaseContext.AddressBalances.RemoveRange(removeList);
-        }
+        if ( !removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
 
         if ( saveChanges ) databaseContext.SaveChanges();
     }

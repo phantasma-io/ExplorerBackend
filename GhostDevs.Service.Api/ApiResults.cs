@@ -733,6 +733,31 @@ public class Transaction
     public string? date { get; set; }
 
     /// <summary>
+    ///     fee for the transaction in kcal
+    /// </summary>
+    public string? fee { get; set; }
+
+    /// <summary>
+    ///     script of the contract, raw
+    /// </summary>
+    public string? script_raw { get; set; }
+
+    /// <summary>
+    ///     result of the transaction
+    /// </summary>
+    public string? result { get; set; }
+
+    /// <summary>
+    ///     payload of the transaction
+    /// </summary>
+    public string? payload { get; set; }
+
+    /// <summary>
+    ///     when the transaction will expire in UTC of the transaction
+    /// </summary>
+    public string? expiration { get; set; }
+
+    /// <summary>
     ///     List of Events from the transaction
     /// </summary>
     public Event[]? events { get; set; }
@@ -926,9 +951,14 @@ public class Block
     public string? validator_address { get; set; }
 
     /// <summary>
-    ///     unixseconds timestamp in UTC  of the block
+    ///     unixseconds timestamp in UTC of the block
     /// </summary>
     public string? date { get; set; }
+
+    /// <summary>
+    ///     reward of the block
+    /// </summary>
+    public string? reward { get; set; }
 
     /// <summary>
     ///     list of transactions
