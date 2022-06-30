@@ -60,7 +60,7 @@ public partial class Endpoints
         string hash = "",
         string hash_partial = "",
         string height = "",
-        string chain = "",
+        string chain = "main",
         string date_less = "",
         string date_greater = "",
         int with_transactions = 0,

@@ -44,7 +44,7 @@ public partial class Endpoints
         int limit = 50,
         string symbol = "",
         string hash = "",
-        string chain = "",
+        string chain = "main",
         int with_methods = 0,
         int with_script = 0,
         int with_token = 0,

@@ -40,7 +40,7 @@ public partial class Endpoints
         int limit = 50,
         string block_hash = "",
         string block_height = "",
-        string chain = "",
+        string chain = "main",
         int with_total = 0
         // ReSharper enable InconsistentNaming
     )

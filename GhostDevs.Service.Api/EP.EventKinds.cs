@@ -38,7 +38,7 @@ public partial class Endpoints
         int offset = 0,
         int limit = 50,
         string event_kind = "",
-        string chain = "",
+        string chain = "main",
         int with_total = 0
         // ReSharper enable InconsistentNaming
     )

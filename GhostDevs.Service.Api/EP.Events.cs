@@ -62,7 +62,7 @@ public partial class Endpoints
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
-        string chain = "",
+        string chain = "main",
         string contract = "",
         string token_id = "",
         string date_day = "",

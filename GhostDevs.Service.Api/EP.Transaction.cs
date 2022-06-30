@@ -59,7 +59,7 @@ public partial class Endpoints
         string date_greater = "",
         string block_hash = "",
         string block_height = "",
-        string chain = "",
+        string chain = "main",
         int with_nft = 0,
         int with_events = 0,
         int with_event_data = 0,

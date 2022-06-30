@@ -31,7 +31,7 @@ public partial class Endpoints
         // ReSharper disable InconsistentNaming
         int offset = 0,
         int limit = 50,
-        string chain = "",
+        string chain = "main",
         int with_total = 0
         // ReSharper enable InconsistentNaming
     )

@@ -41,7 +41,7 @@ public partial class Endpoints
         int offset = 0,
         int limit = 50,
         string symbol = "",
-        string chain = "",
+        string chain = "main",
         int with_price = 0,
         int with_creation_event = 0,
         int with_logo = 0,

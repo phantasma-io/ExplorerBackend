@@ -48,7 +48,7 @@ public partial class Endpoints
         string series_id = "",
         string creator = "",
         string name = "",
-        string chain = "",
+        string chain = "main",
         string contract = "",
         string symbol = "",
         string token_id = "",

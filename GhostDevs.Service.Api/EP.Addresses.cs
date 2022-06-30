@@ -44,7 +44,7 @@ public partial class Endpoints
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
-        string chain = "",
+        string chain = "main",
         string address = "",
         string address_name = "",
         string address_partial = "",

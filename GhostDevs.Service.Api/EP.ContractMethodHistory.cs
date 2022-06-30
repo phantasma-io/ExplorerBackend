@@ -42,7 +42,7 @@ public partial class Endpoints
         int limit = 50,
         string symbol = "",
         string hash = "",
-        string chain = "",
+        string chain = "main",
         string date_less = "",
         string date_greater = "",
         int with_total = 0

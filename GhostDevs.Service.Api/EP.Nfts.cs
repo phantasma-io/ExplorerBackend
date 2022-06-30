@@ -49,7 +49,7 @@ public partial class Endpoints
         string owner = "",
         string contract_hash = "",
         string name = "",
-        string chain = "",
+        string chain = "main",
         string symbol = "",
         string token_id = "",
         string series_id = "",
