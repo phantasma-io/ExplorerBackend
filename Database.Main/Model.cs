@@ -1049,7 +1049,7 @@ public class MainDbContext : DbContext
             .WithMany(y => y.AddressBalances)
             .HasForeignKey(x => x.TokenId)
             .OnDelete(DeleteBehavior.Cascade);
-        
+
         // Indexes
 
 

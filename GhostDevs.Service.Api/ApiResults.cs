@@ -892,7 +892,7 @@ public class Organization
     ///     ID/Name of the organization
     /// </summary>
     public string? id { get; set; }
-    
+
     /// <summary>
     ///     Full Name of the organization
     /// </summary>
@@ -902,12 +902,12 @@ public class Organization
     ///     Size of the Member List
     /// </summary>
     public long? size { get; set; }
-    
+
     /// <summary>
     ///     Event of the creation of the organization
     /// </summary>
     public Event? create_event { get; set; }
-    
+
     /// <summary>
     ///     Address of the organization
     /// </summary>

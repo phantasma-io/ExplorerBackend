@@ -112,10 +112,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 //just to keep things up2date
                 address.Organization = null;
                 var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
-                if ( organization != null )
-                {
-                    address.Organization = organization;
-                }
+                if ( organization != null ) address.Organization = organization;
 
                 processed++;
                 if ( processed % saveAfterCount != 0 ) continue;
@@ -165,9 +162,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressEntry = AddressMethods.Get(databaseContext, chain, address);
 
             if ( addressEntry != null )
-            {
                 addressEntry.ADDRESS_NAME = addressName;
-            }
             else
             {
                 url = $"{Settings.Default.GetRest()}/api/getAccount?account={address}";

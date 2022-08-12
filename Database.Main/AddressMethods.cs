@@ -124,10 +124,10 @@ public static class AddressMethods
 
         return entry;
     }
-    
+
+
     public static Address GetByName(MainDbContext databaseContext, Chain chain, string addressName)
     {
-
         var entry = databaseContext.Addresses.FirstOrDefault(x => x.Chain == chain && x.ADDRESS_NAME == addressName);
 
         if ( entry != null ) return entry;
