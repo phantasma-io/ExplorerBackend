@@ -172,20 +172,29 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                     foreach ( var organization in organizations )
                     {
-                        var orgItem = OrganizationMethods.Upsert(databaseContext, organization.ToString(), false);
-
                         Log.Verbose(
                             "[{Name}] got Platform {Organization}",
                             Name, organization.ToString());
 
-                        //getting addresses
-                        var urlOrg = $"{Settings.Default.GetRest()}/api/getOrganization/{orgItem.NAME}";
+                        var urlOrg = $"{Settings.Default.GetRest()}/api/getOrganization/{organization.ToString()}";
                         var responseOrg = Client.ApiRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
                         if ( responseOrg != null )
                         {
                             if ( responseOrg.RootElement.TryGetProperty("error", out var errorPropertyOrg) )
-                                Log.Error("[{Name}] Cannot fetch Token info. Error: {Error}",
+                                Log.Error("[{Name}] Cannot fetch Organization info. Error: {Error}",
                                     Name, errorPropertyOrg.GetString());
+
+                            var organizationId = responseOrg.RootElement.GetProperty("id").ToString();
+                            var organizationName = responseOrg.RootElement.GetProperty("name").ToString();
+                            //try to find address, if not found we need to trigger a lookUpName and then getAddress and insert it
+
+                            var orgItem = OrganizationMethods.Upsert(databaseContext, organizationId, organizationName,
+                                false);
+                            var addressEntry = SyncAddressByName(chainEntry, organizationId, orgItem, false);
+                            
+                            Log.Verbose(
+                                "[{Name}] Organization {OrganizationName}, Address {Address}, AddressName {AddressName}",
+                                Name, orgItem.ORGANIZATION_ID, addressEntry.ADDRESS, addressEntry.ADDRESS_NAME);
 
                             if ( responseOrg.RootElement.TryGetProperty("members", out var membersProperty) )
                             {

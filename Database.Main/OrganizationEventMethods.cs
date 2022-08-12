@@ -1,3 +1,5 @@
+using Serilog;
+
 namespace Database.Main;
 
 public static class OrganizationEventMethods
@@ -9,7 +11,13 @@ public static class OrganizationEventMethods
 
         var addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
 
-        var organizationEntry = OrganizationMethods.Upsert(databaseContext, organization, saveChanges);
+        var organizationEntry = OrganizationMethods.Get(databaseContext, organization);
+
+        if ( organizationEntry == null )
+        {
+            Log.Warning("Organization {Organization} is null", organization);
+            return null;
+        }
 
         var organizationEvent = new OrganizationEvent
             {Address = addressEntry, Organization = organizationEntry, Event = databaseEvent};

@@ -124,6 +124,21 @@ public static class AddressMethods
 
         return entry;
     }
+    
+    public static Address GetByName(MainDbContext databaseContext, Chain chain, string addressName)
+    {
+
+        var entry = databaseContext.Addresses.FirstOrDefault(x => x.Chain == chain && x.ADDRESS_NAME == addressName);
+
+        if ( entry != null ) return entry;
+
+        // Checking if entry has been added already
+        // but not yet inserted into database.
+        entry = DbHelper.GetTracked<Address>(databaseContext)
+            .FirstOrDefault(x => x.Chain == chain && x.ADDRESS_NAME == addressName);
+
+        return entry;
+    }
 
 
     public static Dictionary<string, Address> InsertIfNotExists(MainDbContext databaseContext, Chain chain,

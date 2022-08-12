@@ -260,6 +260,11 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.AddressValidatorKindId);
 
+        /*modelBuilder.Entity<Address>()
+            .HasOne(x => x.Organization)
+            .WithMany(y => y.Addresses)
+            .HasForeignKey(x => x.OrganizationId);*/
+
         // Indexes
 
         modelBuilder.Entity<Address>()
@@ -1044,7 +1049,7 @@ public class MainDbContext : DbContext
             .WithMany(y => y.AddressBalances)
             .HasForeignKey(x => x.TokenId)
             .OnDelete(DeleteBehavior.Cascade);
-
+        
         // Indexes
 
 
@@ -1230,6 +1235,8 @@ public class Address
     public virtual List<Token> Tokens { get; set; }
     public virtual List<Token> TokenOwners { get; set; }
     public virtual List<Contract> Contracts { get; set; }
+    public int? OrganizationId { get; set; }
+    public virtual Organization Organization { get; set; }
 }
 
 public class Event
@@ -1512,11 +1519,13 @@ public class External
 public class Organization
 {
     public int ID { get; set; }
+    public string ORGANIZATION_ID { get; set; }
     public string NAME { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
     public int? CreateEventId { get; set; }
     public virtual Event CreateEvent { get; set; }
+    public virtual List<Address> Addresses { get; set; }
 }
 
 public class OrganizationEvent

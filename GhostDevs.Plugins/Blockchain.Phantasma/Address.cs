@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.Json;
+using Castle.Core.Internal;
 using Database.Main;
 using GhostDevs.Api;
 using GhostDevs.Commons;
@@ -108,6 +109,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     response.RootElement.GetProperty("validator").GetString());
                 address.AddressValidatorKind = validatorKind;
 
+                //just to keep things up2date
+                address.Organization = null;
+                var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
+                if ( organization != null )
+                {
+                    address.Organization = organization;
+                }
+
                 processed++;
                 if ( processed % saveAfterCount != 0 ) continue;
                 transactionStart = DateTime.Now;
@@ -126,5 +135,69 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var updateTime = DateTime.Now - startTime;
         Log.Information("[{Name}] Address sync took {Time} sec, {Updated} names updated, Processed {Processed}", Name,
             Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount, processed);
+    }
+
+
+    private Address SyncAddressByName(Chain chain, string addressName, Organization organization, bool saveChanges)
+    {
+        var startTime = DateTime.Now;
+
+        if ( addressName.IsNullOrEmpty() ) return null;
+
+        using MainDbContext databaseContext = new();
+        var addressEntry = AddressMethods.GetByName(databaseContext, chain, addressName);
+
+        if ( addressEntry == null )
+        {
+            var url = $"{Settings.Default.GetRest()}/api/lookUpName?name={addressName}";
+            var response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
+            if ( response == null )
+            {
+                Log.Error("[{Name}] lookUpName: null result", Name);
+                return null;
+            }
+
+            var address = response.RootElement.GetString();
+            Log.Verbose("[{Name}] Found Address {Address} for name {AddressName}", Name, address, addressName);
+
+            if ( address.IsNullOrEmpty() ) return null;
+
+            addressEntry = AddressMethods.Get(databaseContext, chain, address);
+
+            if ( addressEntry != null )
+            {
+                addressEntry.ADDRESS_NAME = addressName;
+            }
+            else
+            {
+                url = $"{Settings.Default.GetRest()}/api/getAccount?account={address}";
+                response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
+                if ( response == null )
+                {
+                    Log.Error("[{Name}] getAccount: null result", Name);
+                    return null;
+                }
+
+                //do not process everything here, let the sync to that later, we just call it to make sure
+                var name = response.RootElement.GetProperty("name").GetString();
+                addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
+                if ( name == "anonymous" ) name = null;
+
+                addressEntry.ADDRESS_NAME = name;
+            }
+        }
+
+        if ( organization != null )
+        {
+            Log.Verbose("[{Name}] setting Organization {Organization} for Address {Address}", Name,
+                organization.ORGANIZATION_ID, addressEntry.ADDRESS);
+            addressEntry.Organization = organization;
+        }
+
+        var lookUpTime = DateTime.Now - startTime;
+        Log.Information("[{Name}] Address lookup for {AddressName} took {Time} sec", Name,
+            addressName, Math.Round(lookUpTime.TotalSeconds, 3));
+
+        return addressEntry;
     }
 }

@@ -289,7 +289,7 @@ public static class ArgValidation
 
     public static bool CheckString(string value, bool charactersOnly = false)
     {
-        return Regex.IsMatch(value, charactersOnly ? @"^[a-zA-Z]+$" : @"^[a-zA-Z0-9]+$");
+        return Regex.IsMatch(value, charactersOnly ? @"^[a-zA-Z_ ]+$" : @"^[a-zA-Z0-9_ ]+$");
     }
 
 
@@ -301,6 +301,6 @@ public static class ArgValidation
 
     public static bool CheckSearch(string value)
     {
-        return Regex.IsMatch(value, @"^[a-zA-Z0-9,_:]+$");
+        return Regex.IsMatch(value, @"^[a-zA-Z0-9,_: ]+$");
     }
 }
