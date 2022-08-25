@@ -36,7 +36,7 @@ public class TTRS : Plugin, IDBAccessPlugin
                 try
                 {
                     Nft.Fetch.LoadNfts();
-                    Nft.Fetch.LoadGAMENfts();
+                    //Nft.Fetch.LoadGAMENfts(); lets try without
 
                     Thread.Sleep(( int ) Settings.Default.RunInterval *
                                  1000); // We repeat task every RunInterval seconds.
