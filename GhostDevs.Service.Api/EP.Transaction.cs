@@ -39,6 +39,7 @@ public partial class Endpoints
     ///     Return with <a href='#model-FiatPrice'>fiat_prices</a> (only
     ///     <a href='#model-MarketEvent'>market_event</a>)
     /// </param>
+    /// <param name="with_script" example="0">Return with script data</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
@@ -64,6 +65,7 @@ public partial class Endpoints
         int with_events = 0,
         int with_event_data = 0,
         int with_fiat = 0,
+        int with_script = 0,
         int with_total = 0
         // ReSharper enable InconsistentNaming
     )
@@ -161,7 +163,7 @@ public partial class Endpoints
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
                 totalResults = query.Count();
-
+            
             //in case we add more to sort
             if ( order_direction == "asc" )
                 query = order_by switch
@@ -178,7 +180,7 @@ public partial class Endpoints
                     _ => query
                 };
 
-            if ( !filter ) query = query.Skip(offset).Take(limit);
+            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
             transactionArray = query.Select(x => new Transaction
             {
@@ -188,7 +190,7 @@ public partial class Endpoints
                 index = x.INDEX,
                 date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
                 fee = UnitConversion.ToDecimal(x.FEE, tokenKcal.DECIMALS).ToString(CultureInfo.InvariantCulture),
-                script_raw = x.SCRIPT_RAW,
+                script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
                 result = x.RESULT,
                 payload = x.PAYLOAD,
                 expiration = x.EXPIRATION.ToString(),
