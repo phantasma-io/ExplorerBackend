@@ -163,7 +163,7 @@ public partial class Endpoints
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
                 totalResults = query.Count();
-            
+
             //in case we add more to sort
             if ( order_direction == "asc" )
                 query = order_by switch

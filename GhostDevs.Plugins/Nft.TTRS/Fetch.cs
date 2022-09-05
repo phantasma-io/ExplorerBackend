@@ -221,13 +221,15 @@ public class Fetch
             }
 
             var meta = response["meta"];
+
             if ( meta is not JsonObject )
             {
                 Log.Error("GAME meta: null meta for {ID}, returning", id);
                 return;
-                /*Log.Warning("GAME meta: null meta for {ID}, continue with next", id);
-                continue;*/
+                //Log.Warning("GAME meta: null meta for {ID}, continue with next", id);
+                //continue;
             }
+
 
             var metadataKey = ( string ) response["nfts"][0]["parsed_rom"]["metadata"];
 

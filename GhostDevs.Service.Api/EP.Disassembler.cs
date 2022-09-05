@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using GhostDevs.Commons;
@@ -36,8 +37,15 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            var instructions = Utils.GetInstructionsFromScript(script.script_raw);
-
+            List<string> instructions;
+            try
+            {
+                instructions = Utils.GetInstructionsFromScript(script.script_raw);
+            }
+            catch ( Exception exception )
+            {
+                throw new ApiParameterException(exception.Message);
+            }
 
             totalResults = instructions.Count;
 
