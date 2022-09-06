@@ -2,7 +2,7 @@
 Description=Explorer Backend Data Fetcher
 
 [Service]
-ExecStart=/usr/bin/dotnet /opt/ExplorerBackend/bin/GhostDevs.Service.DataFetcher.dll
+ExecStart=/usr/bin/dotnet /opt/ExplorerBackend/bin/Backend.Service.DataFetcher.dll
 SyslogIdentifier=DataFetcher
 StandardOutput=null
 StandardError=journal

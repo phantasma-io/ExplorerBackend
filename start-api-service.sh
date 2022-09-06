@@ -2,4 +2,4 @@
 
 cd ./bin/
 
-dotnet GhostDevs.Service.Api.dll
+dotnet Backend.Service.Api.dll

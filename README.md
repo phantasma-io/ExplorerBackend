@@ -4,23 +4,27 @@ A backend for Phantasma explorer
 ## Sources structure
 File / Folder | Description
 ------------- | -------------
-GhostDevs.Api.Client | Library used by plugins for REST calls
-GhostDevs.MP.Database | Everything that related to database and its objects, including EF model and migrations
-GhostDevs.MP.Plugins | Folder with plugins for fetching blockchains and NFTs data
-GhostDevs.MP.Plugins/Blockchain.Phantasma | Phantasma blockchain plugin, retrieves all necessary data from blockchain and stores it in the database
-GhostDevs.MP.Plugins/Nft.TTRS | 22 Racing series NFT plugin, retrieves all necessary data from 22 series site and stores it in the database
-GhostDevs.MP.Service.Api | 1st of 2 backend services, provides endpoints for frontend
-GhostDevs.MP.Service.DataFetcher | 2nd of 2 backend services, runs available blockchain and NFT plugins to fetch necessary data and save it in the database
-GhostDevs.PluginEngine | Plugin engine library used by both backend services, provides plugin mechanisms and interfaces
-GhostDevs.PostgreSQLConnector | Library for raw SQL querying of PastgresSQL database, can be used with current EF database implementation
+Backend.Api.Client | Library used by plugins for REST calls
+Backend.Database | Everything that related to database and its objects, including EF model and migrations
+Backend.Plugins | Folder with plugins for fetching blockchains and NFTs data
+Backend.Plugins/Blockchain.Phantasma | Phantasma blockchain plugin, retrieves all necessary data from blockchain and stores it in the database
+Backend.Plugins/Nft.TTRS | 22 Racing series NFT plugin, retrieves all necessary data from 22 series site and stores it in the database
+Backend.Service.Api | 1st of 2 backend services, provides endpoints for frontend
+Backend.Service.DataFetcher | 2nd of 2 backend services, runs available blockchain and NFT plugins to fetch necessary data and save it in the database
+Backend.PluginEngine | Plugin engine library used by both backend services, provides plugin mechanisms and interfaces
+Backend.PostgreSQLConnector | Library for raw SQL querying of PastgresSQL database, can be used with current EF database implementation
 clean.sh | Development script, cleans sources from binaries and temporal VS files. Close VS before running
 database-migrations-recreate.sh | Development script, recreates "Migrations" folder in Database.Main, preserving previous dates in migrations file names
 database-recreate.sh | Deployment script, drops "explorer-backend" database and creates it using migrations in Database.Main/Migrations. Database user "postgres" and password "masterkey" are used in script.
-GhostDevs.ExplorerBackend.sln | MSVS solution for explorer backend
+Backend.ExplorerBackend.sln | MSVS solution for explorer backend
 explorer-backend-config.json | Default backend configuration file, should be placed on same level as backend's bin folder
 README.md | This readme file
-start-api-service.sh | Starts API service
-start-data-fetcher.sh | Starts Data Fetcher service
+start-api-service.sh | Starts API service (can be replaced with the service files)
+start-data-fetcher.sh | Starts Data Fetcher service (can be replaced with the service files)
+api-service.service | systemd service file for the API service
+data-fetcher.service | systemd service file for the Data Fetcher service 
+publish.sh | script to setup the folder sturcture we later deploy with
+install_files.sh | stops the services, copies current version, copies publish and overwrite folder to /opt/explorer-backend, starts and enable services
 
 *All scripts are designed to be used in OS Linux, or in OS Windows with MSYS distributive available in PATH environment variable*
 
@@ -135,6 +139,7 @@ Renew certificate:
 Convert certificate:
 
     openssl pkcs12 -export -out /opt/cert-explorer-phantasma-io.pfx -inkey /etc/letsencrypt/live/explorer.phantasma.io/privkey.pem -in /etc/letsencrypt/live/explorer.phantasma.io/fullchain.pem -name "SSL Signed Certificate"
+
 
 ### Backend installation
 

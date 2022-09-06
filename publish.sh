@@ -7,39 +7,39 @@ NET_SUBFOLDER=net6.0
 rm -r --force $OUT_FOLDER
 mkdir --parents $OUT_BIN_FOLDER
 
-cp -a GhostDevs.Commons/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
-cp -a GhostDevs.Commons/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
-cp -a GhostDevs.Commons/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
+cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
+cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
 
-cp -a GhostDevs.Commons $OUT_BIN_FOLDER/
-rm -r $OUT_BIN_FOLDER/GhostDevs.Commons/bin
-rm -r $OUT_BIN_FOLDER/GhostDevs.Commons/obj
+cp -a Backend.Commons $OUT_BIN_FOLDER/
+rm -r $OUT_BIN_FOLDER/Backend.Commons/bin
+rm -r $OUT_BIN_FOLDER/Backend.Commons/obj
 
-cp -a GhostDevs.Service.Api/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
-cp -a GhostDevs.Service.Api/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
-cp -a GhostDevs.Service.Api/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
-cp -a GhostDevs.Service.Api/bin/$NET_SUBFOLDER/*.xml $OUT_BIN_FOLDER
+cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
+cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
+cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.xml $OUT_BIN_FOLDER
 
-cp -a GhostDevs.Service.DataFetcher/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
-cp -a GhostDevs.Service.DataFetcher/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
-cp -a GhostDevs.Service.DataFetcher/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
+cp -a Backend.Service.DataFetcher/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
+cp -a Backend.Service.DataFetcher/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+cp -a Backend.Service.DataFetcher/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
 
 mkdir --parents $OUT_BIN_FOLDER/Plugins
-cp -a GhostDevs.Api.Client/bin/$NET_SUBFOLDER/GhostDevs.Api.Client.* $OUT_BIN_FOLDER/Plugins
-cp -a GhostDevs.Plugins/Blockchain.Common/bin/Debug/$NET_SUBFOLDER/Blockchain.Common.* $OUT_BIN_FOLDER/Plugins
-cp -a GhostDevs.Plugins/Blockchain.Common/*.json $OUT_FOLDER
-cp -a GhostDevs.Plugins/Blockchain.Phantasma/bin/Debug/$NET_SUBFOLDER/Blockchain.Phantasma.* $OUT_BIN_FOLDER/Plugins
-cp -a GhostDevs.Plugins/Blockchain.Phantasma/bin/Debug/$NET_SUBFOLDER/Phantasma.* $OUT_BIN_FOLDER
-cp -a GhostDevs.Plugins/Blockchain.Phantasma/*.json $OUT_FOLDER
-cp -a GhostDevs.Plugins/Nft.TTRS/bin/Debug/$NET_SUBFOLDER/Nft.TTRS.* $OUT_BIN_FOLDER/Plugins
-cp -a GhostDevs.Plugins/Nft.TTRS/*.json $OUT_FOLDER
-cp -a GhostDevs.Plugins/Price.CoinGecko/bin/Debug/$NET_SUBFOLDER/Price.CoinGecko.* $OUT_BIN_FOLDER/Plugins
-cp -a GhostDevs.Plugins/Price.CoinGecko/*.json $OUT_FOLDER
-cp -a GhostDevs.Plugins/Price.ExchangeRatesApiIo/bin/Debug/$NET_SUBFOLDER/Price.ExchangeRatesApiIo.* $OUT_BIN_FOLDER/Plugins
-cp -a GhostDevs.Plugins/Price.ExchangeRatesApiIo/*.json $OUT_FOLDER
+cp -a Backend.Api.Client/bin/$NET_SUBFOLDER/Backend.Api.Client.* $OUT_BIN_FOLDER/Plugins
+cp -a Backend.Plugins/Blockchain.Common/bin/Debug/$NET_SUBFOLDER/Blockchain.Common.* $OUT_BIN_FOLDER/Plugins
+cp -a Backend.Plugins/Blockchain.Common/*.json $OUT_FOLDER
+cp -a Backend.Plugins/Blockchain.Phantasma/bin/Debug/$NET_SUBFOLDER/Blockchain.Phantasma.* $OUT_BIN_FOLDER/Plugins
+cp -a Backend.Plugins/Blockchain.Phantasma/bin/Debug/$NET_SUBFOLDER/Phantasma.* $OUT_BIN_FOLDER
+cp -a Backend.Plugins/Blockchain.Phantasma/*.json $OUT_FOLDER
+cp -a Backend.Plugins/Nft.TTRS/bin/Debug/$NET_SUBFOLDER/Nft.TTRS.* $OUT_BIN_FOLDER/Plugins
+cp -a Backend.Plugins/Nft.TTRS/*.json $OUT_FOLDER
+cp -a Backend.Plugins/Price.CoinGecko/bin/Debug/$NET_SUBFOLDER/Price.CoinGecko.* $OUT_BIN_FOLDER/Plugins
+cp -a Backend.Plugins/Price.CoinGecko/*.json $OUT_FOLDER
+cp -a Backend.Plugins/Price.ExchangeRatesApiIo/bin/Debug/$NET_SUBFOLDER/Price.ExchangeRatesApiIo.* $OUT_BIN_FOLDER/Plugins
+cp -a Backend.Plugins/Price.ExchangeRatesApiIo/*.json $OUT_FOLDER
 
-cp -a GhostDevs.Plugins/Blockchain.Img/bin/Debug/$NET_SUBFOLDER/Blockchain.Img.* $OUT_BIN_FOLDER/Plugins
-cp -a GhostDevs.Plugins/Blockchain.Img/*.json $OUT_FOLDER
+cp -a Backend.Plugins/Blockchain.Img/bin/Debug/$NET_SUBFOLDER/Blockchain.Img.* $OUT_BIN_FOLDER/Plugins
+cp -a Backend.Plugins/Blockchain.Img/*.json $OUT_FOLDER
 
 
 

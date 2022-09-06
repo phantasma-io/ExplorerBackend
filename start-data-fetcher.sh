@@ -2,4 +2,4 @@
 
 cd ./bin/
 
-dotnet GhostDevs.Service.DataFetcher.dll
+dotnet Backend.Service.DataFetcher.dll

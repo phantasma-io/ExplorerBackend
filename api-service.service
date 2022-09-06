@@ -2,7 +2,7 @@
 Description=API Service
 
 [Service]
-ExecStart=/usr/bin/dotnet /opt/ExplorerBackend/bin/GhostDevs.Service.Api.dll
+ExecStart=/usr/bin/dotnet /opt/ExplorerBackend/bin/Backend.Service.Api.dll
 SyslogIdentifier=APIService
 StandardOutput=null
 StandardError=journal

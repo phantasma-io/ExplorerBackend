@@ -3,7 +3,7 @@ using System.Text.Json;
 using Shouldly;
 using Xunit;
 
-namespace GhostDevs.Tests;
+namespace Backend.Tests;
 
 public class JsonTests
 {
