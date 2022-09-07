@@ -175,13 +175,16 @@ Reboot machine to start backend services.
 ### Backend installation (alternative)
 
 as backend/normal user
+
     cd <source_folder>
     dotnet build
     ./publish.sh
 
 database update
+
     <TODO stop services>
     <TODO insert commands here>
 
-as root:
+as root
+
     ./install_files.sh
