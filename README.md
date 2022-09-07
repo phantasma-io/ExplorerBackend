@@ -171,3 +171,17 @@ Edit crontab and add following lines:
     @reboot  cd /opt/explorer-backend; screen -dmS ExplorerApiScreen bash -c './start-api-service.sh; exec bash'
 
 Reboot machine to start backend services.
+
+### Backend installation (alternative)
+
+as backend/normal user
+    cd <source_folder>
+    dotnet build
+    ./publish.sh
+
+database update
+    <TODO stop services>
+    <TODO insert commands here>
+
+as root:
+    ./install_files.sh
