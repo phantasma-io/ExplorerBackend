@@ -62,10 +62,10 @@ public partial class Endpoints
                     "addresses" => databaseContext.Addresses.Any(x => x.ADDRESS == value),
                     "blocks" => databaseContext.Blocks.Any(x => x.HASH == value),
                     "chains" => databaseContext.Chains.Any(x => x.NAME == value),
-                    "contracts" => databaseContext.Contracts.Any(x => x.HASH == value.ToUpper()),
+                    "contracts" => databaseContext.Contracts.Any(x => x.HASH.ToLower().Equals( value.ToLower())),
                     "organizations" => databaseContext.Organizations.Any(x => x.NAME == value),
                     "platforms" => databaseContext.Platforms.Any(x => x.NAME == value),
-                    "tokens" => databaseContext.Tokens.Any(x => x.SYMBOL == value.ToUpper()),
+                    "tokens" => databaseContext.Tokens.Any(x => x.SYMBOL.ToLower().Equals(value.ToLower())),
                     _ => false
                 };
 
