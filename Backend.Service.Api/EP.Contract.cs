@@ -90,9 +90,9 @@ public partial class Endpoints
 
             #region Filtering
 
-            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol.ToUpper());
+            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL.Equals(symbol.ToUpper()));
 
-            if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.HASH == hash);
+            if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.HASH.ToLower().Equals(hash.ToLower()));
 
             if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
 
