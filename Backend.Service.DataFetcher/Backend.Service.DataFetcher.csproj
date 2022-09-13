@@ -11,22 +11,22 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Publish\**" />
-    <EmbeddedResource Remove="Publish\**" />
-    <None Remove="Publish\**" />
+    <Compile Remove="Publish\**"/>
+    <EmbeddedResource Remove="Publish\**"/>
+    <None Remove="Publish\**"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Nethereum.Web3" Version="4.8.0" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.6" />
+    <PackageReference Include="Nethereum.Web3" Version="4.8.0"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.6"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj" />
-    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj" />
-    <ProjectReference Include="..\Backend.PluginEngine\Backend.PluginEngine.csproj" />
-    <ProjectReference Include="..\Backend.PostgreSQLConnector\Backend.PostgreSQLConnector.csproj" />
-    <ProjectReference Include="..\Database.Main\Database.Main.csproj" />
+    <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj"/>
+    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj"/>
+    <ProjectReference Include="..\Backend.PluginEngine\Backend.PluginEngine.csproj"/>
+    <ProjectReference Include="..\Backend.PostgreSQLConnector\Backend.PostgreSQLConnector.csproj"/>
+    <ProjectReference Include="..\Database.Main\Database.Main.csproj"/>
   </ItemGroup>
 
 </Project>

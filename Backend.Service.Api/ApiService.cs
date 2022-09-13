@@ -6,9 +6,6 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Threading;
-using Database.Main;
-using Foundatio.Caching;
-using Foundatio.Messaging;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Backend.Service.Api.Caching;
@@ -18,6 +15,9 @@ using Backend.Service.Api.Hosting;
 using Backend.Service.Api.Infrastructure;
 using Backend.Service.Api.Middleware;
 using Backend.Service.Api.Swagger;
+using Database.Main;
+using Foundatio.Caching;
+using Foundatio.Messaging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -108,6 +108,7 @@ public static class Api
             options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
             options.SerializerOptions.Converters.Add(new EnumerableJsonConverterFactory());
         });
+        //builder.Services.AddHealthChecks();
         builder.Services.AddCors(options =>
         {
             //options.AddDefaultPolicy(policyBuilder => { policyBuilder.AllowAnyOrigin(); });

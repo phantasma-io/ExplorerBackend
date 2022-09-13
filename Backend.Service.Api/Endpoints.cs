@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Foundatio.Messaging;
 using Backend.Service.Api.Infrastructure;
+using Foundatio.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Backend.Service.Api;
