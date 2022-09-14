@@ -11,25 +11,19 @@ public static class ArgValidation
      * Socials Regex Pattern (google is your friend)
      * Did not touch them but tested them with some input to validate them
      */
-    private static readonly string _discordPattern =
-        @"(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li)|discordapp\.com\/invite)\/.+[a-z]";
+    private const string DiscordPattern = @"(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li)|discordapp\.com\/invite)\/.+[a-z]";
 
-    private static readonly string _facebookPattern =
-        @"(?:https?:\/\/)?(?:www\.)?facebook\.com\/.(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-\.]*)";
+    private const string FacebookPattern = @"(?:https?:\/\/)?(?:www\.)?facebook\.com\/.(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-\.]*)";
 
-    private static readonly string _instagramPattern =
-        @"(?:(?:http|https):\/\/)?(?:www.)?(?:instagram.com|instagr.am|instagr.com)\/(\w+)";
+    private const string InstagramPattern = @"(?:(?:http|https):\/\/)?(?:www.)?(?:instagram.com|instagr.am|instagr.com)\/(\w+)";
 
-    private static readonly string _spotifyPattern =
-        @"^(https:\/\/open.spotify.com\/user\/spotify\/playlist\/|spotify:user:spotify:playlist:)([a-zA-Z0-9]+)(.*)$";
+    private const string SpotifyPattern = @"^(https:\/\/open.spotify.com\/user\/spotify\/playlist\/|spotify:user:spotify:playlist:)([a-zA-Z0-9]+)(.*)$";
 
-    private static readonly string
-        _telegramPattern = @"(https?:\/\/)?(www[.])?(telegram|t)\.me\/([\.a-zA-Z0-9_-]*)\/?$";
+    private const string TelegramPattern = @"(https?:\/\/)?(www[.])?(telegram|t)\.me\/([\.a-zA-Z0-9_-]*)\/?$";
 
-    private static readonly string _youtubePattern = @"(https?:\/\/)?(www\.)?youtube\.com\/(channel|user)\/[\w-]+";
+    private const string YoutubePattern = @"(https?:\/\/)?(www\.)?youtube\.com\/(channel|user)\/[\w-]+";
 
-    private static readonly string _twitterPattern =
-        @"(?:http:\/\/)?(?:www\.)?twitter\.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-]*)";
+    private const string TwitterPattern = @"(?:http:\/\/)?(?:www\.)?twitter\.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-]*)";
 
     /*
      * Additional Regex patterned designed for our purposes.
@@ -44,7 +38,7 @@ public static class ArgValidation
      * username ends with no new line
      * The max length is checked elsewhere
      */
-    private static readonly string _usernamePattern = @"^[a-z]{3,}[0-9]*\z";
+    private const string UsernamePattern = @"^[a-z]{3,}[0-9]*\z";
 
     /*
      * Title Pattern:
@@ -54,7 +48,7 @@ public static class ArgValidation
      * Title ends without a new line.
      * The max length is checked elsewhere
      */
-    private static readonly string _titlePattern = @"^(([a-zA-Z0-9]+(\s[a-zA-Z0-9]+))+\z)";
+    private const string TitlePattern = @"^(([a-zA-Z0-9]+(\s[a-zA-Z0-9]+))+\z)";
 
 
     public static bool CheckLimit(int value)
@@ -213,43 +207,43 @@ public static class ArgValidation
 
     public static bool CheckDiscordLink(string link)
     {
-        return CheckLink(link, _discordPattern);
+        return CheckLink(link, DiscordPattern);
     }
 
 
     public static bool CheckFacebookLink(string link)
     {
-        return CheckLink(link, _facebookPattern);
+        return CheckLink(link, FacebookPattern);
     }
 
 
     public static bool CheckInstagramLink(string link)
     {
-        return CheckLink(link, _instagramPattern);
+        return CheckLink(link, InstagramPattern);
     }
 
 
     public static bool CheckSpotifyLink(string link)
     {
-        return CheckLink(link, _spotifyPattern);
+        return CheckLink(link, SpotifyPattern);
     }
 
 
     public static bool CheckTelegramLink(string link)
     {
-        return CheckLink(link, _telegramPattern);
+        return CheckLink(link, TelegramPattern);
     }
 
 
     public static bool CheckYoutubeLink(string link)
     {
-        return CheckLink(link, _youtubePattern);
+        return CheckLink(link, YoutubePattern);
     }
 
 
     public static bool CheckTwitterLink(string link)
     {
-        return CheckLink(link, _twitterPattern);
+        return CheckLink(link, TwitterPattern);
     }
 
 
@@ -277,13 +271,13 @@ public static class ArgValidation
 
     public static bool CheckUsername(string name)
     {
-        return Regex.IsMatch(name, _usernamePattern);
+        return Regex.IsMatch(name, UsernamePattern);
     }
 
 
     public static bool CheckTitle(string title)
     {
-        return Regex.IsMatch(title, _titlePattern);
+        return Regex.IsMatch(title, TitlePattern);
     }
 
 

@@ -6,6 +6,7 @@ using System.Net;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace Backend.Service.Api;
@@ -59,13 +60,13 @@ public partial class Endpoints
             {
                 var anyHit = endpoint switch
                 {
-                    "addresses" => databaseContext.Addresses.Any(x => x.ADDRESS == value),
-                    "blocks" => databaseContext.Blocks.Any(x => x.HASH == value),
-                    "chains" => databaseContext.Chains.Any(x => x.NAME == value),
-                    "contracts" => databaseContext.Contracts.Any(x => x.HASH.ToLower().Equals( value.ToLower())),
-                    "organizations" => databaseContext.Organizations.Any(x => x.NAME == value),
-                    "platforms" => databaseContext.Platforms.Any(x => x.NAME == value),
-                    "tokens" => databaseContext.Tokens.Any(x => x.SYMBOL.ToLower().Equals(value.ToLower())),
+                    "addresses" => databaseContext.Addresses.AsNoTracking().Any(x => x.ADDRESS == value),
+                    "blocks" => databaseContext.Blocks.AsNoTracking().Any(x => x.HASH == value),
+                    "chains" => databaseContext.Chains.AsNoTracking().Any(x => x.NAME == value),
+                    "contracts" => databaseContext.Contracts.AsNoTracking().Any(x => x.HASH.ToLower().Equals(value.ToLower())),
+                    "organizations" => databaseContext.Organizations.AsNoTracking().Any(x => x.NAME == value),
+                    "platforms" => databaseContext.Platforms.AsNoTracking().Any(x => x.NAME == value),
+                    "tokens" => databaseContext.Tokens.AsNoTracking().Any(x => x.SYMBOL.ToLower().Equals(value.ToLower())),
                     _ => false
                 };
 

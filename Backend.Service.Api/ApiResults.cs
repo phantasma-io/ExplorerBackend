@@ -7,7 +7,7 @@ namespace Backend.Service.Api;
 //since we got different naming in the API
 // ReSharper disable InconsistentNaming
 /// <summary>
-///     Ntf Metadata Infomation
+///     Ntf Metadata Information
 /// </summary>
 public class NftMetadata
 {
