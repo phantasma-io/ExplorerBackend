@@ -69,7 +69,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     Log.Verbose("[{Name}] checking NFT, Symbol {Symbol}, Token Id {Token}", Name, nft.Contract.SYMBOL,
                         nft.TOKEN_ID);
-                    var url = $"{Settings.Default.GetRest()}/api/getNFT?symbol=" + nft.Contract.SYMBOL.ToUpper() +
+                    var url = $"{Settings.Default.GetRest()}/api/v1/getNFT?symbol=" + nft.Contract.SYMBOL.ToUpper() +
                               "&IDtext=" + nft.TOKEN_ID + "&extended=true";
 
                     var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);

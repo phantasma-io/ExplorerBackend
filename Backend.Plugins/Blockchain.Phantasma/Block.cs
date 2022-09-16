@@ -96,7 +96,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         if ( blockData == null )
         {
-            var url = $"{Settings.Default.GetRest()}/api/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
+            var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
             var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response == null ) return false;
@@ -204,8 +204,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     {
                         transactionStart = DateTime.Now;
                         var signatures = signaturesProperty.EnumerateArray().Select(signature =>
-                            new Tuple<string, string>(signature.GetProperty("Kind").GetString(),
-                                signature.GetProperty("Data").GetString())).ToList();
+                            new Tuple<string, string>(signature.GetProperty("kind").GetString(),
+                                signature.GetProperty("data").GetString())).ToList();
 
                         SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction, false);
 

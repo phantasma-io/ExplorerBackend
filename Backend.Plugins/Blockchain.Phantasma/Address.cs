@@ -37,7 +37,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var tokenKcal = TokenMethods.Get(databaseContext, chainId, "KCAL");
             foreach ( var address in addressesToUpdate )
             {
-                var url = $"{Settings.Default.GetRest()}/api/getAccount?account={address.ADDRESS}";
+                var url = $"{Settings.Default.GetRest()}/api/v1/getAccount?account={address.ADDRESS}";
                 var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
                 if ( response == null )
                 {
@@ -103,7 +103,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 address.STAKE = Utils.ToDecimal(response.RootElement.GetProperty("stake").GetString(), tokenSoul);
                 address.UNCLAIMED =
                     Utils.ToDecimal(response.RootElement.GetProperty("unclaimed").GetString(), tokenKcal);
-                address.RELAY = response.RootElement.GetProperty("relay").GetString();
+                //address.RELAY = response.RootElement.GetProperty("relay").GetString();
+                //TODO remove from model for NG
 
                 var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
                     response.RootElement.GetProperty("validator").GetString());
@@ -146,7 +147,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         if ( addressEntry == null )
         {
-            var url = $"{Settings.Default.GetRest()}/api/lookUpName?name={addressName}";
+            var url = $"{Settings.Default.GetRest()}/api/v1/lookUpName?name={addressName}";
             var response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
             if ( response == null )
             {
@@ -165,7 +166,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 addressEntry.ADDRESS_NAME = addressName;
             else
             {
-                url = $"{Settings.Default.GetRest()}/api/getAccount?account={address}";
+                url = $"{Settings.Default.GetRest()}/api/v1/getAccount?account={address}";
                 response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
                 if ( response == null )
                 {

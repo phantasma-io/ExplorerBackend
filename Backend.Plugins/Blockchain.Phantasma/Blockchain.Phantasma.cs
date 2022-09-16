@@ -304,7 +304,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     public BigInteger GetCurrentBlockHeight(string chain)
     {
-        var url = $"{Settings.Default.GetRest()}/api/getBlockHeight?chainInput=main";
+        var url = $"{Settings.Default.GetRest()}/api/v1/getBlockHeight?chainInput=main";
 
         HttpClient httpClient = new();
         var response = httpClient.GetAsync(url).Result;
@@ -324,7 +324,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         error = null;
 
-        var url = $"{Settings.Default.GetRest()}/api/getNFT?symbol=" + contractHash + "&IDtext=" + tokenId +
+        var url = $"{Settings.Default.GetRest()}/api/v1/getNFT?symbol=" + contractHash + "&IDtext=" + tokenId +
                   "&extended=true";
 
         var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);

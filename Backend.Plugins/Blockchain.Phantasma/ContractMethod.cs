@@ -35,7 +35,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 chainItem.NAME);
 
             var url =
-                $"{Settings.Default.GetRest()}/api/getContract?chainAddressOrName={chainItem.NAME}&contractName={contractItem.NAME}";
+                $"{Settings.Default.GetRest()}/api/v1/getContract?chainAddressOrName={chainItem.NAME}&contractName={contractItem.NAME}";
             var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response == null )
             {

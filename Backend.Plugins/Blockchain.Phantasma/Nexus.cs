@@ -23,7 +23,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             updatedTokensCount = 0;
             updatedPlatformsCount = 0;
             updatedOrganizationsCount = 0;
-            var url = $"{Settings.Default.GetRest()}/api/getNexus";
+            var url = $"{Settings.Default.GetRest()}/api/v1/getNexus?extended=true";
 
             //TODO fix
             PlatformMethods.Upsert(databaseContext, "phantasma", null, null, false, true);
@@ -176,7 +176,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             "[{Name}] got Platform {Organization}",
                             Name, organization.ToString());
 
-                        var urlOrg = $"{Settings.Default.GetRest()}/api/getOrganization/{organization.ToString()}";
+                        var urlOrg = $"{Settings.Default.GetRest()}/api/v1/getOrganization?ID={organization.ToString()}";
                         var responseOrg = Client.ApiRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
                         if ( responseOrg != null )
                         {

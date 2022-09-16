@@ -22,7 +22,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         var updatedChainsCount = 0;
 
-        var url = $"{Settings.Default.GetRest()}/api/getChains";
+        var url = $"{Settings.Default.GetRest()}/api/v1/getChains";
 
         var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
         if ( response != null )
