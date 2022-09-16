@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Numerics;
 using System.Text.Json;
 using System.Threading;
 using Backend.Api;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
-using Phantasma.Core.Utils;
-using Phantasma.Cryptography;
-using Phantasma.Numerics;
+using Phantasma.Core.Cryptography;
+using Phantasma.Core.Numerics;
+using Phantasma.Shared.Utils;
 using Serilog;
-using Address = Phantasma.Cryptography.Address;
-using BigInteger = System.Numerics.BigInteger;
+using Address = Phantasma.Core.Cryptography.Address;
 
 namespace Backend.Blockchain;
 

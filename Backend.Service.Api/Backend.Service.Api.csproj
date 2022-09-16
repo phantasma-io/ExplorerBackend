@@ -26,6 +26,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\phantasma-ng\Phantasma.Business\src\Phantasma.Business.csproj"/>
+    <ProjectReference Include="..\..\phantasma-ng\Phantasma.Core\src\Phantasma.Core.csproj"/>
     <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj"/>
     <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj"/>
     <ProjectReference Include="..\Database.Main\Database.Main.csproj"/>

@@ -6,7 +6,7 @@ using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Phantasma.Numerics;
+using Phantasma.Core.Numerics;
 using Serilog;
 
 namespace Backend.Service.Api;

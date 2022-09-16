@@ -1,9 +1,10 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using Backend.PluginEngine;
 using Database.Main;
-using Phantasma.Numerics;
+using Phantasma.Core.Numerics;
 using Serilog;
 
 namespace Backend.Blockchain;

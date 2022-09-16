@@ -4,16 +4,15 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using Database.Main;
-using LunarLabs.Parser;
-using Phantasma.Numerics;
-using Phantasma.VM;
+using Phantasma.Business.VM;
+using Phantasma.Core.Numerics;
 using Serilog;
 
 namespace Backend.Blockchain;
 
 internal static class Utils
 {
-    private static void PrintAuctionsMaxFieldLengths(DataNode auctions)
+    /*private static void PrintAuctionsMaxFieldLengths(DataNode auctions)
     {
         if ( auctions == null ) return;
 
@@ -64,7 +63,7 @@ internal static class Utils
                         "romMaxLength: {RomMaxLength}\n" +
                         "ramMaxLength: {RamMaxLength}", creatorAddressMaxLength, chainAddressMaxLength,
             baseSymbolMaxLength, quoteSymbolMaxLength, tokenIdMaxLength, priceMaxLength, romMaxLength, ramMaxLength);
-    }
+    }*/
 
 
     public static List<string> GetInstructionsFromScript(string scriptRaw)

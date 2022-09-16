@@ -63,10 +63,12 @@ public partial class Endpoints
                     "addresses" => databaseContext.Addresses.AsNoTracking().Any(x => x.ADDRESS == value),
                     "blocks" => databaseContext.Blocks.AsNoTracking().Any(x => x.HASH == value),
                     "chains" => databaseContext.Chains.AsNoTracking().Any(x => x.NAME == value),
-                    "contracts" => databaseContext.Contracts.AsNoTracking().Any(x => x.HASH.ToLower().Equals(value.ToLower())),
+                    "contracts" => databaseContext.Contracts.AsNoTracking()
+                        .Any(x => x.HASH.ToLower().Equals(value.ToLower())),
                     "organizations" => databaseContext.Organizations.AsNoTracking().Any(x => x.NAME == value),
                     "platforms" => databaseContext.Platforms.AsNoTracking().Any(x => x.NAME == value),
-                    "tokens" => databaseContext.Tokens.AsNoTracking().Any(x => x.SYMBOL.ToLower().Equals(value.ToLower())),
+                    "tokens" => databaseContext.Tokens.AsNoTracking()
+                        .Any(x => x.SYMBOL.ToLower().Equals(value.ToLower())),
                     _ => false
                 };
 

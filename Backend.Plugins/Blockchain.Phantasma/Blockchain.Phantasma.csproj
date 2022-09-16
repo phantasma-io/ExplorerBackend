@@ -14,12 +14,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\phantasma-ng\Phantasma.Business\src\Phantasma.Business.csproj"/>
+    <ProjectReference Include="..\..\..\phantasma-ng\Phantasma.Core\src\Phantasma.Core.csproj"/>
     <ProjectReference Include="..\..\Backend.PluginEngine\Backend.PluginEngine.csproj"/>
-    <ProjectReference Include="..\..\..\PhantasmaChain\Phantasma.Blockchain\Phantasma.Blockchain.csproj"/>
     <ProjectReference Include="..\..\Backend.Commons\Backend.Commons.csproj"/>
     <ProjectReference Include="..\..\Database.ApiCache\Database.ApiCache.csproj"/>
     <ProjectReference Include="..\..\Database.Main\Database.Main.csproj"/>
-    <ProjectReference Include="../../../PhantasmaChain/Phantasma.Domain/Phantasma.Domain.csproj"/>
   </ItemGroup>
 
   <ItemGroup>
