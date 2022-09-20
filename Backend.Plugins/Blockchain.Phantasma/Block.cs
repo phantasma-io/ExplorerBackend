@@ -96,7 +96,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         if ( blockData == null )
         {
-            var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
+            var url =
+                $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
             var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
             if ( response == null ) return false;

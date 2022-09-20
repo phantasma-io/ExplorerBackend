@@ -176,7 +176,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             "[{Name}] got Platform {Organization}",
                             Name, organization.ToString());
 
-                        var urlOrg = $"{Settings.Default.GetRest()}/api/v1/getOrganization?ID={organization.ToString()}";
+                        var urlOrg =
+                            $"{Settings.Default.GetRest()}/api/v1/getOrganization?ID={organization.ToString()}";
                         var responseOrg = Client.ApiRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
                         if ( responseOrg != null )
                         {
