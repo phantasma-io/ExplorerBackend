@@ -74,6 +74,7 @@ public class MainDbContext : DbContext
     public DbSet<ContractMethod> ContractMethods { get; set; }
     public DbSet<TokenLogo> TokenLogos { get; set; }
     public DbSet<TokenLogoType> TokenLogoTypes { get; set; }
+    public DbSet<TransactionState> TransactionStates { get; set; }
 
 
     public static string GetConnectionString()
@@ -202,6 +203,26 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Transactions)
             .HasForeignKey(x => x.BlockId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(x => x.State)
+            .WithMany(y => y.Transactions)
+            .HasForeignKey(x => x.StateId);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(x => x.Sender)
+            .WithMany(y => y.Senders)
+            .HasForeignKey(x => x.SenderId);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(x => x.GasPayer)
+            .WithMany(y => y.GasPayers)
+            .HasForeignKey(x => x.GasPayerId);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(x => x.GasTarget)
+            .WithMany(y => y.GasTargets)
+            .HasForeignKey(x => x.GasTargetId);
 
         // Indexes
 
@@ -1106,6 +1127,17 @@ public class MainDbContext : DbContext
         // Indexes
         modelBuilder.Entity<TokenLogoType>()
             .HasIndex(x => x.NAME);
+
+
+        //////////////////////
+        // TransactionState
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+        modelBuilder.Entity<TransactionState>()
+            .HasIndex(x => x.NAME);
     }
 }
 
@@ -1189,6 +1221,16 @@ public class Transaction
     public string RESULT { get; set; }
     public string FEE { get; set; }
     public long EXPIRATION { get; set; }
+    public int StateId { get; set; }
+    public virtual TransactionState State { get; set; }
+    public string GAS_PRICE { get; set; }
+    public string GAS_LIMIT { get; set; }
+    public int SenderId { get; set; }
+    public virtual Address Sender { get; set; }
+    public int GasPayerId { get; set; }
+    public virtual Address GasPayer { get; set; }
+    public int GasTargetId { get; set; }
+    public virtual Address GasTarget { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<Signature> Signatures { get; set; }
     public virtual List<AddressTransaction> AddressTransactions { get; set; }
@@ -1237,6 +1279,9 @@ public class Address
     public virtual List<Contract> Contracts { get; set; }
     public int? OrganizationId { get; set; }
     public virtual Organization Organization { get; set; }
+    public virtual List<Transaction> Senders { get; set; }
+    public virtual List<Transaction> GasPayers { get; set; }
+    public virtual List<Transaction> GasTargets { get; set; }
 }
 
 public class Event
@@ -1809,4 +1854,11 @@ public class TokenLogo
     public int TokenLogoTypeId { get; set; }
     public virtual TokenLogoType TokenLogoType { get; set; }
     public string URL { get; set; }
+}
+
+public class TransactionState
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public virtual List<Transaction> Transactions { get; set; }
 }

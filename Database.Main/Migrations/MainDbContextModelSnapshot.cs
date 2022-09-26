@@ -18,7 +18,7 @@ namespace Database.Main.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.6")
+                .HasAnnotation("ProductVersion", "6.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1624,6 +1624,18 @@ namespace Database.Main.Migrations
                     b.Property<string>("FEE")
                         .HasColumnType("text");
 
+                    b.Property<string>("GAS_LIMIT")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GAS_PRICE")
+                        .HasColumnType("text");
+
+                    b.Property<int>("GasPayerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GasTargetId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("HASH")
                         .HasColumnType("text");
 
@@ -1639,12 +1651,26 @@ namespace Database.Main.Migrations
                     b.Property<string>("SCRIPT_RAW")
                         .HasColumnType("text");
 
+                    b.Property<int>("SenderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StateId")
+                        .HasColumnType("integer");
+
                     b.Property<long>("TIMESTAMP_UNIX_SECONDS")
                         .HasColumnType("bigint");
 
                     b.HasKey("ID");
 
+                    b.HasIndex("GasPayerId");
+
+                    b.HasIndex("GasTargetId");
+
                     b.HasIndex("HASH");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("StateId");
 
                     b.HasIndex("TIMESTAMP_UNIX_SECONDS");
 
@@ -1678,6 +1704,24 @@ namespace Database.Main.Migrations
                     b.HasIndex("PlatformId");
 
                     b.ToTable("TransactionSettleEvents");
+                });
+
+            modelBuilder.Entity("Database.Main.TransactionState", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+
+                    b.Property<string>("NAME")
+                        .HasColumnType("text");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("NAME");
+
+                    b.ToTable("TransactionStates");
                 });
 
             modelBuilder.Entity("Database.Main.Address", b =>
@@ -2451,7 +2495,39 @@ namespace Database.Main.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Database.Main.Address", "GasPayer")
+                        .WithMany("GasPayers")
+                        .HasForeignKey("GasPayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Database.Main.Address", "GasTarget")
+                        .WithMany("GasTargets")
+                        .HasForeignKey("GasTargetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Database.Main.Address", "Sender")
+                        .WithMany("Senders")
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Database.Main.TransactionState", "State")
+                        .WithMany("Transactions")
+                        .HasForeignKey("StateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Block");
+
+                    b.Navigation("GasPayer");
+
+                    b.Navigation("GasTarget");
+
+                    b.Navigation("Sender");
+
+                    b.Navigation("State");
                 });
 
             modelBuilder.Entity("Database.Main.TransactionSettleEvent", b =>
@@ -2493,6 +2569,10 @@ namespace Database.Main.Migrations
 
                     b.Navigation("GasEvents");
 
+                    b.Navigation("GasPayers");
+
+                    b.Navigation("GasTargets");
+
                     b.Navigation("NftOwnerships");
 
                     b.Navigation("Nfts");
@@ -2502,6 +2582,8 @@ namespace Database.Main.Migrations
                     b.Navigation("OrganizationEvents");
 
                     b.Navigation("PlatformInterops");
+
+                    b.Navigation("Senders");
 
                     b.Navigation("Serieses");
 
@@ -2713,6 +2795,11 @@ namespace Database.Main.Migrations
                     b.Navigation("Events");
 
                     b.Navigation("Signatures");
+                });
+
+            modelBuilder.Entity("Database.Main.TransactionState", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

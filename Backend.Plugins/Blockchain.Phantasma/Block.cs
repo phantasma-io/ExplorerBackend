@@ -199,7 +199,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     var transaction = TransactionMethods.Upsert(databaseContext, block, txIndex,
                         tx.GetProperty("hash").GetString(), tx.GetProperty("timestamp").GetUInt32(),
                         tx.GetProperty("payload").GetString(), scriptRaw, tx.GetProperty("result").GetString(),
-                        tx.GetProperty("fee").GetString(), tx.GetProperty("expiration").GetUInt32(), false);
+                        tx.GetProperty("fee").GetString(), tx.GetProperty("expiration").GetUInt32(),
+                        tx.GetProperty("gasPrice").GetString(), tx.GetProperty("gasLimit").GetString(),
+                        tx.GetProperty("state").GetString(), tx.GetProperty("sender").GetString(),
+                        tx.GetProperty("gasPayer").GetString(), tx.GetProperty("gasTarget").GetString(), false);
 
                     if ( tx.TryGetProperty("signatures", out var signaturesProperty) )
                     {
@@ -499,7 +502,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
                                 case EventKind.ChainCreate or EventKind.TokenCreate or EventKind.ContractUpgrade
                                     or EventKind.AddressRegister or EventKind.ContractDeploy or EventKind.PlatformCreate
-                                    or EventKind.OrganizationCreate or EventKind.Log or EventKind.AddressUnregister:
+                                    or EventKind.OrganizationCreate or EventKind.Log or EventKind.AddressUnregister
+                                    or EventKind.Error:
                                 {
                                     var stringData = evnt.GetContent<string>();
 
@@ -715,7 +719,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 {
                                     Log.Verbose("[{Name}] Currently not processing EventKind {Kind} in Block #{Block}",
                                         Name, kind, blockHeight);
-
                                     break;
                                 }
                                 default:

@@ -758,6 +758,36 @@ public class Transaction
     public string? expiration { get; set; }
 
     /// <summary>
+    ///     gas price of the transaction
+    /// </summary>
+    public string? gas_price { get; set; }
+
+    /// <summary>
+    ///     state of the transaction
+    /// </summary>
+    public string? state { get; set; }
+
+    /// <summary>
+    ///     gas limit of the transaction
+    /// </summary>
+    public string? gas_limit { get; set; }
+
+    /// <summary>
+    ///     address of the sender
+    /// </summary>
+    public Address? sender { get; set; }
+
+    /// <summary>
+    ///     address of the gas payer
+    /// </summary>
+    public Address? gas_payer { get; set; }
+
+    /// <summary>
+    ///     address of the gas target
+    /// </summary>
+    public Address? gas_target { get; set; }
+
+    /// <summary>
     ///     List of Events from the transaction
     /// </summary>
     public Event[]? events { get; set; }
@@ -1294,7 +1324,7 @@ public class SaleEvent
 
 /// <summary>
 ///     EventKinds ChainCreate, TokenCreate, ContractUpgrade, AddressRegister, ContractDeploy, PlatformCreate,
-///     OrganizationCreate, Log or AddressUnregister
+///     OrganizationCreate, Log, AddressUnregister or Error
 /// </summary>
 public class StringEvent
 {

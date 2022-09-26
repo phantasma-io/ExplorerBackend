@@ -194,6 +194,30 @@ public partial class Endpoints
                 result = x.RESULT,
                 payload = x.PAYLOAD,
                 expiration = x.EXPIRATION.ToString(),
+                gas_price = x.GAS_PRICE,
+                gas_limit = x.GAS_LIMIT,
+                state = x.State.NAME,
+                sender = x.Sender != null
+                    ? new Address
+                    {
+                        address_name = x.Sender.ADDRESS_NAME,
+                        address = x.Sender.ADDRESS
+                    }
+                    : null,
+                gas_payer = x.GasPayer != null
+                    ? new Address
+                    {
+                        address_name = x.GasPayer.ADDRESS_NAME,
+                        address = x.GasPayer.ADDRESS
+                    }
+                    : null,
+                gas_target = x.GasTarget != null
+                    ? new Address
+                    {
+                        address_name = x.GasTarget.ADDRESS_NAME,
+                        address = x.GasTarget.ADDRESS
+                    }
+                    : null,
                 events = with_events == 1 && x.Events != null
                     ? x.Events.Select(e => new Event
                     {
