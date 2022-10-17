@@ -12,7 +12,7 @@ using Backend.PluginEngine;
 using Database.Main;
 using Phantasma.Core.Cryptography;
 using Phantasma.Core.Numerics;
-using Phantasma.Shared.Utils;
+using Phantasma.Core.Utils;
 using Serilog;
 using Address = Phantasma.Core.Cryptography.Address;
 
