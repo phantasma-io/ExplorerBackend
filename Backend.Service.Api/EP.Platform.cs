@@ -119,10 +119,14 @@ public partial class Endpoints
                                 swappable = e.Token.SWAPPABLE,
                                 burnable = e.Token.BURNABLE,
                                 stakable = e.Token.STAKABLE,
+                                mintable = e.Token.MINTABLE,
                                 decimals = e.Token.DECIMALS,
                                 current_supply = e.Token.CURRENT_SUPPLY,
+                                current_supply_raw = e.Token.CURRENT_SUPPLY_RAW,
                                 max_supply = e.Token.MAX_SUPPLY,
+                                max_supply_raw = e.Token.MAX_SUPPLY_RAW,
                                 burned_supply = e.Token.BURNED_SUPPLY,
+                                burned_supply_raw = e.Token.BURNED_SUPPLY_RAW,
                                 script_raw = e.Token.SCRIPT_RAW
                             }
                             : null

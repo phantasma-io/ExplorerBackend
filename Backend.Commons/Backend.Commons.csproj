@@ -24,4 +24,8 @@
     <None Remove="Publish\**"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\phantasma-ng\Phantasma.Core\src\Phantasma.Core.csproj"/>
+  </ItemGroup>
+
 </Project>

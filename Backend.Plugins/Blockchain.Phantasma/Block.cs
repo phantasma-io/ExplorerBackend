@@ -375,7 +375,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     contractEntry = ContractMethods.Upsert(databaseContext, contract, chainEntry,
                                         tokenEventData.Symbol.ToUpper(), tokenEventData.Symbol.ToUpper(), false);
 
-                                    var tokenId = tokenEventData.Value.ToString();
+                                    var tokenValue = tokenEventData.Value.ToString();
 
                                     Nft nft = null;
                                     if ( !fungible )
@@ -386,16 +386,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             Name, UnixSeconds.Log(timestampUnixSeconds), kind, tokenEventData.Symbol,
                                             tokenEventData.Value, addressString, contract);
 
-                                        if ( nftsInThisBlock.ContainsKey(tokenId) )
-                                            nft = nftsInThisBlock.GetValueOrDefault(tokenId);
+                                        if ( nftsInThisBlock.ContainsKey(tokenValue) )
+                                            nft = nftsInThisBlock.GetValueOrDefault(tokenValue);
                                         else
                                         {
                                             nft = NftMethods.Upsert(databaseContext, out var newNftCreated, chainEntry,
-                                                tokenId, null, contractEntry, false);
+                                                tokenValue, null, contractEntry, false);
                                             Log.Verbose(
                                                 "[{Name}] using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
                                                 Name, nft.ID, nft.TOKEN_ID, newNftCreated);
-                                            if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
+                                            if ( newNftCreated ) nftsInThisBlock.Add(tokenValue, nft);
                                         }
 
                                         // We should always properly check mint event and update mint date,
@@ -411,7 +411,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     //parse also a new contract, just in case
                                     eventEntry = EventMethods.UpdateValues(databaseContext, out var eventUpdated,
-                                        eventEntry, nft, tokenId, chainEntry, eventKindEntry, contractEntry);
+                                        eventEntry, nft, tokenValue, chainEntry, eventKindEntry, contractEntry);
 
                                     Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
                                         eventUpdated);
@@ -423,7 +423,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             timestampUnixSeconds, addressEntry, false);
 
                                     TokenEventMethods.Upsert(databaseContext, tokenEventData.Symbol,
-                                        tokenEventData.ChainName, tokenId, chainEntry, eventEntry, false);
+                                        tokenEventData.ChainName, tokenValue, chainEntry, eventEntry, false);
 
                                     break;
                                 }

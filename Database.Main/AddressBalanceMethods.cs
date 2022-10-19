@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using Phantasma.Core.Numerics;
+using Backend.Commons;
 
 namespace Database.Main;
 
@@ -20,8 +19,13 @@ public static class AddressBalanceMethods
         var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
             x.Address == address && x.Chain == chain && x.Token == token);
 
+        var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
+
         if ( entry != null )
-            entry.AMOUNT = amount;
+        {
+            entry.AMOUNT = amountConverted;
+            entry.AMOUNT_RAW = amount;
+        }
         else
         {
             entry = new AddressBalance
@@ -29,7 +33,8 @@ public static class AddressBalanceMethods
                 Token = token,
                 Chain = chain,
                 Address = address,
-                AMOUNT = amount
+                AMOUNT = amountConverted,
+                AMOUNT_RAW = amount
             };
             databaseContext.AddressBalances.Add(entry);
             if ( saveChanges ) databaseContext.SaveChanges();
@@ -58,10 +63,12 @@ public static class AddressBalanceMethods
             var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
                 x.Address == address && x.Chain == chain && x.Token == token);
 
-            var amountConverted =
-                UnitConversion.ToDecimal(amount, token.DECIMALS).ToString(CultureInfo.InvariantCulture);
+            var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
             if ( entry != null )
+            {
                 entry.AMOUNT = amountConverted;
+                entry.AMOUNT_RAW = amount;
+            }
             else
             {
                 entry = new AddressBalance
@@ -69,7 +76,8 @@ public static class AddressBalanceMethods
                     Token = token,
                     Address = address,
                     Chain = chain,
-                    AMOUNT = amountConverted
+                    AMOUNT = amountConverted,
+                    AMOUNT_RAW = amount
                 };
                 balanceList.Add(entry);
             }

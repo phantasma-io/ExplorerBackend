@@ -542,19 +542,24 @@ public class Address
     public string? validator_kind { get; set; }
 
     /// <summary>
-    ///     Returns the stake value
+    ///     Returns the stake value, with applied decimals
     /// </summary>
     public string? stake { get; set; }
 
     /// <summary>
-    ///     Returns the unclaimed value
+    ///     Returns the stake value, without applied decimals
+    /// </summary>
+    public string? stake_raw { get; set; }
+
+    /// <summary>
+    ///     Returns the unclaimed value, with applied decimals
     /// </summary>
     public string? unclaimed { get; set; }
 
     /// <summary>
-    ///     Returns the relay value
+    ///     Returns the unclaimed value, without applied decimals
     /// </summary>
-    public string? relay { get; set; }
+    public string? unclaimed_raw { get; set; }
 
     /// <summary>
     ///     Returns the address storage Information
@@ -645,25 +650,46 @@ public class Token
     public bool burnable { get; set; }
 
     /// <summary>
+    ///     Returns mintable value of the token
+    /// </summary>
+    public bool mintable { get; set; }
+
+    /// <summary>
     ///     Returns decimal value of the token
     /// </summary>
     /// <example>8</example>
     public int decimals { get; set; }
 
     /// <summary>
-    ///     Returns the current supply of the token
+    ///     Returns the current supply of the token, with applied decimals
     /// </summary>
     public string? current_supply { get; set; }
 
     /// <summary>
-    ///     Returns the max supply of the token, 0 = infinite
+    ///     Returns the current supply of the token, without applied decimals
+    /// </summary>
+    public string? current_supply_raw { get; set; }
+
+    /// <summary>
+    ///     Returns the max supply of the token, 0 = infinite, with applied decimals
     /// </summary>
     public string? max_supply { get; set; }
 
     /// <summary>
-    ///     Returns the burned supply of the token
+    ///     Returns the max supply of the token, 0 = infinite, without applied decimals
+    /// </summary>
+    public string? max_supply_raw { get; set; }
+
+    /// <summary>
+    ///     Returns the burned supply of the token, with applied decimals
     /// </summary>
     public string? burned_supply { get; set; }
+
+    /// <summary>
+    ///     Returns the burned supply of the token, without applied decimals
+    /// </summary>
+    public string? burned_supply_raw { get; set; }
+
 
     /// <summary>
     ///     Returns the script of the token, raw
@@ -733,9 +759,14 @@ public class Transaction
     public string? date { get; set; }
 
     /// <summary>
-    ///     fee for the transaction in kcal
+    ///     fee for the transaction in kcal with decimals applied
     /// </summary>
     public string? fee { get; set; }
+
+    /// <summary>
+    ///     fee for the transaction in kcal without decimals applied
+    /// </summary>
+    public string? fee_raw { get; set; }
 
     /// <summary>
     ///     script of the contract, raw
@@ -758,9 +789,14 @@ public class Transaction
     public string? expiration { get; set; }
 
     /// <summary>
-    ///     gas price of the transaction
+    ///     gas price of the transaction in kcal with decimals applied
     /// </summary>
     public string? gas_price { get; set; }
+
+    /// <summary>
+    ///     gas price of the transaction in kcal without decimals applied
+    /// </summary>
+    public string? gas_price_raw { get; set; }
 
     /// <summary>
     ///     state of the transaction
@@ -768,9 +804,14 @@ public class Transaction
     public string? state { get; set; }
 
     /// <summary>
-    ///     gas limit of the transaction
+    ///     gas limit of the transaction in kcal with decimals applied
     /// </summary>
     public string? gas_limit { get; set; }
+
+    /// <summary>
+    ///     gas limit of the transaction in kcal without decimals applied
+    /// </summary>
+    public string? gas_limit_raw { get; set; }
 
     /// <summary>
     ///     address of the sender
@@ -1207,6 +1248,11 @@ public class GasEvent
     public string? amount { get; set; }
 
     /// <summary>
+    ///     price * amount and then the applied KCAL decimals
+    /// </summary>
+    public string? fee { get; set; }
+
+    /// <summary>
     ///     address of the gas event data
     /// </summary>
     public Address? address { get; set; }
@@ -1244,9 +1290,14 @@ public class InfusionEvent
     public Token? infused_token { get; set; }
 
     /// <summary>
-    ///     infused value
+    ///     infused value with applied decimals
     /// </summary>
     public string? infused_value { get; set; }
+
+    /// <summary>
+    ///     infused value without applied decimals
+    /// </summary>
+    public string? infused_value_raw { get; set; }
 }
 
 /// <summary>
@@ -1345,9 +1396,14 @@ public class TokenEvent
     public Token? token { get; set; }
 
     /// <summary>
-    ///     Value of the Event
+    ///     Value of the Event, with applied decimals from the token
     /// </summary>
     public string? value { get; set; }
+
+    /// <summary>
+    ///     Value of the Event, without applied decimals from the token
+    /// </summary>
+    public string? value_raw { get; set; }
 
     /// <summary>
     ///     Chain name of the Event
@@ -1510,9 +1566,14 @@ public class AddressStorage
 public class AddressStakes
 {
     /// <summary>
-    ///     staked amount
+    ///     staked amount, with applied decimals
     /// </summary>
     public string? amount { get; set; }
+
+    /// <summary>
+    ///     staked amount, without applied decimals
+    /// </summary>
+    public string? amount_raw { get; set; }
 
     /// <summary>
     ///     time in seconds
@@ -1520,9 +1581,14 @@ public class AddressStakes
     public long? time { get; set; }
 
     /// <summary>
-    ///     unclaimed amount
+    ///     unclaimed amount, with applied decimals
     /// </summary>
     public string? unclaimed { get; set; }
+
+    /// <summary>
+    ///     unclaimed amount, without applied decimals
+    /// </summary>
+    public string? unclaimed_raw { get; set; }
 }
 
 /// <summary>
@@ -1541,9 +1607,14 @@ public class AddressBalance
     public Chain? chain { get; set; }
 
     /// <summary>
-    ///     Amount of the Balance
+    ///     Amount of the Balance, with applied decimals
     /// </summary>
     public string? amount { get; set; }
+
+    /// <summary>
+    ///     Amount of the Balance, without applied decimals
+    /// </summary>
+    public string? amount_raw { get; set; }
 }
 
 /// <summary>

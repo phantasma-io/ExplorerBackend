@@ -1220,11 +1220,14 @@ public class Transaction
     public string SCRIPT_RAW { get; set; }
     public string RESULT { get; set; }
     public string FEE { get; set; }
+    public string FEE_RAW { get; set; }
     public long EXPIRATION { get; set; }
     public int StateId { get; set; }
     public virtual TransactionState State { get; set; }
     public string GAS_PRICE { get; set; }
+    public string GAS_PRICE_RAW { get; set; }
     public string GAS_LIMIT { get; set; }
+    public string GAS_LIMIT_RAW { get; set; }
     public int SenderId { get; set; }
     public virtual Address Sender { get; set; }
     public int GasPayerId { get; set; }
@@ -1253,8 +1256,9 @@ public class Address
     public string USER_NAME { get; set; }
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
     public string STAKE { get; set; }
+    public string STAKE_RAW { get; set; }
     public string UNCLAIMED { get; set; }
-    public string RELAY { get; set; }
+    public string UNCLAIMED_RAW { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
     public virtual List<Event> Events { get; set; }
@@ -1341,10 +1345,14 @@ public class Token
     public bool FIAT { get; set; }
     public bool SWAPPABLE { get; set; }
     public bool BURNABLE { get; set; }
+    public bool MINTABLE { get; set; }
     public int DECIMALS { get; set; }
     public string CURRENT_SUPPLY { get; set; }
+    public string CURRENT_SUPPLY_RAW { get; set; }
     public string MAX_SUPPLY { get; set; }
+    public string MAX_SUPPLY_RAW { get; set; }
     public string BURNED_SUPPLY { get; set; }
+    public string BURNED_SUPPLY_RAW { get; set; }
     public string SCRIPT_RAW { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
@@ -1629,6 +1637,7 @@ public class GasEvent
     public int ID { get; set; }
     public string PRICE { get; set; }
     public string AMOUNT { get; set; }
+    public string FEE { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public int EventId { get; set; }
@@ -1671,6 +1680,7 @@ public class TokenEvent
     public int TokenId { get; set; }
     public virtual Token Token { get; set; }
     public string VALUE { get; set; }
+    public string VALUE_RAW { get; set; }
     public string CHAIN_NAME { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
@@ -1685,6 +1695,7 @@ public class InfusionEvent
     public int InfusedTokenId { get; set; }
     public virtual Token InfusedToken { get; set; }
     public string INFUSED_VALUE { get; set; }
+    public string INFUSED_VALUE_RAW { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
     public int? InfusionId { get; set; }
@@ -1796,8 +1807,10 @@ public class AddressStake
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }
+    public string AMOUNT_RAW { get; set; }
     public long TIME { get; set; }
     public string UNCLAIMED { get; set; }
+    public string UNCLAIMED_RAW { get; set; }
 }
 
 public class AddressStorage
@@ -1820,6 +1833,7 @@ public class AddressBalance
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }
+    public string AMOUNT_RAW { get; set; }
 }
 
 public class AddressValidatorKind

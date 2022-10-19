@@ -6,7 +6,6 @@ using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Phantasma.Core.Numerics;
 using Serilog;
 
 namespace Backend.Service.Api;
@@ -125,7 +124,6 @@ public partial class Endpoints
             var startTime = DateTime.Now;
             using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
-            var tokenKcal = TokenMethods.Get(databaseContext, ChainMethods.Get(databaseContext, chain), "KCAL");
 
             var query = databaseContext.Transactions.AsQueryable().AsNoTracking();
 
@@ -189,13 +187,16 @@ public partial class Endpoints
                 block_height = x.Block.HEIGHT,
                 index = x.INDEX,
                 date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
-                fee = UnitConversion.ToDecimal(x.FEE, tokenKcal.DECIMALS).ToString(CultureInfo.InvariantCulture),
+                fee = x.FEE,
+                fee_raw = x.FEE_RAW,
                 script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
                 result = x.RESULT,
                 payload = x.PAYLOAD,
                 expiration = x.EXPIRATION.ToString(),
                 gas_price = x.GAS_PRICE,
+                gas_price_raw = x.GAS_PRICE_RAW,
                 gas_limit = x.GAS_LIMIT,
+                gas_limit_raw = x.GAS_LIMIT_RAW,
                 state = x.State.NAME,
                 sender = x.Sender != null
                     ? new Address
@@ -302,6 +303,7 @@ public partial class Endpoints
                             {
                                 price = e.GasEvent.PRICE,
                                 amount = e.GasEvent.AMOUNT,
+                                fee = e.GasEvent.FEE,
                                 address = e.GasEvent.Address != null
                                     ? new Address
                                     {
@@ -322,6 +324,7 @@ public partial class Endpoints
                             {
                                 token_id = e.InfusionEvent.TOKEN_ID,
                                 infused_value = e.InfusionEvent.INFUSED_VALUE,
+                                infused_value_raw = e.InfusionEvent.INFUSED_VALUE_RAW,
                                 base_token = e.InfusionEvent.BaseToken != null
                                     ? new Token
                                     {
@@ -462,6 +465,7 @@ public partial class Endpoints
                                     }
                                     : null,
                                 value = e.TokenEvent.VALUE,
+                                value_raw = e.TokenEvent.VALUE_RAW,
                                 chain_name = e.TokenEvent.CHAIN_NAME
                             }
                             : null,

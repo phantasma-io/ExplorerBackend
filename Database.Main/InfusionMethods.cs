@@ -10,6 +10,7 @@ public static class InfusionMethods
     public static void Upsert(MainDbContext databaseContext, InfusionEvent infusionEvent, Nft nft, string key,
         string value, Token token)
     {
+        //TODO apply decimals to value
         if ( token is {FUNGIBLE: false} )
         {
             // For NFT always create new entry, if we can't find infusion with same value

@@ -1,4 +1,5 @@
 using System.Linq;
+using Backend.Commons;
 
 namespace Database.Main;
 
@@ -26,6 +27,7 @@ public static class TransactionMethods
         var gasPayerAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasPayer, saveChanges);
         var gasTargetAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasTarget, saveChanges);
 
+        var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, block.Chain);
         entry = new Transaction
         {
             Block = block,
@@ -35,10 +37,13 @@ public static class TransactionMethods
             PAYLOAD = payload,
             SCRIPT_RAW = scriptRaw,
             RESULT = result,
-            FEE = fee,
+            FEE = Utils.ToDecimal(fee, kcalDecimals),
+            FEE_RAW = fee,
             EXPIRATION = expiration,
-            GAS_PRICE = gasPrice,
-            GAS_LIMIT = gasLimit,
+            GAS_PRICE = Utils.ToDecimal(gasPrice, kcalDecimals),
+            GAS_PRICE_RAW = gasPrice,
+            GAS_LIMIT = Utils.ToDecimal(gasLimit, kcalDecimals),
+            GAS_LIMIT_RAW = gasLimit,
             State = transactionState,
             Sender = senderAddress,
             GasPayer = gasPayerAddress,

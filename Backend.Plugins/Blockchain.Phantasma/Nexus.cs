@@ -115,6 +115,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var fiat = false;
                         var swappable = false;
                         var burnable = false;
+                        var mintable = false;
 
                         if ( token.TryGetProperty("flags", out var flags) )
                             if ( flags.ToString().Contains("Fungible") )
@@ -135,12 +136,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 swappable = true;
                             else if ( flags.ToString().Contains("Burnable") )
                                 burnable = true;
+                            else if ( flags.ToString().Contains("Mintable") )
+                                mintable = true;
 
 
                         var tokenEntry = TokenMethods.Upsert(databaseContext, chainEntry, tokenSymbol, tokenSymbol,
-                            tokenDecimal,
-                            fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable, burnable,
-                            address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw, false);
+                            tokenDecimal, fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable,
+                            burnable, mintable, address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw,
+                            false);
 
                         if ( token.TryGetProperty("external", out var externalsProperty) )
                         {
