@@ -177,7 +177,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
 
                 //do not process everything here, let the sync to that later, we just call it to make sure
-                var name = response.RootElement.GetProperty("name").GetString();
+                string? name = "anonymous";
+                if ( response.RootElement.TryGetProperty("name", out JsonElement jsonName) )
+                {
+                    name = jsonName.GetString();
+                }
                 addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
                 if ( name == "anonymous" ) name = null;
 
