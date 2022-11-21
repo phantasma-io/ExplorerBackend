@@ -3,12 +3,12 @@
     "enabled": true,
     "startDelay": 3,
     "first.block": 1,
-    "phantasma.nexus": "testnet",
+    "phantasma.nexus": "mainnet",
     "phantasma.rpc.nodes": [
-      "http://testnet.phantasma.io:5101"
+      "http://207.148.17.86:7077"
     ],
     "phantasma.rest.nodes": [
-      "http://testnet.phantasma.io:5102"
+      "http://207.148.17.86:7078"
     ],
     "tokensProcessingInterval": 30,
     "blocksProcessingInterval": 10,
@@ -16,6 +16,6 @@
     "romRamProcessingInterval": 30,
     "seriesProcessingInterval": 30,
     "infusionsProcessingInterval": 30,
-    "namesSyncInterval": 30
+    "namesSyncInterval": 600
   }
 }
