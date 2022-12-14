@@ -160,8 +160,8 @@ Recreate database running script in /opt/explorer-backend folder (*make sure it 
 
 Make sure that following scripts has execution rights:
 
-    /opt/explorer-backend/start-data-fetcher.sh
-    /opt/explorer-backend/start-api-service.sh
+    sudo chmod u+x /opt/explorer-backend/start-data-fetcher.sh
+    sudo chmod u+x /opt/explorer-backend/start-api-service.sh
 
 Edit crontab and add following lines:
 
@@ -182,7 +182,11 @@ as backend/normal user
 
 database update
 
-    <TODO stop services>
+    // First stop the services
+    sudo service api-service stop
+    sudo service data-fetcher stop
+    
+    // Then run the following commands
     <TODO insert commands here>
 
 as root

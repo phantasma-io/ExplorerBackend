@@ -5,10 +5,10 @@
     "first.block": 1,
     "phantasma.nexus": "testnet",
     "phantasma.rpc.nodes": [
-      "http://testnet.phantasma.io:5101"
+      "http://testnet.phantasma.io:5101/rpc"
     ],
     "phantasma.rest.nodes": [
-      "http://testnet.phantasma.io:5102"
+      "http://testnet.phantasma.io:5101"
     ],
     "tokensProcessingInterval": 30,
     "blocksProcessingInterval": 10,
