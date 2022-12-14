@@ -45,10 +45,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backend.Service.Api.Tests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blockchain.Img", "Backend.Plugins\Blockchain.Img\Blockchain.Img.csproj", "{43B0938D-7807-4CEE-846C-8962CCC09C12}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Phantasma.Core", "..\phantasma-ng\Phantasma.Core\src\Phantasma.Core.csproj", "{85FCEE73-9B04-4D02-B0F2-9364939B0ADB}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Phantasma.Business", "..\phantasma-ng\Phantasma.Business\src\Phantasma.Business.csproj", "{35FED9AE-1D7D-4CA4-8D17-F4AA0D6B76F6}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -123,14 +119,6 @@ Global
 		{43B0938D-7807-4CEE-846C-8962CCC09C12}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{43B0938D-7807-4CEE-846C-8962CCC09C12}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{43B0938D-7807-4CEE-846C-8962CCC09C12}.Release|Any CPU.Build.0 = Release|Any CPU
-		{85FCEE73-9B04-4D02-B0F2-9364939B0ADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{85FCEE73-9B04-4D02-B0F2-9364939B0ADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{85FCEE73-9B04-4D02-B0F2-9364939B0ADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{85FCEE73-9B04-4D02-B0F2-9364939B0ADB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{35FED9AE-1D7D-4CA4-8D17-F4AA0D6B76F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{35FED9AE-1D7D-4CA4-8D17-F4AA0D6B76F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{35FED9AE-1D7D-4CA4-8D17-F4AA0D6B76F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{35FED9AE-1D7D-4CA4-8D17-F4AA0D6B76F6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

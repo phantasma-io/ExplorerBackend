@@ -12,26 +12,26 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Publish\**"/>
-    <EmbeddedResource Remove="Publish\**"/>
-    <None Remove="Publish\**"/>
+    <Compile Remove="Publish\**" />
+    <EmbeddedResource Remove="Publish\**" />
+    <None Remove="Publish\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Foundatio" Version="10.5.0"/>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.7"/>
-    <PackageReference Include="Serilog.AspNetCore" Version="6.0.1"/>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
-    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.4.0"/>
+    <PackageReference Include="Foundatio" Version="10.5.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.7" />
+    <PackageReference Include="Phantasma.Business" Version="1.0.5" />
+    <PackageReference Include="Phantasma.Core" Version="1.0.3" />
+    <PackageReference Include="Serilog.AspNetCore" Version="6.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.4.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\phantasma-ng\Phantasma.Business\src\Phantasma.Business.csproj"/>
-    <ProjectReference Include="..\..\phantasma-ng\Phantasma.Core\src\Phantasma.Core.csproj"/>
-    <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj"/>
-    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj"/>
-    <ProjectReference Include="..\Database.Main\Database.Main.csproj"/>
-    <ProjectReference Include="..\Backend.PluginEngine\Backend.PluginEngine.csproj"/>
-    <ProjectReference Include="..\Backend.PostgreSQLConnector\Backend.PostgreSQLConnector.csproj"/>
+    <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj" />
+    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj" />
+    <ProjectReference Include="..\Database.Main\Database.Main.csproj" />
+    <ProjectReference Include="..\Backend.PluginEngine\Backend.PluginEngine.csproj" />
+    <ProjectReference Include="..\Backend.PostgreSQLConnector\Backend.PostgreSQLConnector.csproj" />
   </ItemGroup>
 </Project>
