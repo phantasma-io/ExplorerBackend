@@ -117,11 +117,11 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(address) )
                 isValidAddress = Phantasma.Core.Cryptography.Address.IsValidAddress(address);
             
-            if ( !string.IsNullOrEmpty(address) && !isValidAddress) query = query.Where(x => x.ADDRESS == address);
+            if ( !string.IsNullOrEmpty(address) && isValidAddress) query = query.Where(x => x.ADDRESS == address);
 
             if ( !string.IsNullOrEmpty(address_name) ) query = query.Where(x => x.ADDRESS_NAME == address_name);
             
-            if ( !string.IsNullOrEmpty(address) && isValidAddress ) query = query.Where(x => x.ADDRESS_NAME == address);
+            if ( !string.IsNullOrEmpty(address) && !isValidAddress ) query = query.Where(x => x.ADDRESS_NAME == address);
 
             if ( !string.IsNullOrEmpty(address_partial) )
                 query = query.Where(x => x.ADDRESS.Contains(address_partial));
