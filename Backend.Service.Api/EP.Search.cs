@@ -60,7 +60,7 @@ public partial class Endpoints
             {
                 var anyHit = endpoint switch
                 {
-                    "addresses" => databaseContext.Addresses.AsNoTracking().Any(x => x.ADDRESS == value),
+                    "addresses" => databaseContext.Addresses.AsNoTracking().Any(x => x.ADDRESS == value || x.ADDRESS_NAME == value),
                     "blocks" => databaseContext.Blocks.AsNoTracking().Any(x => x.HASH == value),
                     "chains" => databaseContext.Chains.AsNoTracking().Any(x => x.NAME == value),
                     "contracts" => databaseContext.Contracts.AsNoTracking()
