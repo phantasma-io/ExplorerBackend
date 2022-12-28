@@ -143,8 +143,10 @@ public partial class Endpoints
 
             if ( !string.IsNullOrEmpty(address) )
             {
+                bool isValidAddress = Phantasma.Core.Cryptography.Address.IsValidAddress(address);
                 var addressTransactions = AddressTransactionMethods
-                    .GetAddressTransactionsByAddress(databaseContext, address).ToList();
+                    .GetAddressTransactionsByAddress(databaseContext, address, isValidAddress).ToList();
+                
                 query = query.Where(x => x.AddressTransactions.Any(y => addressTransactions.Contains(y)));
             }
 
