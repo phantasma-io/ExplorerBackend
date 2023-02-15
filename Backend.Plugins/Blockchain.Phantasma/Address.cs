@@ -257,12 +257,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void FetchAllAddresses(Chain chain)
     {
-        
-        foreach ( var token in chain.Tokens )
+        MainDbContext databaseContext = new();
+        var tokens = TokenMethods.GetSymbols(databaseContext);
+        foreach ( var token in tokens)
         {
-            Log.Verbose("[{Symbol}] Fetching all the users.", token.SYMBOL);
+            Log.Verbose("[{Symbol}] Fetching all the users.", token);
 
-            FetchAllAddressesBySymbol(chain, token.SYMBOL, false, true);
+            FetchAllAddressesBySymbol(chain, token, false, true);
         }
     }
 }
