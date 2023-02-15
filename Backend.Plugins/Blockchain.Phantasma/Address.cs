@@ -220,6 +220,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
 
         var addressesArray = response.RootElement.EnumerateArray();
+        Log.Verbose("[{Name}] got {Count} Addresses to check", symbol, addressesArray.Count());
+
         //var addresses = new List<string>();
         using ( MainDbContext databaseContext = new() )
         {
@@ -255,8 +257,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void FetchAllAddresses(Chain chain)
     {
+        
         foreach ( var token in chain.Tokens )
         {
+            Log.Verbose("[{Symbol}] Fetching all the users.", token.SYMBOL);
+
             FetchAllAddressesBySymbol(chain, token.SYMBOL, false, true);
         }
     }
