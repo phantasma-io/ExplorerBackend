@@ -205,7 +205,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
     // TODO: Finish this feature 
-    private void FetchAllAddressesBySymbol(Chain chain, string symbol, bool extended = false, bool saveChanges = true)
+    private void FetchAllAddressesBySymbol(MainDbContext databaseContext, Chain chain, string symbol, bool extended = false, bool saveChanges = true)
     {
          var startTime = DateTime.Now;
 
@@ -223,39 +223,38 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Log.Verbose("[{Name}] got {Count} Addresses to check", symbol, addressesArray.Count());
 
         var addresses = new List<string>();
-        using ( MainDbContext databaseContext = new() )
+        //do not process everything here, let the sync to that later, we just call it to make sure
+        foreach ( var addressElement in addressesArray )
         {
-            //do not process everything here, let the sync to that later, we just call it to make sure
-            foreach ( var addressElement in addressesArray )
+            var addressAddress = addressElement.GetProperty("address").GetString();
+            var addressEntry = AddressMethods.Get(databaseContext, chain, addressAddress);
+
+            /*if ( addressEntry == null )
             {
-                var addressAddress = addressElement.GetProperty("address").GetString();
-                var addressEntry = AddressMethods.Get(databaseContext, chain, addressAddress);
+                addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
+            }*/
 
-                /*if ( addressEntry == null )
+            if ( addressEntry == null )
+            {
+                try
                 {
-                    addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
-                }*/
+                    addresses.Add(addressAddress);
 
-                if ( addressEntry == null )
+                    //addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
+                }
+                catch ( Exception e )
                 {
-                    try
-                    {
-                        addresses.Add(addressAddress);
-
-                        //addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
-                    }catch(Exception e)
-                    {
-                        Log.Error(e, "Error while inserting address {Address}", addressAddress);
-                    }
-                    continue;
+                    Log.Error(e, "Error while inserting address {Address}", addressAddress);
                 }
 
-                //addresses.Add(addressAddress);
+                continue;
             }
-            AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, !saveChanges);
-
         }
 
+        //addresses.Add(addressAddress);
+        
+        AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, !saveChanges);
+        
         var lookUpTime = DateTime.Now - startTime;
         Log.Information("Get all addresses by symbol took {Time} sec", Math.Round(lookUpTime.TotalSeconds, 3));
     }
@@ -269,7 +268,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             Log.Verbose("[{Symbol}] Fetching all the users.", token.NativeSymbol);
 
-            FetchAllAddressesBySymbol(chain, token.NativeSymbol, false, true);
+            FetchAllAddressesBySymbol(databaseContext, chain, token.NativeSymbol, false, true);
         }
     }
 }
