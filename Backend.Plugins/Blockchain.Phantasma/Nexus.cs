@@ -158,7 +158,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             Log.Verbose("[{Name}] Processed {Count} Externals in {Time} sec", Name,
                                 externalList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                         }
-
+                        
+                        // TODO: Add the fetch for address / Tokens
+                        FetchAllAddressesBySymbol(chainEntry, tokenSymbol, true, true );
 
                         Log.Verbose(
                             "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",

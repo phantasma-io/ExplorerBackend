@@ -36,6 +36,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     public void Startup()
     {
         Log.Information("{Name} plugin: Startup ...", Name);
+        BigInteger height = 0;
 
         if ( !Settings.Default.Enabled )
         {
@@ -91,7 +92,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     while ( _running )
                         try
                         {
+                            height = GetCurrentBlockHeight(chain.NAME);
                             FetchBlocks(chain.ID, chain.NAME);
+                            FetchBlocksRange(chain.ID, chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height);
 
                             Thread.Sleep(Settings.Default.BlocksProcessingInterval *
                                          1000); // We sync blocks every BlocksProcessingInterval seconds
@@ -181,6 +184,24 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         }
                 });
                 addressSyncThread.Start();
+                
+                Thread addressFetchSync = new(() =>
+                {
+                    while ( _running )
+                        try
+                        {
+                            FetchAllAddresses(chain);
+
+                            Thread.Sleep(86400); // We sync names every NamesSyncInterval seconds (24h)
+                        }
+                        catch ( Exception e )
+                        {
+                            LogEx.Exception("Address sync", e);
+
+                            Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
+                        }
+                });
+                addressFetchSync.Start();
 
                 Thread contractSyncThread = new(() =>
                 {

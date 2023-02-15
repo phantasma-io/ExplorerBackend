@@ -32,6 +32,25 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private static int _overallEventsLoadedCount;
 
 
+    private void FetchBlocksRange(int chainId, string chainName, BigInteger fromHeight, BigInteger toHeight)
+    {
+        var startTime = DateTime.Now;
+
+        BigInteger i;
+        using ( MainDbContext databaseContext = new() )
+        {
+            i = ChainMethods.GetLastProcessedBlock(databaseContext, chainId) + 1;
+        }
+        
+        _overallEventsLoadedCount = 0;
+        while ( FetchByHeight(i, chainId, chainName) && _overallEventsLoadedCount < MaxEventsForOneSession ) i++;
+
+        var fetchTime = DateTime.Now - startTime;
+        Log.Information(
+            "[{Name}] Events load took {FetchTime} sec, {OverallEventsLoadedCount} events added",
+            Name, Math.Round(fetchTime.TotalSeconds, 3), _overallEventsLoadedCount);
+    }
+
     private void FetchBlocks(int chainId, string chainName)
     {
         //not needed anymore, normally 

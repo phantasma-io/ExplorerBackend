@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Backend.Api;
@@ -201,5 +202,51 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressName, Math.Round(lookUpTime.TotalSeconds, 3));
 
         return addressEntry;
+    }
+
+    // TODO: Finish this feature 
+    private void FetchAllAddressesBySymbol(Chain chain, string symbol, bool extended, bool saveChanges)
+    {
+         var startTime = DateTime.Now;
+
+        if ( symbol.IsNullOrEmpty() ) return;
+        
+        var url = $"{Settings.Default.GetRest()}/api/v1/GetAddressesBySymbol?symbol={symbol}&extended={extended}";
+        var response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
+        if ( response == null )
+        {
+            Log.Error("[{Name}] GetAddressesBySymbol: null result", Name);
+            return;
+        }
+
+        var addressesArray = response.RootElement.EnumerateArray();
+        var addresses = new List<string>();
+        using MainDbContext databaseContext = new();
+
+        //do not process everything here, let the sync to that later, we just call it to make sure
+        foreach ( var addressElement in addressesArray )
+        {
+            var addressAddress = addressElement.GetProperty("address").GetString();
+            var addressEntry = AddressMethods.Get(databaseContext, chain, addressAddress);
+            
+            if ( addressEntry.ADDRESS == addressAddress )
+                continue;
+            
+            addresses.Add(addressAddress);
+        }
+
+        AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, saveChanges);
+
+        var lookUpTime = DateTime.Now - startTime;
+        Log.Information("Get all addresses by symbol took {Time} sec", Math.Round(lookUpTime.TotalSeconds, 3));
+    }
+
+
+    private void FetchAllAddresses(Chain chain)
+    {
+        foreach ( var token in chain.Tokens )
+        {
+            FetchAllAddressesBySymbol(chain, token.SYMBOL, true, true);
+        }
     }
 }
