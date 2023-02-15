@@ -220,33 +220,33 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
 
         var addressesArray = response.RootElement.EnumerateArray();
-        var addresses = new List<string>();
-        using MainDbContext databaseContext = new();
-
-        //do not process everything here, let the sync to that later, we just call it to make sure
-        foreach ( var addressElement in addressesArray )
+        //var addresses = new List<string>();
+        using ( MainDbContext databaseContext = new() )
         {
-            var addressAddress = addressElement.GetProperty("address").GetString();
-            var addressEntry = AddressMethods.Get(databaseContext, chain, addressAddress);
-            
-            /*if ( addressEntry == null )
-            {
-                addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
-            }*/
 
-            if ( addressEntry == null )
+            //do not process everything here, let the sync to that later, we just call it to make sure
+            foreach ( var addressElement in addressesArray )
             {
-                addresses.Add(addressAddress);
-                continue;
+                var addressAddress = addressElement.GetProperty("address").GetString();
+                var addressEntry = AddressMethods.Get(databaseContext, chain, addressAddress);
+
+                /*if ( addressEntry == null )
+                {
+                    addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
+                }*/
+
+                if ( addressEntry == null )
+                {
+                    //addresses.Add(addressAddress);
+                    addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
+                    continue;
+                }
+
+                //addresses.Add(addressAddress);
             }
-            
-            if ( addressEntry.ADDRESS == addressAddress )
-                continue;
-            
-            addresses.Add(addressAddress);
-        }
 
-        AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, !saveChanges);
+            //AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, !saveChanges);
+        }
 
         var lookUpTime = DateTime.Now - startTime;
         Log.Information("Get all addresses by symbol took {Time} sec", Math.Round(lookUpTime.TotalSeconds, 3));
