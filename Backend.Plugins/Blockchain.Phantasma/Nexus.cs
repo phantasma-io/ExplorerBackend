@@ -160,7 +160,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         }
                         
                         // TODO: Add the fetch for address / Tokens
-                        FetchAllAddressesBySymbol(chainEntry, tokenSymbol, false, true );
+                        //FetchAllAddressesBySymbol(chainEntry, tokenSymbol, false, true );
 
                         Log.Verbose(
                             "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
