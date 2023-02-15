@@ -212,7 +212,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         if ( symbol.IsNullOrEmpty() ) return;
         
         var url = $"{Settings.Default.GetRest()}/api/v1/GetAddressesBySymbol?symbol={symbol}&extended={extended}";
-        var response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
+        var response = Client.ApiRequest<JsonDocument>(url, out _, null, 50000);
         if ( response == null )
         {
             Log.Error("[{Name}] GetAddressesBySymbol: null result", Name);
