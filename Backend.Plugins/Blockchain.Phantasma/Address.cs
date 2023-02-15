@@ -240,7 +240,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if ( addressEntry == null )
                 {
                     //addresses.Add(addressAddress);
-                    addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
+                    try
+                    {
+                        addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
+                    }catch(Exception e)
+                    {
+                        Log.Error(e, "Error while inserting address {Address}", addressAddress);
+                    }
                     continue;
                 }
 
@@ -258,12 +264,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private void FetchAllAddresses(Chain chain)
     {
         MainDbContext databaseContext = new();
-        var tokens = TokenMethods.GetSymbols(databaseContext);
+        var tokens = TokenMethods.GetSupportedTokens(databaseContext);
         foreach ( var token in tokens)
         {
-            Log.Verbose("[{Symbol}] Fetching all the users.", token);
+            Log.Verbose("[{Symbol}] Fetching all the users.", token.NativeSymbol);
 
-            FetchAllAddressesBySymbol(chain, token, false, true);
+            FetchAllAddressesBySymbol(chain, token.NativeSymbol, false, true);
         }
     }
 }
