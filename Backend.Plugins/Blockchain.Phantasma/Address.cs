@@ -205,7 +205,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
     // TODO: Finish this feature 
-    private void FetchAllAddressesBySymbol(Chain chain, string symbol, bool extended, bool saveChanges)
+    private void FetchAllAddressesBySymbol(Chain chain, string symbol, bool extended = false, bool saveChanges = true)
     {
          var startTime = DateTime.Now;
 
@@ -246,7 +246,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         foreach ( var token in chain.Tokens )
         {
-            FetchAllAddressesBySymbol(chain, token.SYMBOL, true, true);
+            FetchAllAddressesBySymbol(chain, token.SYMBOL, false, true);
         }
     }
 }
