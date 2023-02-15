@@ -229,6 +229,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var addressAddress = addressElement.GetProperty("address").GetString();
             var addressEntry = AddressMethods.Get(databaseContext, chain, addressAddress);
             
+            /*if ( addressEntry == null )
+            {
+                addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
+            }*/
+
+            if ( addressEntry == null )
+            {
+                addresses.Add(addressAddress);
+                continue;
+            }
+            
             if ( addressEntry.ADDRESS == addressAddress )
                 continue;
             
