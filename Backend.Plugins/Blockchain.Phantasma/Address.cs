@@ -222,10 +222,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var addressesArray = response.RootElement.EnumerateArray();
         Log.Verbose("[{Name}] got {Count} Addresses to check", symbol, addressesArray.Count());
 
-        //var addresses = new List<string>();
+        var addresses = new List<string>();
         using ( MainDbContext databaseContext = new() )
         {
-
             //do not process everything here, let the sync to that later, we just call it to make sure
             foreach ( var addressElement in addressesArray )
             {
@@ -239,10 +238,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( addressEntry == null )
                 {
-                    //addresses.Add(addressAddress);
                     try
                     {
-                        addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
+                        addresses.Add(addressAddress);
+
+                        //addressEntry = AddressMethods.Upsert(databaseContext, chain, addressAddress, saveChanges);
                     }catch(Exception e)
                     {
                         Log.Error(e, "Error while inserting address {Address}", addressAddress);
@@ -252,8 +252,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 //addresses.Add(addressAddress);
             }
+            AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, !saveChanges);
 
-            //AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, !saveChanges);
         }
 
         var lookUpTime = DateTime.Now - startTime;
