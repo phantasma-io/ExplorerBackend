@@ -42,8 +42,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             i = ChainMethods.GetLastProcessedBlock(databaseContext, chainId) + 1;
         }
         
+        if ( i < fromHeight ) i = fromHeight;
+        
         _overallEventsLoadedCount = 0;
-        while ( FetchByHeight(i, chainId, chainName) && _overallEventsLoadedCount < MaxEventsForOneSession ) i++;
+        while ( FetchByHeight(i, chainId, chainName) && 
+                _overallEventsLoadedCount < MaxEventsForOneSession &&
+                i <= toHeight
+               ) i++;
 
         var fetchTime = DateTime.Now - startTime;
         Log.Information(
