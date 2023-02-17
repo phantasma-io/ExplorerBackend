@@ -50,8 +50,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     // It's a fungible token. We should apply decimals.
                     var decimals = token.DECIMALS;
-                    value = UnitConversion.ToDecimal(BigInteger.Parse(value), decimals)
-                        .ToString(CultureInfo.InvariantCulture);
+                    if ( decimals != 0 && BigInteger.TryParse(value, out var result ))
+                        value = UnitConversion.ToDecimal(result, decimals)
+                            .ToString(CultureInfo.InvariantCulture);
                 }
 
                 InfusionMethods.Upsert(databaseContext, infusionEvent, infusionEvent.Event.Nft,
