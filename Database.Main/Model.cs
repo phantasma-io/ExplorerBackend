@@ -1283,6 +1283,7 @@ public class Address
     public virtual List<Contract> Contracts { get; set; }
     public int? OrganizationId { get; set; }
     public virtual Organization Organization { get; set; }
+    public virtual List<Organization> Organizations { get; set; }
     public virtual List<Transaction> Senders { get; set; }
     public virtual List<Transaction> GasPayers { get; set; }
     public virtual List<Transaction> GasTargets { get; set; }

@@ -24,7 +24,21 @@ public static class OrganizationAddressMethods
 
         return organizationAddress;
     }
+    
+    public static void RemoveFromOrganizationAddressesIfNeeded(MainDbContext databaseContext, Organization organization, List<string> addresses, bool saveChanges = true)
+    {
+        if ( organization == null || !addresses.Any() ) return;
 
+        var organizationAddress = databaseContext.OrganizationAddresses.Where(x => x.Organization == organization).ToList();
+
+        if ( !organizationAddress.Any() ) return;
+        var organizationAddressListUsers = organizationAddress.Select(x => x.Address.ADDRESS).ToList();
+        var addressesToRemoveString = addresses.Except(organizationAddressListUsers);
+        var addressesToRemove = organizationAddress.Where(x => addressesToRemoveString.Contains(x.Address.ADDRESS)).ToList();
+
+        databaseContext.OrganizationAddresses.RemoveRange(addressesToRemove);
+        if ( saveChanges ) databaseContext.SaveChanges();
+    }
 
     public static void InsertIfNotExists(MainDbContext databaseContext, Organization organization,
         List<string> addresses, Chain chain, bool saveChanges = true)
@@ -43,6 +57,13 @@ public static class OrganizationAddressMethods
 
         databaseContext.OrganizationAddresses.AddRange(organizationAddressesToInsert);
         if ( !saveChanges ) databaseContext.SaveChanges();
+    }
+    
+    public static IEnumerable<Organization> GetOrganizationsByAddress(MainDbContext databaseContext, string address)
+    {
+        return string.IsNullOrEmpty(address)
+            ? null
+            : databaseContext.OrganizationAddresses.Where(x => x.Address.ADDRESS == address).Select(x => x.Organization);
     }
 
 

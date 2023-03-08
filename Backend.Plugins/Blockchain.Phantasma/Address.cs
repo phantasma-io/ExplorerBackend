@@ -118,6 +118,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 address.Organization = null;
                 var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
                 if ( organization != null ) address.Organization = organization;
+                var organizationAddress = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
+                if ( organizationAddress != null ) address.Organizations = organizationAddress.ToList();
 
                 processed++;
                 if ( processed % saveAfterCount != 0 ) continue;
