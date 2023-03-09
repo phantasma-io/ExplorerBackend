@@ -258,6 +258,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     address.Organization = null;
                     var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
                     if ( organization != null ) address.Organization = organization;
+                    var organizations = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
+                    if ( organizations.Any() ) address.Organizations = organizations.ToList();
 
                     processed++;
                     if ( processed % saveAfterCount != 0 ) continue;
@@ -337,6 +339,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Log.Verbose("[{Name}] setting Organization {Organization} for Address {Address}", Name,
                 organization.ORGANIZATION_ID, addressEntry.ADDRESS);
             addressEntry.Organization = organization;
+            if ( addressEntry.Organizations == null ) addressEntry.Organizations = new List<Organization>();
+            addressEntry.Organizations.AddDistinct(organization);
         }
 
         var lookUpTime = DateTime.Now - startTime;
