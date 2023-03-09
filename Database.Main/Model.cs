@@ -281,16 +281,16 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.AddressValidatorKindId);
 
-        modelBuilder.Entity<Address>()
+        /*modelBuilder.Entity<Address>()
             .HasOne(x => x.Organization)
             .WithMany(y => y.Addresses)
-            .HasForeignKey(x => x.OrganizationId);
+            .HasForeignKey(x => x.OrganizationId);*/
 
         // Indexes
         
-        modelBuilder.Entity<Address>()
+        /*modelBuilder.Entity<Address>()
             .HasIndex(x => new {x.Organizations, x.ADDRESS})
-            .IsUnique();
+            .IsUnique();*/
 
         modelBuilder.Entity<Address>()
             .HasIndex(x => new {x.ChainId, x.ADDRESS})
