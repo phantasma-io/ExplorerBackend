@@ -34,7 +34,7 @@ public static class OrganizationAddressMethods
 
         if ( !organizationAddress.Any() ) return;
         var organizationAddressListUsers = organizationAddress.Select(x => x.Address.ADDRESS).ToList();
-        var addressesToRemoveString = addresses.Except(organizationAddressListUsers);
+        var addressesToRemoveString = organizationAddressListUsers.Except(addresses);
         var addressesToRemove = organizationAddress.Where(x => addressesToRemoveString.Contains(x.Address.ADDRESS)).ToList();
         
         Log.Information("Removing {0} addresses from {1}", addressesToRemove.Count, organization.NAME);
