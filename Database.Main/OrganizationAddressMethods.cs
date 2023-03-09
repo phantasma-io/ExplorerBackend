@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Serilog;
 
 namespace Database.Main;
 
@@ -29,12 +30,14 @@ public static class OrganizationAddressMethods
     {
         if ( organization == null || !addresses.Any() ) return;
 
-        var organizationAddress = databaseContext.OrganizationAddresses.Where(x => x.Organization == organization).ToList();
+        var organizationAddress = databaseContext.OrganizationAddresses.Where(x => x.OrganizationId == organization.ID).ToList();
 
         if ( !organizationAddress.Any() ) return;
         var organizationAddressListUsers = organizationAddress.Select(x => x.Address.ADDRESS).ToList();
         var addressesToRemoveString = addresses.Except(organizationAddressListUsers);
         var addressesToRemove = organizationAddress.Where(x => addressesToRemoveString.Contains(x.Address.ADDRESS)).ToList();
+        
+        Log.Information("Removing {0} addresses from {1}", addressesToRemove.Count, organization.NAME);
 
         databaseContext.OrganizationAddresses.RemoveRange(addressesToRemove);
         if ( saveChanges ) databaseContext.SaveChanges();
