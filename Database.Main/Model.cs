@@ -717,6 +717,11 @@ public class MainDbContext : DbContext
             .HasMany(x => x.Addresses)
             .WithMany(y => y.Organizations);
 
+        modelBuilder.Entity<Organization>()
+            .HasMany(x => x.Addresses)
+            .WithOne(y => y.Organization)
+            .HasForeignKey(x => x.ADDRESS);
+
         // Indexes
         modelBuilder.Entity<Organization>()
             .HasIndex(x => x.NAME)
