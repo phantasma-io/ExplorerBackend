@@ -281,6 +281,9 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.AddressValidatorKindId);
 
+        modelBuilder.Entity<Address>()
+            .Ignore(a => a.Organization);
+        
         /*modelBuilder.Entity<Address>()
             .HasOne(x => x.Organization)
             .WithMany(y => y.Addresses)
@@ -716,11 +719,6 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Organization>()
             .HasMany(x => x.Addresses)
             .WithMany(y => y.Organizations);
-
-        modelBuilder.Entity<Organization>()
-            .HasMany(x => x.Addresses)
-            .WithOne(y => y.Organization)
-            .HasForeignKey(x => x.ADDRESS);
 
         // Indexes
         modelBuilder.Entity<Organization>()
