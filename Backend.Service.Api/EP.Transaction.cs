@@ -93,10 +93,10 @@ public partial class Endpoints
             if ( !ArgValidation.CheckOffset(offset) )
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash) )
+            if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash.ToUpper()) )
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial) )
+            if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial.ToUpper()) )
                 throw new ApiParameterException("Unsupported value for 'hash_partial' parameter.");
 
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
@@ -110,7 +110,7 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
                 throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
-            if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
+            if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash.ToUpper()) )
                 throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
 
             if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
