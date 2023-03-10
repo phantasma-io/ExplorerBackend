@@ -130,10 +130,10 @@ public partial class Endpoints
             #region Filtering
 
             if ( !string.IsNullOrEmpty(hash) )
-                query = query.Where(x => x.HASH == hash);
+                query = query.Where(x => x.HASH == hash.ToUpper());
 
             if ( !string.IsNullOrEmpty(hash_partial) )
-                query = query.Where(x => x.HASH.Contains(hash_partial));
+                query = query.Where(x => x.HASH.Contains(hash_partial.ToUpper()));
 
             if ( !string.IsNullOrEmpty(date_less) )
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
@@ -151,7 +151,7 @@ public partial class Endpoints
             }
 
             if ( !string.IsNullOrEmpty(block_hash) )
-                query = query.Where(x => x.Block.HASH == block_hash);
+                query = query.Where(x => x.Block.HASH == block_hash.ToUpper());
 
             if ( !string.IsNullOrEmpty(block_height) )
                 query = query.Where(x => x.Block.HEIGHT == block_height);
