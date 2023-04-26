@@ -120,14 +120,23 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if ( organization != null ) address.Organization = organization;
                 var organizationAddress = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
                 if ( organizationAddress != null ) address.Organizations = organizationAddress.ToList();
+                databaseContext.Update(address);
 
                 processed++;
                 if ( processed % saveAfterCount != 0 ) continue;
-                transactionStart = DateTime.Now;
-                databaseContext.SaveChanges();
-                transactionEnd = DateTime.Now - transactionStart;
-                Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name,
-                    Math.Round(transactionEnd.TotalSeconds, 3));
+                try
+                {
+                    transactionStart = DateTime.Now;
+                    databaseContext.SaveChanges();
+                    transactionEnd = DateTime.Now - transactionStart;
+                    Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name,
+                        Math.Round(transactionEnd.TotalSeconds, 3));
+                }
+                catch ( Exception e )
+                {
+                    Log.Verbose("Error: {e}" ,e.Message);
+                }
+               
             }
 
             transactionStart = DateTime.Now;
@@ -282,7 +291,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount, processed);
     }
 
-
     private Address SyncAddressByName(Chain chain, string addressName, Organization organization, bool saveChanges)
     {
         var startTime = DateTime.Now;
@@ -404,8 +412,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var lookUpTime = DateTime.Now - startTime;
         Log.Information("Get all addresses by symbol took {Time} sec", Math.Round(lookUpTime.TotalSeconds, 3));
     }
-
-
+    
     private void FetchAllAddresses(Chain chain)
     {
         MainDbContext databaseContext = new();
