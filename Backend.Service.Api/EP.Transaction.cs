@@ -224,12 +224,13 @@ public partial class Endpoints
     private async Task<Transaction[]> ProcessAllTransactions(IEnumerable<Database.Main.Transaction> _transactions, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = _transactions.Select(_transaction => ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
-        await Task.WhenAll(tasks);
-        return tasks.Select(x => x.Result).ToArray();
+        var results = await Task.WhenAll(tasks);
+        return results.ToArray();
     }
     
     private async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
+        await Task.Delay(0);
         return new Transaction
         {
             hash = transaction.HASH,
@@ -283,8 +284,8 @@ public partial class Endpoints
         //if ( transaction.Events.Count > 100 ) throw new ApiParameterException("Too many events in transaction.");
         
         var tasks = transaction.Events.Select(_transactionEvent => ProcessEvent(_transactionEvent, transaction, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
-        await Task.WhenAll(tasks);
-        return tasks.Select(x => x.Result).ToArray();
+        var events = await Task.WhenAll(tasks);
+        return events.ToArray();
         
         /*ConcurrentBag<Event> resultBag = new ConcurrentBag<Event>();
 
@@ -306,6 +307,7 @@ public partial class Endpoints
 
     private async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
+        await Task.Delay(0);
         Event _event = new Event();
         _event.event_id = _transactionEvent.ID;
         _event.chain = _transactionEvent.Chain.NAME.ToLower();
