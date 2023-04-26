@@ -188,6 +188,9 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
+            
+            transactions = ProcessAllTransactions(query, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
+            /*query.Select(_transaction => ProcessTransaction())
             var wait = Parallel.ForEach(query, _transaction =>
             {
                 // Perform your processing here
@@ -195,13 +198,9 @@ public partial class Endpoints
 
                 // Add the result to the ConcurrentBag
                 concurrentTransactions.Add(_tx);
-            });
+            });*/
             
-            while (!wait.IsCompleted)
-            {
-                Thread.Sleep(100);
-            }
-            transactions = concurrentTransactions.ToArray();
+            //transactions = concurrentTransactions.ToArray();
 
             var responseTime = DateTime.Now - startTime;
 
@@ -222,7 +221,14 @@ public partial class Endpoints
     }
 
 
-    private Transaction ProcessTransaction(Database.Main.Transaction transaction, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Transaction[]> ProcessAllTransactions(IEnumerable<Database.Main.Transaction> _transactions, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    {
+        var tasks = _transactions.Select(_transaction => ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
+        await Task.WhenAll(tasks);
+        return tasks.Select(x => x.Result).ToArray();
+    }
+    
+    private async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         return new Transaction
         {
@@ -264,18 +270,23 @@ public partial class Endpoints
                 }
                 : null,
             events = HandleEvents(transaction, with_events, with_event_data, with_nft, with_fiat, fiatCurrency,
-                fiatPricesInUsd)
+                fiatPricesInUsd).GetAwaiter().GetResult()
         };
     }
 
 
-    private Event[] HandleEvents(Database.Main.Transaction transaction, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Event[]> HandleEvents(Database.Main.Transaction transaction, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         if ( with_events != 1 ) return null;
         if ( transaction.Events == null ) return null;
         if ( transaction.Events.Count == 0 ) return null;
         //if ( transaction.Events.Count > 100 ) throw new ApiParameterException("Too many events in transaction.");
-        ConcurrentBag<Event> resultBag = new ConcurrentBag<Event>();
+        
+        var tasks = transaction.Events.Select(_transactionEvent => ProcessEvent(_transactionEvent, transaction, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
+        await Task.WhenAll(tasks);
+        return tasks.Select(x => x.Result).ToArray();
+        
+        /*ConcurrentBag<Event> resultBag = new ConcurrentBag<Event>();
 
         var waitEvents = Parallel.ForEach(transaction.Events, _transactionEvent =>
         {
@@ -289,13 +300,11 @@ public partial class Endpoints
         while (!waitEvents.IsCompleted)
         {
             Thread.Sleep(100);
-        }
-
-        return resultBag.ToArray();
+        }*/
     }
 
 
-    private Event ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         Event _event = new Event();
         _event.event_id = _transactionEvent.ID;
