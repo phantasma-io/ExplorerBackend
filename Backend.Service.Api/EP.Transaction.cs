@@ -224,14 +224,17 @@ public partial class Endpoints
     private async Task<Transaction[]> ProcessAllTransactions(IQueryable<Database.Main.Transaction> _transactions, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = new List<Task<Transaction>>();
-        tasks.AddRange(_transactions.Select(_transaction => ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd)));
+        tasks.AddRange(_transactions.Select(_transaction =>
+            ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat,
+                fiatCurrency, fiatPricesInUsd)
+        ));
         var results = await Task.WhenAll(tasks);
         return results.ToArray();
     }
     
-    private Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private static async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        return Task.FromResult(new Transaction
+        var tx = new Transaction
         {
             hash = transaction.HASH,
             block_hash = transaction.Block.HASH,
@@ -272,11 +275,14 @@ public partial class Endpoints
                 : null,
             events = HandleEvents(transaction, with_events, with_event_data, with_nft, with_fiat, fiatCurrency,
                 fiatPricesInUsd).GetAwaiter().GetResult()
-        });
+        };
+
+        await Task.Yield();
+        return tx;
     }
 
 
-    private async Task<Event[]> HandleEvents(Database.Main.Transaction transaction, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private static async Task<Event[]> HandleEvents(Database.Main.Transaction transaction, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         if ( with_events != 1 ) return null;
         if ( transaction.Events == null ) return null;
@@ -305,7 +311,7 @@ public partial class Endpoints
     }
 
 
-    private async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private static async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         Event _event = new Event();
         _event.event_id = _transactionEvent.ID;
