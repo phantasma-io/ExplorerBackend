@@ -229,10 +229,9 @@ public partial class Endpoints
         return results.ToArray();
     }
     
-    private async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        await Task.Delay(0);
-        return new Transaction
+        return Task.FromResult(new Transaction
         {
             hash = transaction.HASH,
             block_hash = transaction.Block.HASH,
@@ -273,7 +272,7 @@ public partial class Endpoints
                 : null,
             events = HandleEvents(transaction, with_events, with_event_data, with_nft, with_fiat, fiatCurrency,
                 fiatPricesInUsd).GetAwaiter().GetResult()
-        };
+        });
     }
 
 
@@ -308,7 +307,6 @@ public partial class Endpoints
 
     private async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        await Task.Delay(0);
         Event _event = new Event();
         _event.event_id = _transactionEvent.ID;
         _event.chain = _transactionEvent.Chain.NAME.ToLower();
@@ -576,6 +574,7 @@ public partial class Endpoints
             }
             : null;
 
+        await Task.Yield();
         return _event;
     }
 }
