@@ -74,6 +74,7 @@ public partial class Endpoints
     {
         long totalResults = 0;
         ConcurrentBag<Transaction> concurrentTransactions = new ConcurrentBag<Transaction>();
+        Transaction[] transactions = null;
 
         const string fiatCurrency = "USD";
         var filter = !string.IsNullOrEmpty(hash) || !string.IsNullOrEmpty(hash_partial) ||
@@ -194,6 +195,7 @@ public partial class Endpoints
                 // Add the result to the ConcurrentBag
                 concurrentTransactions.Add(_tx);
             });
+            transactions = concurrentTransactions.ToArray();
 
             var responseTime = DateTime.Now - startTime;
 
@@ -210,7 +212,7 @@ public partial class Endpoints
         }
 
         return new TransactionResult
-            {total_results = with_total == 1 ? totalResults : null, transactions = concurrentTransactions.ToArray()};
+            {total_results = with_total == 1 ? totalResults : null, transactions = transactions};
     }
 
 
