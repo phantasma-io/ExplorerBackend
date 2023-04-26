@@ -223,7 +223,8 @@ public partial class Endpoints
 
     private async Task<Transaction[]> ProcessAllTransactions(IQueryable<Database.Main.Transaction> _transactions, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        var tasks = _transactions.Select(_transaction => ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
+        var tasks = new List<Task<Transaction>>();
+        tasks.AddRange(_transactions.Select(_transaction => ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd)));
         var results = await Task.WhenAll(tasks);
         return results.ToArray();
     }
