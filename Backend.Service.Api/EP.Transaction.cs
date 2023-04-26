@@ -273,8 +273,8 @@ public partial class Endpoints
                     address = transaction.GasTarget.ADDRESS
                 }
                 : null,
-            events = HandleEvents(transaction, with_events, with_event_data, with_nft, with_fiat, fiatCurrency,
-                fiatPricesInUsd).GetAwaiter().GetResult()
+            events = await HandleEvents(transaction, with_events, with_event_data, with_nft, with_fiat, fiatCurrency,
+                fiatPricesInUsd)
         };
 
         await Task.Yield();
