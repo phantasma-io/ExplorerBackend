@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
@@ -187,7 +188,7 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            Parallel.ForEach(query, _transaction =>
+            var wait = Parallel.ForEach(query, _transaction =>
             {
                 // Perform your processing here
                 Transaction _tx = ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd);
@@ -195,6 +196,11 @@ public partial class Endpoints
                 // Add the result to the ConcurrentBag
                 concurrentTransactions.Add(_tx);
             });
+            
+            while (!wait.IsCompleted)
+            {
+                Thread.Sleep(100);
+            }
             transactions = concurrentTransactions.ToArray();
 
             var responseTime = DateTime.Now - startTime;
@@ -271,7 +277,7 @@ public partial class Endpoints
         //if ( transaction.Events.Count > 100 ) throw new ApiParameterException("Too many events in transaction.");
         ConcurrentBag<Event> resultBag = new ConcurrentBag<Event>();
 
-        Parallel.ForEach(transaction.Events, _transactionEvent =>
+        var waitEvents = Parallel.ForEach(transaction.Events, _transactionEvent =>
         {
             // Perform your processing here
             Event _event = ProcessEvent(_transactionEvent, transaction, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd);
@@ -279,6 +285,11 @@ public partial class Endpoints
             // Add the result to the ConcurrentBag
             resultBag.Add(_event);
         });
+        
+        while (!waitEvents.IsCompleted)
+        {
+            Thread.Sleep(100);
+        }
 
         return resultBag.ToArray();
     }
