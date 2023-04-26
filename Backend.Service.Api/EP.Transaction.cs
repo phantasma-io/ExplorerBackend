@@ -188,7 +188,7 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            
+            query.Load();
             transactions = ProcessAllTransactions(query, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
             /*query.Select(_transaction => ProcessTransaction())
             var wait = Parallel.ForEach(query, _transaction =>
@@ -221,7 +221,7 @@ public partial class Endpoints
     }
 
 
-    private async Task<Transaction[]> ProcessAllTransactions(IEnumerable<Database.Main.Transaction> _transactions, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Transaction[]> ProcessAllTransactions(IQueryable<Database.Main.Transaction> _transactions, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = _transactions.Select(_transaction => ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
         var results = await Task.WhenAll(tasks);
