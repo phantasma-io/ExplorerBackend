@@ -723,8 +723,8 @@ public class MainDbContext : DbContext
             .HasMany(x => x.Addresses)
             .WithMany(y => y.Organizations);
 
-        modelBuilder.Entity<Organization>()
-            .HasOne(x => x.Address);
+        /*modelBuilder.Entity<Organization>()
+            .has(x => x.Address);*/
 
         // Indexes
         modelBuilder.Entity<Organization>()
