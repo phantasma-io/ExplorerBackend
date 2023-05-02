@@ -281,8 +281,8 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.AddressValidatorKindId);
 
-        modelBuilder.Entity<Address>()
-            .HasMany<Organization>(o => o.Organizations);
+        /*modelBuilder.Entity<Address>()
+            .HasMany<Organization>(o => o.Organizations);*/
 
         /*modelBuilder.Entity<Address>()
             .Ignore(a => a.Organization);*/
