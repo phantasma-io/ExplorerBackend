@@ -178,7 +178,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var times = total / 100;
             if ( times == 0 ) times = 1;
             var splitAddresses = addressesToUpdate.Chunk(100);
-            for ( int i = 0; i < times; i++ )
+            for ( int i = 0; i < splitAddresses.Count(); i++ )
             {
                 var splited = splitAddresses.ElementAt(i).Select(x => x.ADDRESS).ToList();
                 var addresses = string.Join(",", splited);
