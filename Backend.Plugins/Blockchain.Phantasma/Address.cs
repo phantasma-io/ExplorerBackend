@@ -252,16 +252,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             storageProperty.GetProperty("available").GetUInt32(),
                             storageProperty.GetProperty("used").GetUInt32(),
                             storageProperty.GetProperty("avatar").GetString(), false);
-
-                    var stake = response.RootElement.GetProperty("stake").GetString();
+                            
+                    
+                    var stake = account.GetProperty("stake").GetString();
                     address.STAKE = Commons.Utils.ToDecimal(stake, soulDecimals);
                     address.STAKE_RAW = stake;
-                    var unclaimedStorage = response.RootElement.GetProperty("unclaimed").GetString();
+                    var unclaimedStorage = account.GetProperty("unclaimed").GetString();
                     address.UNCLAIMED = Commons.Utils.ToDecimal(unclaimedStorage, kcalDecimals);
                     address.UNCLAIMED_RAW = unclaimedStorage;
 
                     var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
-                        response.RootElement.GetProperty("validator").GetString());
+                        account.GetProperty("validator").GetString());
                     address.AddressValidatorKind = validatorKind;
 
                     //just to keep things up2date
