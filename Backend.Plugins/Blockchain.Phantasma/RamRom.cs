@@ -177,9 +177,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     TokenProperty property = new()
                     {
-                        Key = entry.GetProperty("Key").GetString()
+                        Key = entry.GetProperty("key").GetString()
                     };
-                    if ( entry.TryGetProperty("Value", out var valueProperty) )
+                    if ( entry.TryGetProperty("value", out var valueProperty) )
                         property.Value = valueProperty.GetString();
 
                     properties.Add(property);

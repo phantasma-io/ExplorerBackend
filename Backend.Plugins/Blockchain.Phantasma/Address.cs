@@ -351,6 +351,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressEntry.Organization = organization;
             if ( addressEntry.Organizations == null ) addressEntry.Organizations = new List<Organization>();
             addressEntry.Organizations.AddDistinct(organization);
+            organization.Address = addressEntry;
         }
 
         var lookUpTime = DateTime.Now - startTime;
