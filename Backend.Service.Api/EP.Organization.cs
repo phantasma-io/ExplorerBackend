@@ -152,8 +152,8 @@ public partial class Endpoints
                 address = with_address == 1 && x.Addresses != null
                     ? new Address
                     {
-                        address = x.Addresses.First().ADDRESS,
-                        address_name = x.Addresses.First().ADDRESS_NAME
+                        address = x.Address.ADDRESS,
+                        address_name = x.Address.ADDRESS_NAME
                     }
                     : null
             }).ToArray();
