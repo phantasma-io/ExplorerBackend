@@ -724,9 +724,12 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Organizations);
 
         modelBuilder.Entity<Organization>()
+            .Ignore(x => x.Address);
+
+        /*modelBuilder.Entity<Organization>()
             .HasOne(x => x.Address)
             .WithOne(y => y.Organization)
-            .HasForeignKey<Organization>(x => x.ORGANIZATION_ID);
+            .HasForeignKey<Organization>(z => z.AddressId); */
 
         // Indexes
         modelBuilder.Entity<Organization>()
@@ -1593,6 +1596,8 @@ public class Organization
     public int ID { get; set; }
     public string ORGANIZATION_ID { get; set; }
     public string NAME { get; set; }
+    public string ADDRESS_NAME { get; set; }
+    public string ADDRESS { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
     public int? CreateEventId { get; set; }
