@@ -149,11 +149,11 @@ public partial class Endpoints
                             : null
                     }
                     : null,
-                address = with_address == 1 && x.Address != null
+                address = with_address == 1 && x.ADDRESS != null && x.ADDRESS_NAME != null
                     ? new Address
                     {
-                        address = x.Address.ADDRESS,
-                        address_name = x.Address.ADDRESS_NAME
+                        address = x.ADDRESS,
+                        address_name = x.ADDRESS_NAME
                     }
                     : null
             }).ToArray();
