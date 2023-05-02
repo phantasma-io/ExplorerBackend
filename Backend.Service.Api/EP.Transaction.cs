@@ -47,7 +47,7 @@ public partial class Endpoints
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
-    [ProducesResponseType(typeof(TransactionResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 10, cacheTag: "transactions")]
     public TransactionResult Transactions(
@@ -152,7 +152,7 @@ public partial class Endpoints
                 bool isValidAddress = Phantasma.Core.Cryptography.Address.IsValidAddress(address);
                 var addressTransactions = AddressTransactionMethods
                     .GetAddressTransactionsByAddress(databaseContext, address, isValidAddress).ToList();
-                
+
                 query = query.Where(x => x.AddressTransactions.Any(y => addressTransactions.Contains(y)));
             }
 
@@ -189,7 +189,8 @@ public partial class Endpoints
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
             query.Load();
-            transactions = ProcessAllTransactions(query, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
+            transactions = ProcessAllTransactions(query, with_script, with_events, with_event_data, with_nft, with_fiat,
+                fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
             /*query.Select(_transaction => ProcessTransaction())
             var wait = Parallel.ForEach(query, _transaction =>
             {
@@ -199,7 +200,7 @@ public partial class Endpoints
                 // Add the result to the ConcurrentBag
                 concurrentTransactions.Add(_tx);
             });*/
-            
+
             //transactions = concurrentTransactions.ToArray();
 
             var responseTime = DateTime.Now - startTime;
@@ -217,11 +218,13 @@ public partial class Endpoints
         }
 
         return new TransactionResult
-            {total_results = with_total == 1 ? totalResults : null, transactions = transactions};
+            { total_results = with_total == 1 ? totalResults : null, transactions = transactions };
     }
 
 
-    private async Task<Transaction[]> ProcessAllTransactions(IQueryable<Database.Main.Transaction> _transactions, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Transaction[]> ProcessAllTransactions(IQueryable<Database.Main.Transaction> _transactions,
+        int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
+        Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = new List<Task<Transaction>>();
         _transactions = _transactions.AsNoTracking();
@@ -232,8 +235,11 @@ public partial class Endpoints
         var results = await Task.WhenAll(tasks);
         return results.ToArray();
     }
-    
-    private static async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+
+
+    private async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script,
+        int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
+        Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tx = new Transaction
         {
@@ -278,22 +284,24 @@ public partial class Endpoints
                 fiatPricesInUsd)
         };
 
-        await Task.Yield();
         return tx;
     }
 
 
-    private static async Task<Event[]> HandleEvents(Database.Main.Transaction transaction, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Event[]> HandleEvents(Database.Main.Transaction transaction, int with_events,
+        int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
+        Dictionary<string, decimal> fiatPricesInUsd)
     {
         if ( with_events != 1 ) return null;
         if ( transaction.Events == null ) return null;
         if ( transaction.Events.Count == 0 ) return null;
         //if ( transaction.Events.Count > 100 ) throw new ApiParameterException("Too many events in transaction.");
-        
-        var tasks = transaction.Events.Select(_transactionEvent => ProcessEvent(_transactionEvent, transaction, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
+
+        var tasks = transaction.Events.Select(_transactionEvent => ProcessEvent(_transactionEvent, transaction,
+            with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
         var events = await Task.WhenAll(tasks);
         return events.ToArray();
-        
+
         /*ConcurrentBag<Event> resultBag = new ConcurrentBag<Event>();
 
         var waitEvents = Parallel.ForEach(transaction.Events, _transactionEvent =>
@@ -312,7 +320,9 @@ public partial class Endpoints
     }
 
 
-    private static async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction,
+        int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
+        Dictionary<string, decimal> fiatPricesInUsd)
     {
         Event _event = new Event();
         _event.event_id = _transactionEvent.ID;
@@ -580,8 +590,7 @@ public partial class Endpoints
                     : null
             }
             : null;
-
-        await Task.Yield();
+        
         return _event;
     }
 }
