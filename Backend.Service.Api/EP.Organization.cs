@@ -117,9 +117,6 @@ public partial class Endpoints
                     "organization_id" => query.OrderByDescending(x => x.ORGANIZATION_ID),
                     _ => query
                 };
-            
-            if ( with_address == 1)
-                query = query.Include(x => x.Address);
 
             organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
             {
