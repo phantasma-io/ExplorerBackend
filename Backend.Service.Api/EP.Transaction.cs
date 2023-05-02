@@ -224,8 +224,24 @@ public partial class Endpoints
     private async Task<Transaction[]> ProcessAllTransactions(IQueryable<Database.Main.Transaction> _transactions, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = new List<Task<Transaction>>();
-        _transactions = _transactions.Include(t => t.Block).Include(t=>t.State).Include(t => t.Sender).Include(t => t.GasPayer)
-            .Include(t => t.GasTarget).Include(t => t.Events).Include(t => t.AddressTransactions);
+        _transactions = _transactions.Include(t => t.Block)
+            .ThenInclude(b=>b.Chain)
+            .Include(t=>t.State)
+            .Include(t => t.Sender)
+            .Include(t => t.GasPayer)
+            .Include(t => t.GasTarget)
+            .Include(t => t.Events)
+                .ThenInclude(e => e.Contract)
+            .Include(t => t.Events)
+                .ThenInclude(e => e.Nft)
+                .ThenInclude(n => n.Series)
+            .Include(t => t.Events)
+                .ThenInclude(e => e.Nft)
+            .Include(t => t.Events)
+                .ThenInclude(e => e.AddressEvent)
+            .Include(t => t.Events)
+                .ThenInclude(e => e.Transaction)
+            .Include(t => t.AddressTransactions);
         tasks.AddRange(_transactions.Select(_transaction =>
             ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat,
                 fiatCurrency, fiatPricesInUsd)
