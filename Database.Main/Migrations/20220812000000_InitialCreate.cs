@@ -105,6 +105,19 @@ namespace Database.Main.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TransactionStates",
+                columns: table => new
+                {
+                    ID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    NAME = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TransactionStates", x => x.ID);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "EventKinds",
                 columns: table => new
                 {
@@ -342,15 +355,45 @@ namespace Database.Main.Migrations
                     SCRIPT_RAW = table.Column<string>(type: "text", nullable: true),
                     RESULT = table.Column<string>(type: "text", nullable: true),
                     FEE = table.Column<string>(type: "text", nullable: true),
-                    EXPIRATION = table.Column<long>(type: "bigint", nullable: false)
+                    EXPIRATION = table.Column<long>(type: "bigint", nullable: false),
+                    StateId = table.Column<int>(type: "integer", nullable: false),
+                    GAS_PRICE = table.Column<string>(type: "text", nullable: true),
+                    GAS_LIMIT = table.Column<string>(type: "text", nullable: true),
+                    SenderId = table.Column<int>(type: "integer", nullable: false),
+                    GasPayerId = table.Column<int>(type: "integer", nullable: false),
+                    GasTargetId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Transactions", x => x.ID);
                     table.ForeignKey(
+                        name: "FK_Transactions_Addresses_GasPayerId",
+                        column: x => x.GasPayerId,
+                        principalTable: "Addresses",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Transactions_Addresses_GasTargetId",
+                        column: x => x.GasTargetId,
+                        principalTable: "Addresses",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Transactions_Addresses_SenderId",
+                        column: x => x.SenderId,
+                        principalTable: "Addresses",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
                         name: "FK_Transactions_Blocks_BlockId",
                         column: x => x.BlockId,
                         principalTable: "Blocks",
+                        principalColumn: "ID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Transactions_TransactionStates_StateId",
+                        column: x => x.StateId,
+                        principalTable: "TransactionStates",
                         principalColumn: "ID",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -1929,9 +1972,29 @@ namespace Database.Main.Migrations
                 columns: new[] { "BlockId", "INDEX" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Transactions_GasPayerId",
+                table: "Transactions",
+                column: "GasPayerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_GasTargetId",
+                table: "Transactions",
+                column: "GasTargetId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Transactions_HASH",
                 table: "Transactions",
                 column: "HASH");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_SenderId",
+                table: "Transactions",
+                column: "SenderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_StateId",
+                table: "Transactions",
+                column: "StateId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_TIMESTAMP_UNIX_SECONDS",
@@ -1948,6 +2011,11 @@ namespace Database.Main.Migrations
                 name: "IX_TransactionSettleEvents_PlatformId",
                 table: "TransactionSettleEvents",
                 column: "PlatformId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TransactionStates_NAME",
+                table: "TransactionStates",
+                column: "NAME");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_AddressBalances_Addresses_AddressId",
@@ -2044,6 +2112,18 @@ namespace Database.Main.Migrations
             migrationBuilder.DropForeignKey(
                 name: "FK_Tokens_Addresses_OwnerId",
                 table: "Tokens");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Transactions_Addresses_GasPayerId",
+                table: "Transactions");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Transactions_Addresses_GasTargetId",
+                table: "Transactions");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Transactions_Addresses_SenderId",
+                table: "Transactions");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_Blocks_Chains_ChainId",
@@ -2215,6 +2295,9 @@ namespace Database.Main.Migrations
 
             migrationBuilder.DropTable(
                 name: "Blocks");
+
+            migrationBuilder.DropTable(
+                name: "TransactionStates");
 
             migrationBuilder.DropTable(
                 name: "SeriesModes");

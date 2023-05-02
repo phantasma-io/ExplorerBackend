@@ -1,3 +1,5 @@
+using Backend.Commons;
+
 namespace Database.Main;
 
 public static class TokenEventMethods
@@ -10,8 +12,16 @@ public static class TokenEventMethods
         //use the chain name here to get the data
         //maybe
         var token = TokenMethods.Get(databaseContext, chain, symbol);
+        //var chainNameChain = ChainMethods.Get(databaseContext, chainName);
 
-        var tokenEvent = new TokenEvent {Token = token, VALUE = value, CHAIN_NAME = chainName, Event = databaseEvent};
+        var tokenEvent = new TokenEvent
+        {
+            Token = token,
+            VALUE = Utils.ToDecimal(value, token.DECIMALS),
+            VALUE_RAW = value,
+            CHAIN_NAME = chainName,
+            Event = databaseEvent
+        };
 
         databaseContext.TokenEvents.Add(tokenEvent);
         if ( saveChanges ) databaseContext.SaveChanges();

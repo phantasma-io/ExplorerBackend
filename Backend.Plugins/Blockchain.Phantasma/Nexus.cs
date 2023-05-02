@@ -23,7 +23,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             updatedTokensCount = 0;
             updatedPlatformsCount = 0;
             updatedOrganizationsCount = 0;
-            var url = $"{Settings.Default.GetRest()}/api/getNexus";
+            var url = $"{Settings.Default.GetRest()}/api/v1/getNexus?extended=true";
 
             //TODO fix
             PlatformMethods.Upsert(databaseContext, "phantasma", null, null, false, true);
@@ -115,6 +115,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var fiat = false;
                         var swappable = false;
                         var burnable = false;
+                        var mintable = false;
 
                         if ( token.TryGetProperty("flags", out var flags) )
                             if ( flags.ToString().Contains("Fungible") )
@@ -135,12 +136,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 swappable = true;
                             else if ( flags.ToString().Contains("Burnable") )
                                 burnable = true;
+                            else if ( flags.ToString().Contains("Mintable") )
+                                mintable = true;
 
 
                         var tokenEntry = TokenMethods.Upsert(databaseContext, chainEntry, tokenSymbol, tokenSymbol,
-                            tokenDecimal,
-                            fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable, burnable,
-                            address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw, false);
+                            tokenDecimal, fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable,
+                            burnable, mintable, address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw,
+                            false);
 
                         if ( token.TryGetProperty("external", out var externalsProperty) )
                         {
@@ -155,7 +158,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             Log.Verbose("[{Name}] Processed {Count} Externals in {Time} sec", Name,
                                 externalList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                         }
-
+                        
+                        // TODO: Add the fetch for address / Tokens
+                        //FetchAllAddressesBySymbol(databaseContext, chainEntry, tokenSymbol, false, false );
 
                         Log.Verbose(
                             "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
@@ -176,7 +181,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             "[{Name}] got Platform {Organization}",
                             Name, organization.ToString());
 
-                        var urlOrg = $"{Settings.Default.GetRest()}/api/getOrganization/{organization.ToString()}";
+                        var urlOrg =
+                            $"{Settings.Default.GetRest()}/api/v1/getOrganization?ID={organization.ToString()}";
                         var responseOrg = Client.ApiRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
                         if ( responseOrg != null )
                         {
@@ -203,8 +209,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     .ToList();
                                 Log.Verbose("[{Name}] got {Count} Addresses to process", Name, memberList.Count);
 
+                                OrganizationAddressMethods.RemoveFromOrganizationAddressesIfNeeded(databaseContext, orgItem, memberList, false);
+
                                 OrganizationAddressMethods.InsertIfNotExists(databaseContext, orgItem, memberList,
                                     chainEntry, false);
+                                
 
                                 transactionEnd = DateTime.Now - transactionStart;
                                 Log.Verbose("[{Name}] Processed {Count} OrganizationAddresses in {Time} sec", Name,

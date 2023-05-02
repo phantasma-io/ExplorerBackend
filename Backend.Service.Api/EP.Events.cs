@@ -350,6 +350,7 @@ public partial class Endpoints
                         {
                             price = x.GasEvent.PRICE,
                             amount = x.GasEvent.AMOUNT,
+                            fee = x.GasEvent.FEE,
                             address = x.GasEvent.Address != null
                                 ? new Address
                                 {
@@ -370,6 +371,7 @@ public partial class Endpoints
                         {
                             token_id = x.InfusionEvent.TOKEN_ID,
                             infused_value = x.InfusionEvent.INFUSED_VALUE,
+                            infused_value_raw = x.InfusionEvent.INFUSED_VALUE_RAW,
                             base_token = x.InfusionEvent.BaseToken != null
                                 ? new Token
                                 {
@@ -510,6 +512,7 @@ public partial class Endpoints
                                 }
                                 : null,
                             value = x.TokenEvent.VALUE,
+                            value_raw = x.TokenEvent.VALUE_RAW,
                             chain_name = x.TokenEvent.CHAIN_NAME
                         }
                         : null,

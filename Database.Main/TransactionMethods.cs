@@ -1,4 +1,5 @@
 using System.Linq;
+using Backend.Commons;
 
 namespace Database.Main;
 
@@ -9,6 +10,7 @@ public static class TransactionMethods
     // Returns new or existing entry's Id.
     public static Transaction Upsert(MainDbContext databaseContext, Block block, int txIndex, string hash,
         long timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, long expiration,
+        string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
         bool saveChanges = true)
     {
         ContractMethods.Drop0x(ref hash);
@@ -20,6 +22,12 @@ public static class TransactionMethods
 
         if ( entry != null ) return entry;
 
+        var transactionState = TransactionStateMethods.Upsert(databaseContext, state, saveChanges);
+        var senderAddress = AddressMethods.Upsert(databaseContext, block.Chain, sender, saveChanges);
+        var gasPayerAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasPayer, saveChanges);
+        var gasTargetAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasTarget, saveChanges);
+
+        var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, block.Chain);
         entry = new Transaction
         {
             Block = block,
@@ -29,8 +37,17 @@ public static class TransactionMethods
             PAYLOAD = payload,
             SCRIPT_RAW = scriptRaw,
             RESULT = result,
-            FEE = fee,
-            EXPIRATION = expiration
+            FEE = Utils.ToDecimal(fee, kcalDecimals),
+            FEE_RAW = fee,
+            EXPIRATION = expiration,
+            GAS_PRICE = Utils.ToDecimal(gasPrice, kcalDecimals),
+            GAS_PRICE_RAW = gasPrice,
+            GAS_LIMIT = Utils.ToDecimal(gasLimit, kcalDecimals),
+            GAS_LIMIT_RAW = gasLimit,
+            State = transactionState,
+            Sender = senderAddress,
+            GasPayer = gasPayerAddress,
+            GasTarget = gasTargetAddress
         };
 
         databaseContext.Transactions.Add(entry);

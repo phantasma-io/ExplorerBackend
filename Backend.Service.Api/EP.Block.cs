@@ -6,7 +6,6 @@ using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Phantasma.Numerics;
 using Serilog;
 
 namespace Backend.Service.Api;
@@ -121,7 +120,6 @@ public partial class Endpoints
 
             using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
-            var tokenKcal = TokenMethods.Get(databaseContext, ChainMethods.Get(databaseContext, chain), "KCAL");
 
             //just need that since we build the model so it knows what we can use
             var query = databaseContext.Blocks.AsQueryable().AsNoTracking();
@@ -189,12 +187,38 @@ public partial class Endpoints
                         block_height = x.HEIGHT,
                         index = t.INDEX,
                         date = t.TIMESTAMP_UNIX_SECONDS.ToString(),
-                        fee = UnitConversion.ToDecimal(t.FEE, tokenKcal.DECIMALS)
-                            .ToString(CultureInfo.InvariantCulture),
+                        fee = t.FEE,
+                        fee_raw = t.FEE_RAW,
                         script_raw = t.SCRIPT_RAW,
                         result = t.RESULT,
                         payload = t.PAYLOAD,
                         expiration = t.EXPIRATION.ToString(),
+                        gas_price = t.GAS_PRICE,
+                        gas_price_raw = t.GAS_PRICE_RAW,
+                        gas_limit = t.GAS_LIMIT,
+                        gas_limit_raw = t.GAS_LIMIT_RAW,
+                        state = t.State.NAME,
+                        sender = t.Sender != null
+                            ? new Address
+                            {
+                                address_name = t.Sender.ADDRESS_NAME,
+                                address = t.Sender.ADDRESS
+                            }
+                            : null,
+                        gas_payer = t.GasPayer != null
+                            ? new Address
+                            {
+                                address_name = t.GasPayer.ADDRESS_NAME,
+                                address = t.GasPayer.ADDRESS
+                            }
+                            : null,
+                        gas_target = t.GasTarget != null
+                            ? new Address
+                            {
+                                address_name = t.GasTarget.ADDRESS_NAME,
+                                address = t.GasTarget.ADDRESS
+                            }
+                            : null,
                         events = with_events == 1 && t.Events != null
                             ? t.Events.Select(e => new Event
                             {
@@ -281,6 +305,7 @@ public partial class Endpoints
                                     {
                                         price = e.GasEvent.PRICE,
                                         amount = e.GasEvent.AMOUNT,
+                                        fee = e.GasEvent.FEE,
                                         address = e.GasEvent.Address != null
                                             ? new Address
                                             {
@@ -301,6 +326,7 @@ public partial class Endpoints
                                     {
                                         token_id = e.InfusionEvent.TOKEN_ID,
                                         infused_value = e.InfusionEvent.INFUSED_VALUE,
+                                        infused_value_raw = e.InfusionEvent.INFUSED_VALUE_RAW,
                                         base_token = e.InfusionEvent.BaseToken != null
                                             ? new Token
                                             {
@@ -441,6 +467,7 @@ public partial class Endpoints
                                             }
                                             : null,
                                         value = e.TokenEvent.VALUE,
+                                        value_raw = e.TokenEvent.VALUE_RAW,
                                         chain_name = e.TokenEvent.CHAIN_NAME
                                     }
                                     : null,

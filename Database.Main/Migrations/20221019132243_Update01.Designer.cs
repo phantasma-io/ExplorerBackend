@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Database.Main.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    [Migration("20220812000000_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20221019132243_Update01")]
+    partial class Update01
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -51,13 +51,16 @@ namespace Database.Main.Migrations
                     b.Property<int?>("OrganizationId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("RELAY")
-                        .HasColumnType("text");
-
                     b.Property<string>("STAKE")
                         .HasColumnType("text");
 
+                    b.Property<string>("STAKE_RAW")
+                        .HasColumnType("text");
+
                     b.Property<string>("UNCLAIMED")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UNCLAIMED_RAW")
                         .HasColumnType("text");
 
                     b.Property<string>("USER_NAME")
@@ -88,6 +91,9 @@ namespace Database.Main.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
 
                     b.Property<string>("AMOUNT")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AMOUNT_RAW")
                         .HasColumnType("text");
 
                     b.Property<int>("AddressId")
@@ -145,6 +151,9 @@ namespace Database.Main.Migrations
                     b.Property<string>("AMOUNT")
                         .HasColumnType("text");
 
+                    b.Property<string>("AMOUNT_RAW")
+                        .HasColumnType("text");
+
                     b.Property<int>("AddressId")
                         .HasColumnType("integer");
 
@@ -152,6 +161,9 @@ namespace Database.Main.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<string>("UNCLAIMED")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UNCLAIMED_RAW")
                         .HasColumnType("text");
 
                     b.HasKey("ID");
@@ -598,6 +610,9 @@ namespace Database.Main.Migrations
                     b.Property<int>("EventId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("FEE")
+                        .HasColumnType("text");
+
                     b.Property<string>("PRICE")
                         .HasColumnType("text");
 
@@ -679,6 +694,9 @@ namespace Database.Main.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("INFUSED_VALUE")
+                        .HasColumnType("text");
+
+                    b.Property<string>("INFUSED_VALUE_RAW")
                         .HasColumnType("text");
 
                     b.Property<int>("InfusedTokenId")
@@ -1359,7 +1377,13 @@ namespace Database.Main.Migrations
                     b.Property<string>("BURNED_SUPPLY")
                         .HasColumnType("text");
 
+                    b.Property<string>("BURNED_SUPPLY_RAW")
+                        .HasColumnType("text");
+
                     b.Property<string>("CURRENT_SUPPLY")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CURRENT_SUPPLY_RAW")
                         .HasColumnType("text");
 
                     b.Property<int>("ChainId")
@@ -1391,6 +1415,12 @@ namespace Database.Main.Migrations
 
                     b.Property<string>("MAX_SUPPLY")
                         .HasColumnType("text");
+
+                    b.Property<string>("MAX_SUPPLY_RAW")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("MINTABLE")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("OwnerId")
                         .HasColumnType("integer");
@@ -1527,6 +1557,9 @@ namespace Database.Main.Migrations
                     b.Property<string>("VALUE")
                         .HasColumnType("text");
 
+                    b.Property<string>("VALUE_RAW")
+                        .HasColumnType("text");
+
                     b.HasKey("ID");
 
                     b.HasIndex("EventId")
@@ -1626,10 +1659,19 @@ namespace Database.Main.Migrations
                     b.Property<string>("FEE")
                         .HasColumnType("text");
 
+                    b.Property<string>("FEE_RAW")
+                        .HasColumnType("text");
+
                     b.Property<string>("GAS_LIMIT")
                         .HasColumnType("text");
 
+                    b.Property<string>("GAS_LIMIT_RAW")
+                        .HasColumnType("text");
+
                     b.Property<string>("GAS_PRICE")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GAS_PRICE_RAW")
                         .HasColumnType("text");
 
                     b.Property<int>("GasPayerId")

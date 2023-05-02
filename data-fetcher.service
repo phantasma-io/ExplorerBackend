@@ -4,7 +4,7 @@ Description=Explorer Backend Data Fetcher
 [Service]
 ExecStart=/usr/bin/dotnet /opt/ExplorerBackend/bin/Backend.Service.DataFetcher.dll
 SyslogIdentifier=DataFetcher
-StandardOutput=null
+StandardOutput=stdout
 StandardError=journal
 
 #User=backend

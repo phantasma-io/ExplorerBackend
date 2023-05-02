@@ -11,19 +11,24 @@ public static class ArgValidation
      * Socials Regex Pattern (google is your friend)
      * Did not touch them but tested them with some input to validate them
      */
-    private const string DiscordPattern = @"(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li)|discordapp\.com\/invite)\/.+[a-z]";
+    private const string DiscordPattern =
+        @"(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li)|discordapp\.com\/invite)\/.+[a-z]";
 
-    private const string FacebookPattern = @"(?:https?:\/\/)?(?:www\.)?facebook\.com\/.(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-\.]*)";
+    private const string FacebookPattern =
+        @"(?:https?:\/\/)?(?:www\.)?facebook\.com\/.(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-\.]*)";
 
-    private const string InstagramPattern = @"(?:(?:http|https):\/\/)?(?:www.)?(?:instagram.com|instagr.am|instagr.com)\/(\w+)";
+    private const string InstagramPattern =
+        @"(?:(?:http|https):\/\/)?(?:www.)?(?:instagram.com|instagr.am|instagr.com)\/(\w+)";
 
-    private const string SpotifyPattern = @"^(https:\/\/open.spotify.com\/user\/spotify\/playlist\/|spotify:user:spotify:playlist:)([a-zA-Z0-9]+)(.*)$";
+    private const string SpotifyPattern =
+        @"^(https:\/\/open.spotify.com\/user\/spotify\/playlist\/|spotify:user:spotify:playlist:)([a-zA-Z0-9]+)(.*)$";
 
     private const string TelegramPattern = @"(https?:\/\/)?(www[.])?(telegram|t)\.me\/([\.a-zA-Z0-9_-]*)\/?$";
 
     private const string YoutubePattern = @"(https?:\/\/)?(www\.)?youtube\.com\/(channel|user)\/[\w-]+";
 
-    private const string TwitterPattern = @"(?:http:\/\/)?(?:www\.)?twitter\.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-]*)";
+    private const string TwitterPattern =
+        @"(?:http:\/\/)?(?:www\.)?twitter\.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-]*)";
 
     /*
      * Additional Regex patterned designed for our purposes.

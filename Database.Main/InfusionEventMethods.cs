@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Backend.Commons;
 using Serilog;
 
 namespace Database.Main;
@@ -21,7 +22,8 @@ public static class InfusionEventMethods
         {
             BaseToken = baseToken,
             InfusedToken = infusedToken,
-            INFUSED_VALUE = infusedValue,
+            INFUSED_VALUE = Utils.ToDecimal(infusedValue, infusedToken.DECIMALS),
+            INFUSED_VALUE_RAW = infusedValue,
             TOKEN_ID = tokenId,
             Event = databaseEvent
         };

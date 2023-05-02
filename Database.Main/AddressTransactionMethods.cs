@@ -50,10 +50,11 @@ public static class AddressTransactionMethods
 
 
     public static IEnumerable<AddressTransaction> GetAddressTransactionsByAddress(MainDbContext databaseContext,
-        string address)
+        string address, bool isValidAddress = true)
     {
         return string.IsNullOrEmpty(address)
             ? null
-            : databaseContext.AddressTransactions.Where(x => x.Address.ADDRESS == address);
+            : isValidAddress ? databaseContext.AddressTransactions.Where(x => x.Address.ADDRESS == address)
+            : databaseContext.AddressTransactions.Where(x => x.Address.USER_NAME == address || x.Address.ADDRESS_NAME == address);
     }
 }

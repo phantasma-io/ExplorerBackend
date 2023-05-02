@@ -74,6 +74,7 @@ public class MainDbContext : DbContext
     public DbSet<ContractMethod> ContractMethods { get; set; }
     public DbSet<TokenLogo> TokenLogos { get; set; }
     public DbSet<TokenLogoType> TokenLogoTypes { get; set; }
+    public DbSet<TransactionState> TransactionStates { get; set; }
 
 
     public static string GetConnectionString()
@@ -203,6 +204,26 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.BlockId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<Transaction>()
+            .HasOne(x => x.State)
+            .WithMany(y => y.Transactions)
+            .HasForeignKey(x => x.StateId);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(x => x.Sender)
+            .WithMany(y => y.Senders)
+            .HasForeignKey(x => x.SenderId);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(x => x.GasPayer)
+            .WithMany(y => y.GasPayers)
+            .HasForeignKey(x => x.GasPayerId);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(x => x.GasTarget)
+            .WithMany(y => y.GasTargets)
+            .HasForeignKey(x => x.GasTargetId);
+
         // Indexes
 
         // We should not make it unique to allow mixing mainnet and testnet in testnet DB.
@@ -260,12 +281,19 @@ public class MainDbContext : DbContext
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.AddressValidatorKindId);
 
+        modelBuilder.Entity<Address>()
+            .Ignore(a => a.Organization);
+        
         /*modelBuilder.Entity<Address>()
             .HasOne(x => x.Organization)
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.OrganizationId);*/
 
         // Indexes
+        
+        /*modelBuilder.Entity<Address>()
+            .HasIndex(x => new {x.Organizations, x.ADDRESS})
+            .IsUnique();*/
 
         modelBuilder.Entity<Address>()
             .HasIndex(x => new {x.ChainId, x.ADDRESS})
@@ -688,6 +716,9 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
+        modelBuilder.Entity<Organization>()
+            .HasMany(x => x.Addresses)
+            .WithMany(y => y.Organizations);
 
         // Indexes
         modelBuilder.Entity<Organization>()
@@ -1106,6 +1137,17 @@ public class MainDbContext : DbContext
         // Indexes
         modelBuilder.Entity<TokenLogoType>()
             .HasIndex(x => x.NAME);
+
+
+        //////////////////////
+        // TransactionState
+        //////////////////////
+
+        // FKs
+
+        // Indexes
+        modelBuilder.Entity<TransactionState>()
+            .HasIndex(x => x.NAME);
     }
 }
 
@@ -1188,7 +1230,20 @@ public class Transaction
     public string SCRIPT_RAW { get; set; }
     public string RESULT { get; set; }
     public string FEE { get; set; }
+    public string FEE_RAW { get; set; }
     public long EXPIRATION { get; set; }
+    public int StateId { get; set; }
+    public virtual TransactionState State { get; set; }
+    public string GAS_PRICE { get; set; }
+    public string GAS_PRICE_RAW { get; set; }
+    public string GAS_LIMIT { get; set; }
+    public string GAS_LIMIT_RAW { get; set; }
+    public int SenderId { get; set; }
+    public virtual Address Sender { get; set; }
+    public int GasPayerId { get; set; }
+    public virtual Address GasPayer { get; set; }
+    public int GasTargetId { get; set; }
+    public virtual Address GasTarget { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<Signature> Signatures { get; set; }
     public virtual List<AddressTransaction> AddressTransactions { get; set; }
@@ -1211,8 +1266,9 @@ public class Address
     public string USER_NAME { get; set; }
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
     public string STAKE { get; set; }
+    public string STAKE_RAW { get; set; }
     public string UNCLAIMED { get; set; }
-    public string RELAY { get; set; }
+    public string UNCLAIMED_RAW { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
     public virtual List<Event> Events { get; set; }
@@ -1237,6 +1293,10 @@ public class Address
     public virtual List<Contract> Contracts { get; set; }
     public int? OrganizationId { get; set; }
     public virtual Organization Organization { get; set; }
+    public virtual List<Organization> Organizations { get; set; }
+    public virtual List<Transaction> Senders { get; set; }
+    public virtual List<Transaction> GasPayers { get; set; }
+    public virtual List<Transaction> GasTargets { get; set; }
 }
 
 public class Event
@@ -1296,10 +1356,14 @@ public class Token
     public bool FIAT { get; set; }
     public bool SWAPPABLE { get; set; }
     public bool BURNABLE { get; set; }
+    public bool MINTABLE { get; set; }
     public int DECIMALS { get; set; }
     public string CURRENT_SUPPLY { get; set; }
+    public string CURRENT_SUPPLY_RAW { get; set; }
     public string MAX_SUPPLY { get; set; }
+    public string MAX_SUPPLY_RAW { get; set; }
     public string BURNED_SUPPLY { get; set; }
+    public string BURNED_SUPPLY_RAW { get; set; }
     public string SCRIPT_RAW { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
@@ -1584,6 +1648,7 @@ public class GasEvent
     public int ID { get; set; }
     public string PRICE { get; set; }
     public string AMOUNT { get; set; }
+    public string FEE { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public int EventId { get; set; }
@@ -1626,6 +1691,7 @@ public class TokenEvent
     public int TokenId { get; set; }
     public virtual Token Token { get; set; }
     public string VALUE { get; set; }
+    public string VALUE_RAW { get; set; }
     public string CHAIN_NAME { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
@@ -1640,6 +1706,7 @@ public class InfusionEvent
     public int InfusedTokenId { get; set; }
     public virtual Token InfusedToken { get; set; }
     public string INFUSED_VALUE { get; set; }
+    public string INFUSED_VALUE_RAW { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
     public int? InfusionId { get; set; }
@@ -1751,8 +1818,10 @@ public class AddressStake
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }
+    public string AMOUNT_RAW { get; set; }
     public long TIME { get; set; }
     public string UNCLAIMED { get; set; }
+    public string UNCLAIMED_RAW { get; set; }
 }
 
 public class AddressStorage
@@ -1775,6 +1844,7 @@ public class AddressBalance
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }
+    public string AMOUNT_RAW { get; set; }
 }
 
 public class AddressValidatorKind
@@ -1809,4 +1879,11 @@ public class TokenLogo
     public int TokenLogoTypeId { get; set; }
     public virtual TokenLogoType TokenLogoType { get; set; }
     public string URL { get; set; }
+}
+
+public class TransactionState
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public virtual List<Transaction> Transactions { get; set; }
 }

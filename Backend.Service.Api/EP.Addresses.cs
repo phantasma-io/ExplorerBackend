@@ -113,9 +113,15 @@ public partial class Endpoints
 
             #region Filtering
 
-            if ( !string.IsNullOrEmpty(address) ) query = query.Where(x => x.ADDRESS == address);
+            bool isValidAddress = false;
+            if ( !string.IsNullOrEmpty(address) )
+                isValidAddress = Phantasma.Core.Cryptography.Address.IsValidAddress(address);
+            
+            if ( !string.IsNullOrEmpty(address) && isValidAddress) query = query.Where(x => x.ADDRESS == address);
 
             if ( !string.IsNullOrEmpty(address_name) ) query = query.Where(x => x.ADDRESS_NAME == address_name);
+            
+            if ( !string.IsNullOrEmpty(address) && !isValidAddress ) query = query.Where(x => x.ADDRESS_NAME == address);
 
             if ( !string.IsNullOrEmpty(address_partial) )
                 query = query.Where(x => x.ADDRESS.Contains(address_partial));
@@ -167,8 +173,9 @@ public partial class Endpoints
                 address_name = x.ADDRESS_NAME,
                 validator_kind = x.AddressValidatorKind != null ? x.AddressValidatorKind.NAME : null,
                 stake = x.STAKE,
+                stake_raw = x.STAKE_RAW,
                 unclaimed = x.UNCLAIMED,
-                relay = x.RELAY,
+                unclaimed_raw = x.UNCLAIMED_RAW,
                 storage = with_storage == 1 && x.AddressStorage != null
                     ? new AddressStorage
                     {
@@ -181,8 +188,10 @@ public partial class Endpoints
                     ? new AddressStakes
                     {
                         amount = x.AddressStake.AMOUNT,
+                        amount_raw = x.AddressStake.AMOUNT_RAW,
                         time = x.AddressStake.TIME,
-                        unclaimed = x.AddressStake.UNCLAIMED
+                        unclaimed = x.AddressStake.UNCLAIMED,
+                        unclaimed_raw = x.AddressStake.UNCLAIMED_RAW
                     }
                     : null,
                 balances = with_balance == 1 && x.AddressBalances != null
@@ -210,7 +219,8 @@ public partial class Endpoints
                                     chain_name = b.Chain.NAME
                                 }
                                 : null,
-                            amount = b.AMOUNT
+                            amount = b.AMOUNT,
+                            amount_raw = b.AMOUNT_RAW
                         }
                     ).ToArray()
                     : null

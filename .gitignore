@@ -356,3 +356,6 @@ global.json
 
 # mine
 overwrite/*
+
+# Macos
+.DS_Store

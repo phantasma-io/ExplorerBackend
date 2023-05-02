@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using Backend.Api;
@@ -9,11 +10,11 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.ApiCache;
 using Database.Main;
-using Phantasma.Cryptography;
-using Phantasma.Numerics;
-using Phantasma.VM;
+using Phantasma.Core.Cryptography;
+using Phantasma.Core.Domain;
+using Phantasma.Core.Numerics;
 using Serilog;
-using Address = Phantasma.Cryptography.Address;
+using Address = Phantasma.Core.Cryptography.Address;
 using NftMethods = Database.ApiCache.NftMethods;
 
 namespace Backend.Blockchain;
@@ -68,7 +69,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     Log.Verbose("[{Name}] checking NFT, Symbol {Symbol}, Token Id {Token}", Name, nft.Contract.SYMBOL,
                         nft.TOKEN_ID);
-                    var url = $"{Settings.Default.GetRest()}/api/getNFT?symbol=" + nft.Contract.SYMBOL.ToUpper() +
+                    var url = $"{Settings.Default.GetRest()}/api/v1/getNFT?symbol=" + nft.Contract.SYMBOL.ToUpper() +
                               "&IDtext=" + nft.TOKEN_ID + "&extended=true";
 
                     var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);

@@ -4,7 +4,7 @@ Description=API Service
 [Service]
 ExecStart=/usr/bin/dotnet /opt/ExplorerBackend/bin/Backend.Service.Api.dll
 SyslogIdentifier=APIService
-StandardOutput=null
+StandardOutput=stdout
 StandardError=journal
 
 #User=backend

@@ -1,11 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Backend.Commons;
 
 namespace Database.Main;
 
 public static class TokenMethods
 {
+    private static Token kcalToken;
+
+
+    private static Token soulToken;
     // Checks if "Token" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
@@ -13,7 +18,8 @@ public static class TokenMethods
 
     public static Token Upsert(MainDbContext databaseContext, Chain chain, string contractHash, string symbol,
         int decimals, bool fungible, bool transferable, bool finite, bool divisible, bool fuel, bool stakable,
-        bool fiat, bool swappable, bool burnable, string address, string owner, string currentSupply, string maxSupply,
+        bool fiat, bool swappable, bool burnable, bool mintable, string address, string owner, string currentSupply,
+        string maxSupply,
         string burnedSupply, string scriptRaw, bool saveChanges = true)
     {
         var contractEntry = ContractMethods.Upsert(databaseContext, symbol, chain, contractHash, symbol);
@@ -23,6 +29,7 @@ public static class TokenMethods
 
 
         var entry = Get(databaseContext, chain, symbol);
+
 
         if ( entry != null )
         {
@@ -36,11 +43,15 @@ public static class TokenMethods
             entry.FIAT = fiat;
             entry.SWAPPABLE = swappable;
             entry.BURNABLE = burnable;
+            entry.MINTABLE = mintable;
             entry.Address = addressEntry;
             entry.Owner = ownerEntry;
-            entry.CURRENT_SUPPLY = currentSupply;
-            entry.MAX_SUPPLY = maxSupply;
-            entry.BURNED_SUPPLY = burnedSupply;
+            entry.CURRENT_SUPPLY = Utils.ToDecimal(currentSupply, decimals);
+            entry.CURRENT_SUPPLY_RAW = currentSupply;
+            entry.MAX_SUPPLY = Utils.ToDecimal(maxSupply, decimals);
+            entry.MAX_SUPPLY_RAW = maxSupply;
+            entry.BURNED_SUPPLY = Utils.ToDecimal(burnedSupply, decimals);
+            entry.BURNED_SUPPLY_RAW = burnedSupply;
             entry.SCRIPT_RAW = scriptRaw;
         }
         else
@@ -60,11 +71,15 @@ public static class TokenMethods
                 FIAT = fiat,
                 SWAPPABLE = swappable,
                 BURNABLE = burnable,
+                MINTABLE = mintable,
                 Address = addressEntry,
                 Owner = ownerEntry,
-                CURRENT_SUPPLY = currentSupply,
-                MAX_SUPPLY = maxSupply,
-                BURNED_SUPPLY = burnedSupply,
+                CURRENT_SUPPLY = Utils.ToDecimal(currentSupply, decimals),
+                CURRENT_SUPPLY_RAW = currentSupply,
+                MAX_SUPPLY = Utils.ToDecimal(maxSupply, decimals),
+                MAX_SUPPLY_RAW = maxSupply,
+                BURNED_SUPPLY = Utils.ToDecimal(burnedSupply, decimals),
+                BURNED_SUPPLY_RAW = burnedSupply,
                 SCRIPT_RAW = scriptRaw
             };
             databaseContext.Tokens.Add(entry);
@@ -350,6 +365,20 @@ public static class TokenMethods
     public static IEnumerable<Token> GetTokensWithoutLogo(MainDbContext databaseContext)
     {
         return databaseContext.Tokens.Where(x => !x.TokenLogos.Any()).ToList();
+    }
+
+
+    public static int GetKcalDecimals(MainDbContext databaseContext, Chain chain)
+    {
+        kcalToken ??= Get(databaseContext, chain, "KCAL");
+        return kcalToken.DECIMALS;
+    }
+
+
+    public static int GetSoulDecimals(MainDbContext databaseContext, Chain chain)
+    {
+        soulToken ??= Get(databaseContext, chain, "SOUL");
+        return soulToken.DECIMALS;
     }
 
 

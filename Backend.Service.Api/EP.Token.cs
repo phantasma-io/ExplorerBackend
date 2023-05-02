@@ -112,10 +112,14 @@ public partial class Endpoints
                 swappable = x.SWAPPABLE,
                 burnable = x.BURNABLE,
                 stakable = x.STAKABLE,
+                mintable = x.MINTABLE,
                 decimals = x.DECIMALS,
                 current_supply = x.CURRENT_SUPPLY,
+                current_supply_raw = x.CURRENT_SUPPLY_RAW,
                 max_supply = x.MAX_SUPPLY,
+                max_supply_raw = x.MAX_SUPPLY_RAW,
                 burned_supply = x.BURNED_SUPPLY,
+                burned_supply_raw = x.BURNED_SUPPLY_RAW,
                 script_raw = x.SCRIPT_RAW,
                 price = with_price == 1
                     ? new Price

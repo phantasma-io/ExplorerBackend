@@ -36,7 +36,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if ( !tokenCache.TryGetValue(series.Contract.SYMBOL, out var token) )
                 {
                     token = Client.ApiRequest<JsonDocument>(
-                        $"{Settings.Default.GetRest()}/api/getToken?symbol=" + series.Contract.SYMBOL +
+                        $"{Settings.Default.GetRest()}/api/v1/getToken?symbol=" + series.Contract.SYMBOL +
                         "&extended=true", out var stringResponse, null, 120);
                     if ( token != null ) tokenCache.Add(series.Contract.SYMBOL, token);
                 }

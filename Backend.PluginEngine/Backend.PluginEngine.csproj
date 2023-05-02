@@ -24,7 +24,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Database.Main\Database.Main.csproj"/>
-    <ProjectReference Include="..\..\PhantasmaChain\Phantasma.Domain\Phantasma.Domain.csproj"/>
     <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj"/>
     <ProjectReference Include="..\Backend.PostgreSQLConnector\Backend.PostgreSQLConnector.csproj"/>
   </ItemGroup>
