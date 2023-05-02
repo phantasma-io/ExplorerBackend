@@ -198,6 +198,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 false);
                             var addressEntry = SyncAddressByName(chainEntry, organizationId, orgItem, false);
                             orgItem.Address = addressEntry;
+                            orgItem.ADDRESS = addressEntry.ADDRESS;
+                            orgItem.ADDRESS_NAME = addressEntry.ADDRESS_NAME;
 
                             Log.Verbose(
                                 "[{Name}] Organization {OrganizationName}, Address {Address}, AddressName {AddressName}",
