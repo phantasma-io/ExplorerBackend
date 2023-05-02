@@ -410,7 +410,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         //addresses.Add(addressAddress);
         
-        AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, !saveChanges);
+        AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, saveChanges);
         
         var lookUpTime = DateTime.Now - startTime;
         Log.Information("Get all addresses by symbol took {Time} sec", Math.Round(lookUpTime.TotalSeconds, 3));

@@ -172,7 +172,7 @@ public static class AddressMethods
         }
 
         databaseContext.Addresses.AddRange(addressesToInsert);
-        if ( !saveChanges ) databaseContext.SaveChanges();
+        if ( saveChanges ) databaseContext.SaveChanges();
 
         return addressMap;
     }

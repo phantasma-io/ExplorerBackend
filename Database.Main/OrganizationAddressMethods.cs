@@ -59,7 +59,7 @@ public static class OrganizationAddressMethods
                 {Address = addressMap.GetValueOrDefault(address), Organization = organization} ).ToList();
 
         databaseContext.OrganizationAddresses.AddRange(organizationAddressesToInsert);
-        if ( !saveChanges ) databaseContext.SaveChanges();
+        if ( saveChanges ) databaseContext.SaveChanges();
     }
     
     public static IEnumerable<Organization> GetOrganizationsByAddress(MainDbContext databaseContext, string address)
