@@ -118,7 +118,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 address.Organization = null;
                 var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
                 if ( organization != null ) address.Organization = organization;
-                var organizationAddress = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
+                var organizationAddress =
+                    OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
                 if ( organizationAddress != null ) address.Organizations = organizationAddress.ToList();
                 databaseContext.Update(address);
 
@@ -134,9 +135,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
                 catch ( Exception e )
                 {
-                    Log.Verbose("Error: {e}" ,e.Message);
+                    Log.Verbose("Error: {e}", e.Message);
                 }
-               
             }
 
             transactionStart = DateTime.Now;
@@ -149,7 +149,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Log.Information("[{Name}] Address sync took {Time} sec, {Updated} names updated, Processed {Processed}", Name,
             Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount, processed);
     }
-    
+
+
     private void AddressDataSyncList(int chainId)
     {
         var startTime = DateTime.Now;
@@ -252,8 +253,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             storageProperty.GetProperty("available").GetUInt32(),
                             storageProperty.GetProperty("used").GetUInt32(),
                             storageProperty.GetProperty("avatar").GetString(), false);
-                            
-                    
+
+
                     var stake = account.GetProperty("stake").GetString();
                     address.STAKE = Commons.Utils.ToDecimal(stake, soulDecimals);
                     address.STAKE_RAW = stake;
@@ -293,6 +294,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount, processed);
     }
 
+
     private Address SyncAddressByName(Chain chain, string addressName, Organization organization, bool saveChanges)
     {
         var startTime = DateTime.Now;
@@ -302,47 +304,46 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         using MainDbContext databaseContext = new();
         var addressEntry = AddressMethods.GetByName(databaseContext, chain, addressName);
 
-        if ( addressEntry == null )
+        var url = $"{Settings.Default.GetRest()}/api/v1/lookUpName?name={addressName}";
+        var response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
+        if ( response == null )
         {
-            var url = $"{Settings.Default.GetRest()}/api/v1/lookUpName?name={addressName}";
-            var response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
+            Log.Error("[{Name}] lookUpName: null result", Name);
+            return null;
+        }
+
+        var address = response.RootElement.GetString();
+        Log.Verbose("[{Name}] Found Address {Address} for name {AddressName}", Name, address, addressName);
+
+        if ( address.IsNullOrEmpty() ) return null;
+
+        addressEntry = AddressMethods.Get(databaseContext, chain, address);
+
+        if ( addressEntry != null )
+            addressEntry.ADDRESS_NAME = addressName;
+        else
+        {
+            url = $"{Settings.Default.GetRest()}/api/v1/getAccount?account={address}";
+            response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
             if ( response == null )
             {
-                Log.Error("[{Name}] lookUpName: null result", Name);
+                Log.Error("[{Name}] getAccount: null result", Name);
                 return null;
             }
 
-            var address = response.RootElement.GetString();
-            Log.Verbose("[{Name}] Found Address {Address} for name {AddressName}", Name, address, addressName);
-
-            if ( address.IsNullOrEmpty() ) return null;
-
-            addressEntry = AddressMethods.Get(databaseContext, chain, address);
-
-            if ( addressEntry != null )
-                addressEntry.ADDRESS_NAME = addressName;
-            else
+            //do not process everything here, let the sync to that later, we just call it to make sure
+            string? name = "anonymous";
+            if ( response.RootElement.TryGetProperty("name", out JsonElement jsonName) )
             {
-                url = $"{Settings.Default.GetRest()}/api/v1/getAccount?account={address}";
-                response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
-                if ( response == null )
-                {
-                    Log.Error("[{Name}] getAccount: null result", Name);
-                    return null;
-                }
-
-                //do not process everything here, let the sync to that later, we just call it to make sure
-                string? name = "anonymous";
-                if ( response.RootElement.TryGetProperty("name", out JsonElement jsonName) )
-                {
-                    name = jsonName.GetString();
-                }
-                addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
-                if ( name == "anonymous" ) name = null;
-
-                addressEntry.ADDRESS_NAME = name;
+                name = jsonName.GetString();
             }
+
+            addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
+            if ( name == "anonymous" ) name = null;
+
+            addressEntry.ADDRESS_NAME = name;
         }
+
 
         if ( organization != null )
         {
@@ -361,13 +362,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         return addressEntry;
     }
 
+
     // TODO: Finish this feature 
-    private void FetchAllAddressesBySymbol(MainDbContext databaseContext, Chain chain, string symbol, bool extended = false, bool saveChanges = true)
+    private void FetchAllAddressesBySymbol(MainDbContext databaseContext, Chain chain, string symbol,
+        bool extended = false, bool saveChanges = true)
     {
-         var startTime = DateTime.Now;
+        var startTime = DateTime.Now;
 
         if ( symbol.IsNullOrEmpty() ) return;
-        
+
         var url = $"{Settings.Default.GetRest()}/api/v1/GetAddressesBySymbol?symbol={symbol}&extended={extended}";
         var response = Client.ApiRequest<JsonDocument>(url, out _, null, 50000);
         if ( response == null )
@@ -409,18 +412,19 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
 
         //addresses.Add(addressAddress);
-        
+
         AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, saveChanges);
-        
+
         var lookUpTime = DateTime.Now - startTime;
         Log.Information("Get all addresses by symbol took {Time} sec", Math.Round(lookUpTime.TotalSeconds, 3));
     }
-    
+
+
     private void FetchAllAddresses(Chain chain)
     {
         MainDbContext databaseContext = new();
         var tokens = TokenMethods.GetSupportedTokens(databaseContext);
-        foreach ( var token in tokens)
+        foreach ( var token in tokens )
         {
             Log.Verbose("[{Symbol}] Fetching all the users.", token.NativeSymbol);
 
