@@ -287,10 +287,10 @@ public class MainDbContext : DbContext
         /*modelBuilder.Entity<Address>()
             .Ignore(a => a.Organization);*/
         
-        /*modelBuilder.Entity<Address>()
+        modelBuilder.Entity<Address>()
             .HasOne(x => x.Organization)
             .WithMany(y => y.Addresses)
-            .HasForeignKey(x => x.OrganizationId);*/
+            .HasForeignKey(x => x.OrganizationId);
 
         // Indexes
         

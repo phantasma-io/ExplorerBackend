@@ -267,10 +267,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                     //just to keep things up2date
                     address.Organization = null;
-                    var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
-                    if ( organization != null ) address.Organization = organization;
-                    var organizations = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
-                    if ( organizations.Any() ) address.Organizations = organizations.ToList();
+                    //var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
+                    //if ( organization != null ) address.Organization = organization;
+                    //var organizations = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
+                    //if ( organizations.Any() ) address.Organizations = organizations.ToList();
 
                     processed++;
                     if ( processed % saveAfterCount != 0 ) continue;
