@@ -179,8 +179,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             if ( times == 0 ) times = 1;
             for ( int i = 0; i < times; i++ )
             {
-                var splitAddresses = addressesToUpdate.Chunk(100).ToList();
-                var addresses = string.Join(",", splitAddresses);
+                var splitAddresses = addressesToUpdate.Chunk(100);
+                var splited = splitAddresses.FirstOrDefault().Select(x => x.ADDRESS).ToList();
+                var addresses = string.Join(",", splited);
                 var url = $"{Settings.Default.GetRest()}/api/v1/getAccounts?accounts={addresses}";
                 var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 1000);
                 if ( response == null )
