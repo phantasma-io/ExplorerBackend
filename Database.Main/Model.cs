@@ -282,7 +282,10 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.AddressValidatorKindId);
 
         modelBuilder.Entity<Address>()
-            .Ignore(a => a.Organization);
+            .HasMany<Organization>(o => o.Organizations);
+
+        /*modelBuilder.Entity<Address>()
+            .Ignore(a => a.Organization);*/
         
         /*modelBuilder.Entity<Address>()
             .HasOne(x => x.Organization)
