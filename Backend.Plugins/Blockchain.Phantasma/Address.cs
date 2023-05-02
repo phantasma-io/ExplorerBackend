@@ -348,7 +348,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             Log.Verbose("[{Name}] setting Organization {Organization} for Address {Address}", Name,
                 organization.ORGANIZATION_ID, addressEntry.ADDRESS);
-            addressEntry.Organization = organization;
+            //addressEntry.Organization = organization;
             if ( addressEntry.Organizations == null ) addressEntry.Organizations = new List<Organization>();
             addressEntry.Organizations.AddDistinct(organization);
             organization.Address = addressEntry;
