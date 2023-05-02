@@ -226,8 +226,15 @@ public partial class Endpoints
         Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = new List<Task<Transaction>>();
-        _transactions = _transactions.AsNoTracking();
-        var result = _transactions.Select(x => new Transaction
+        var totalTransactions = _transactions.Count();
+        var totalTasks = totalTransactions / 25;
+        for(int i = 0; i < totalTasks; i++)
+        {
+            var handleTransactions = _transactions.Take(25);
+            tasks.AddRange(handleTransactions.Select(x => ProcessTransaction(x, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd)));
+        }
+
+        /*var result = _transactions.Select(x => new Transaction
         {
             hash = x.HASH,
             block_hash = x.Block.HASH,
@@ -534,12 +541,12 @@ public partial class Endpoints
                 }).ToArray()
                 : null
 
-            /*ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat,
-                fiatCurrency, fiatPricesInUsd)*/
-        }).ToArray();
+            //ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat,
+            //    fiatCurrency, fiatPricesInUsd)
+        }).ToArray();*/
         
-        //var results = await Task.WhenAll(tasks);
-        return result.ToArray();
+        var results = await Task.WhenAll(tasks);
+        return results.ToArray();
     }
 
 
@@ -586,8 +593,8 @@ public partial class Endpoints
                     address = transaction.GasTarget.ADDRESS
                 }
                 : null,
-            events = await HandleEvents(transaction, with_events, with_event_data, with_nft, with_fiat, fiatCurrency,
-                fiatPricesInUsd)
+            events = Enumerable.Empty<Event>().ToArray() //await HandleEvents(transaction, with_events, with_event_data, with_nft, with_fiat, fiatCurrency,
+                //fiatPricesInUsd)
         };
 
         return tx;
