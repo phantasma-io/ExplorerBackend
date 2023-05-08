@@ -716,7 +716,7 @@ public partial class Endpoints
     {
         Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
 
-        await using MainDbContext databaseContext = new();
+        using MainDbContext databaseContext = new();
 
         var tx = await databaseContext.Transactions.FindAsync(x.ID);
         
