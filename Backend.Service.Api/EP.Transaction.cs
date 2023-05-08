@@ -724,19 +724,19 @@ public partial class Endpoints
             address = e.Address.ADDRESS,
             address_name = e.Address.ADDRESS_NAME,
             contract = CreateContract(e),
-            nft_metadata = with_nft == 1 ? CreateNftMetadata(e) : null,
-            series = with_nft == 1 ? CreateSeries(e) : null,
-            address_event = with_event_data == 1 ? CreateAddressEvent(e) : null,
-            chain_event = with_event_data == 1 ? CreateChainEvent(e) : null,
-            gas_event = with_event_data == 1 ? CreateGasEvent(e) : null,
-            hash_event = with_event_data == 1 ? CreateHashEvent(e) : null,
-            infusion_event = with_event_data == 1 ? CreateInfusionEvent(e) : null,
-            market_event = with_event_data == 1 ? CreateMarketEvent(e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
-            organization_event = with_event_data == 1 ? CreateOrganizationEvent(e) : null,
-            sale_event = with_event_data == 1 ? CreateSaleEvent(e) : null,
-            string_event = with_event_data == 1 ? CreateStringEvent(e) : null,
-            token_event = with_event_data == 1 ? CreateTokenEvent(e) : null,
-            transaction_settle_event = with_event_data == 1 ? CreateTransactionSettleEvent(e) : null
+            nft_metadata = with_nft == 1 && e.Nft != null ? CreateNftMetadata(e) : null,
+            series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(e) : null,
+            address_event = with_event_data == 1 && e.AddressEvent != null ? CreateAddressEvent(e) : null,
+            chain_event = with_event_data == 1 && e.ChainEvent != null  ? CreateChainEvent(e) : null,
+            gas_event = with_event_data == 1 && e.GasEvent != null ? CreateGasEvent(e) : null,
+            hash_event = with_event_data == 1 && e.HashEvent != null  ? CreateHashEvent(e) : null,
+            infusion_event = with_event_data == 1 && e.InfusionEvent != null  ? CreateInfusionEvent(e) : null,
+            market_event = with_event_data == 1 && e.MarketEvent != null ? CreateMarketEvent(e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
+            organization_event = with_event_data == 1 && e.OrganizationEvent != null? CreateOrganizationEvent(e) : null,
+            sale_event = with_event_data == 1 && e.SaleEvent != null  ? CreateSaleEvent(e) : null,
+            string_event = with_event_data == 1 && e.StringEvent != null  ? CreateStringEvent(e) : null,
+            token_event = with_event_data == 1 && e.TokenEvent != null ? CreateTokenEvent(e) : null,
+            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? CreateTransactionSettleEvent(e) : null
         };
     }
 
@@ -755,7 +755,7 @@ public partial class Endpoints
 
     private NftMetadata CreateNftMetadata(Database.Main.Event e)
     {
-        return new NftMetadata
+        var nftMetadata = new NftMetadata
         {
             name = e.Nft.NAME,
             description = e.Nft.DESCRIPTION,
@@ -766,6 +766,7 @@ public partial class Endpoints
             mint_date = e.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
             mint_number = e.Nft.MINT_NUMBER.ToString()
         };
+        return nftMetadata;
     }
 
 
