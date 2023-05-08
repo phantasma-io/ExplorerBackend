@@ -712,6 +712,7 @@ public partial class Endpoints
         Log.Information("Creating events for transaction {TransactionHash}, number of events {Events}", x.HASH, x.Events.Count);
         Parallel.ForEach(x.Events, (e, _, index) =>
         {
+            Log.Information("Creating event {EventHash} for transaction {TransactionHash}", index, x.HASH);
             result3.Add(CreateEvent(x.HASH, e, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd));
         });
 
