@@ -760,13 +760,13 @@ public partial class Endpoints
                 }
                 : null
         };
-
-        var events = with_events == 1
+        
+        /*var events = with_events == 1
             ? await CreateEventsForTransaction(tx, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
             : null;
 
-        transaction.events = events;
-
+        transaction.events = events;*/
+        
         return transaction;
     }
     
