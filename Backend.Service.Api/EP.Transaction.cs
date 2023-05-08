@@ -778,12 +778,10 @@ public partial class Endpoints
         }
         
         var tasks = new List<Task<Event>>();
-        foreach (var e in x.Events.AsQueryable())
+        var chunks = x.Events.AsQueryable().Chunk(50);
+        foreach (var chunk in chunks)
         {
-            Log.Information("Creating event {EventHash} for transaction {TransactionHash}", e.ID, x.HASH);
-
-            tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
-                fiatPricesInUsd));
+           tasks.AddRange(await FromChunck(chunk, mainDbContext, x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd));
         }
 
         var results = await Task.WhenAll(tasks);
@@ -792,10 +790,25 @@ public partial class Endpoints
     }
 
 
+    private async Task<List<Task<Event>>> FromChunck(Database.Main.Event[] chunk, MainDbContext mainDbContext, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    {
+        var tasks = new List<Task<Event>>();
+
+        foreach (var e in chunk.AsQueryable())
+        {
+            tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+                fiatPricesInUsd));
+        }
+        
+        await Task.WhenAll(tasks);
+
+        return tasks;
+    }
+
+
     private async Task<Event> CreateEvent(MainDbContext mainDbContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        Log.Information("Creating event {EventHash} for transaction {TransactionHash}", e.ID, x.HASH);
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
