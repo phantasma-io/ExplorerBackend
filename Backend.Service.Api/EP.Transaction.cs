@@ -331,11 +331,11 @@ public partial class Endpoints
         Parallel.ForEach(_transactions.AsQueryable(), x =>
         {
             Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
-            var block = mainDbContext.Transactions.Find(x)?.Block;
-            var sender = mainDbContext.Transactions.Find(x)?.Sender;
-            var gasPayer = mainDbContext.Transactions.Find(x)?.GasPayer;
-            var gasTarget = mainDbContext.Transactions.Find(x)?.GasTarget;
-            var state = mainDbContext.Transactions.Find(x)?.State;
+            var block = mainDbContext.Transactions.Find(x.ID)?.Block;
+            var sender = mainDbContext.Transactions.Find(x.ID)?.Sender;
+            var gasPayer = mainDbContext.Transactions.Find(x.ID)?.GasPayer;
+            var gasTarget = mainDbContext.Transactions.Find(x.ID)?.GasTarget;
+            var state = mainDbContext.Transactions.Find(x.ID)?.State;
             var transaction = new Transaction
             {
                 // Fill transaction properties here
