@@ -761,11 +761,11 @@ public partial class Endpoints
                 : null
         };
 
-        /*var events = with_events == 1
+        var events = with_events == 1
             ? await CreateEventsForTransaction(databaseContext, tx, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
             : null;
 
-        transaction.events = events;*/
+        transaction.events = events;
 
         return transaction;
     }
@@ -778,12 +778,15 @@ public partial class Endpoints
         }
 
         IQueryable<Database.Main.Event> events = mainDbContext.Events.AsQueryable().Where(e => e.TransactionId == x.ID);
-        Log.Information("Creating event {EventHash} for transaction {TransactionHash}", x.HASH);
 
         var tasks = new List<Task<Event>>();
         foreach (var e in events.AsQueryable())
         {
-            tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+            using MainDbContext databaseContext = new();
+            Log.Information("Creating event {EventHash} for transaction {TransactionHash}", e.ID, x.HASH);
+
+            var _event = await databaseContext.Events.FindAsync(e.ID);
+            tasks.Add(CreateEvent(mainDbContext, x, _event, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
 
