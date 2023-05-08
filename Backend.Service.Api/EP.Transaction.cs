@@ -322,13 +322,13 @@ public partial class Endpoints
         }
         
         Log.Information("Getting transactions from database...");
-        var txs = await _transactions.ToListAsync();
+        //var txs = await _transactions.ToListAsync();
         Log.Information("Transactions retrieved from database");
         
         var result3 = new ConcurrentBag<Transaction>(); // Use a thread-safe collection to store results
 
         Log.Information("Processing transactions...");
-        Parallel.ForEach(txs, x =>
+        Parallel.ForEach(_transactions, x =>
         {
             var events = with_events == 1
                 ? CreateEventsForTransaction(x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
