@@ -92,4 +92,13 @@ internal static class Utils
                 logString, e.Message, stringResponse);
         }
     }
+    
+    public static bool HasElapsed(DateTime startTime, TimeSpan duration)
+    {
+        // Calculate the time elapsed since startTime
+        TimeSpan timeElapsed = DateTime.Now - startTime;
+
+        // Check if the elapsed time is greater than or equal to the specified duration
+        return timeElapsed >= duration;
+    }
 }

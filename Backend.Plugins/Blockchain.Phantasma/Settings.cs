@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
@@ -33,15 +34,21 @@ internal class Settings
         SeriesProcessingInterval = section.GetValue<int>("seriesProcessingInterval");
         InfusionsProcessingInterval = section.GetValue<int>("infusionsProcessingInterval");
         NamesSyncInterval = section.GetValue<int>("namesSyncInterval");
+        ChangeNodesInterval = 30; //30 mins
+        LastNodeChange = DateTime.Now;
     }
 
 
+    public DateTime LastNodeChange { get; private set; }
     public bool Enabled { get; }
     public int StartDelay { get; }
     public int FirstBlock { get; }
     public string PhaNexus { get; }
     public List<string> PhaRestNodes { get; }
+    public string SelectedPhaRestNodes { get; private set; }
+    public int ChangeNodesInterval { get; private set; }
     public List<string> PhaRpcNodes { get; }
+    public string SelectedPhaRpcNodes { get; private set; }
     public int TokensProcessingInterval { get; }
     public int BlocksProcessingInterval { get; }
     public int EventsProcessingInterval { get; }
@@ -59,16 +66,50 @@ internal class Settings
     }
 
 
+    /// <summary>
+    /// Get a random Phantasma node from the list
+    /// </summary>
+    /// <returns></returns>
     public string GetRest()
     {
-        // TODO: Add proper logic later.
-        return PhaRestNodes[0];
+        if ( string.IsNullOrEmpty(SelectedPhaRestNodes))
+            SelectedPhaRestNodes = PhaRestNodes[0];
+        
+        if (Utils.HasElapsed(LastNodeChange, TimeSpan.FromMinutes(ChangeNodesInterval)))
+        {
+            LastNodeChange = DateTime.Now;
+            var index = PhaRestNodes.IndexOf(SelectedPhaRestNodes);
+            if ( index == PhaRestNodes.Count - 1 )
+                index = 0;
+            else
+                index++;
+            SelectedPhaRestNodes = PhaRestNodes[index];
+        }
+        
+        return SelectedPhaRestNodes;
     }
 
 
+    /// <summary>
+    /// Get a random Phantasma node from the list
+    /// </summary>
+    /// <returns></returns>
     public string GetRpc()
     {
-        // TODO: Add proper logic later.
-        return PhaRpcNodes[0];
+        if ( string.IsNullOrEmpty(SelectedPhaRpcNodes))
+            SelectedPhaRpcNodes = PhaRpcNodes[0];
+        
+        if (Utils.HasElapsed(LastNodeChange, TimeSpan.FromMinutes(ChangeNodesInterval)))
+        {
+            LastNodeChange = DateTime.Now;
+            var index = PhaRpcNodes.IndexOf(SelectedPhaRpcNodes);
+            if ( index == PhaRpcNodes.Count - 1 )
+                index = 0;
+            else
+                index++;
+            SelectedPhaRpcNodes = PhaRpcNodes[index];
+        }
+        
+        return SelectedPhaRpcNodes;
     }
 }
