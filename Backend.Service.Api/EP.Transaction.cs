@@ -814,18 +814,18 @@ public partial class Endpoints
             address_name = e.Address.ADDRESS_NAME,
             contract = await CreateContract(mainDbContext, e),
             nft_metadata = with_nft == 1 && e.Nft != null ? await CreateNftMetadata(mainDbContext, e) : null,
-            /*series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(e) : null,
-            address_event = with_event_data == 1 && e.AddressEvent != null ? CreateAddressEvent(e) : null,
-            chain_event = with_event_data == 1 && e.ChainEvent != null  ? CreateChainEvent(e) : null,
-            gas_event = with_event_data == 1 && e.GasEvent != null ? CreateGasEvent(e) : null,
-            hash_event = with_event_data == 1 && e.HashEvent != null  ? CreateHashEvent(e) : null,
-            infusion_event = with_event_data == 1 && e.InfusionEvent != null  ? CreateInfusionEvent(e) : null,
-            market_event = with_event_data == 1 && e.MarketEvent != null ? CreateMarketEvent(e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
-            organization_event = with_event_data == 1 && e.OrganizationEvent != null? CreateOrganizationEvent(e) : null,
-            sale_event = with_event_data == 1 && e.SaleEvent != null  ? CreateSaleEvent(e) : null,
-            string_event = with_event_data == 1 && e.StringEvent != null  ? CreateStringEvent(e) : null,
-            token_event = with_event_data == 1 && e.TokenEvent != null ? CreateTokenEvent(e) : null,
-            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? CreateTransactionSettleEvent(e) : null*/
+            series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ? await CreateSeries(mainDbContext, e) : null,
+            address_event = with_event_data == 1 && e.AddressEvent != null ? await CreateAddressEvent(mainDbContext, e) : null,
+            chain_event = with_event_data == 1 && e.ChainEvent != null  ? await CreateChainEvent(mainDbContext, e) : null,
+            gas_event = with_event_data == 1 && e.GasEvent != null ? await CreateGasEvent(mainDbContext, e) : null,
+            hash_event = with_event_data == 1 && e.HashEvent != null  ? await CreateHashEvent(mainDbContext, e) : null,
+            infusion_event = with_event_data == 1 && e.InfusionEvent != null  ? await CreateInfusionEvent(mainDbContext, e) : null,
+            market_event = with_event_data == 1 && e.MarketEvent != null ? await CreateMarketEvent(mainDbContext, e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
+            organization_event = with_event_data == 1 && e.OrganizationEvent != null? await CreateOrganizationEvent(mainDbContext, e) : null,
+            sale_event = with_event_data == 1 && e.SaleEvent != null  ? await CreateSaleEvent(mainDbContext, e) : null,
+            string_event = with_event_data == 1 && e.StringEvent != null  ? await CreateStringEvent(mainDbContext, e) : null,
+            token_event = with_event_data == 1 && e.TokenEvent != null ? await CreateTokenEvent(mainDbContext, e) : null,
+            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? await CreateTransactionSettleEvent(mainDbContext, e) : null
         };
     }
 
@@ -870,8 +870,14 @@ public partial class Endpoints
     }
 
 
-    private Series CreateSeries(Database.Main.Event e)
+    private async Task<Series> CreateSeries(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new Series
         {
             id = e.Nft.Series.ID,
@@ -897,8 +903,14 @@ public partial class Endpoints
     }
 
 
-    private AddressEvent CreateAddressEvent(Database.Main.Event e)
+    private async Task<AddressEvent> CreateAddressEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new AddressEvent
         {
             address = e.AddressEvent.Address != null
@@ -912,8 +924,14 @@ public partial class Endpoints
     }
 
 
-    private ChainEvent CreateChainEvent(Database.Main.Event e)
+    private async Task<ChainEvent> CreateChainEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new ChainEvent
         {
             name = e.ChainEvent.NAME,
@@ -928,8 +946,14 @@ public partial class Endpoints
     }
 
 
-    private GasEvent CreateGasEvent(Database.Main.Event e)
+    private async Task<GasEvent> CreateGasEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new GasEvent
         {
             price = e.GasEvent.PRICE,
@@ -946,8 +970,14 @@ public partial class Endpoints
     }
 
 
-    private HashEvent CreateHashEvent(Database.Main.Event e)
+    private async Task<HashEvent> CreateHashEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new HashEvent
         {
             hash = e.HashEvent.HASH
@@ -955,8 +985,14 @@ public partial class Endpoints
     }
 
 
-    private InfusionEvent CreateInfusionEvent(Database.Main.Event e)
+    private async Task<InfusionEvent> CreateInfusionEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new InfusionEvent
         {
             token_id = e.InfusionEvent.TOKEN_ID,
@@ -998,9 +1034,15 @@ public partial class Endpoints
     }
 
 
-    private MarketEvent CreateMarketEvent(Database.Main.Event e, int with_fiat, string fiatCurrency,
+    private async Task<MarketEvent> CreateMarketEvent(MainDbContext mainDbContext, Database.Main.Event e, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new MarketEvent
             {
 
@@ -1058,8 +1100,14 @@ public partial class Endpoints
     }
 
 
-    private OrganizationEvent CreateOrganizationEvent(Database.Main.Event e)
+    private async Task<OrganizationEvent> CreateOrganizationEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new OrganizationEvent
         {
             organization = e.OrganizationEvent.Organization != null
@@ -1079,8 +1127,14 @@ public partial class Endpoints
     }
 
 
-    private SaleEvent CreateSaleEvent(Database.Main.Event e)
+    private async Task<SaleEvent> CreateSaleEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new SaleEvent
         {
             hash = e.SaleEvent.HASH,
@@ -1089,8 +1143,14 @@ public partial class Endpoints
     }
 
 
-    private StringEvent CreateStringEvent(Database.Main.Event e)
+    private async Task<StringEvent> CreateStringEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new StringEvent
         {
             string_value = e.StringEvent.STRING_VALUE
@@ -1098,8 +1158,14 @@ public partial class Endpoints
     }
 
 
-    private TokenEvent CreateTokenEvent(Database.Main.Event e)
+    private async Task<TokenEvent> CreateTokenEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new TokenEvent
         {
             token = e.TokenEvent.Token != null
@@ -1125,8 +1191,14 @@ public partial class Endpoints
     }
 
 
-    private TransactionSettleEvent CreateTransactionSettleEvent(Database.Main.Event e)
+    private async Task<TransactionSettleEvent> CreateTransactionSettleEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new TransactionSettleEvent
         {
             hash = e.TransactionSettleEvent.HASH,
