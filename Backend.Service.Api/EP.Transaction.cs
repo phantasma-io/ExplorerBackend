@@ -232,13 +232,18 @@ public partial class Endpoints
             .ThenInclude(at => at.Address)
             .Include(x => x.Sender)
             .Include(x => x.GasPayer)
-            .Include(x => x.GasTarget)
-            .Include(x => x.Events)
-            .ThenInclude(e => e.EventKind)
-            .Include(x => x.Events)
-            .ThenInclude(e => e.Chain)
-            .Include(x => x.Events)
-            .ThenInclude(e => e.Address);
+            .Include(x => x.GasTarget);
+
+        if ( with_events == 1 )
+        {
+            _transactions = _transactions
+                .Include(x => x.Events)
+                .ThenInclude(e => e.EventKind)
+                .Include(x => x.Events)
+                .ThenInclude(e => e.Chain)
+                .Include(x => x.Events)
+                .ThenInclude(e => e.Address);
+        }
         
         if (with_nft == 1)
         {
@@ -316,10 +321,13 @@ public partial class Endpoints
                 .ThenInclude(me => me.MarketEventFiatPrice);
         }
         
+        Log.Information("Getting transactions from database...");
         var txs = await _transactions.ToListAsync();
+        Log.Information("Transactions retrieved from database");
         
         var result3 = new ConcurrentBag<Transaction>(); // Use a thread-safe collection to store results
 
+        Log.Information("Processing transactions...");
         Parallel.ForEach(txs, x =>
         {
             var events = with_events == 1
