@@ -14,7 +14,7 @@ internal class Settings
     {
         var connectionSettings = section.GetSection("Main").Get<DatabaseConnectionSettings>();
         ConnectionString =
-            $"Host={connectionSettings.Host};Username={connectionSettings.Username};Password={connectionSettings.Password};Database={connectionSettings.Database};Max Pool Size=150;Timeout=30;Include Error Detail=true";
+            $"Host={connectionSettings.Host};Username={connectionSettings.Username};Password={connectionSettings.Password};Database={connectionSettings.Database};MaxPoolSize=150;Timeout=30;Include Error Detail=true";
 
         ConnectMaxRetries = section.GetValue<int>("ConnectMaxRetries");
         ConnectRetryTimeout = section.GetValue<int>("ConnectRetryTimeout");
