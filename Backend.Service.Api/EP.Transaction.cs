@@ -328,7 +328,13 @@ public partial class Endpoints
         var result3 = new ConcurrentBag<Transaction>(); // Use a thread-safe collection to store results
 
         Log.Information("Processing transactions...");
-        Parallel.ForEach(_transactions.AsQueryable(), x =>
+        var tasks = new List<Task<Transaction>>();
+        foreach (var x in _transactions.AsQueryable())
+        {
+            tasks.Add(ProcessTransactionAsync(x, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
+        }
+        
+        /*Parallel.ForEach(_transactions.AsQueryable(), x =>
         {
             Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
             using MainDbContext databaseContext = new();
@@ -386,8 +392,8 @@ public partial class Endpoints
             transaction.events = events;
 
             result3.Add(transaction); // Add the transaction to the thread-safe collection
-        });
-
+        });*/
+        
         /*var result = _transactions.Select(x => new Transaction
         {
             hash = x.HASH,
@@ -703,11 +709,70 @@ public partial class Endpoints
             //ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat,
             //    fiatCurrency, fiatPricesInUsd)
         }).ToArray();*/
-
-        return result3.ToArray();
+        var results = await Task.WhenAll(tasks);
+        return results;
     }
     
-    private Event[] CreateEventsForTransaction(MainDbContext mainDbContext, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Transaction> ProcessTransactionAsync(Database.Main.Transaction x, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
+        Dictionary<string, decimal> fiatPricesInUsd)
+    {
+        Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
+
+        using MainDbContext databaseContext = new();
+
+        var tx = await databaseContext.Transactions.FindAsync(x.ID);
+        
+        var transaction = new Transaction
+        {
+            hash = x.HASH,
+            block_hash = tx?.Block.HASH,
+            block_height = tx?.Block.HEIGHT,
+            index = x.INDEX,
+            date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
+            fee = x.FEE,
+            fee_raw = x.FEE_RAW,
+            script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
+            result = x.RESULT,
+            payload = x.PAYLOAD,
+            expiration = x.EXPIRATION.ToString(),
+            gas_price = x.GAS_PRICE,
+            gas_price_raw = x.GAS_PRICE_RAW,
+            gas_limit = x.GAS_LIMIT,
+            gas_limit_raw = x.GAS_LIMIT_RAW,
+            state = tx?.State?.NAME,
+            sender = x.Sender != null
+                ? new Address
+                {
+                    address_name = tx?.Sender.ADDRESS_NAME,
+                    address = tx?.Sender.ADDRESS
+                }
+                : null,
+            gas_payer = x.GasPayer != null
+                ? new Address
+                {
+                    address_name = tx?.GasPayer.ADDRESS_NAME,
+                    address = tx?.GasPayer.ADDRESS
+                }
+                : null,
+            gas_target = x.GasTarget != null 
+                ? new Address
+                {
+                    address_name = tx?.GasTarget?.ADDRESS_NAME,
+                    address = tx?.GasTarget?.ADDRESS
+                }
+                : null
+        };
+
+        var events = with_events == 1
+            ? await CreateEventsForTransaction(databaseContext, tx, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
+            : null;
+
+        transaction.events = events;
+
+        return transaction;
+    }
+    
+    private async Task<Event[]> CreateEventsForTransaction(MainDbContext mainDbContext, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         if (x.Events == null)
         {
