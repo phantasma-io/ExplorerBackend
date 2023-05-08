@@ -330,6 +330,8 @@ public partial class Endpoints
         Log.Information("Processing transactions...");
         Parallel.ForEach(_transactions, x =>
         {
+            Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
+
             var events = with_events == 1
                 ? CreateEventsForTransaction(x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
                 : null;
@@ -708,7 +710,6 @@ public partial class Endpoints
         
         var result3 = new ConcurrentBag<Event>(); // Use a thread-safe collection to store results
         Log.Information("Creating events for transaction {TransactionHash}, number of events {Events}", x.HASH, x.Events.Count);
-        Event[] events = new Event[x.Events.Count];
         Parallel.ForEach(x.Events, (e, _, index) =>
         {
             result3.Add(CreateEvent(x.HASH, e, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd));
