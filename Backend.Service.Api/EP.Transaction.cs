@@ -331,11 +331,12 @@ public partial class Endpoints
         Parallel.ForEach(_transactions.AsQueryable(), x =>
         {
             Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
-            var block = mainDbContext.Transactions.Find(x.ID)?.Block;
-            var sender = mainDbContext.Transactions.Find(x.ID)?.Sender;
-            var gasPayer = mainDbContext.Transactions.Find(x.ID)?.GasPayer;
-            var gasTarget = mainDbContext.Transactions.Find(x.ID)?.GasTarget;
-            var state = mainDbContext.Transactions.Find(x.ID)?.State;
+            using MainDbContext databaseContext = new();
+            var block = databaseContext.Transactions.Find(x.ID)?.Block;
+            var sender = databaseContext.Transactions.Find(x.ID)?.Sender;
+            var gasPayer = databaseContext.Transactions.Find(x.ID)?.GasPayer;
+            var gasTarget = databaseContext.Transactions.Find(x.ID)?.GasTarget;
+            var state = databaseContext.Transactions.Find(x.ID)?.State;
             var transaction = new Transaction
             {
                 // Fill transaction properties here
@@ -379,7 +380,7 @@ public partial class Endpoints
             };
             
             var events = with_events == 1
-                ? CreateEventsForTransaction(mainDbContext, x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
+                ? CreateEventsForTransaction(databaseContext, x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
                 : null;
             
             transaction.events = events;
