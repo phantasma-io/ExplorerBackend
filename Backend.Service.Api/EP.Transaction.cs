@@ -329,7 +329,7 @@ public partial class Endpoints
         var tasks = new List<Task<Transaction>>();
         foreach (var x in _transactions.AsQueryable())
         {
-            tasks.Add(ProcessTransactionAsync(x, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
+            tasks.Add(ProcessTransactionAsync(mainDbContext, x, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
         }
         
         /*Parallel.ForEach(_transactions.AsQueryable(), x =>
@@ -711,20 +711,23 @@ public partial class Endpoints
         return results;
     }
     
-    private async Task<Transaction> ProcessTransactionAsync(Database.Main.Transaction x, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
+    private async Task<Transaction> ProcessTransactionAsync(MainDbContext databaseContext, Database.Main.Transaction x, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
         Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
 
-        using MainDbContext databaseContext = new();
+        //using MainDbContext databaseContext = new();
 
-        var tx = await databaseContext.Transactions.FindAsync(x.ID);
+        x = await databaseContext.Transactions.FindAsync(x.ID);
+        if ( x == null )
+            return null;
+        
         
         var transaction = new Transaction
         {
             hash = x.HASH,
-            block_hash = tx?.Block.HASH,
-            block_height = tx?.Block.HEIGHT,
+            block_hash = x?.Block.HASH,
+            block_height = x?.Block.HEIGHT,
             index = x.INDEX,
             date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
             fee = x.FEE,
@@ -737,26 +740,26 @@ public partial class Endpoints
             gas_price_raw = x.GAS_PRICE_RAW,
             gas_limit = x.GAS_LIMIT,
             gas_limit_raw = x.GAS_LIMIT_RAW,
-            state = tx?.State?.NAME,
+            state = x?.State?.NAME,
             sender = x.Sender != null
                 ? new Address
                 {
-                    address_name = tx?.Sender.ADDRESS_NAME,
-                    address = tx?.Sender.ADDRESS
+                    address_name = x?.Sender.ADDRESS_NAME,
+                    address = x?.Sender.ADDRESS
                 }
                 : null,
             gas_payer = x.GasPayer != null
                 ? new Address
                 {
-                    address_name = tx?.GasPayer.ADDRESS_NAME,
-                    address = tx?.GasPayer.ADDRESS
+                    address_name = x?.GasPayer.ADDRESS_NAME,
+                    address = x?.GasPayer.ADDRESS
                 }
                 : null,
             gas_target = x.GasTarget != null 
                 ? new Address
                 {
-                    address_name = tx?.GasTarget?.ADDRESS_NAME,
-                    address = tx?.GasTarget?.ADDRESS
+                    address_name = x?.GasTarget?.ADDRESS_NAME,
+                    address = x?.GasTarget?.ADDRESS
                 }
                 : null
         };
