@@ -782,8 +782,7 @@ public partial class Endpoints
         {
             Log.Information("Creating event {EventHash} for transaction {TransactionHash}", e.ID, x.HASH);
 
-            var _event = await mainDbContext.Events.FindAsync(e.ID);
-            tasks.Add(CreateEvent(mainDbContext, x, _event, with_nft, with_event_data, with_fiat, fiatCurrency,
+            tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
 
@@ -813,8 +812,8 @@ public partial class Endpoints
             event_kind = e.EventKind.NAME,
             address = e.Address.ADDRESS,
             address_name = e.Address.ADDRESS_NAME,
-            contract = CreateContract(e),
-            nft_metadata = with_nft == 1 && e.Nft != null ? CreateNftMetadata(e) : null,
+            contract = await CreateContract(mainDbContext, e),
+            nft_metadata = with_nft == 1 && e.Nft != null ? await CreateNftMetadata(mainDbContext, e) : null,
             /*series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(e) : null,
             address_event = with_event_data == 1 && e.AddressEvent != null ? CreateAddressEvent(e) : null,
             chain_event = with_event_data == 1 && e.ChainEvent != null  ? CreateChainEvent(e) : null,
@@ -831,8 +830,14 @@ public partial class Endpoints
     }
 
 
-    private Contract CreateContract(Database.Main.Event e)
+    private async Task<Contract> CreateContract(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new Contract
         {
             name = e.Contract.NAME,
@@ -842,8 +847,14 @@ public partial class Endpoints
     }
 
 
-    private NftMetadata CreateNftMetadata(Database.Main.Event e)
+    private async Task<NftMetadata> CreateNftMetadata(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         var nftMetadata = new NftMetadata
         {
             name = e.Nft.NAME,
