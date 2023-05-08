@@ -776,11 +776,9 @@ public partial class Endpoints
         {
             return null;
         }
-
-        IQueryable<Database.Main.Event> events = mainDbContext.Events.AsQueryable().Where(e => e.TransactionId == x.ID);
-
+        
         var tasks = new List<Task<Event>>();
-        foreach (var e in events.AsQueryable())
+        foreach (var e in x.Events.AsQueryable())
         {
             using MainDbContext databaseContext = new();
             Log.Information("Creating event {EventHash} for transaction {TransactionHash}", e.ID, x.HASH);
