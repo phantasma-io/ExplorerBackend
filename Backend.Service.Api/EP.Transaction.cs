@@ -794,6 +794,7 @@ public partial class Endpoints
     private async Task<Event> CreateEvent(MainDbContext mainDbContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
+        using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -810,20 +811,20 @@ public partial class Endpoints
             event_kind = e.EventKind.NAME,
             address = e.Address.ADDRESS,
             address_name = e.Address.ADDRESS_NAME,
-            contract = await CreateContract(mainDbContext, e),
-            nft_metadata = with_nft == 1 && e.Nft != null ? await CreateNftMetadata(mainDbContext, e) : null,
-            series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ? await CreateSeries(mainDbContext, e) : null,
-            address_event = with_event_data == 1 && e.AddressEvent != null ? await CreateAddressEvent(mainDbContext, e) : null,
-            chain_event = with_event_data == 1 && e.ChainEvent != null  ? await CreateChainEvent(mainDbContext, e) : null,
-            gas_event = with_event_data == 1 && e.GasEvent != null ? await CreateGasEvent(mainDbContext, e) : null,
-            hash_event = with_event_data == 1 && e.HashEvent != null  ? await CreateHashEvent(mainDbContext, e) : null,
-            infusion_event = with_event_data == 1 && e.InfusionEvent != null  ? await CreateInfusionEvent(mainDbContext, e) : null,
-            market_event = with_event_data == 1 && e.MarketEvent != null ? await CreateMarketEvent(mainDbContext, e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
-            organization_event = with_event_data == 1 && e.OrganizationEvent != null? await CreateOrganizationEvent(mainDbContext, e) : null,
-            sale_event = with_event_data == 1 && e.SaleEvent != null  ? await CreateSaleEvent(mainDbContext, e) : null,
-            string_event = with_event_data == 1 && e.StringEvent != null  ? await CreateStringEvent(mainDbContext, e) : null,
-            token_event = with_event_data == 1 && e.TokenEvent != null ? await CreateTokenEvent(mainDbContext, e) : null,
-            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? await CreateTransactionSettleEvent(mainDbContext, e) : null
+            contract = await CreateContract(databaseContext, e),
+            nft_metadata = with_nft == 1 && e.Nft != null ? await CreateNftMetadata(databaseContext, e) : null,
+            series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ? await CreateSeries(databaseContext, e) : null,
+            address_event = with_event_data == 1 && e.AddressEvent != null ? await CreateAddressEvent(databaseContext, e) : null,
+            chain_event = with_event_data == 1 && e.ChainEvent != null  ? await CreateChainEvent(databaseContext, e) : null,
+            gas_event = with_event_data == 1 && e.GasEvent != null ? await CreateGasEvent(databaseContext, e) : null,
+            hash_event = with_event_data == 1 && e.HashEvent != null  ? await CreateHashEvent(databaseContext, e) : null,
+            infusion_event = with_event_data == 1 && e.InfusionEvent != null  ? await CreateInfusionEvent(databaseContext, e) : null,
+            market_event = with_event_data == 1 && e.MarketEvent != null ? await CreateMarketEvent(databaseContext, e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
+            organization_event = with_event_data == 1 && e.OrganizationEvent != null? await CreateOrganizationEvent(databaseContext, e) : null,
+            sale_event = with_event_data == 1 && e.SaleEvent != null  ? await CreateSaleEvent(databaseContext, e) : null,
+            string_event = with_event_data == 1 && e.StringEvent != null  ? await CreateStringEvent(databaseContext, e) : null,
+            token_event = with_event_data == 1 && e.TokenEvent != null ? await CreateTokenEvent(databaseContext, e) : null,
+            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? await CreateTransactionSettleEvent(databaseContext, e) : null
         };
     }
 
