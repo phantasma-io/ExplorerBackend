@@ -715,14 +715,12 @@ public partial class Endpoints
         Dictionary<string, decimal> fiatPricesInUsd)
     {
         Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
-
-        //using MainDbContext databaseContext = new();
-
-        x = await databaseContext.Transactions.FindAsync(x.ID);
+        await using MainDbContext databaseContext2 = new();
+        
+        x = await databaseContext2.Transactions.FindAsync(x.ID);
         if ( x == null )
             return null;
-        
-        
+
         var transaction = new Transaction
         {
             hash = x.HASH,
