@@ -324,8 +324,6 @@ public partial class Endpoints
         Log.Information("Getting transactions from database...");
         //var txs = await _transactions.ToListAsync();
         Log.Information("Transactions retrieved from database");
-        
-        var result3 = new ConcurrentBag<Transaction>(); // Use a thread-safe collection to store results
 
         Log.Information("Processing transactions...");
         var tasks = new List<Task<Transaction>>();
@@ -778,20 +776,24 @@ public partial class Endpoints
         {
             return null;
         }
-        
-        var result3 = new ConcurrentBag<Event>(); // Use a thread-safe collection to store results
-        //Log.Information("Creating events for transaction {TransactionHash}, number of events {Events}", x.HASH, x.Events.Count);
-        Parallel.ForEach(x.Events, (e, _, index) =>
-        {
-            Log.Information("Creating event {EventHash} for transaction {TransactionHash}", index, x.HASH);
-            result3.Add(CreateEvent(mainDbContext , x, e, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd));
-        });
 
-        return result3.ToArray();
+        IQueryable<Database.Main.Event> events = mainDbContext.Events.AsQueryable().Where(e => e.TransactionId == x.ID);
+        Log.Information("Creating event {EventHash} for transaction {TransactionHash}", x.HASH);
+
+        var tasks = new List<Task<Event>>();
+        foreach (var e in events.AsQueryable())
+        {
+            tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+                fiatPricesInUsd));
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        return results;
     }
 
 
-    private Event CreateEvent(MainDbContext mainDbContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+    private async Task<Event> CreateEvent(MainDbContext mainDbContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         return new Event
@@ -824,7 +826,6 @@ public partial class Endpoints
 
     private Contract CreateContract(Database.Main.Event e)
     {
-        
         return new Contract
         {
             name = e.Contract.NAME,
