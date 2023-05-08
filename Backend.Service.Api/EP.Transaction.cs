@@ -225,7 +225,7 @@ public partial class Endpoints
         int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
-        _transactions = _transactions.Include(x => x.Block)
+        /*_transactions = _transactions.Include(x => x.Block)
             .ThenInclude(b => b.Chain)
             .Include(x => x.State)
             .Include(x => x.AddressTransactions)
@@ -319,7 +319,7 @@ public partial class Endpoints
             _transactions = _transactions.Include(x => x.Events)
                 .ThenInclude(e => e.MarketEvent)
                 .ThenInclude(me => me.MarketEventFiatPrice);
-        }
+        }*/
         
         Log.Information("Getting transactions from database...");
         //var txs = await _transactions.ToListAsync();
@@ -328,13 +328,9 @@ public partial class Endpoints
         var result3 = new ConcurrentBag<Transaction>(); // Use a thread-safe collection to store results
 
         Log.Information("Processing transactions...");
-        Parallel.ForEach(_transactions, x =>
+        Parallel.ForEach(_transactions.AsParallel().AsQueryable(), x =>
         {
             Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
-
-            var events = with_events == 1
-                ? CreateEventsForTransaction(x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
-                : null;
 
             var transaction = new Transaction
             {
@@ -375,9 +371,14 @@ public partial class Endpoints
                         address_name = x.GasTarget.ADDRESS_NAME,
                         address = x.GasTarget.ADDRESS
                     }
-                    : null,
-                events = events
+                    : null
             };
+            
+            var events = with_events == 1
+                ? CreateEventsForTransaction(x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
+                : null;
+            
+            transaction.events = events;
 
             result3.Add(transaction); // Add the transaction to the thread-safe collection
         });
@@ -709,7 +710,7 @@ public partial class Endpoints
         }
         
         var result3 = new ConcurrentBag<Event>(); // Use a thread-safe collection to store results
-        Log.Information("Creating events for transaction {TransactionHash}, number of events {Events}", x.HASH, x.Events.Count);
+        //Log.Information("Creating events for transaction {TransactionHash}, number of events {Events}", x.HASH, x.Events.Count);
         Parallel.ForEach(x.Events, (e, _, index) =>
         {
             Log.Information("Creating event {EventHash} for transaction {TransactionHash}", index, x.HASH);
