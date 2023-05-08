@@ -235,6 +235,7 @@ public partial class Endpoints
             .Include(x => x.GasTarget)
             .Include(x => x.Events)
             .ThenInclude(e => e.EventKind)
+            .Include(x => x.Events)
             .ThenInclude(e => e.Chain);
         
         if (with_nft == 1)
