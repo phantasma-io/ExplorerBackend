@@ -131,7 +131,7 @@ public partial class Endpoints
             using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
-            var query = databaseContext.Transactions.AsQueryable().AsNoTracking();
+            var query = databaseContext.Transactions.AsQueryable();
 
             #region Filtering
 
@@ -188,7 +188,7 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            transactions = ProcessAllTransactions(query, with_script, with_events, with_event_data, with_nft, with_fiat,
+            transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
                 fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
             /*query.Select(_transaction => ProcessTransaction())
             var wait = Parallel.ForEach(query, _transaction =>
@@ -221,7 +221,7 @@ public partial class Endpoints
     }
 
 
-    private async Task<Transaction[]> ProcessAllTransactions(IQueryable<Database.Main.Transaction> _transactions,
+    private async Task<Transaction[]> ProcessAllTransactions(MainDbContext mainDbContext, IQueryable<Database.Main.Transaction> _transactions,
         int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
@@ -328,16 +328,20 @@ public partial class Endpoints
         var result3 = new ConcurrentBag<Transaction>(); // Use a thread-safe collection to store results
 
         Log.Information("Processing transactions...");
-        Parallel.ForEach(_transactions.AsParallel().AsQueryable(), x =>
+        Parallel.ForEach(_transactions.AsQueryable(), x =>
         {
             Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
-
+            var block = mainDbContext.Transactions.Find(x)?.Block;
+            var sender = mainDbContext.Transactions.Find(x)?.Sender;
+            var gasPayer = mainDbContext.Transactions.Find(x)?.GasPayer;
+            var gasTarget = mainDbContext.Transactions.Find(x)?.GasTarget;
+            var state = mainDbContext.Transactions.Find(x)?.State;
             var transaction = new Transaction
             {
                 // Fill transaction properties here
                 hash = x.HASH,
-                block_hash = x.Block.HASH,
-                block_height = x.Block.HEIGHT,
+                block_hash = block?.HASH,
+                block_height = block?.HEIGHT,
                 index = x.INDEX,
                 date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
                 fee = x.FEE,
@@ -350,32 +354,32 @@ public partial class Endpoints
                 gas_price_raw = x.GAS_PRICE_RAW,
                 gas_limit = x.GAS_LIMIT,
                 gas_limit_raw = x.GAS_LIMIT_RAW,
-                state = x.State.NAME,
-                sender = x.Sender != null
+                state = state?.NAME,
+                sender = x.Sender != null && sender != null
                     ? new Address
                     {
-                        address_name = x.Sender.ADDRESS_NAME,
-                        address = x.Sender.ADDRESS
+                        address_name = sender.ADDRESS_NAME,
+                        address = sender.ADDRESS
                     }
                     : null,
-                gas_payer = x.GasPayer != null
+                gas_payer = x.GasPayer != null && gasPayer != null
                     ? new Address
                     {
-                        address_name = x.GasPayer.ADDRESS_NAME,
-                        address = x.GasPayer.ADDRESS
+                        address_name = gasPayer.ADDRESS_NAME,
+                        address = gasPayer.ADDRESS
                     }
                     : null,
-                gas_target = x.GasTarget != null
+                gas_target = x.GasTarget != null && gasTarget != null
                     ? new Address
                     {
-                        address_name = x.GasTarget.ADDRESS_NAME,
-                        address = x.GasTarget.ADDRESS
+                        address_name = gasTarget?.ADDRESS_NAME,
+                        address = gasTarget?.ADDRESS
                     }
                     : null
             };
             
             var events = with_events == 1
-                ? CreateEventsForTransaction(x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
+                ? CreateEventsForTransaction(mainDbContext, x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
                 : null;
             
             transaction.events = events;
