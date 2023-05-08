@@ -706,7 +706,7 @@ public partial class Endpoints
         return result3.ToArray();
     }
     
-    private Event[] CreateEventsForTransaction(Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private Event[] CreateEventsForTransaction(MainDbContext mainDbContext, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         if (x.Events == null)
         {
@@ -718,14 +718,14 @@ public partial class Endpoints
         Parallel.ForEach(x.Events, (e, _, index) =>
         {
             Log.Information("Creating event {EventHash} for transaction {TransactionHash}", index, x.HASH);
-            result3.Add(CreateEvent(x.HASH, e, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd));
+            result3.Add(CreateEvent(mainDbContext , x, e, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd));
         });
 
         return result3.ToArray();
     }
 
 
-    private Event CreateEvent(string hash, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+    private Event CreateEvent(MainDbContext mainDbContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         return new Event
@@ -733,7 +733,7 @@ public partial class Endpoints
             event_id = e.ID,
             chain = e.Chain.NAME.ToLower(),
             date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
-            transaction_hash = hash,
+            transaction_hash = x.HASH,
             token_id = e.TOKEN_ID,
             event_kind = e.EventKind.NAME,
             address = e.Address.ADDRESS,
