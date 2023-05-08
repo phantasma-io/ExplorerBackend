@@ -699,7 +699,7 @@ public partial class Endpoints
         }
         
         var result3 = new ConcurrentBag<Event>(); // Use a thread-safe collection to store results
-        Log.Information("Creating events for transaction {TransactionHash}, number of events", x.HASH, x.Events.Count);
+        Log.Information("Creating events for transaction {TransactionHash}, number of events {Events}", x.HASH, x.Events.Count);
         Event[] events = new Event[x.Events.Count];
         Parallel.ForEach(x.Events, (e, _, index) =>
         {
