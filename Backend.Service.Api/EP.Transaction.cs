@@ -778,16 +778,11 @@ public partial class Endpoints
         }
         
         var tasks = new List<Task<Event>>();
-        var chunks = x.Events.AsQueryable().Chunk(50);
         
-        foreach (var chunk in chunks)
+        foreach (var e in x.Events.AsQueryable())
         {
-
-            foreach ( var e in chunk.AsQueryable() )
-            {
-                tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+            tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                     fiatPricesInUsd));
-            }
         }
         
 
