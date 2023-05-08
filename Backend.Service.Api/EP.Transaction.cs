@@ -780,10 +780,9 @@ public partial class Endpoints
         var tasks = new List<Task<Event>>();
         foreach (var e in x.Events.AsQueryable())
         {
-            using MainDbContext databaseContext = new();
             Log.Information("Creating event {EventHash} for transaction {TransactionHash}", e.ID, x.HASH);
 
-            var _event = await databaseContext.Events.FindAsync(e.ID);
+            var _event = await mainDbContext.Events.FindAsync(e.ID);
             tasks.Add(CreateEvent(mainDbContext, x, _event, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
@@ -797,6 +796,13 @@ public partial class Endpoints
     private async Task<Event> CreateEvent(MainDbContext mainDbContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
+        Log.Information("Creating event {EventHash} for transaction {TransactionHash}", e.ID, x.HASH);
+        e = await mainDbContext.Events.FindAsync(e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+        
         return new Event
         {
             event_id = e.ID,
@@ -807,7 +813,7 @@ public partial class Endpoints
             event_kind = e.EventKind.NAME,
             address = e.Address.ADDRESS,
             address_name = e.Address.ADDRESS_NAME,
-            contract = CreateContract(e),
+            /*contract = CreateContract(e),
             nft_metadata = with_nft == 1 && e.Nft != null ? CreateNftMetadata(e) : null,
             series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(e) : null,
             address_event = with_event_data == 1 && e.AddressEvent != null ? CreateAddressEvent(e) : null,
@@ -820,7 +826,7 @@ public partial class Endpoints
             sale_event = with_event_data == 1 && e.SaleEvent != null  ? CreateSaleEvent(e) : null,
             string_event = with_event_data == 1 && e.StringEvent != null  ? CreateStringEvent(e) : null,
             token_event = with_event_data == 1 && e.TokenEvent != null ? CreateTokenEvent(e) : null,
-            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? CreateTransactionSettleEvent(e) : null
+            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? CreateTransactionSettleEvent(e) : null*/
         };
     }
 
