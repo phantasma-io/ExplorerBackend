@@ -236,7 +236,9 @@ public partial class Endpoints
             .Include(x => x.Events)
             .ThenInclude(e => e.EventKind)
             .Include(x => x.Events)
-            .ThenInclude(e => e.Chain);
+            .ThenInclude(e => e.Chain)
+            .Include(x => x.Events)
+            .ThenInclude(e => e.Address);
         
         if (with_nft == 1)
         {
