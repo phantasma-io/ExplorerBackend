@@ -779,30 +779,22 @@ public partial class Endpoints
         
         var tasks = new List<Task<Event>>();
         var chunks = x.Events.AsQueryable().Chunk(50);
+        
         foreach (var chunk in chunks)
         {
-           tasks.AddRange(FromChunck(chunk, mainDbContext, x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd));
+
+            foreach ( var e in chunk.AsQueryable() )
+            {
+                tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+                    fiatPricesInUsd));
+            }
         }
+        
 
         var results = await Task.WhenAll(tasks);
 
         return results;
     }
-
-
-    private List<Task<Event>> FromChunck(Database.Main.Event[] chunk, MainDbContext mainDbContext, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
-    {
-        var tasks = new List<Task<Event>>();
-
-        foreach (var e in chunk.AsQueryable())
-        {
-            tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
-                fiatPricesInUsd));
-        }
-
-        return tasks;
-    }
-
 
     private async Task<Event> CreateEvent(MainDbContext mainDbContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
