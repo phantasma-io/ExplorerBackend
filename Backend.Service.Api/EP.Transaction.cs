@@ -716,7 +716,7 @@ public partial class Endpoints
     {
         Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
 
-        using MainDbContext databaseContext = new();
+        await using MainDbContext databaseContext = new();
 
         var tx = await databaseContext.Transactions.FindAsync(x.ID);
         
@@ -762,7 +762,7 @@ public partial class Endpoints
         };
 
         var events = with_events == 1
-            ? await CreateEventsForTransaction(databaseContext, tx, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
+            ? await CreateEventsForTransaction(tx, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
             : null;
 
         transaction.events = events;
@@ -770,7 +770,7 @@ public partial class Endpoints
         return transaction;
     }
     
-    private async Task<Event[]> CreateEventsForTransaction(MainDbContext mainDbContext, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private async Task<Event[]> CreateEventsForTransaction(Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         if (x.Events == null)
         {
@@ -781,7 +781,7 @@ public partial class Endpoints
         
         foreach (var e in x.Events.AsQueryable())
         {
-            tasks.Add(CreateEvent(mainDbContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+            tasks.Add(CreateEvent(x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                     fiatPricesInUsd));
         }
         
@@ -791,11 +791,11 @@ public partial class Endpoints
         return results;
     }
 
-    private async Task<Event> CreateEvent(MainDbContext mainDbContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+    private async Task<Event> CreateEvent(Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        using MainDbContext databaseContext = new();
-        e = await mainDbContext.Events.FindAsync(e.ID);
+        await using MainDbContext databaseContext = new();
+        e = await databaseContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
             return null;
