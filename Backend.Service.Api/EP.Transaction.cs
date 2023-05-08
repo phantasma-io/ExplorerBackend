@@ -780,9 +780,11 @@ public partial class Endpoints
         
         var tasks = new List<Task<Event>>();
         
+        await using MainDbContext databaseContext = new();
+        
         foreach (var e in x.Events.AsQueryable())
         {
-            tasks.Add(CreateEvent(x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+            tasks.Add(CreateEvent(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                     fiatPricesInUsd));
         }
         
@@ -792,10 +794,10 @@ public partial class Endpoints
         return results;
     }
 
-    private async Task<Event> CreateEvent(Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+    private async Task<Event> CreateEvent(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        await using MainDbContext databaseContext = new();
+        //await using MainDbContext databaseContext = new();
         e = await databaseContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
