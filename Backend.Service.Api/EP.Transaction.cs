@@ -779,12 +779,10 @@ public partial class Endpoints
         }
         
         var tasks = new List<Task<Event>>();
-        
-        await using MainDbContext databaseContext = new();
-        
+
         foreach (var e in x.Events.AsQueryable())
         {
-            tasks.Add(CreateEvent(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+            tasks.Add(CreateEvent(x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                     fiatPricesInUsd));
         }
         
@@ -794,10 +792,10 @@ public partial class Endpoints
         return results;
     }
 
-    private async Task<Event> CreateEvent(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+    private async Task<Event> CreateEvent(Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        //await using MainDbContext databaseContext = new();
+        await using MainDbContext databaseContext = new();
         e = await databaseContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -834,6 +832,7 @@ public partial class Endpoints
 
     private async Task<Contract> CreateContract(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -851,6 +850,7 @@ public partial class Endpoints
 
     private async Task<NftMetadata> CreateNftMetadata(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -874,6 +874,7 @@ public partial class Endpoints
 
     private async Task<Series> CreateSeries(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -907,6 +908,7 @@ public partial class Endpoints
 
     private async Task<AddressEvent> CreateAddressEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -928,6 +930,7 @@ public partial class Endpoints
 
     private async Task<ChainEvent> CreateChainEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -950,6 +953,7 @@ public partial class Endpoints
 
     private async Task<GasEvent> CreateGasEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -974,6 +978,7 @@ public partial class Endpoints
 
     private async Task<HashEvent> CreateHashEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -989,6 +994,7 @@ public partial class Endpoints
 
     private async Task<InfusionEvent> CreateInfusionEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -1039,6 +1045,7 @@ public partial class Endpoints
     private async Task<MarketEvent> CreateMarketEvent(MainDbContext mainDbContext, Database.Main.Event e, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -1104,6 +1111,7 @@ public partial class Endpoints
 
     private async Task<OrganizationEvent> CreateOrganizationEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -1131,6 +1139,7 @@ public partial class Endpoints
 
     private async Task<SaleEvent> CreateSaleEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -1147,6 +1156,7 @@ public partial class Endpoints
 
     private async Task<StringEvent> CreateStringEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -1162,6 +1172,7 @@ public partial class Endpoints
 
     private async Task<TokenEvent> CreateTokenEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -1195,6 +1206,8 @@ public partial class Endpoints
 
     private async Task<TransactionSettleEvent> CreateTransactionSettleEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
+        await using MainDbContext databaseContext = new();
+
         e = await mainDbContext.Events.FindAsync(e.ID);
         if ( e == null)
         {
@@ -1220,6 +1233,7 @@ public partial class Endpoints
         int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
+        await using MainDbContext databaseContext = new();
         var tx = new Transaction
         {
             hash = transaction.HASH,
