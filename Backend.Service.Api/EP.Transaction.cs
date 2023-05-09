@@ -966,7 +966,7 @@ public partial class Endpoints
         
         var count = await events.CountAsync();
 
-        var chunks = events.Chunk(50).AsNoTracking();
+        var chunks = events.Chunk(50).AsNoTracking().AsEnumerable();
 
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
         foreach ( var chunk in chunks )
