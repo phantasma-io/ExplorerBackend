@@ -189,7 +189,7 @@ public partial class Endpoints
             {
                 query = query.Skip(offset).Take(1);
             }else if ( limit > 0 ) query = query.Skip(offset).Take(limit);
-            
+
             transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
                 fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
             /*query.Select(_transaction => ProcessTransaction())*/
@@ -784,6 +784,15 @@ public partial class Endpoints
         
         var count = await events.CountAsync();
         
+        var rawEvents = await databaseContext.Events
+            .FromSqlRaw(@"SELECT e.ID, e.TIMESTAMP_UNIX_SECONDS, e.INDEX, e.TOKEN_ID, e.BURNED, e.NSFW, e.BLACKLISTED, 
+           a.AddressValue, c.ChainValue, co.ContractValue FROM Events e
+                INNER JOIN Addresses a ON e.AddressId = a.ID
+                INNER JOIN Chains c ON e.ChainId = c.ID
+                INNER JOIN Contracts co ON e.ContractId = co.ID
+                WHERE e.TransactionId = {0}", x.ID)
+            .ToListAsync();
+        
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
         foreach ( var chunk in events.AsQueryable().AsEnumerable().Chunk(50) )
         {
@@ -810,7 +819,8 @@ public partial class Endpoints
         
         await using MainDbContext databaseContext = new();
 
-        foreach (var e in chunk)
+
+        foreach (var e in chunk.AsEnumerable())
         {
             Log.Information("Processing event {id} for transaction {hash}", e.ID, x.HASH);
             tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
@@ -823,7 +833,8 @@ public partial class Endpoints
     private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        e = databaseContext.Events.First(_evnt => _evnt.ID == e.ID);
+        /*e = databaseContext.Events
+            .First(_evnt => _evnt.ID == e.ID);*/
         if ( e == null)
         {
             return null;
@@ -841,7 +852,7 @@ public partial class Endpoints
             event_kind = e.EventKind.NAME,
             address = e.Address.ADDRESS,
             address_name = e.Address.ADDRESS_NAME,
-            contract = CreateContract(databaseContext, e, chainName),
+            /*contract = CreateContract(databaseContext, e, chainName),
             nft_metadata = with_nft == 1 && e.Nft != null ?  CreateNftMetadata(databaseContext, e) : null,
             series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(databaseContext, e) : null,
             address_event = with_event_data == 1 && e.AddressEvent != null ?  CreateAddressEvent(databaseContext, e) : null,
@@ -854,7 +865,7 @@ public partial class Endpoints
             sale_event = with_event_data == 1 && e.SaleEvent != null  ?  CreateSaleEvent(databaseContext, e) : null,
             string_event = with_event_data == 1 && e.StringEvent != null  ?  CreateStringEvent(databaseContext, e) : null,
             token_event = with_event_data == 1 && e.TokenEvent != null ?  CreateTokenEvent(databaseContext, e) : null,
-            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ?  CreateTransactionSettleEvent(databaseContext, e) : null
+            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ?  CreateTransactionSettleEvent(databaseContext, e) : null*/
         };
     }
 
