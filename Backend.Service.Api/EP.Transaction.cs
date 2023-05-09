@@ -187,7 +187,7 @@ public partial class Endpoints
 
             if ( !String.IsNullOrEmpty(hash) )
             {
-                query = query.Skip(offset).Take(1);
+                query = query.Take(1);
             }else if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
             transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
@@ -505,69 +505,9 @@ public partial class Endpoints
         var tasks = new List<Task<Transaction>>();
         foreach (var x in _transactions.AsQueryable())
         {
-            tasks.Add(ProcessTransactionAsync(mainDbContext, x, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
+            tasks.Add(ProcessTransactionAsync(x, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
         }
-        
-        /*Parallel.ForEach(_transactions.AsQueryable(), x =>
-        {
-            Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
-            using MainDbContext databaseContext = new();
-            var block = databaseContext.Transactions.Find(x.ID)?.Block;
-            var sender = databaseContext.Transactions.Find(x.ID)?.Sender;
-            var gasPayer = databaseContext.Transactions.Find(x.ID)?.GasPayer;
-            var gasTarget = databaseContext.Transactions.Find(x.ID)?.GasTarget;
-            var state = databaseContext.Transactions.Find(x.ID)?.State;
-            var transaction = new Transaction
-            {
-                // Fill transaction properties here
-                hash = x.HASH,
-                block_hash = block?.HASH,
-                block_height = block?.HEIGHT,
-                index = x.INDEX,
-                date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
-                fee = x.FEE,
-                fee_raw = x.FEE_RAW,
-                script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
-                result = x.RESULT,
-                payload = x.PAYLOAD,
-                expiration = x.EXPIRATION.ToString(),
-                gas_price = x.GAS_PRICE,
-                gas_price_raw = x.GAS_PRICE_RAW,
-                gas_limit = x.GAS_LIMIT,
-                gas_limit_raw = x.GAS_LIMIT_RAW,
-                state = state?.NAME,
-                sender = x.Sender != null && sender != null
-                    ? new Address
-                    {
-                        address_name = sender.ADDRESS_NAME,
-                        address = sender.ADDRESS
-                    }
-                    : null,
-                gas_payer = x.GasPayer != null && gasPayer != null
-                    ? new Address
-                    {
-                        address_name = gasPayer.ADDRESS_NAME,
-                        address = gasPayer.ADDRESS
-                    }
-                    : null,
-                gas_target = x.GasTarget != null && gasTarget != null
-                    ? new Address
-                    {
-                        address_name = gasTarget?.ADDRESS_NAME,
-                        address = gasTarget?.ADDRESS
-                    }
-                    : null
-            };
-            
-            var events = with_events == 1
-                ? CreateEventsForTransaction(databaseContext, x, with_nft, with_event_data, with_fiat, fiatCurrency, fiatPricesInUsd)
-                : null;
-            
-            transaction.events = events;
 
-            result3.Add(transaction); // Add the transaction to the thread-safe collection
-        });*/
-        
         /*var result = _transactions.Select(x => new Transaction
         {
             hash = x.HASH,
@@ -887,7 +827,7 @@ public partial class Endpoints
         return results;
     }
     
-    private async Task<Transaction> ProcessTransactionAsync(MainDbContext databaseContext, Database.Main.Transaction x, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
+    private async Task<Transaction> ProcessTransactionAsync(Database.Main.Transaction x, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
         Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
@@ -954,7 +894,7 @@ public partial class Endpoints
             return null;
         }
         
-        var tasks = new List<Task<Event>>();
+        //var tasks = new List<Task<Event>>();
         var tasksEvents = new List<Task<Event[]>>();
         await using MainDbContext databaseContext = new();
 
@@ -986,33 +926,40 @@ public partial class Endpoints
     private async Task<Event[]> LoadFromChunk(Database.Main.Event[] chunk, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = new List<Event>();
+        var bag = new ConcurrentBag<Event>();
         
         await using MainDbContext databaseContext = new();
+
+        var result = Parallel.ForEach(chunk.AsEnumerable(), e =>
+        {
+            bag.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+                fiatPricesInUsd));
+        });
+
+        while ( !result.IsCompleted )
+        {
+            
+        }
         
-        foreach (var e in chunk.AsEnumerable())
+        await databaseContext.DisposeAsync();
+
+        /*foreach (var e in chunk.AsEnumerable())
         {
             tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
-        }
+        }*/
         
-        return tasks.ToArray();
+        return bag.ToArray();
     }
     
     private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        e = databaseContext.Events.FirstOrDefault(_event => _event.ID == e.ID); /*databaseContext.Events.FromSqlRaw(@"SELECT e.ID, e.TIMESTAMP_UNIX_SECONDS, e.INDEX, e.TOKEN_ID, e.BURNED, e.NSFW, e.BLACKLISTED, 
-           a.ADDRESS, a.ADDRESS_NAME, c.NAME, co.NAME, ek.NAME FROM 'Events' AS e
-                INNER JOIN 'Addresses' AS a ON e.AddressId = a.ID
-                INNER JOIN 'Chains' AS c ON e.ChainId = c.ID
-                INNER JOIN 'Contracts' AS co ON e.ContractId = co.ID
-                INNER JOIN 'EventKinds' AS ek ON e.EventKindId = ek.ID
-                WHERE e.TransactionId = {0}", x.ID).FirstOrDefault();*/
+        e = databaseContext.Events.FirstOrDefault(_event => _event.ID == e.ID);
         if ( e == null)
         {
             return null;
         }
-        
 
         var chainName = e.Chain.NAME.ToLower();
         
@@ -1599,22 +1546,6 @@ public partial class Endpoints
             with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd));
         var events = await Task.WhenAll(tasks);
         return events.ToArray();
-
-        /*ConcurrentBag<Event> resultBag = new ConcurrentBag<Event>();
-
-        var waitEvents = Parallel.ForEach(transaction.Events, _transactionEvent =>
-        {
-            // Perform your processing here
-            Event _event = ProcessEvent(_transactionEvent, transaction, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd);
-
-            // Add the result to the ConcurrentBag
-            resultBag.Add(_event);
-        });
-        
-        while (!waitEvents.IsCompleted)
-        {
-            Thread.Sleep(100);
-        }*/
     }
 
 
