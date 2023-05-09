@@ -969,11 +969,11 @@ public partial class Endpoints
         var chunks = events.Chunk(50).AsNoTracking();
 
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
-        for ( int i = 0; i < chunks.Count(); i++)
+        foreach ( var chunk in chunks )
         {
-            Log.Information("Processing event {id} to {id_2} ", chunks.ElementAt(i).First().ID, chunks.ElementAt(i).Last().ID);
+            Log.Information("Processing event {id} to {id_2} ", chunk.First().ID, chunk.Last().ID);
 
-            tasksEvents.Add(LoadFromChunk(chunks.ElementAt(i), x, with_nft, with_event_data, with_fiat, fiatCurrency,
+            tasksEvents.Add(LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
         
