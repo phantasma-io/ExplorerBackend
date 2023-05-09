@@ -832,13 +832,13 @@ public partial class Endpoints
     private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        e = databaseContext.Events.FromSqlRaw(@"SELECT e.ID, e.TIMESTAMP_UNIX_SECONDS, e.INDEX, e.TOKEN_ID, e.BURNED, e.NSFW, e.BLACKLISTED, 
+        e = databaseContext.Events.FirstOrDefault(_event => _event.ID == e.ID); /*databaseContext.Events.FromSqlRaw(@"SELECT e.ID, e.TIMESTAMP_UNIX_SECONDS, e.INDEX, e.TOKEN_ID, e.BURNED, e.NSFW, e.BLACKLISTED, 
            a.ADDRESS, a.ADDRESS_NAME, c.NAME, co.NAME, ek.NAME FROM 'Events' AS e
                 INNER JOIN 'Addresses' AS a ON e.AddressId = a.ID
                 INNER JOIN 'Chains' AS c ON e.ChainId = c.ID
                 INNER JOIN 'Contracts' AS co ON e.ContractId = co.ID
                 INNER JOIN 'EventKinds' AS ek ON e.EventKindId = ek.ID
-                WHERE e.TransactionId = {0}", x.ID).FirstOrDefault();
+                WHERE e.TransactionId = {0}", x.ID).FirstOrDefault();*/
         if ( e == null)
         {
             return null;
