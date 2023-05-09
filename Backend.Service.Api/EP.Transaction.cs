@@ -855,13 +855,13 @@ public partial class Endpoints
             chain_event = with_event_data == 1 && e.ChainEvent != null  ?  CreateChainEvent(databaseContext, e, chainName) : null,
             gas_event = with_event_data == 1 && e.GasEvent != null ?  CreateGasEvent(databaseContext, e) : null,
             hash_event = with_event_data == 1 && e.HashEvent != null  ?  CreateHashEvent(databaseContext, e) : null,
-            /*infusion_event = with_event_data == 1 && e.InfusionEvent != null  ?  CreateInfusionEvent(databaseContext, e) : null,
+            infusion_event = with_event_data == 1 && e.InfusionEvent != null  ?  CreateInfusionEvent(databaseContext, e) : null,
             market_event = with_event_data == 1 && e.MarketEvent != null ?  CreateMarketEvent(databaseContext, e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
             organization_event = with_event_data == 1 && e.OrganizationEvent != null?  CreateOrganizationEvent(databaseContext, e) : null,
             sale_event = with_event_data == 1 && e.SaleEvent != null  ?  CreateSaleEvent(databaseContext, e) : null,
             string_event = with_event_data == 1 && e.StringEvent != null  ?  CreateStringEvent(databaseContext, e) : null,
             token_event = with_event_data == 1 && e.TokenEvent != null ?  CreateTokenEvent(databaseContext, e) : null,
-            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ?  CreateTransactionSettleEvent(databaseContext, e) : null*/
+            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ?  CreateTransactionSettleEvent(databaseContext, e) : null
         };
     }
 
@@ -929,19 +929,18 @@ public partial class Endpoints
 
     private NftMetadata CreateNftMetadata(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        var nft = mainDbContext.Events.Where(_e => _e.ID == e.ID)
-            .Include(_e => _e.Nft)
+        var nft = mainDbContext.Nfts.Where(n => n.ID == e.NftId)
             .Take(1)
-            .Select(_e => new NftMetadata
+            .Select(n => new NftMetadata
             {
-                name = _e.Nft.NAME,
-                description = _e.Nft.DESCRIPTION,
-                image = _e.Nft.IMAGE,
-                video = _e.Nft.VIDEO,
-                rom = _e.Nft.ROM,
-                ram = _e.Nft.RAM,
-                mint_date = _e.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
-                mint_number = _e.Nft.MINT_NUMBER.ToString()
+                name = n.NAME,
+                description = n.DESCRIPTION,
+                image = n.IMAGE,
+                video = n.VIDEO,
+                rom = n.ROM,
+                ram = n.RAM,
+                mint_date = n.MINT_DATE_UNIX_SECONDS.ToString(),
+                mint_number = n.MINT_NUMBER.ToString()
             }).FirstOrDefault();
         
         if ( nft == null)
@@ -955,7 +954,7 @@ public partial class Endpoints
 
     private Series CreateSeries(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
+        //e = mainDbContext.Events.Find(e.ID);
         var series = mainDbContext.Serieses.Where(s => s.ID == e.Nft.Series.ID)
             .Include(s => s.CreatorAddress)
             .Include(s => s.SeriesMode)
@@ -1046,25 +1045,28 @@ public partial class Endpoints
 
     private GasEvent CreateGasEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var gasEvent = mainDbContext.GasEvents.Where(g => g.EventId == e.ID)
+            .Include(g => g.Address)
+            .Take(1)
+            .Select(g => new GasEvent
+            {
+                price = g.PRICE,
+                amount = g.AMOUNT,
+                fee = g.FEE,
+                address = g.Address != null
+                    ? new Address
+                    {
+                        address = g.Address.ADDRESS,
+                        address_name = g.Address.ADDRESS_NAME
+                    }
+                    : null
+            }).FirstOrDefault();
+        if ( gasEvent == null)
         {
             return null;
         }
-        
-        return new GasEvent
-        {
-            price = e.GasEvent.PRICE,
-            amount = e.GasEvent.AMOUNT,
-            fee = e.GasEvent.FEE,
-            address = e.GasEvent.Address != null
-                ? new Address
-                {
-                    address = e.GasEvent.Address.ADDRESS,
-                    address_name = e.GasEvent.Address.ADDRESS_NAME
-                }
-                : null
-        };
+
+        return gasEvent;
     }
 
 
@@ -1088,63 +1090,69 @@ public partial class Endpoints
 
     private InfusionEvent CreateInfusionEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var infuseEvent = mainDbContext.InfusionEvents.Where(i => i.EventId == e.ID)
+            .Include(i => i.BaseToken)
+            .Include(i => i.InfusedToken)
+            .Take(1)
+            .Select(i => new InfusionEvent
+            {
+                token_id = i.TOKEN_ID,
+                infused_value = i.INFUSED_VALUE,
+                infused_value_raw = i.INFUSED_VALUE_RAW,
+                base_token = i.BaseToken != null
+                    ? new Token
+                    {
+                        symbol = i.BaseToken.SYMBOL,
+                        fungible = i.BaseToken.FUNGIBLE,
+                        transferable = i.BaseToken.TRANSFERABLE,
+                        finite = i.BaseToken.FINITE,
+                        divisible = i.BaseToken.DIVISIBLE,
+                        fiat = i.BaseToken.FIAT,
+                        fuel = i.BaseToken.FUEL,
+                        swappable = i.BaseToken.SWAPPABLE,
+                        burnable = i.BaseToken.BURNABLE,
+                        stakable = i.BaseToken.STAKABLE,
+                        decimals = i.BaseToken.DECIMALS
+                    }
+                    : null,
+                infused_token = i.InfusedToken != null
+                    ? new Token
+                    {
+                        symbol = i.InfusedToken.SYMBOL,
+                        fungible = i.InfusedToken.FUNGIBLE,
+                        transferable = i.InfusedToken.TRANSFERABLE,
+                        finite = i.InfusedToken.FINITE,
+                        divisible = i.InfusedToken.DIVISIBLE,
+                        fiat = i.InfusedToken.FIAT,
+                        fuel = i.InfusedToken.FUEL,
+                        swappable = i.InfusedToken.SWAPPABLE,
+                        burnable = i.InfusedToken.BURNABLE,
+                        stakable = i.InfusedToken.STAKABLE,
+                        decimals = i.InfusedToken.DECIMALS
+                    }
+                    : null
+            })
+            .FirstOrDefault();
+        
+        if ( infuseEvent == null)
         {
             return null;
         }
-        
-        return new InfusionEvent
-        {
-            token_id = e.InfusionEvent.TOKEN_ID,
-            infused_value = e.InfusionEvent.INFUSED_VALUE,
-            infused_value_raw = e.InfusionEvent.INFUSED_VALUE_RAW,
-            base_token = e.InfusionEvent.BaseToken != null
-                ? new Token
-                {
-                    symbol = e.InfusionEvent.BaseToken.SYMBOL,
-                    fungible = e.InfusionEvent.BaseToken.FUNGIBLE,
-                    transferable = e.InfusionEvent.BaseToken.TRANSFERABLE,
-                    finite = e.InfusionEvent.BaseToken.FINITE,
-                    divisible = e.InfusionEvent.BaseToken.DIVISIBLE,
-                    fiat = e.InfusionEvent.BaseToken.FIAT,
-                    fuel = e.InfusionEvent.BaseToken.FUEL,
-                    swappable = e.InfusionEvent.BaseToken.SWAPPABLE,
-                    burnable = e.InfusionEvent.BaseToken.BURNABLE,
-                    stakable = e.InfusionEvent.BaseToken.STAKABLE,
-                    decimals = e.InfusionEvent.BaseToken.DECIMALS
-                }
-                : null,
-            infused_token = e.InfusionEvent.InfusedToken != null
-                ? new Token
-                {
-                    symbol = e.InfusionEvent.InfusedToken.SYMBOL,
-                    fungible = e.InfusionEvent.InfusedToken.FUNGIBLE,
-                    transferable = e.InfusionEvent.InfusedToken.TRANSFERABLE,
-                    finite = e.InfusionEvent.InfusedToken.FINITE,
-                    divisible = e.InfusionEvent.InfusedToken.DIVISIBLE,
-                    fiat = e.InfusionEvent.InfusedToken.FIAT,
-                    fuel = e.InfusionEvent.InfusedToken.FUEL,
-                    swappable = e.InfusionEvent.InfusedToken.SWAPPABLE,
-                    burnable = e.InfusionEvent.InfusedToken.BURNABLE,
-                    stakable = e.InfusionEvent.InfusedToken.STAKABLE,
-                    decimals = e.InfusionEvent.InfusedToken.DECIMALS
-                }
-                : null
-        };
+
+        return infuseEvent;
     }
 
 
     private MarketEvent CreateMarketEvent(MainDbContext mainDbContext, Database.Main.Event e, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
-        {
-            return null;
-        }
-        
-        return new MarketEvent
+        var marketEvent = mainDbContext.MarketEvents.Where(m => m.EventId == e.ID)
+            .Include(m => m.BaseToken)
+            .Include(m => m.QuoteToken)
+            .Include(m => m.MarketEventKind)
+            .Include(m => m.MarketEventFiatPrice)
+            .Take(1)
+            .Select(m =>  new MarketEvent
             {
 
                 base_token = e.MarketEvent.BaseToken != null
@@ -1197,65 +1205,88 @@ public partial class Endpoints
                             fiatCurrency).ToString("0.####")
                     }
                     : null
-            };
+            })
+            .FirstOrDefault();
+        if ( marketEvent == null)
+        {
+            return null;
+        }
+
+        return marketEvent;
     }
 
 
     private OrganizationEvent CreateOrganizationEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var organizationEvent = mainDbContext.OrganizationEvents.Where(o => o.EventId == e.ID)
+            .Include(o => o.Organization)
+            .Include(o => o.Address)
+            .Take(1)
+            .Select(o => new OrganizationEvent
+            {
+                organization = o.Organization != null
+                    ? new Organization
+                    {
+                        name = o.Organization.NAME
+                    }
+                    : null,
+                address = e.OrganizationEvent.Address != null
+                    ? new Address
+                    {
+                        address = o.Address.ADDRESS,
+                        address_name = o.Address.ADDRESS_NAME
+                    }
+                    : null
+            }).FirstOrDefault();
+        
+        if ( organizationEvent == null)
         {
             return null;
         }
-        
-        return new OrganizationEvent
-        {
-            organization = e.OrganizationEvent.Organization != null
-                ? new Organization
-                {
-                    name = e.OrganizationEvent.Organization.NAME
-                }
-                : null,
-            address = e.OrganizationEvent.Address != null
-                ? new Address
-                {
-                    address = e.OrganizationEvent.Address.ADDRESS,
-                    address_name = e.OrganizationEvent.Address.ADDRESS_NAME
-                }
-                : null
-        };
+
+        return organizationEvent;
     }
 
 
     private SaleEvent CreateSaleEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        //e = mainDbContext.Events.Find(e.ID);
+        var saleEvent = mainDbContext.SaleEvents.Where(s => s.EventId == e.ID)
+            .Include(s => s.SaleEventKind)
+            .Take(1)
+            .Select(s => new SaleEvent
+            {
+                hash = e.SaleEvent.HASH,
+                sale_event_kind = e.SaleEvent.SaleEventKind.NAME
+            })
+            .FirstOrDefault();
+        
+        if ( saleEvent == null)
         {
             return null;
         }
-        
-        return new SaleEvent
-        {
-            hash = e.SaleEvent.HASH,
-            sale_event_kind = e.SaleEvent.SaleEventKind.NAME
-        };
+
+        return saleEvent;
     }
 
 
     private StringEvent CreateStringEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        //e = mainDbContext.Events.Find(e.ID);
+        var stringEvent = mainDbContext.StringEvents.Where(s => s.EventId == e.ID)
+            .Take(1)
+            .Select(s => new StringEvent
+            {
+                string_value = e.StringEvent.STRING_VALUE
+            })
+            .FirstOrDefault();
+        
+        if ( stringEvent == null)
         {
             return null;
         }
-        
-        return new StringEvent
-        {
-            string_value = e.StringEvent.STRING_VALUE
-        };
+
+        return stringEvent;
     }
 
 
@@ -1298,25 +1329,30 @@ public partial class Endpoints
 
     private TransactionSettleEvent CreateTransactionSettleEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        //e = mainDbContext.Events.Find(e.ID);
+        var transactionSettleEvent = mainDbContext.TransactionSettleEvents.Where(t => t.EventId == e.ID)
+            .Include(t => t.Platform)
+            .Take(1)
+            .Select(t => new TransactionSettleEvent
+            {
+                hash = e.TransactionSettleEvent.HASH,
+                platform = e.TransactionSettleEvent.Platform != null
+                    ? new Platform
+                    {
+                        name = e.TransactionSettleEvent.Platform.NAME,
+                        chain = e.TransactionSettleEvent.Platform.CHAIN,
+                        fuel = e.TransactionSettleEvent.Platform.FUEL
+                        //we do not add other information here for now
+                    }
+                    : null
+            }).FirstOrDefault();
+        
+        if ( transactionSettleEvent == null)
         {
             return null;
         }
-        
-        return new TransactionSettleEvent
-        {
-            hash = e.TransactionSettleEvent.HASH,
-            platform = e.TransactionSettleEvent.Platform != null
-                ? new Platform
-                {
-                    name = e.TransactionSettleEvent.Platform.NAME,
-                    chain = e.TransactionSettleEvent.Platform.CHAIN,
-                    fuel = e.TransactionSettleEvent.Platform.FUEL
-                    //we do not add other information here for now
-                }
-                : null
-        };
+
+        return transactionSettleEvent;
     }
 
     private async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script,
