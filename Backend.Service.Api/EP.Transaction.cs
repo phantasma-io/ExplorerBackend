@@ -187,8 +187,6 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
             
-            Log.Information("My query: {query}", query.ToQueryString());
-
             transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
                 fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
             /*query.Select(_transaction => ProcessTransaction())*/
@@ -215,7 +213,7 @@ public partial class Endpoints
         int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
-        /*_transactions = _transactions.Include(x => x.Block)
+        _transactions = _transactions.Include(x => x.Block)
             .ThenInclude(b => b.Chain)
             .Include(x => x.State)
             .Include(x => x.AddressTransactions)
@@ -309,7 +307,10 @@ public partial class Endpoints
             _transactions = _transactions.Include(x => x.Events)
                 .ThenInclude(e => e.MarketEvent)
                 .ThenInclude(me => me.MarketEventFiatPrice);
-        }*/
+        }
+        
+        Log.Information("My query: {query}", _transactions.ToQueryString());
+
         
         Log.Information("Getting transactions from database...");
         //var txs = await _transactions.ToListAsync();
