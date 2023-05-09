@@ -926,30 +926,18 @@ public partial class Endpoints
     private async Task<Event[]> LoadFromChunk(Database.Main.Event[] chunk, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = new List<Event>();
-        var bag = new ConcurrentBag<Event>();
         
         await using MainDbContext databaseContext = new();
 
-        var result = Parallel.ForEach(chunk.AsEnumerable(), e =>
-        {
-            bag.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
-                fiatPricesInUsd));
-        });
-
-        while ( !result.IsCompleted )
-        {
-            
-        }
-        
-        await databaseContext.DisposeAsync();
-
-        /*foreach (var e in chunk.AsEnumerable())
+        foreach (var e in chunk.AsEnumerable())
         {
             tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
-        }*/
-        
-        return bag.ToArray();
+        }
+
+        await databaseContext.DisposeAsync();
+
+        return tasks.ToArray();
     }
     
     private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
