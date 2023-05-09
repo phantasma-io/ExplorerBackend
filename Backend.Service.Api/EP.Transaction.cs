@@ -780,21 +780,21 @@ public partial class Endpoints
             .Select(e=>new Database.Main.Event
             {
                 ID = e.ID
-            });
+            }).AsNoTracking();
         
         var count = await events.CountAsync();
         
-        var rawEvents = await databaseContext.Events
+        /*var rawEvents = await databaseContext.Events
             .FromSqlRaw(@"SELECT e.ID, e.TIMESTAMP_UNIX_SECONDS, e.INDEX, e.TOKEN_ID, e.BURNED, e.NSFW, e.BLACKLISTED, 
-           a.AddressValue, c.ChainValue, co.ContractValue FROM Events e
+           a.ADDRESS, a.ADDRESS_NAME, c.NAME, co.NAME FROM Events e
                 INNER JOIN Addresses a ON e.AddressId = a.ID
                 INNER JOIN Chains c ON e.ChainId = c.ID
                 INNER JOIN Contracts co ON e.ContractId = co.ID
                 WHERE e.TransactionId = {0}", x.ID)
-            .ToListAsync();
+            .ToListAsync();*/
         
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
-        foreach ( var chunk in rawEvents.AsEnumerable().Chunk(50) )
+        foreach ( var chunk in events.AsEnumerable().Chunk(50) )
         {
             tasksEvents.Add(LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
@@ -818,8 +818,7 @@ public partial class Endpoints
         var tasks = new List<Event>();
         
         await using MainDbContext databaseContext = new();
-
-
+        
         foreach (var e in chunk.AsEnumerable())
         {
             Log.Information("Processing event {id} for transaction {hash}", e.ID, x.HASH);
@@ -833,8 +832,8 @@ public partial class Endpoints
     private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        /*e = databaseContext.Events
-            .First(_evnt => _evnt.ID == e.ID);*/
+        e = databaseContext.Events
+            .First(_evnt => _evnt.ID == e.ID);
         if ( e == null)
         {
             return null;
