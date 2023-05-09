@@ -242,7 +242,7 @@ public partial class Endpoints
     /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
-    [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 86000, cacheTag: "transactions")]
+    [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 86000, cacheTag: "transaction")]
     public TransactionResult Transaction(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -979,9 +979,7 @@ public partial class Endpoints
                     fiatPricesInUsd));
         }*/
         var resultsEvents = await Task.WhenAll(tasksEvents);
-
-        var results = await Task.WhenAll(tasks);
-
+        
         return resultsEvents.SelectMany(a => a).ToArray();
     }
 
