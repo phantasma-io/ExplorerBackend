@@ -966,20 +966,16 @@ public partial class Endpoints
         
         var count = await events.CountAsync();
 
+        var chunks = events.Chunk(50).AsNoTracking();
+
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
-        foreach ( var chunk in events.AsEnumerable().Chunk(50) )
+        foreach ( var chunk in chunks )
         {
             Log.Information("Processing event {id} to {id_2} ", chunk.First().ID, chunk.Last().ID);
 
             tasksEvents.Add(LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
-
-        /*foreach (var e in events.AsQueryable())
-        {
-            tasks.Add(CreateEvent(x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
-                    fiatPricesInUsd));
-        }*/
         
         var resultsEvents = await Task.WhenAll(tasksEvents);
         
@@ -992,12 +988,18 @@ public partial class Endpoints
         var tasks = new List<Event>();
         
         await using MainDbContext databaseContext = new();
-        
-        foreach (var e in chunk)
+
+        Parallel.ForEach(chunk, e =>
         {
             tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
-        }
+        });
+        
+        /*foreach (var e in chunk)
+        {
+            tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+                fiatPricesInUsd));
+        }*/
         
         return tasks.ToArray();
     }
