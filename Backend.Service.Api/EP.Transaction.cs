@@ -995,6 +995,8 @@ public partial class Endpoints
                 fiatPricesInUsd));
         });
         
+        await databaseContext.DisposeAsync();
+        
         /*foreach (var e in chunk)
         {
             tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
