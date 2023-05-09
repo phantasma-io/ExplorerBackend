@@ -973,8 +973,8 @@ public partial class Endpoints
         {
             Log.Information("Processing event {id} to {id_2} ", chunk.First().ID, chunk.Last().ID);
 
-            tasksEvents.Add(LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
-                fiatPricesInUsd));
+            tasksEvents.Add(Task.Run( () => LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
+                fiatPricesInUsd)));
         }
         
         var resultsEvents = await Task.WhenAll(tasksEvents);
