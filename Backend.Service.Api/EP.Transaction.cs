@@ -74,7 +74,6 @@ public partial class Endpoints
     )
     {
         long totalResults = 0;
-        ConcurrentBag<Transaction> concurrentTransactions = new ConcurrentBag<Transaction>();
         Transaction[] transactions = null;
 
         const string fiatCurrency = "USD";
@@ -131,7 +130,7 @@ public partial class Endpoints
             using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
-            var query = databaseContext.Transactions.AsQueryable();
+            var query = databaseContext.Transactions.AsQueryable().AsNoTracking();
 
             #region Filtering
 
@@ -187,21 +186,12 @@ public partial class Endpoints
                 };
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
+            
+            Log.Information("My query: {query}", query.ToQueryString());
 
             transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
                 fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
-            /*query.Select(_transaction => ProcessTransaction())
-            var wait = Parallel.ForEach(query, _transaction =>
-            {
-                // Perform your processing here
-                Transaction _tx = ProcessTransaction(_transaction, with_script, with_events, with_event_data, with_nft, with_fiat, fiatCurrency, fiatPricesInUsd);
-
-                // Add the result to the ConcurrentBag
-                concurrentTransactions.Add(_tx);
-            });*/
-
-            //transactions = concurrentTransactions.ToArray();
-
+            /*query.Select(_transaction => ProcessTransaction())*/
             var responseTime = DateTime.Now - startTime;
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
