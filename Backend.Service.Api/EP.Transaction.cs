@@ -783,16 +783,7 @@ public partial class Endpoints
             }).AsNoTracking();
         
         var count = await events.CountAsync();
-        
-        /*var rawEvents = await databaseContext.Events
-            .FromSqlRaw(@"SELECT e.ID, e.TIMESTAMP_UNIX_SECONDS, e.INDEX, e.TOKEN_ID, e.BURNED, e.NSFW, e.BLACKLISTED, 
-           a.ADDRESS, a.ADDRESS_NAME, c.NAME, co.NAME FROM Events e
-                INNER JOIN Addresses a ON e.AddressId = a.ID
-                INNER JOIN Chains c ON e.ChainId = c.ID
-                INNER JOIN Contracts co ON e.ContractId = co.ID
-                WHERE e.TransactionId = {0}", x.ID)
-            .ToListAsync();*/
-        
+
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
         foreach ( var chunk in events.AsEnumerable().Chunk(50) )
         {
@@ -809,7 +800,7 @@ public partial class Endpoints
 
         var results = await Task.WhenAll(tasks);
 
-        return results;
+        return resultsEvents.SelectMany(a => a).ToArray();
     }
 
 
