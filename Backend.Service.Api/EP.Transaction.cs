@@ -242,7 +242,7 @@ public partial class Endpoints
     /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
-    [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 86000, cacheTag: "transaction")]
+    [ApiInfo(typeof(TransactionResult), "Returns a single transaction on the backend.", false, 86000, cacheTag: "transaction")]
     public TransactionResult Transaction(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -374,7 +374,7 @@ public partial class Endpoints
 
             transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
                 fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
-            /*query.Select(_transaction => ProcessTransaction())*/
+            
             var responseTime = DateTime.Now - startTime;
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
@@ -969,6 +969,8 @@ public partial class Endpoints
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
         foreach ( var chunk in events.AsEnumerable().Chunk(50) )
         {
+            Log.Information("Processing event {id} to {id_2} ", chunk.First().ID, chunk.Last().ID);
+
             tasksEvents.Add(LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
@@ -978,6 +980,7 @@ public partial class Endpoints
             tasks.Add(CreateEvent(x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                     fiatPricesInUsd));
         }*/
+        
         var resultsEvents = await Task.WhenAll(tasksEvents);
         
         return resultsEvents.SelectMany(a => a).ToArray();
@@ -990,9 +993,8 @@ public partial class Endpoints
         
         await using MainDbContext databaseContext = new();
         
-        foreach (var e in chunk.AsEnumerable())
+        foreach (var e in chunk)
         {
-            Log.Information("Processing event {id} for transaction {hash}", e.ID, x.HASH);
             tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
