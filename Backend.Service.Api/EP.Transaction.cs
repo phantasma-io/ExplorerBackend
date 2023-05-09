@@ -49,7 +49,7 @@ public partial class Endpoints
     /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
-    [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 10, cacheTag: "transactions")]
+    [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
     public TransactionResult Transactions(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
@@ -832,8 +832,13 @@ public partial class Endpoints
     private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        e = databaseContext.Events
-            .First(_evnt => _evnt.ID == e.ID);
+        e = databaseContext.Events.FromSqlRaw(@"SELECT e.ID, e.TIMESTAMP_UNIX_SECONDS, e.INDEX, e.TOKEN_ID, e.BURNED, e.NSFW, e.BLACKLISTED, 
+           a.ADDRESS, a.ADDRESS_NAME, c.NAME, co.NAME, ek.NAME FROM Events e
+                INNER JOIN Addresses a ON e.AddressId = a.ID
+                INNER JOIN Chains c ON e.ChainId = c.ID
+                INNER JOIN Contracts co ON e.ContractId = co.ID
+                INNER JOIN EventKinds ek ON e.EventKindId = ek.ID
+                WHERE e.TransactionId = {0}", x.ID).FirstOrDefault();
         if ( e == null)
         {
             return null;
