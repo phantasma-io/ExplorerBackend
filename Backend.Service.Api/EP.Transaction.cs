@@ -185,7 +185,10 @@ public partial class Endpoints
                     _ => query
                 };
 
-            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
+            if ( !String.IsNullOrEmpty(hash) )
+            {
+                query = query.Skip(offset).Take(1);
+            }else if ( limit > 0 ) query = query.Skip(offset).Take(limit);
             
             transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
                 fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
@@ -213,7 +216,7 @@ public partial class Endpoints
         int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
-        _transactions = _transactions.Include(x => x.Block)
+        /*_transactions = _transactions.Include(x => x.Block)
             .ThenInclude(b => b.Chain)
             .Include(x => x.State)
             .Include(x => x.AddressTransactions)
@@ -307,7 +310,7 @@ public partial class Endpoints
             _transactions = _transactions.Include(x => x.Events)
                 .ThenInclude(e => e.MarketEvent)
                 .ThenInclude(me => me.MarketEventFiatPrice);
-        }
+        }*/
         
         Log.Information("My query: {query}", _transactions.ToQueryString());
 
@@ -770,14 +773,24 @@ public partial class Endpoints
         }
         
         var tasks = new List<Task<Event>>();
+        await using MainDbContext databaseContext = new();
 
-        foreach (var e in x.Events.AsQueryable())
+        var events = databaseContext.Events.Where(e => e.TransactionId == x.ID)
+            .Select(e=>new Database.Main.Event
+            {
+                ID = e.ID
+            });
+        
+        var count = await events.CountAsync();
+        
+        Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
+
+        foreach (var e in events.AsQueryable())
         {
             tasks.Add(CreateEvent(x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                     fiatPricesInUsd));
         }
         
-
         var results = await Task.WhenAll(tasks);
 
         return results;
@@ -788,26 +801,29 @@ public partial class Endpoints
     {
         await using MainDbContext databaseContext = new();
         e = await databaseContext.Events.FindAsync(e.ID);
+        
         if ( e == null)
         {
             return null;
         }
+
+        var chainName = e.Chain.NAME.ToLower();
         
         return new Event
         {
             event_id = e.ID,
-            chain = e.Chain.NAME.ToLower(),
+            chain = chainName,
             date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
             transaction_hash = x.HASH,
             token_id = e.TOKEN_ID,
             event_kind = e.EventKind.NAME,
             address = e.Address.ADDRESS,
             address_name = e.Address.ADDRESS_NAME,
-            contract = CreateContract(databaseContext, e),
+            contract = CreateContract(databaseContext, e, chainName),
             nft_metadata = with_nft == 1 && e.Nft != null ?  CreateNftMetadata(databaseContext, e) : null,
             series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(databaseContext, e) : null,
             address_event = with_event_data == 1 && e.AddressEvent != null ?  CreateAddressEvent(databaseContext, e) : null,
-            chain_event = with_event_data == 1 && e.ChainEvent != null  ?  CreateChainEvent(databaseContext, e) : null,
+            chain_event = with_event_data == 1 && e.ChainEvent != null  ?  CreateChainEvent(databaseContext, e, chainName) : null,
             gas_event = with_event_data == 1 && e.GasEvent != null ?  CreateGasEvent(databaseContext, e) : null,
             hash_event = with_event_data == 1 && e.HashEvent != null  ?  CreateHashEvent(databaseContext, e) : null,
             infusion_event = with_event_data == 1 && e.InfusionEvent != null  ?  CreateInfusionEvent(databaseContext, e) : null,
@@ -821,119 +837,142 @@ public partial class Endpoints
     }
 
 
-    private Contract CreateContract(MainDbContext mainDbContext, Database.Main.Event e)
+    private Contract CreateContract(MainDbContext mainDbContext, Database.Main.Event e, string chainName)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var contract = mainDbContext.Contracts
+            .Where(c => c.ID == e.ContractId)
+            .Take(1)
+            .Select(c => new Contract
+            {
+                name = c.NAME,
+                hash = ContractMethods.Prepend0x(c.HASH, chainName),
+                symbol = c.SYMBOL
+            })
+            .FirstOrDefault();
+        
+        if ( contract == null)
         {
             return null;
         }
-        
-        return new Contract
-        {
-            name = e.Contract.NAME,
-            hash = ContractMethods.Prepend0x(e.Contract.HASH, e.Chain.NAME),
-            symbol = e.Contract.SYMBOL
-        };
+
+        return contract;
     }
 
 
     private NftMetadata CreateNftMetadata(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var nft = mainDbContext.Events.Where(_e => _e.ID == e.ID)
+            .Include(_e => _e.Nft)
+            .Take(1)
+            .Select(_e => new NftMetadata
+            {
+                name = _e.Nft.NAME,
+                description = _e.Nft.DESCRIPTION,
+                image = _e.Nft.IMAGE,
+                video = _e.Nft.VIDEO,
+                rom = _e.Nft.ROM,
+                ram = _e.Nft.RAM,
+                mint_date = _e.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
+                mint_number = _e.Nft.MINT_NUMBER.ToString()
+            }).FirstOrDefault();
+        
+        if ( nft == null)
         {
             return null;
         }
         
-        var nftMetadata = new NftMetadata
-        {
-            name = e.Nft.NAME,
-            description = e.Nft.DESCRIPTION,
-            image = e.Nft.IMAGE,
-            video = e.Nft.VIDEO,
-            rom = e.Nft.ROM,
-            ram = e.Nft.RAM,
-            mint_date = e.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
-            mint_number = e.Nft.MINT_NUMBER.ToString()
-        };
-        return nftMetadata;
+        return nft;
     }
 
 
     private Series CreateSeries(MainDbContext mainDbContext, Database.Main.Event e)
     {
         e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var series = mainDbContext.Serieses.Where(s => s.ID == e.Nft.Series.ID)
+            .Include(s => s.CreatorAddress)
+            .Include(s => s.SeriesMode)
+            .Take(1)
+            .Select(s => new Series
+            {
+                id = s.ID,
+                series_id = s.SERIES_ID,
+                creator = s.CreatorAddress != null
+                    ? s.CreatorAddress.ADDRESS
+                    : null,
+                current_supply = s.CURRENT_SUPPLY,
+                max_supply = s.MAX_SUPPLY,
+                mode_name = s.SeriesMode != null ? s.SeriesMode.MODE_NAME : null,
+                name = s.NAME,
+                description =s.DESCRIPTION,
+                image = s.IMAGE,
+                royalties = s.ROYALTIES.ToString(CultureInfo.InvariantCulture),
+                type = s.TYPE,
+                attr_type_1 = s.ATTR_TYPE_1,
+                attr_value_1 = s.ATTR_VALUE_1,
+                attr_type_2 = s.ATTR_TYPE_2,
+                attr_value_2 = s.ATTR_VALUE_2,
+                attr_type_3 = s.ATTR_TYPE_3,
+                attr_value_3 = s.ATTR_VALUE_3
+            })
+            .FirstOrDefault();
+        
+        if ( series == null)
         {
             return null;
         }
-        
-        return new Series
-        {
-            id = e.Nft.Series.ID,
-            series_id = e.Nft.Series.SERIES_ID,
-            creator = e.Nft.Series.CreatorAddress != null
-                ? e.Nft.Series.CreatorAddress.ADDRESS
-                : null,
-            current_supply = e.Nft.Series.CURRENT_SUPPLY,
-            max_supply = e.Nft.Series.MAX_SUPPLY,
-            mode_name = e.Nft.Series.SeriesMode != null ? e.Nft.Series.SeriesMode.MODE_NAME : null,
-            name = e.Nft.Series.NAME,
-            description = e.Nft.Series.DESCRIPTION,
-            image = e.Nft.Series.IMAGE,
-            royalties = e.Nft.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
-            type = e.Nft.Series.TYPE,
-            attr_type_1 = e.Nft.Series.ATTR_TYPE_1,
-            attr_value_1 = e.Nft.Series.ATTR_VALUE_1,
-            attr_type_2 = e.Nft.Series.ATTR_TYPE_2,
-            attr_value_2 = e.Nft.Series.ATTR_VALUE_2,
-            attr_type_3 = e.Nft.Series.ATTR_TYPE_3,
-            attr_value_3 = e.Nft.Series.ATTR_VALUE_3
-        };
+
+        return series;
     }
 
 
     private AddressEvent CreateAddressEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var addressEvent = mainDbContext.AddressEvents.Where(a => a.EventId == e.ID)
+            .Include(a => a.Address)
+            .Take(1)
+            .Select(a => new AddressEvent
+            {
+                address = a.Address != null
+                    ? new Address
+                    {
+                        address_name = a.Address.ADDRESS_NAME,
+                        address = a.Address.ADDRESS
+                    }
+                    : null
+            }).FirstOrDefault();
+            
+        if ( addressEvent == null)
         {
             return null;
         }
-        
-        return new AddressEvent
-        {
-            address = e.AddressEvent.Address != null
-                ? new Address
-                {
-                    address_name = e.AddressEvent.Address.ADDRESS_NAME,
-                    address = e.AddressEvent.Address.ADDRESS
-                }
-                : null
-        };
+
+        return addressEvent;
     }
 
 
-    private ChainEvent CreateChainEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private ChainEvent CreateChainEvent(MainDbContext mainDbContext, Database.Main.Event e, string chainName)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var chainEvent = mainDbContext.ChainEvents.Where(c => c.EventId == e.ID)
+            .Take(1)
+            .Select(c => new ChainEvent
+            {
+                name = c.NAME,
+                value = c.VALUE,
+                chain = c.Chain != null
+                    ? new Chain
+                    {
+                        chain_name = chainName
+                    }
+                    : null
+            })
+            .FirstOrDefault();
+        
+        if ( chainEvent == null)
         {
             return null;
         }
-        
-        return new ChainEvent
-        {
-            name = e.ChainEvent.NAME,
-            value = e.ChainEvent.VALUE,
-            chain = e.ChainEvent.Chain != null
-                ? new Chain
-                {
-                    chain_name = e.ChainEvent.Chain.NAME
-                }
-                : null
-        };
+
+        return chainEvent;
     }
 
 
@@ -963,16 +1002,19 @@ public partial class Endpoints
 
     private HashEvent CreateHashEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e =  mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var hashEvent =  mainDbContext.HashEvents.Where(h => h.EventId == e.ID)
+            .Take(1)
+            .Select(h => new HashEvent
+            {
+                hash = h.HASH
+            }).FirstOrDefault();
+        
+        if ( hashEvent == null)
         {
             return null;
         }
-        
-        return new HashEvent
-        {
-            hash = e.HashEvent.HASH
-        };
+
+        return hashEvent;
     }
 
 
@@ -1151,34 +1193,38 @@ public partial class Endpoints
 
     private TokenEvent CreateTokenEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        e = mainDbContext.Events.Find(e.ID);
-        if ( e == null)
+        var token = mainDbContext.TokenEvents.Where(t => t.EventId == e.ID)
+            .Include(t => t.Token)
+            .Take(1)
+            .Select(t => new TokenEvent
+            {
+                token = t.Token != null
+                    ? new Token
+                    {
+                        symbol = t.Token.SYMBOL,
+                        fungible = t.Token.FUNGIBLE,
+                        transferable = t.Token.TRANSFERABLE,
+                        finite = t.Token.FINITE,
+                        divisible = t.Token.DIVISIBLE,
+                        fiat = t.Token.FIAT,
+                        fuel = t.Token.FUEL,
+                        swappable = t.Token.SWAPPABLE,
+                        burnable = t.Token.BURNABLE,
+                        stakable = t.Token.STAKABLE,
+                        decimals = t.Token.DECIMALS
+                    }
+                    : null,
+                value = t.VALUE,
+                value_raw = t.VALUE_RAW,
+                chain_name = t.CHAIN_NAME 
+            }).FirstOrDefault();
+        
+        if ( token == null)
         {
             return null;
         }
-        
-        return new TokenEvent
-        {
-            token = e.TokenEvent.Token != null
-                ? new Token
-                {
-                    symbol = e.TokenEvent.Token.SYMBOL,
-                    fungible = e.TokenEvent.Token.FUNGIBLE,
-                    transferable = e.TokenEvent.Token.TRANSFERABLE,
-                    finite = e.TokenEvent.Token.FINITE,
-                    divisible = e.TokenEvent.Token.DIVISIBLE,
-                    fiat = e.TokenEvent.Token.FIAT,
-                    fuel = e.TokenEvent.Token.FUEL,
-                    swappable = e.TokenEvent.Token.SWAPPABLE,
-                    burnable = e.TokenEvent.Token.BURNABLE,
-                    stakable = e.TokenEvent.Token.STAKABLE,
-                    decimals = e.TokenEvent.Token.DECIMALS
-                }
-                : null,
-            value = e.TokenEvent.VALUE,
-            value_raw = e.TokenEvent.VALUE_RAW,
-            chain_name = e.TokenEvent.CHAIN_NAME
-        };
+
+        return token;
     }
 
 
