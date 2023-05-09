@@ -773,6 +773,7 @@ public partial class Endpoints
         }
         
         var tasks = new List<Task<Event>>();
+        var tasksEvents = new List<Task<Event[]>>();
         await using MainDbContext databaseContext = new();
 
         var events = databaseContext.Events.Where(e => e.TransactionId == x.ID)
@@ -784,24 +785,84 @@ public partial class Endpoints
         var count = await events.CountAsync();
         
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
+        foreach ( var chunk in events.AsQueryable().Chunk(50) )
+        {
+            tasksEvents.Add(LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
+                fiatPricesInUsd));
+        }
 
-        foreach (var e in events.AsQueryable())
+        /*foreach (var e in events.AsQueryable())
         {
             tasks.Add(CreateEvent(x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                     fiatPricesInUsd));
-        }
-        
+        }*/
+        var resultsEvents = await Task.WhenAll(tasksEvents);
+
         var results = await Task.WhenAll(tasks);
 
         return results;
+    }
+
+
+    private async Task<Event[]> LoadFromChunk(Database.Main.Event[] chunk, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    {
+        var tasks = new List<Event>();
+        
+        await using MainDbContext databaseContext = new();
+
+        foreach (var e in chunk)
+        {
+            tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+                fiatPricesInUsd));
+        }
+        
+        return tasks.ToArray();
+    }
+    
+    private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+        string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    {
+        
+        e = databaseContext.Events.First(_evnt => _evnt.ID == e.ID);
+        if ( e == null)
+        {
+            return null;
+        }
+
+        var chainName = e.Chain.NAME.ToLower();
+        
+        return new Event
+        {
+            event_id = e.ID,
+            chain = chainName,
+            date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
+            transaction_hash = x.HASH,
+            token_id = e.TOKEN_ID,
+            event_kind = e.EventKind.NAME,
+            address = e.Address.ADDRESS,
+            address_name = e.Address.ADDRESS_NAME,
+            contract = CreateContract(databaseContext, e, chainName),
+            nft_metadata = with_nft == 1 && e.Nft != null ?  CreateNftMetadata(databaseContext, e) : null,
+            series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(databaseContext, e) : null,
+            address_event = with_event_data == 1 && e.AddressEvent != null ?  CreateAddressEvent(databaseContext, e) : null,
+            chain_event = with_event_data == 1 && e.ChainEvent != null  ?  CreateChainEvent(databaseContext, e, chainName) : null,
+            gas_event = with_event_data == 1 && e.GasEvent != null ?  CreateGasEvent(databaseContext, e) : null,
+            hash_event = with_event_data == 1 && e.HashEvent != null  ?  CreateHashEvent(databaseContext, e) : null,
+            infusion_event = with_event_data == 1 && e.InfusionEvent != null  ?  CreateInfusionEvent(databaseContext, e) : null,
+            market_event = with_event_data == 1 && e.MarketEvent != null ?  CreateMarketEvent(databaseContext, e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
+            organization_event = with_event_data == 1 && e.OrganizationEvent != null?  CreateOrganizationEvent(databaseContext, e) : null,
+            sale_event = with_event_data == 1 && e.SaleEvent != null  ?  CreateSaleEvent(databaseContext, e) : null,
+            string_event = with_event_data == 1 && e.StringEvent != null  ?  CreateStringEvent(databaseContext, e) : null,
+            token_event = with_event_data == 1 && e.TokenEvent != null ?  CreateTokenEvent(databaseContext, e) : null,
+            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ?  CreateTransactionSettleEvent(databaseContext, e) : null
+        };
     }
 
     private async Task<Event> CreateEvent(Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         await using MainDbContext databaseContext = new();
-        e = await databaseContext.Events.FindAsync(e.ID);
-        
+        e = await databaseContext.Events.Where(_evnt => _evnt.ID == e.ID).FirstAsync();
         if ( e == null)
         {
             return null;
