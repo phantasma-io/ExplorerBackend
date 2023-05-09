@@ -210,6 +210,188 @@ public partial class Endpoints
         return new TransactionResult
             { total_results = with_total == 1 ? totalResults : null, transactions = transactions };
     }
+    
+    
+    /// <summary>
+    ///     Returns the Transaction Information on the backend
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-TransactionResult'>TransactionResult</a>
+    /// </remarks>
+    /// <param name="order_by" example="id">accepted values are id or hash</param>
+    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
+    /// <param name="hash"><a href='#model-Transaction'>Transaction</a> hash</param>
+    /// <param name="hash_partial"><a href='#model-Transaction'>Transaction</a> hash (partial match)</param>
+    /// <param name="address">Address (Hash)</param>
+    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
+    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
+    /// <param name="block_hash"><a href='#model-Block'>Block</a> hash</param>
+    /// <param name="block_height">height of the <a href='#model-Block'>Block</a></param>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="with_nft" example="0">Return data with <a href='#model-NftMetadata'>nft metadata</a></param>
+    /// <param name="with_events" example="0">Return event data of <a href='#model-EventsResult'>events</a></param>
+    /// <param name="with_event_data" example="0">Return event data with more details, needs with_events to be set</param>
+    /// <param name="with_fiat" example="0">
+    ///     Return with <a href='#model-FiatPrice'>fiat_prices</a> (only
+    ///     <a href='#model-MarketEvent'>market_event</a>)
+    /// </param>
+    /// <param name="with_script" example="0">Return with script data</param>
+    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
+    [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
+    [HttpGet]
+    [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 86000, cacheTag: "transactions")]
+    public TransactionResult Transaction(
+        // ReSharper disable InconsistentNaming
+        string order_by = "id",
+        string order_direction = "asc",
+        string hash = "",
+        string hash_partial = "",
+        string address = "",
+        string date_less = "",
+        string date_greater = "",
+        string block_hash = "",
+        string block_height = "",
+        string chain = "main",
+        int with_nft = 0,
+        int with_events = 0,
+        int with_event_data = 0,
+        int with_fiat = 0,
+        int with_script = 0,
+        int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
+    {
+        long totalResults = 0;
+        Transaction[] transactions = null;
+
+        const string fiatCurrency = "USD";
+        var filter = !string.IsNullOrEmpty(hash) || !string.IsNullOrEmpty(hash_partial) ||
+                     !string.IsNullOrEmpty(address) || !string.IsNullOrEmpty(date_less) ||
+                     !string.IsNullOrEmpty(date_greater)
+                     || !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height);
+
+        try
+        {
+            #region ArgValidation
+
+            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
+
+            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+                throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
+
+            if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash.ToUpper()) )
+                throw new ApiParameterException("Unsupported value for 'hash' parameter.");
+
+            if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial.ToUpper()) )
+                throw new ApiParameterException("Unsupported value for 'hash_partial' parameter.");
+
+            if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
+                throw new ApiParameterException("Unsupported value for 'address' parameter.");
+
+            ContractMethods.Drop0x(ref address);
+
+            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
+                throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
+
+            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
+                throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
+
+            if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash.ToUpper()) )
+                throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
+
+            if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
+                throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
+
+            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+                throw new ApiParameterException("Unsupported value for 'chain' parameter.");
+
+            #endregion
+
+            var startTime = DateTime.Now;
+            using MainDbContext databaseContext = new();
+            var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
+
+            var query = databaseContext.Transactions.AsQueryable().AsNoTracking();
+
+            #region Filtering
+
+            if ( !string.IsNullOrEmpty(hash) )
+                query = query.Where(x => x.HASH == hash.ToUpper());
+
+            if ( !string.IsNullOrEmpty(hash_partial) )
+                query = query.Where(x => x.HASH.Contains(hash_partial.ToUpper()));
+
+            if ( !string.IsNullOrEmpty(date_less) )
+                query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
+
+            if ( !string.IsNullOrEmpty(date_greater) )
+                query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
+
+            if ( !string.IsNullOrEmpty(address) )
+            {
+                bool isValidAddress = Phantasma.Core.Cryptography.Address.IsValidAddress(address);
+                var addressTransactions = AddressTransactionMethods
+                    .GetAddressTransactionsByAddress(databaseContext, address, isValidAddress).ToList();
+
+                query = query.Where(x => x.AddressTransactions.Any(y => addressTransactions.Contains(y)));
+            }
+
+            if ( !string.IsNullOrEmpty(block_hash) )
+                query = query.Where(x => x.Block.HASH == block_hash.ToUpper());
+
+            if ( !string.IsNullOrEmpty(block_height) )
+                query = query.Where(x => x.Block.HEIGHT == block_height);
+
+            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Block.Chain.NAME == chain);
+
+            #endregion
+
+            // Count total number of results before adding order and limit parts of query.
+            if ( with_total == 1 )
+                totalResults = query.Count();
+
+            //in case we add more to sort
+            if ( order_direction == "asc" )
+                query = order_by switch
+                {
+                    "id" => query.OrderBy(x => x.ID),
+                    "hash" => query.OrderBy(x => x.HASH),
+                    _ => query
+                };
+            else
+                query = order_by switch
+                {
+                    "id" => query.OrderByDescending(x => x.ID),
+                    "hash" => query.OrderByDescending(x => x.HASH),
+                    _ => query
+                };
+
+            query = query.Take(1);
+
+            transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
+                fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
+            /*query.Select(_transaction => ProcessTransaction())*/
+            var responseTime = DateTime.Now - startTime;
+
+            Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
+        }
+        catch ( ApiParameterException )
+        {
+            throw;
+        }
+        catch ( Exception exception )
+        {
+            var logMessage = LogEx.Exception("Transaction()", exception);
+            throw new ApiUnexpectedException(logMessage, exception);
+        }
+
+        return new TransactionResult
+            { total_results = with_total == 1 ? totalResults : null, transactions = transactions };
+    }
 
 
     private async Task<Transaction[]> ProcessAllTransactions(MainDbContext mainDbContext, IQueryable<Database.Main.Transaction> _transactions,
