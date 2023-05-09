@@ -812,6 +812,7 @@ public partial class Endpoints
 
         foreach (var e in chunk)
         {
+            Log.Information("Processing event {id} for transaction {hash}", e.ID, x.HASH);
             tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
@@ -822,7 +823,6 @@ public partial class Endpoints
     private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        
         e = databaseContext.Events.First(_evnt => _evnt.ID == e.ID);
         if ( e == null)
         {
