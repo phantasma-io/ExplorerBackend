@@ -833,16 +833,17 @@ public partial class Endpoints
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         e = databaseContext.Events.FromSqlRaw(@"SELECT e.ID, e.TIMESTAMP_UNIX_SECONDS, e.INDEX, e.TOKEN_ID, e.BURNED, e.NSFW, e.BLACKLISTED, 
-           a.ADDRESS, a.ADDRESS_NAME, c.NAME, co.NAME, ek.NAME FROM Events e
-                INNER JOIN Addresses a ON e.AddressId = a.ID
-                INNER JOIN Chains c ON e.ChainId = c.ID
-                INNER JOIN Contracts co ON e.ContractId = co.ID
-                INNER JOIN EventKinds ek ON e.EventKindId = ek.ID
+           a.ADDRESS, a.ADDRESS_NAME, c.NAME, co.NAME, ek.NAME FROM 'Events' AS e
+                INNER JOIN 'Addresses' AS a ON e.AddressId = a.ID
+                INNER JOIN 'Chains' AS c ON e.ChainId = c.ID
+                INNER JOIN 'Contracts' AS co ON e.ContractId = co.ID
+                INNER JOIN 'EventKinds' AS ek ON e.EventKindId = ek.ID
                 WHERE e.TransactionId = {0}", x.ID).FirstOrDefault();
         if ( e == null)
         {
             return null;
         }
+        
 
         var chainName = e.Chain.NAME.ToLower();
         
