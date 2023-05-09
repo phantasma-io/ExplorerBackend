@@ -794,7 +794,7 @@ public partial class Endpoints
             .ToListAsync();
         
         Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
-        foreach ( var chunk in events.AsQueryable().AsEnumerable().Chunk(50) )
+        foreach ( var chunk in rawEvents.AsEnumerable().Chunk(50) )
         {
             tasksEvents.Add(LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
