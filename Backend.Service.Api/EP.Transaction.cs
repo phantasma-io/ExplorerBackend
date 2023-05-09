@@ -989,7 +989,7 @@ public partial class Endpoints
         
         await using MainDbContext databaseContext = new();
         
-        foreach (var e in chunk)
+        foreach (var e in chunk.AsEnumerable())
         {
             tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
