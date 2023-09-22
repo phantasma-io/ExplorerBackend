@@ -293,13 +293,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount, processed);
     }
 
-    private Address SyncAddressByName(Chain chain, string addressName, Organization organization, bool saveChanges)
+    private Address SyncAddressByName(MainDbContext databaseContext, Chain chain, string addressName, Organization organization, bool saveChanges)
     {
         var startTime = DateTime.Now;
 
         if ( string.IsNullOrEmpty(addressName) ) return null;
 
-        using MainDbContext databaseContext = new();
         var addressEntry = AddressMethods.GetByName(databaseContext, chain, addressName);
 
         if ( addressEntry == null )
