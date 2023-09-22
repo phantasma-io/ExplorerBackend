@@ -47,43 +47,50 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            try
+            while ( _running )
             {
-                //starting chain thread
-                using ( MainDbContext databaseContext = new() )
+                try
                 {
-                    InitChains();
+                    //starting chain thread
+                    using ( MainDbContext databaseContext = new() )
+                    {
+                        InitChains();
 
-                    _chainList = ChainMethods.GetChains(databaseContext).ToList();
-                    ChainNames = ChainMethods.GetChainNames(databaseContext).ToArray();
+                        _chainList = ChainMethods.GetChains(databaseContext).ToList();
+                        ChainNames = ChainMethods.GetChainNames(databaseContext).ToArray();
 
-                    //init tokens once too, cause we might need them, to keep them update, thread them later
+                        //init tokens once too, cause we might need them, to keep them update, thread them later
 
-                    foreach ( var chain in _chainList ) InitNexusData(chain.ID);
-                }
+                        foreach ( var chain in _chainList ) InitNexusData(chain.ID);
+                    }
 
-                Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, _chainList.Count);
-                foreach ( var chain in _chainList )
-                {
-                    Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name, chain.NAME,
-                        chain.ID);
+                    Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, _chainList.Count);
+                    foreach ( var chain in _chainList )
+                    {
+                        Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name,
+                            chain.NAME,
+                            chain.ID);
+
+                        StartupNexusSync(chain);
+                        StartupBlockSync(chain);
+                        StartupRomRamSync(chain);
+                        StartupSeriesSync(chain);
+                        StartupAddressSync(chain);
+                        StartupAddressFetchSync(chain);
+                        StartupInfusionSync(chain);
+                        StartupContractSync(chain);
+                        StartupContractMethodsSync(chain);
+                    }
                     
-                    StartupNexusSync(chain);
-                    StartupBlockSync(chain);
-                    StartupRomRamSync(chain);
-                    StartupSeriesSync(chain);
-                    StartupAddressSync(chain);
-                    StartupAddressFetchSync(chain);
-                    StartupInfusionSync(chain);
-                    StartupContractSync(chain);
-                    StartupContractMethodsSync(chain);
+                    // Initialization was successful
+                    break;
                 }
-            }
-            catch ( Exception e )
-            {
-                LogEx.Exception("Chains processing", e);
+                catch ( Exception e )
+                {
+                    LogEx.Exception("Chains processing", e);
 
-                Thread.Sleep(Settings.Default.TokensProcessingInterval * 1000);
+                    Thread.Sleep(Settings.Default.TokensProcessingInterval * 1000);
+                }
             }
         });
         mainThread.Start();
