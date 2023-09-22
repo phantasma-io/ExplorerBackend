@@ -18,14 +18,6 @@ namespace Database.Main;
 
 public class MainDbContext : DbContext
 {
-    // Keeping DB configs on same level as "bin" folder.
-    // If path contains "Database.Main" - it means we are running database update.
-    private static readonly string ConfigDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.Main")
-        ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..")
-        : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
-
-    private static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
-
     public DbSet<Chain> Chains { get; set; }
     public DbSet<Contract> Contracts { get; set; }
     public DbSet<Block> Blocks { get; set; }
@@ -76,19 +68,42 @@ public class MainDbContext : DbContext
     public DbSet<TokenLogoType> TokenLogoTypes { get; set; }
     public DbSet<TransactionState> TransactionStates { get; set; }
 
+    private static string DetectConfigFilePath()
+    {
+        var fileName = "explorer-backend-config.json";
+
+        // TODO move into "config" subfolder everywhere
+        // This path is valid when we are updating database on deployed server.
+        var configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..", fileName);
+        if (!File.Exists(configFile))
+        {
+            // This path is valid when we are launching our deployed server.
+            configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", fileName);
+            if (!File.Exists(configFile))
+            {
+                // Checking if we are using it locally to create/update local database.
+                configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../..", fileName);
+            }
+        }
+
+        return configFile;
+    }
 
     public static string GetConnectionString()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+        if (!string.IsNullOrEmpty(Settings.Default?.ConnectionString))
+            return Settings.Default.ConnectionString;
+
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
-        return Settings.Default.ConnectionString;
+        return Settings.Default!.ConnectionString;
     }
 
 
     //for now...
     public static int GetConnectionMaxRetries()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
         return Settings.Default.ConnectMaxRetries;
     }
@@ -97,7 +112,7 @@ public class MainDbContext : DbContext
     //for now...
     public static int GetConnectionRetryTimeout()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
         return Settings.Default.ConnectRetryTimeout;
     }
