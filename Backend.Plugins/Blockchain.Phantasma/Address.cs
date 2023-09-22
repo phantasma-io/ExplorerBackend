@@ -297,7 +297,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         var startTime = DateTime.Now;
 
-        if ( addressName.IsNullOrEmpty() ) return null;
+        if ( string.IsNullOrEmpty(addressName) ) return null;
 
         using MainDbContext databaseContext = new();
         var addressEntry = AddressMethods.GetByName(databaseContext, chain, addressName);
@@ -315,7 +315,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var address = response.RootElement.GetString();
             Log.Verbose("[{Name}] Found Address {Address} for name {AddressName}", Name, address, addressName);
 
-            if ( address.IsNullOrEmpty() ) return null;
+            if ( string.IsNullOrEmpty(address) ) return null;
 
             addressEntry = AddressMethods.Get(databaseContext, chain, address);
 
@@ -367,7 +367,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
          var startTime = DateTime.Now;
 
-        if ( symbol.IsNullOrEmpty() ) return;
+        if ( string.IsNullOrEmpty(symbol) ) return;
         
         var url = $"{Settings.Default.GetRest()}/api/v1/GetAddressesBySymbol?symbol={symbol}&extended={extended}";
         var response = Client.ApiRequest<JsonDocument>(url, out _, null, 50000);

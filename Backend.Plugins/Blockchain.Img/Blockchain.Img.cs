@@ -104,7 +104,7 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
         }
 
         var tokensWithoutLogo = TokenMethods.GetTokensWithoutLogo(databaseContext);
-        if ( !defaultImg.IsNullOrEmpty() )
+        if ( !string.IsNullOrEmpty(defaultImg) )
         {
             Log.Verbose("[{Name}] building Links for Tokens with default Image", Name);
             foreach ( var token in tokensWithoutLogo )
