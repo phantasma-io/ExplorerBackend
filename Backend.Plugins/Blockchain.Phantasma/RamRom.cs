@@ -142,8 +142,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     response = responseSaved;
                 else
                 {
-                    if ( error.Contains("nft does not exists") ||
-                         ( error.Contains("nft") && error.Contains("does not exist") ) )
+                    if ( error.ToLower().Contains("invalid cast: expected") )
+                    {
+                        // NFT is broken, getNFT chain call is failing.
+                        // TODO introduce blacklisting instead of burning.
+                        nft.BURNED = true;
+                        nft.DM_UNIX_SECONDS = UnixSeconds.Now();
+                        Log.Error("[{Name}] NFT {ID} is broken, chain error: {Error}", Name, nft.TOKEN_ID, error);
+                    }
+                    else if ( error.Contains("nft does not exists") ||
+                               ( error.Contains("nft") && error.Contains("does not exist") ) )
                     {
                         // NFT was burned, marking it.
                         nft.BURNED = true;
