@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace Database.Main;
@@ -26,29 +27,27 @@ public static class OrganizationAddressMethods
         return organizationAddress;
     }
     
-    public static void RemoveFromOrganizationAddressesIfNeeded(MainDbContext databaseContext, Organization organization, List<string> addresses, bool saveChanges = true)
+    public static void RemoveFromOrganizationAddressesIfNeeded(MainDbContext databaseContext, Organization organization, List<string> addressesOrCurrentMembers)
     {
-        if ( organization == null || !addresses.Any() ) return;
+        if ( organization == null || !addressesOrCurrentMembers.Any() ) return;
 
-        var organizationAddress = databaseContext.OrganizationAddresses.Where(x => x.OrganizationId == organization.ID).ToList();
+        var addressesToRemove = databaseContext.OrganizationAddresses
+            .Where(x => x.OrganizationId == organization.ID &&
+                        !addressesOrCurrentMembers.Contains(x.Address.ADDRESS)).ToList();
 
-        if ( !organizationAddress.Any() ) return;
-        var organizationAddressListUsers = organizationAddress.Select(x => x.Address.ADDRESS).ToList();
-        var addressesToRemoveString = organizationAddressListUsers.Except(addresses);
-        var addressesToRemove = organizationAddress.Where(x => addressesToRemoveString.Contains(x.Address.ADDRESS)).ToList();
+        if ( !addressesToRemove.Any() ) return;
         
         Log.Information("Removing {0} addresses from {1}", addressesToRemove.Count, organization.NAME);
 
         databaseContext.OrganizationAddresses.RemoveRange(addressesToRemove);
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
     public static void InsertIfNotExists(MainDbContext databaseContext, Organization organization,
-        List<string> addresses, Chain chain, bool saveChanges = true)
+        List<string> addresses, Chain chain)
     {
         if ( organization == null || !addresses.Any() ) return;
 
-        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, saveChanges);
+        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, false);
 
         var organizationAddressesToInsert = ( from address in addresses
             let organizationAddress =
@@ -59,7 +58,6 @@ public static class OrganizationAddressMethods
                 {Address = addressMap.GetValueOrDefault(address), Organization = organization} ).ToList();
 
         databaseContext.OrganizationAddresses.AddRange(organizationAddressesToInsert);
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
     
     public static IEnumerable<Organization> GetOrganizationsByAddress(MainDbContext databaseContext, string address)

@@ -212,10 +212,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     .ToList();
                                 Log.Verbose("[{Name}] got {Count} Addresses to process", Name, memberList.Count);
 
-                                OrganizationAddressMethods.RemoveFromOrganizationAddressesIfNeeded(databaseContext, orgItem, memberList, false);
+                                OrganizationAddressMethods.RemoveFromOrganizationAddressesIfNeeded(databaseContext, orgItem, memberList);
 
                                 OrganizationAddressMethods.InsertIfNotExists(databaseContext, orgItem, memberList,
-                                    chainEntry, false);
+                                    chainEntry);
                                 
 
                                 transactionEnd = DateTime.Now - transactionStart;
