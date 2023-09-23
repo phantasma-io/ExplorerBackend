@@ -28,6 +28,6 @@ public static class OrganizationMethods
     public static Organization Get(MainDbContext databaseContext, string id)
     {
         return databaseContext.Organizations
-            .FirstOrDefault(x => x.ORGANIZATION_ID == id || x.NAME == id || x.Address.ADDRESS == id);
+            .FirstOrDefault(x => x.ORGANIZATION_ID == id || x.NAME == id || x.ADDRESS == id);
     }
 }

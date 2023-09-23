@@ -738,9 +738,6 @@ public class MainDbContext : DbContext
             .HasMany(x => x.Addresses)
             .WithMany(y => y.Organizations);
 
-        modelBuilder.Entity<Organization>()
-            .Ignore(x => x.Address);
-
         /*modelBuilder.Entity<Organization>()
             .HasOne(x => x.Address)
             .WithOne(y => y.Organization)
@@ -1617,7 +1614,6 @@ public class Organization
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
     public int? CreateEventId { get; set; }
     public virtual Event CreateEvent { get; set; }
-    public virtual Address Address { get; set; }
     public virtual List<Address> Addresses { get; set; }
 }
 

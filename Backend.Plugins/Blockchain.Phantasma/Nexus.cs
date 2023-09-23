@@ -197,7 +197,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             var orgItem = OrganizationMethods.Upsert(databaseContext, organizationId, organizationName,
                                 false);
                             var addressEntry = SyncAddressByName(databaseContext, chainEntry, organizationId, orgItem, false);
-                            orgItem.Address = addressEntry;
+
                             orgItem.ADDRESS = addressEntry.ADDRESS;
                             orgItem.ADDRESS_NAME = addressEntry.ADDRESS_NAME;
 
