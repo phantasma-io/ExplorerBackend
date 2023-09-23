@@ -251,7 +251,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             while ( _running )
                 try
                 {
-                    FetchAllAddresses(chain);
+                    FetchAllAddresses(chain.NAME);
 
                     Thread.Sleep(14400 * 1000); // We sync names every NamesSyncInterval seconds (4h)
                 }

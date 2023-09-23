@@ -362,11 +362,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
     // TODO: Finish this feature 
-    private void FetchAllAddressesBySymbol(MainDbContext databaseContext, Chain chain, string symbol, bool extended = false, bool saveChanges = true)
+    private void FetchAllAddressesBySymbol(MainDbContext databaseContext, string chain, string symbol, bool extended = false, bool saveChanges = true)
     {
          var startTime = DateTime.Now;
 
         if ( string.IsNullOrEmpty(symbol) ) return;
+
+        var chainEntity = ChainMethods.Get(databaseContext, chain);
         
         var url = $"{Settings.Default.GetRest()}/api/v1/GetAddressesBySymbol?symbol={symbol}&extended={extended}";
         var response = Client.ApiRequest<JsonDocument>(url, out _, null, 50000);
@@ -384,7 +386,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         foreach ( var addressElement in addressesArray )
         {
             var addressAddress = addressElement.GetProperty("address").GetString();
-            var addressEntry = AddressMethods.Get(databaseContext, chain, addressAddress);
+            var addressEntry = AddressMethods.Get(databaseContext, chainEntity, addressAddress);
 
             /*if ( addressEntry == null )
             {
@@ -410,13 +412,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         //addresses.Add(addressAddress);
         
-        AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, saveChanges);
+        AddressMethods.InsertIfNotExists(databaseContext, chainEntity, addresses, saveChanges);
         
         var lookUpTime = DateTime.Now - startTime;
         Log.Information("Get all addresses by symbol took {Time} sec", Math.Round(lookUpTime.TotalSeconds, 3));
     }
     
-    private void FetchAllAddresses(Chain chain)
+    private void FetchAllAddresses(string chain)
     {
         MainDbContext databaseContext = new();
         var tokens = TokenMethods.GetSupportedTokens(databaseContext);
