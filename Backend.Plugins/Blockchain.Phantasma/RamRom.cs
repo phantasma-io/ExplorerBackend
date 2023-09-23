@@ -42,38 +42,26 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void NewNftsSetRomRam(int chainId, string chainName)
     {
-        int updatedNftCount = 0;
+        int updatedNftCount;
 
         do
         {
             var startTime = DateTime.Now;
 
-            using ( MainDbContext databaseContext = new() )
-            {
-                HandleSingleNFT(chainId, chainName, databaseContext, startTime, ref updatedNftCount);
-
-            } 
+            using MainDbContext databaseContext = new();
+            updatedNftCount = HandleSingleNft(chainId, chainName, databaseContext, startTime);
         }while ( updatedNftCount > 0 );
     }
 
 
-    private void HandleSingleNFT(int chainId, string chainName, MainDbContext databaseContext, DateTime startTime, ref int updatedNftCount)
+    private int HandleSingleNft(int chainId, string chainName, MainDbContext databaseContext, DateTime startTime)
     {
+        int updatedNftCount = 0;
+
         // First we take GHOST NFTs
         var nfts = databaseContext.Nfts
-            .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true /*&&
-                        x.Contract.SYMBOL.ToUpper() == "GHOST"*/).Take(MaxRomRamUpdatesForOneSession).ToList();
-
-        // If we have available quota per iteration, adding other NFTs
-        // 0.7 to avoid doing 2nd query for just couple or so NFTs
-        if ( nfts.Count < 0.7 * MaxRomRamUpdatesForOneSession )
-        {
-            var nftsOthers = databaseContext.Nfts
-                .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true /*&&
-                            x.Contract.SYMBOL.ToUpper() != "GHOST"*/)
-                .Take(MaxRomRamUpdatesForOneSession - nfts.Count).ToList();
-            nfts.AddRange(nftsOthers);
-        }
+            .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true)
+            .Take(MaxRomRamUpdatesForOneSession).ToList();
         
         foreach ( var nft in nfts )
         {
@@ -260,7 +248,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         try
         {
-            if ( updatedNftCount > 0 ) databaseContext.SaveChanges();
+            databaseContext.SaveChanges();
         }
         catch ( Exception ex )
         {
@@ -281,6 +269,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Log.Information(
             "[{Name}] RAM/ROM update took {UpdateTime} sec, {UpdatedNftCount} NFTs updated",
             Name, Math.Round(updateTime.TotalSeconds, 3), updatedNftCount);
+        
+        return updatedNftCount;
     }
 
 
