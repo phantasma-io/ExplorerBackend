@@ -18,11 +18,13 @@ public partial class Endpoints
 {
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
-    [ApiInfo(typeof(TransactionResult), "Returns a single transaction on the backend.", false, 86000, cacheTag: "transaction")]
-    public static TransactionResult Transaction(
+    [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
+    public static TransactionResult Transactions(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
+        int offset = 0,
+        int limit = 50,
         string hash = "",
         string hash_partial = "",
         string address = "",
@@ -58,6 +60,12 @@ public partial class Endpoints
 
             if ( !ArgValidation.CheckOrderDirection(order_direction) )
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
+
+            if ( !ArgValidation.CheckLimit(limit, filter) )
+                throw new ApiParameterException("Unsupported value for 'limit' parameter.");
+
+            if ( !ArgValidation.CheckOffset(offset) )
+                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash.ToUpper()) )
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
@@ -146,11 +154,14 @@ public partial class Endpoints
                     _ => query
                 };
 
-            query = query.Take(1);
+            if ( !String.IsNullOrEmpty(hash) )
+            {
+                query = query.Take(1);
+            }else if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
             transactions = ProcessAllTransactions(databaseContext, query, with_script, with_events, with_event_data, with_nft, with_fiat,
                 fiatCurrency, fiatPricesInUsd).GetAwaiter().GetResult();
-            
+            /*query.Select(_transaction => ProcessTransaction())*/
             var responseTime = DateTime.Now - startTime;
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
