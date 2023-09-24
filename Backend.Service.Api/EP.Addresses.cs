@@ -11,34 +11,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    //TODO change order_by and order_direction maybe to enum
-    /// <summary>
-    ///     Returns the Addresses on the backend.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-AddressResult'>AddressResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id, address or address_name</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
-    /// <param name="limit" example="50">how many values will max be pulled</param>
-    /// <param name="chain" example="main">Chain name</param>
-    /// <param name="address">hash of an address</param>
-    /// <param name="address_name">Name of an Address, if is has one</param>
-    /// <param name="address_partial">partial hash of an address</param>
-    /// <param name="organization_name">Filter for an Organization Name"</param>
-    /// <param name="validator_kind" example="Primary">Filter for a Validator Kind</param>
-    /// <param name="with_storage" example="0">returns data with <a href='#model-AddressStorage'>AddressStorage</a></param>
-    /// <param name="with_stakes" example="0">returns data with <a href='#model-AddressStake'>AddressStake</a></param>
-    /// <param name="with_balance" example="0">returns data with <a href='#model-AddressBalances'>AddressBalances</a></param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(AddressResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]
-    public AddressResult Addresses(
+    public static AddressResult Addresses(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",

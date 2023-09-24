@@ -12,45 +12,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    //TODO change order_by and order_direction maybe to enum
-    /// <summary>
-    ///     Returns the Blocks information from backend.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-BlockResult'>BlockResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or hash</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
-    /// <param name="limit" example="50">how many values will max be pulled</param>
-    /// <param name="hash">block hash</param>
-    /// <param name="hash_partial">hash (partial match)</param>
-    /// <param name="height">height of the <a href='#model-Block'>Block</a></param>
-    /// <param name="chain" example="main">Chain name</param>
-    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
-    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
-    /// <param name="with_transactions" example="0">
-    ///     Return data with events of the
-    ///     <a href='#model-TransactionResult'>Transactions</a>
-    /// </param>
-    /// <param name="with_events" example="0">
-    ///     Return event data of <a href='#model-EventsResult'>events</a>, needs
-    ///     with_transactions to be set
-    /// </param>
-    /// <param name="with_event_data" example="0">Return event data with more details, needs with_event_data to be set</param>
-    /// <param name="with_nft" example="0">Return data with <a href='#model-NftMetadata'>nft metadata</a></param>
-    /// <param name="with_fiat" example="0">
-    ///     Return with <a href='#model-FiatPrice'>fiat_prices</a> (only
-    ///     <a href='#model-MarketEvent'>market_event</a>)
-    /// </param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(BlockResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(BlockResult), "Returns the block information from backend.", false, 10, cacheTag: "block")]
-    public BlockResult Blocks(
+    public static BlockResult Blocks(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",

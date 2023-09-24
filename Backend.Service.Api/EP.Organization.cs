@@ -11,31 +11,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    //TODO change order_by and order_direction maybe to enum
-    /// <summary>
-    ///     Returns the Organizations on the backend.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-OrganizationResult'>OrganizationResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id, name or organization_id</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
-    /// <param name="limit" example="50">how many values will max be pulled</param>
-    /// <param name="organization_id" example="validators">Organization id</param>
-    /// <param name="organization_id_partial" example="valid">Organization id (partial)</param>
-    /// <param name="organization_name" example="Block Producers">Organization Name</param>
-    /// <param name="organization_name_partial" example="Block Pro">Organization Name (partial)</param>
-    /// <param name="with_creation_event" example="0">Return data with <a href='#model-Event'>Event</a> of the creation</param>
-    /// <param name="with_address" example="0">Return data with <a href='#model-Address'>Event</a> of the creation</param>
-    /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(OrganizationResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(OrganizationResult), "Returns the Organizations on the backend.", false, 10)]
-    public OrganizationResult Organizations(
+    public static OrganizationResult Organizations(
         // ReSharper disable InconsistentNaming
         string order_by = "name",
         string order_direction = "asc",

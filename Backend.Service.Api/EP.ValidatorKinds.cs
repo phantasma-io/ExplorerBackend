@@ -11,26 +11,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    //TODO change order_by and order_direction maybe to enum
-    /// <summary>
-    ///     Returns the ValidatorKinds on the backend.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-ValidatorKindResult'>ValidatorKindResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or name</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
-    /// <param name="limit" example="50">how many values will max be pulled</param>
-    /// <param name="validator_kind" example="Invalid">validatorKind name</param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(ValidatorKindResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ValidatorKindResult), "Returns the ValidatorKinds on the backend.", false, 10)]
-    public ValidatorKindResult ValidatorKinds(
+    public static ValidatorKindResult ValidatorKinds(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",

@@ -13,23 +13,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    /// <summary>
-    ///     Search help.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-SearchResult'>SearchResult</a>
-    /// </remarks>
-    /// <param name="value">
-    ///     Will be checked if it is an Address, a Block, a Chain, a Contract, an Organization, a Platform or a
-    ///     Token
-    /// </param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(SearchResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(SearchResult), "Returns the ValidatorKinds on the backend.", false, 10)]
-    public SearchResult Searches(
+    public static SearchResult Searches(
         // ReSharper disable InconsistentNaming
         [Required] string value
         // ReSharper enable InconsistentNaming

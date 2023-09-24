@@ -11,29 +11,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    //TODO change order_by and order_direction maybe to enum
-    /// <summary>
-    ///     Returns the Token Price History on the backend.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-HistoryPriceResult'>HistoryPriceResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or name</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
-    /// <param name="limit" example="50">how many values will max be pulled</param>
-    /// <param name="symbol" example="SOUL"></param>
-    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
-    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
-    /// <param name="with_token" example="0">Return Data with <a href='#model-Token'>Token</a></param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(HistoryPriceResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(HistoryPriceResult), "Returns the Token Price History on the backend.", false, 10)]
-    public HistoryPriceResult HistoryPrices(
+    public static HistoryPriceResult HistoryPrices(
         // ReSharper disable InconsistentNaming
         string order_by = "date",
         string order_direction = "asc",

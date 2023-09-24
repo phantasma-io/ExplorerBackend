@@ -16,41 +16,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    //TODO change order_by and order_direction maybe to enum
-    /// <summary>
-    ///     Returns the Transaction Information on the backend
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-TransactionResult'>TransactionResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or hash</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
-    /// <param name="limit" example="50">how many values will max be pulled</param>
-    /// <param name="hash"><a href='#model-Transaction'>Transaction</a> hash</param>
-    /// <param name="hash_partial"><a href='#model-Transaction'>Transaction</a> hash (partial match)</param>
-    /// <param name="address">Address (Hash)</param>
-    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
-    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
-    /// <param name="block_hash"><a href='#model-Block'>Block</a> hash</param>
-    /// <param name="block_height">height of the <a href='#model-Block'>Block</a></param>
-    /// <param name="chain" example="main">Chain name</param>
-    /// <param name="with_nft" example="0">Return data with <a href='#model-NftMetadata'>nft metadata</a></param>
-    /// <param name="with_events" example="0">Return event data of <a href='#model-EventsResult'>events</a></param>
-    /// <param name="with_event_data" example="0">Return event data with more details, needs with_events to be set</param>
-    /// <param name="with_fiat" example="0">
-    ///     Return with <a href='#model-FiatPrice'>fiat_prices</a> (only
-    ///     <a href='#model-MarketEvent'>market_event</a>)
-    /// </param>
-    /// <param name="with_script" example="0">Return with script data</param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
-    public TransactionResult Transactions(
+    public static TransactionResult Transactions(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -211,39 +180,10 @@ public partial class Endpoints
             { total_results = with_total == 1 ? totalResults : null, transactions = transactions };
     }
     
-    
-    /// <summary>
-    ///     Returns the Transaction Information on the backend
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-TransactionResult'>TransactionResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or hash</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="hash"><a href='#model-Transaction'>Transaction</a> hash</param>
-    /// <param name="hash_partial"><a href='#model-Transaction'>Transaction</a> hash (partial match)</param>
-    /// <param name="address">Address (Hash)</param>
-    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
-    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
-    /// <param name="block_hash"><a href='#model-Block'>Block</a> hash</param>
-    /// <param name="block_height">height of the <a href='#model-Block'>Block</a></param>
-    /// <param name="chain" example="main">Chain name</param>
-    /// <param name="with_nft" example="0">Return data with <a href='#model-NftMetadata'>nft metadata</a></param>
-    /// <param name="with_events" example="0">Return event data of <a href='#model-EventsResult'>events</a></param>
-    /// <param name="with_event_data" example="0">Return event data with more details, needs with_events to be set</param>
-    /// <param name="with_fiat" example="0">
-    ///     Return with <a href='#model-FiatPrice'>fiat_prices</a> (only
-    ///     <a href='#model-MarketEvent'>market_event</a>)
-    /// </param>
-    /// <param name="with_script" example="0">Return with script data</param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TransactionResult), "Returns a single transaction on the backend.", false, 86000, cacheTag: "transaction")]
-    public TransactionResult Transaction(
+    public static TransactionResult Transaction(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -394,7 +334,7 @@ public partial class Endpoints
     }
 
 
-    private async Task<Transaction[]> ProcessAllTransactions(MainDbContext mainDbContext, IQueryable<Database.Main.Transaction> _transactions,
+    private static async Task<Transaction[]> ProcessAllTransactions(MainDbContext mainDbContext, IQueryable<Database.Main.Transaction> _transactions,
         int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
@@ -827,7 +767,7 @@ public partial class Endpoints
         return results;
     }
     
-    private async Task<Transaction> ProcessTransactionAsync(Database.Main.Transaction x, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
+    private static async Task<Transaction> ProcessTransactionAsync(Database.Main.Transaction x, int with_script, int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
         Log.Information("Transactions retrieved from database, processing transaction {hash}", x.HASH);
@@ -887,7 +827,7 @@ public partial class Endpoints
         return transaction;
     }
     
-    private async Task<Event[]> CreateEventsForTransaction(Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private static async Task<Event[]> CreateEventsForTransaction(Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         if (x.Events == null)
         {
@@ -923,7 +863,7 @@ public partial class Endpoints
     }
 
 
-    private async Task<Event[]> LoadFromChunk(Database.Main.Event[] chunk, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private static async Task<Event[]> LoadFromChunk(Database.Main.Event[] chunk, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = new List<Event>();
         
@@ -940,7 +880,7 @@ public partial class Endpoints
         return tasks.ToArray();
     }
     
-    private Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+    private static Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         e = databaseContext.Events.FirstOrDefault(_event => _event.ID == e.ID);
@@ -978,7 +918,7 @@ public partial class Endpoints
         };
     }
 
-    private async Task<Event> CreateEvent(Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+    private static async Task<Event> CreateEvent(Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         await using MainDbContext databaseContext = new();
@@ -1018,7 +958,7 @@ public partial class Endpoints
     }
 
 
-    private Contract CreateContract(MainDbContext mainDbContext, Database.Main.Event e, string chainName)
+    private static Contract CreateContract(MainDbContext mainDbContext, Database.Main.Event e, string chainName)
     {
         var contract = mainDbContext.Contracts
             .Where(c => c.ID == e.ContractId)
@@ -1040,7 +980,7 @@ public partial class Endpoints
     }
 
 
-    private NftMetadata CreateNftMetadata(MainDbContext mainDbContext, Database.Main.Event e)
+    private static NftMetadata CreateNftMetadata(MainDbContext mainDbContext, Database.Main.Event e)
     {
         var nft = mainDbContext.Nfts.Where(n => n.ID == e.NftId)
             .Take(1)
@@ -1065,7 +1005,7 @@ public partial class Endpoints
     }
 
 
-    private Series CreateSeries(MainDbContext mainDbContext, Database.Main.Event e)
+    private static Series CreateSeries(MainDbContext mainDbContext, Database.Main.Event e)
     {
         //e = mainDbContext.Events.Find(e.ID);
         var series = mainDbContext.Serieses.Where(s => s.ID == e.Nft.Series.ID)
@@ -1105,7 +1045,7 @@ public partial class Endpoints
     }
 
 
-    private AddressEvent CreateAddressEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static AddressEvent CreateAddressEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         var addressEvent = mainDbContext.AddressEvents.Where(a => a.EventId == e.ID)
             .Include(a => a.Address)
@@ -1130,7 +1070,7 @@ public partial class Endpoints
     }
 
 
-    private ChainEvent CreateChainEvent(MainDbContext mainDbContext, Database.Main.Event e, string chainName)
+    private static ChainEvent CreateChainEvent(MainDbContext mainDbContext, Database.Main.Event e, string chainName)
     {
         var chainEvent = mainDbContext.ChainEvents.Where(c => c.EventId == e.ID)
             .Take(1)
@@ -1156,7 +1096,7 @@ public partial class Endpoints
     }
 
 
-    private GasEvent CreateGasEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static GasEvent CreateGasEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         var gasEvent = mainDbContext.GasEvents.Where(g => g.EventId == e.ID)
             .Include(g => g.Address)
@@ -1183,7 +1123,7 @@ public partial class Endpoints
     }
 
 
-    private HashEvent CreateHashEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static HashEvent CreateHashEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         var hashEvent =  mainDbContext.HashEvents.Where(h => h.EventId == e.ID)
             .Take(1)
@@ -1201,7 +1141,7 @@ public partial class Endpoints
     }
 
 
-    private InfusionEvent CreateInfusionEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static InfusionEvent CreateInfusionEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         var infuseEvent = mainDbContext.InfusionEvents.Where(i => i.EventId == e.ID)
             .Include(i => i.BaseToken)
@@ -1256,7 +1196,7 @@ public partial class Endpoints
     }
 
 
-    private MarketEvent CreateMarketEvent(MainDbContext mainDbContext, Database.Main.Event e, int with_fiat, string fiatCurrency,
+    private static MarketEvent CreateMarketEvent(MainDbContext mainDbContext, Database.Main.Event e, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
         var marketEvent = mainDbContext.MarketEvents.Where(m => m.EventId == e.ID)
@@ -1329,7 +1269,7 @@ public partial class Endpoints
     }
 
 
-    private OrganizationEvent CreateOrganizationEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static OrganizationEvent CreateOrganizationEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         var organizationEvent = mainDbContext.OrganizationEvents.Where(o => o.EventId == e.ID)
             .Include(o => o.Organization)
@@ -1361,7 +1301,7 @@ public partial class Endpoints
     }
 
 
-    private SaleEvent CreateSaleEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static SaleEvent CreateSaleEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         //e = mainDbContext.Events.Find(e.ID);
         var saleEvent = mainDbContext.SaleEvents.Where(s => s.EventId == e.ID)
@@ -1383,7 +1323,7 @@ public partial class Endpoints
     }
 
 
-    private StringEvent CreateStringEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static StringEvent CreateStringEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         //e = mainDbContext.Events.Find(e.ID);
         var stringEvent = mainDbContext.StringEvents.Where(s => s.EventId == e.ID)
@@ -1403,7 +1343,7 @@ public partial class Endpoints
     }
 
 
-    private TokenEvent CreateTokenEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static TokenEvent CreateTokenEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         var token = mainDbContext.TokenEvents.Where(t => t.EventId == e.ID)
             .Include(t => t.Token)
@@ -1440,7 +1380,7 @@ public partial class Endpoints
     }
 
 
-    private TransactionSettleEvent CreateTransactionSettleEvent(MainDbContext mainDbContext, Database.Main.Event e)
+    private static TransactionSettleEvent CreateTransactionSettleEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
         //e = mainDbContext.Events.Find(e.ID);
         var transactionSettleEvent = mainDbContext.TransactionSettleEvents.Where(t => t.EventId == e.ID)
@@ -1468,7 +1408,7 @@ public partial class Endpoints
         return transactionSettleEvent;
     }
 
-    private async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script,
+    private static async Task<Transaction> ProcessTransaction(Database.Main.Transaction transaction, int with_script,
         int with_events, int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
@@ -1521,7 +1461,7 @@ public partial class Endpoints
     }
 
 
-    private async Task<Event[]> HandleEvents(Database.Main.Transaction transaction, int with_events,
+    private static async Task<Event[]> HandleEvents(Database.Main.Transaction transaction, int with_events,
         int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
@@ -1537,7 +1477,7 @@ public partial class Endpoints
     }
 
 
-    private async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction,
+    private static async Task<Event> ProcessEvent(Database.Main.Event _transactionEvent, Database.Main.Transaction transaction,
         int with_event_data, int with_nft, int with_fiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {

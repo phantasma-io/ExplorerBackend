@@ -12,34 +12,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    //TODO change order_by and order_direction maybe to enum
-    /// <summary>
-    ///     Returns NFTs available on Phantasma blockchain.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-NftsResult'>SeriesResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or mint_date</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
-    /// <param name="limit" example="50">how many values will max be pulled</param>
-    /// <param name="creator">Address of asset creator</param>
-    /// <param name="owner">Address of asset owner</param>
-    /// <param name="contract_hash" example="SOUL">Token contract hash</param>
-    /// <param name="name">Asset name/description filter (partial match)</param>
-    /// <param name="chain" example="main">Chain name</param>
-    /// <param name="symbol" example="TTRS"></param>
-    /// <param name="token_id">Token ID</param>
-    /// <param name="series_id">Series ID</param>
-    /// <param name="status" example="all">Infusion status (all/active/infused)</param>
-    /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(NftsResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(NftsResult), "Returns NFTs available on Phantasma blockchain.", false, 10, cacheTag: "nfts")]
-    public NftsResult Nfts(
+    public static NftsResult Nfts(
         // ReSharper disable InconsistentNaming
         string order_by = "mint_date",
         string order_direction = "asc",

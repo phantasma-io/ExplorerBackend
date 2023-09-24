@@ -13,50 +13,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    //TODO change order_by and order_direction maybe to enum
-    /// <summary>
-    ///     Returns events available on the backend.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-EventsResult'>EventsResult</a>
-    /// </remarks>
-    /// <param name="order_by" example="id">accepted values are date, token_id or id</param>
-    /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
-    /// <param name="limit" example="50">how many values will max be pulled</param>
-    /// <param name="chain" example="main">Chain name</param>
-    /// <param name="contract" example="SOUL">Token contract hash</param>
-    /// <param name="token_id">Token ID</param>
-    /// <param name="date_day">Date day match (matches whole given day)</param>
-    /// <param name="date_less">Date (greater than), UTC unixseconds</param>
-    /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
-    /// <param name="event_kind" example="TokenMint">Event kind name</param>
-    /// <param name="event_kind_partial" example="Token">Event kind (partial match)</param>
-    /// <param name="nft_name_partial">Nft name (partial match)</param>
-    /// <param name="nft_description_partial">Nft description (partial match))</param>
-    /// <param name="address">Address (Hash)</param>
-    /// <param name="address_partial">Address (partial match) (Hash)</param>
-    /// <param name="block_hash"><a href='#model-Block'>Block</a> hash</param>
-    /// <param name="block_height">height of the <a href='#model-Block'>Block</a></param>
-    /// <param name="transaction_hash"><a href='#model-Transaction'>Transaction</a> hash</param>
-    /// <param name="event_id">Internal ID</param>
-    /// <param name="with_event_data" example="0">Return event data with more details, needs with_events to be set</param>
-    /// <param name="with_metadata" example="0">Return data with <a href='#model-NftMetadata'>nft metadata</a></param>
-    /// <param name="with_series" example="0">Return NFT <a href='#model-Series'>Series</a></param>
-    /// <param name="with_fiat" example="0">
-    ///     Return with <a href='#model-FiatPrice'>fiat_prices</a> (only
-    ///     <a href='#model-MarketEvent'>market_event</a>)
-    /// </param>
-    /// <param name="with_nsfw" example="0">Include Data that has been marked NSFW</param>
-    /// <param name="with_blacklisted" example="0">Include Data that has been marked Blacklisted</param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(EventsResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10, cacheTag: "events")]
-    public EventsResult Events(
+    public static EventsResult Events(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",

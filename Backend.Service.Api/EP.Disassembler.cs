@@ -10,19 +10,10 @@ namespace Backend.Service.Api;
 
 public partial class Endpoints
 {
-    /// <summary>
-    ///     Returns the disassembled version of the Script.
-    /// </summary>
-    /// <remarks>
-    ///     <a href='#model-DisassemblerResult'>DisassemblerResult</a>
-    /// </remarks>
-    /// <response code="200">Success</response>
-    /// <response code="400">Bad Request</response>
-    /// <response code="500">Internal Server Error</response>
     [ProducesResponseType(typeof(DisassemblerResult), ( int ) HttpStatusCode.OK)]
     [HttpPost("{script}")]
     [ApiInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script")]
-    public DisassemblerResult Instructions([FromBody] Script script)
+    public static DisassemblerResult Instructions([FromBody] Script script)
     {
         long totalResults;
         Instruction[] instructionArray;
