@@ -57,7 +57,6 @@ public class MainDbContext : DbContext
     public DbSet<Signature> Signatures { get; set; }
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
     public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
-    public DbSet<TokenPriceState> TokenPriceStates { get; set; }
     public DbSet<AddressTransaction> AddressTransactions { get; set; }
     public DbSet<AddressStake> AddressStakes { get; set; }
     public DbSet<AddressStorage> AddressStorages { get; set; }
@@ -479,12 +478,6 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Owner)
             .WithMany(y => y.TokenOwners)
             .HasForeignKey(x => x.OwnerId);
-
-        modelBuilder.Entity<Token>()
-            .HasOne(x => x.TokenPriceState)
-            .WithOne(y => y.Token)
-            .HasForeignKey<TokenPriceState>(x => x.TokenId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Token>()
             .HasOne(x => x.Contract)
@@ -1036,16 +1029,6 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.PRICE_END_USD, x.PRICE_USD});
 
         //////////////////////
-        // TokenPriceStates
-        //////////////////////
-
-        // FKs
-
-        // Indexes
-        modelBuilder.Entity<TokenPriceState>()
-            .HasIndex(x => new {x.LAST_CHECK_DATE_UNIX_SECONDS});
-
-        //////////////////////
         // AddressTransaction
         //////////////////////
 
@@ -1412,7 +1395,6 @@ public class Token
     public virtual List<InfusionEvent> InfusedSymbolInfusionEvents { get; set; }
     public virtual List<MarketEvent> BaseSymbolMarketEvents { get; set; }
     public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
-    public virtual TokenPriceState TokenPriceState { get; set; }
     public virtual List<AddressBalance> AddressBalances { get; set; }
     public int? CreateEventId { get; set; }
     public virtual Event CreateEvent { get; set; }
@@ -1816,15 +1798,6 @@ public class MarketEventFiatPrice
     public string FIAT_NAME { get; set; }
     public int MarketEventId { get; set; }
     public virtual MarketEvent MarketEvent { get; set; }
-}
-
-public class TokenPriceState
-{
-    public int ID { get; set; }
-    public int TokenId { get; set; }
-    public virtual Token Token { get; set; }
-    public long LAST_CHECK_DATE_UNIX_SECONDS { get; set; }
-    public bool COIN_GECKO { get; set; }
 }
 
 //NEW

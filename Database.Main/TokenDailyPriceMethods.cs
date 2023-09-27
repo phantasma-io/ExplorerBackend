@@ -24,8 +24,6 @@ public static class TokenDailyPricesMethods
             databaseContext.TokenDailyPrices.Add(entry);
         }
 
-        TokenPriceStateMethods.Upsert(databaseContext, token, true);
-
         foreach ( var (key, value) in pricePairs )
             switch ( key.ToUpper() )
             {
