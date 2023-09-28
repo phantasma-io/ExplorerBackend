@@ -28,6 +28,7 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
+    private bool TryCache = true;
     private void FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
         BigInteger i;
@@ -53,8 +54,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         JsonDocument blockData = null;
         TimeSpan downloadTime = default;
 
-        await using ( ApiCacheDbContext databaseApiCacheContext = new() )
+        if ( TryCache )
         {
+            await using ApiCacheDbContext databaseApiCacheContext = new();
             var highestApiBlock =
                 await Database.ApiCache.ChainMethods.GetLastProcessedBlockAsync(databaseApiCacheContext, chainName);
 
@@ -69,8 +71,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( useCache )
                 {
-                    var block = await BlockMethods.GetByHeightAsync(databaseApiCacheContext, chainName, blockHeight.ToString());
+                    var block = await BlockMethods.GetByHeightAsync(databaseApiCacheContext, chainName,
+                        blockHeight.ToString());
                     blockData = block.DATA;
+                }
+                else
+                {
+                    TryCache = false; // Disabling cache search, cache has no newer blocks
                 }
             }
         }
