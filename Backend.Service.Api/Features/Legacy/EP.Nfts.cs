@@ -57,17 +57,12 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
                 throw new ApiParameterException("Unsupported value for 'creator' parameter.");
 
-            ContractMethods.Drop0x(ref creator);
-
             if ( !string.IsNullOrEmpty(owner) && !ArgValidation.CheckAddress(owner) )
                 throw new ApiParameterException("Unsupported value for 'owner' parameter.");
-
-            ContractMethods.Drop0x(ref owner);
 
             if ( !string.IsNullOrEmpty(contract_hash) && !ArgValidation.CheckHash(contract_hash, true) )
                 throw new ApiParameterException("Unsupported value for 'contract' parameter.");
 
-            ContractMethods.Drop0x(ref contract_hash);
             if ( !string.IsNullOrEmpty(contract_hash) && string.IsNullOrEmpty(chain) )
                 throw new ApiParameterException("Pass chain when using contract filter.");
 
@@ -171,7 +166,7 @@ public partial class Endpoints
                 contract = new Contract
                 {
                     name = x.Contract.NAME,
-                    hash = ContractMethods.Prepend0x(x.Contract.HASH, x.Chain.NAME),
+                    hash = x.Contract.HASH,
                     symbol = x.Contract.SYMBOL
                 },
                 nft_metadata = new NftMetadata
@@ -223,7 +218,7 @@ public partial class Endpoints
                         contract = new Contract
                         {
                             name = x.InfusedInto.Contract.NAME,
-                            hash = ContractMethods.Prepend0x(x.InfusedInto.Contract.HASH, x.InfusedInto.Chain.NAME),
+                            hash = x.InfusedInto.Contract.HASH,
                             symbol = x.InfusedInto.Contract.SYMBOL
                         }
                     }

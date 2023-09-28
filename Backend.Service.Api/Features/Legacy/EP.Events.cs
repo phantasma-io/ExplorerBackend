@@ -84,8 +84,6 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true) )
                 throw new ApiParameterException("Unsupported value for 'contract' parameter.");
 
-            ContractMethods.Drop0x(ref contract);
-
             if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
                 throw new ApiParameterException("Unsupported value for 'token_id' parameter.");
 
@@ -114,15 +112,11 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            ContractMethods.Drop0x(ref address);
-
             if ( !string.IsNullOrEmpty(address) && string.IsNullOrEmpty(chain) )
                 throw new ApiParameterException("Pass chain when using address filter.");
 
             if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
                 throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
-
-            ContractMethods.Drop0x(ref address_partial);
 
             if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
                 throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
@@ -240,7 +234,7 @@ public partial class Endpoints
                     contract = new Contract
                     {
                         name = x.Contract.NAME,
-                        hash = ContractMethods.Prepend0x(x.Contract.HASH, x.Chain.NAME),
+                        hash = x.Contract.HASH,
                         symbol = x.Contract.SYMBOL
                     },
                     nft_metadata = with_metadata == 1 && x.Nft != null

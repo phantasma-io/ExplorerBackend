@@ -198,7 +198,7 @@ public partial class Endpoints
                                 contract = new Contract
                                 {
                                     name = e.Contract.NAME,
-                                    hash = ContractMethods.Prepend0x(e.Contract.HASH, e.Chain.NAME),
+                                    hash = e.Contract.HASH,
                                     symbol = e.Contract.SYMBOL
                                 },
                                 nft_metadata = with_nft == 1 && e.Nft != null

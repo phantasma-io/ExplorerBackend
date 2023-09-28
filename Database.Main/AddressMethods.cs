@@ -11,8 +11,6 @@ public static class AddressMethods
     // Returns new or existing entry's Id.
     public static Address Upsert(MainDbContext databaseContext, int chainId, string address, bool saveChanges = true)
     {
-        ContractMethods.Drop0x(ref address);
-
         var entry = databaseContext.Addresses
             .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
 
@@ -58,8 +56,6 @@ public static class AddressMethods
 
     public static Address Get(MainDbContext databaseContext, Chain chain, string address)
     {
-        ContractMethods.Drop0x(ref address);
-
         var entry = databaseContext.Addresses.FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
 
         if ( entry != null ) return entry;
@@ -100,9 +96,6 @@ public static class AddressMethods
 
         foreach ( var address in addresses )
         {
-            var addressString = address;
-            ContractMethods.Drop0x(ref addressString);
-
             var entry = databaseContext.Addresses.FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
             if ( entry == null )
             {
@@ -127,8 +120,6 @@ public static class AddressMethods
 
     public static Address Upsert(MainDbContext databaseContext, Chain chain, string address, bool saveChanges = true)
     {
-        ContractMethods.Drop0x(ref address);
-
         var entry = databaseContext.Addresses
             .FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
 

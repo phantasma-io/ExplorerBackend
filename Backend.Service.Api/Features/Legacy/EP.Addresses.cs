@@ -59,12 +59,8 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            ContractMethods.Drop0x(ref address);
-
             if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
                 throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
-
-            ContractMethods.Drop0x(ref address_partial);
 
             if ( !string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name) )
                 throw new ApiParameterException("Unsupported value for 'address_name' parameter.");

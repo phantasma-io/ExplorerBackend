@@ -13,8 +13,6 @@ public static class TransactionMethods
         string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
         bool saveChanges = true)
     {
-        ContractMethods.Drop0x(ref hash);
-
         var entry = databaseContext.Transactions
             .FirstOrDefault(x => x.Block == block && x.HASH == hash) ?? DbHelper
             .GetTracked<Transaction>(databaseContext)

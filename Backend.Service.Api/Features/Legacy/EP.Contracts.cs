@@ -102,7 +102,7 @@ public partial class Endpoints
             contractArray = query.Skip(offset).Take(limit).Select(x => new Contract
                 {
                     name = x.NAME,
-                    hash = ContractMethods.Prepend0x(x.HASH, x.Chain.NAME),
+                    hash = x.HASH,
                     symbol = x.SYMBOL,
                     address = x.Address != null
                         ? new Address
@@ -144,7 +144,7 @@ public partial class Endpoints
                             contract = new Contract
                             {
                                 name = x.CreateEvent.Contract.NAME,
-                                hash = ContractMethods.Prepend0x(x.CreateEvent.Contract.HASH, x.CreateEvent.Chain.NAME),
+                                hash = x.CreateEvent.Contract.HASH,
                                 symbol = x.CreateEvent.Contract.SYMBOL
                             },
                             string_event = x.CreateEvent.StringEvent != null

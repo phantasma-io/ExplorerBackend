@@ -76,8 +76,6 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            ContractMethods.Drop0x(ref address);
-
             if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
                 throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 

@@ -114,7 +114,7 @@ public partial class Endpoints
                     contract = new Contract
                     {
                         name = x.Contract.NAME,
-                        hash = ContractMethods.Prepend0x(x.Contract.HASH, x.Contract.Chain.NAME),
+                        hash = x.Contract.HASH,
                         symbol = x.Contract.SYMBOL,
                         methods = x.Contract.ContractMethod != null ? x.Contract.ContractMethod.METHODS : null
                     },

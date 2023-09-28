@@ -648,7 +648,7 @@ public partial class Endpoints
             .Select(c => new Contract
             {
                 name = c.NAME,
-                hash = ContractMethods.Prepend0x(c.HASH, chainName),
+                hash = c.HASH,
                 symbol = c.SYMBOL
             })
             .FirstOrDefault();
@@ -1175,7 +1175,7 @@ public partial class Endpoints
         _event.contract = new Contract
         {
             name = _transactionEvent.Contract.NAME,
-            hash = ContractMethods.Prepend0x(_transactionEvent.Contract.HASH, _transactionEvent.Chain.NAME),
+            hash = _transactionEvent.Contract.HASH,
             symbol = _transactionEvent.Contract.SYMBOL
         };
         _event.nft_metadata = with_nft == 1 && _transactionEvent.Nft != null

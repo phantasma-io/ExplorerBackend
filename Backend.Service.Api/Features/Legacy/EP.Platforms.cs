@@ -146,7 +146,7 @@ public partial class Endpoints
                         contract = new Contract
                         {
                             name = x.CreateEvent.Contract.NAME,
-                            hash = ContractMethods.Prepend0x(x.CreateEvent.Contract.HASH, x.CreateEvent.Chain.NAME),
+                            hash = x.CreateEvent.Contract.HASH,
                             symbol = x.CreateEvent.Contract.SYMBOL
                         },
                         string_event = x.CreateEvent.StringEvent != null

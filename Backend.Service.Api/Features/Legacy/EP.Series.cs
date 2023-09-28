@@ -59,8 +59,6 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
                 throw new ApiParameterException("Unsupported value for 'creator' parameter.");
 
-            ContractMethods.Drop0x(ref creator);
-
             if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
@@ -69,8 +67,6 @@ public partial class Endpoints
 
             if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true) )
                 throw new ApiParameterException("Unsupported value for 'contract' parameter.");
-
-            ContractMethods.Drop0x(ref contract);
 
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                 throw new ApiParameterException("Unsupported value for 'symbol' parameter.");
