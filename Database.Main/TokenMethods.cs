@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
 
 namespace Database.Main;
@@ -16,16 +17,16 @@ public static class TokenMethods
     // Returns new or existing entry's Id.
 
 
-    public static Token Upsert(MainDbContext databaseContext, Chain chain, string contractHash, string symbol,
+    public static async Task<Token> UpsertAsync(MainDbContext databaseContext, Chain chain, string contractHash, string symbol,
         int decimals, bool fungible, bool transferable, bool finite, bool divisible, bool fuel, bool stakable,
         bool fiat, bool swappable, bool burnable, bool mintable, string address, string owner, string currentSupply,
         string maxSupply,
-        string burnedSupply, string scriptRaw, bool saveChanges = true)
+        string burnedSupply, string scriptRaw)
     {
-        var contractEntry = ContractMethods.Upsert(databaseContext, symbol, chain, contractHash, symbol);
+        var contractEntry = await ContractMethods.UpsertAsync(databaseContext, symbol, chain, contractHash, symbol);
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
-        var ownerEntry = AddressMethods.Upsert(databaseContext, chain, owner, saveChanges);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address, false);
+        var ownerEntry = AddressMethods.Upsert(databaseContext, chain, owner, false);
 
 
         var entry = Get(databaseContext, chain, symbol);
@@ -82,9 +83,7 @@ public static class TokenMethods
                 BURNED_SUPPLY_RAW = burnedSupply,
                 SCRIPT_RAW = scriptRaw
             };
-            databaseContext.Tokens.Add(entry);
-
-            if ( saveChanges ) databaseContext.SaveChanges();
+            await databaseContext.Tokens.AddAsync(entry);
         }
 
         return entry;

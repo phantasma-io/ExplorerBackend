@@ -140,10 +140,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 mintable = true;
 
 
-                        var tokenEntry = TokenMethods.Upsert(databaseContext, chainEntry, tokenSymbol, tokenSymbol,
+                        var tokenEntry = TokenMethods.UpsertAsync(databaseContext, chainEntry, tokenSymbol, tokenSymbol,
                             tokenDecimal, fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable,
-                            burnable, mintable, address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw,
-                            false);
+                            burnable, mintable, address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw).Result;
 
                         if ( token.TryGetProperty("external", out var externalsProperty) )
                         {

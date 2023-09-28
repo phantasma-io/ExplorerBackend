@@ -238,8 +238,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             if ( contractEntry == null )
                             {
                                 transactionStart = DateTime.Now;
-                                contractEntry = ContractMethods.Upsert(databaseContext, contract, chainEntry,
-                                    evnt.Contract, null, false);
+                                contractEntry = await ContractMethods.UpsertAsync(databaseContext, contract, chainEntry,
+                                    evnt.Contract, null);
                                 transactionEnd = DateTime.Now - transactionStart;
                                 Log.Verbose("[{Name}] Added Contract {Contract} in {Time} sec",
                                     Name, contract, Math.Round(transactionEnd.TotalSeconds, 3));
@@ -287,9 +287,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         symbolFungible.Add(infusionEventData.BaseSymbol, fungible);
                                     }
 
-                                    contractEntry = ContractMethods.Upsert(databaseContext, contract, chainEntry,
-                                        infusionEventData.BaseSymbol.ToUpper(), infusionEventData.BaseSymbol.ToUpper(),
-                                        false);
+                                    contractEntry = await ContractMethods.UpsertAsync(databaseContext, contract, chainEntry,
+                                        infusionEventData.BaseSymbol.ToUpper(), infusionEventData.BaseSymbol.ToUpper());
 
                                     var tokenId = infusionEventData.TokenID.ToString();
 
@@ -349,8 +348,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         symbolFungible.Add(tokenEventData.Symbol, fungible);
                                     }
 
-                                    contractEntry = ContractMethods.Upsert(databaseContext, contract, chainEntry,
-                                        tokenEventData.Symbol.ToUpper(), tokenEventData.Symbol.ToUpper(), false);
+                                    contractEntry = await ContractMethods.UpsertAsync(databaseContext, contract, chainEntry,
+                                        tokenEventData.Symbol.ToUpper(), tokenEventData.Symbol.ToUpper());
 
                                     var tokenValue = tokenEventData.Value.ToString();
 
@@ -428,9 +427,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         marketEventData.ID, addressString, contract, marketEventData.Type);
 
 
-                                    contractEntry = ContractMethods.Upsert(databaseContext, contract, chainEntry,
-                                        marketEventData.BaseSymbol.ToUpper(), marketEventData.BaseSymbol.ToUpper(),
-                                        false);
+                                    contractEntry = await ContractMethods.UpsertAsync(databaseContext, contract, chainEntry,
+                                        marketEventData.BaseSymbol.ToUpper(), marketEventData.BaseSymbol.ToUpper());
 
                                     var tokenId = marketEventData.ID.ToString();
 
@@ -533,9 +531,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         case EventKind.ContractDeploy:
                                         {
                                             //we might have to create the contract here, better be sure
-                                            var contractItem = ContractMethods.Upsert(databaseContext, stringData,
+                                            var contractItem = await ContractMethods.UpsertAsync(databaseContext, stringData,
                                                 chainEntry, stringData,
-                                                null, false);
+                                                null);
                                             //we do it like this, to be sure it is only set here
                                             contractItem.CreateEvent = eventEntry;
 

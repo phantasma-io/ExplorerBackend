@@ -53,12 +53,11 @@ public static class ContractMethods
     }
 
 
-    public static Contract Upsert(MainDbContext databaseContext, string name, Chain chain, string hash, string symbol,
-        bool saveChanges = true)
+    public static async Task<Contract> UpsertAsync(MainDbContext databaseContext, string name, Chain chain, string hash, string symbol)
     {
         //also check data in cache
         var contract =
-            databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hash && x.SYMBOL == symbol) ??
+            await databaseContext.Contracts.FirstOrDefaultAsync(x => x.Chain == chain && x.HASH == hash && x.SYMBOL == symbol) ??
             DbHelper.GetTracked<Contract>(databaseContext)
                 .FirstOrDefault(x => x.Chain == chain && x.HASH == hash && x.SYMBOL == symbol);
 
@@ -66,9 +65,7 @@ public static class ContractMethods
 
         contract = new Contract {NAME = name, Chain = chain, HASH = hash, SYMBOL = symbol};
 
-        databaseContext.Contracts.Add(contract);
-
-        if ( saveChanges ) databaseContext.SaveChanges();
+        await databaseContext.Contracts.AddAsync(contract);
 
         return contract;
     }
