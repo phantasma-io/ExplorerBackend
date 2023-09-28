@@ -216,15 +216,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             var kind = Enum.Parse<EventKind>(kindSerialized);
 
                             transactionStart = DateTime.Now;
-                            var eventKindEntry =
-                                await EventKindMethods.GetByNameAsync(databaseContext, chainEntry, kind.ToString());
-                            if ( eventKindEntry == null )
-                            {
-                                var chain = ChainMethods.Get(databaseContext, chainName);
-                                var kindId = EventKindMethods.Upsert(databaseContext, chain, kind.ToString(), false);
-
-                                eventKindEntry = EventKindMethods.GetById(databaseContext, kindId);
-                            }
+                            var eventKindEntry = await EventKindMethods.UpsertAsync(databaseContext, chainEntry, kind.ToString());
 
                             transactionEnd = DateTime.Now - transactionStart;
                             Log.Verbose("[{Name}] Added/Got EventKindEntry {Kind} in {Time} sec",

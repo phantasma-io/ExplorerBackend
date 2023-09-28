@@ -12,52 +12,26 @@ public static class EventKindMethods
     // Returns new or existing entry's Id.
 
 
-    public static int Upsert(MainDbContext databaseContext, Chain chain, string name, bool saveChanges = true)
+    public static async Task<EventKind> UpsertAsync(MainDbContext databaseContext, Chain chain, string name)
     {
-        var entry = databaseContext.EventKinds.FirstOrDefault(x => x.Chain == chain && x.NAME == name);
-        if ( entry != null ) return entry.ID;
+        var entry = await databaseContext.EventKinds.FirstOrDefaultAsync(x => x.Chain == chain && x.NAME == name);
+        if ( entry != null ) return entry;
 
+        // Checking if entry has been added already
+        // but not yet inserted into database.
+        entry = DbHelper.GetTracked<EventKind>(databaseContext)
+            .FirstOrDefault(x => x.Chain == chain && x.NAME == name);
+        if ( entry != null ) return entry;
+        
         entry = new EventKind {Chain = chain, NAME = name};
-        databaseContext.EventKinds.Add(entry);
+        await databaseContext.EventKinds.AddAsync(entry);
 
-        if ( !saveChanges ) return entry.ID;
-
-        try
-        {
-            databaseContext.SaveChanges();
-        }
-        catch ( Exception ex )
-        {
-            // TODO should not happen since GetTrackedObjects() is called,
-            // leaving it here just in case.
-            // This catch not helping for async code structure of EVM plugin.
-            var exMessage = ex.ToString();
-            if ( exMessage.Contains("duplicate key value violates unique constraint") &&
-                 exMessage.Contains("IX_EventKinds_ChainId_NAME") )
-            {
-                // We tried to create same event in two threads concurrently.
-                // Now we should just remove duplicating event and get an existing event.
-                databaseContext.EventKinds.Remove(entry);
-                entry = databaseContext.EventKinds.First(x =>
-                    x.Chain == chain && x.NAME == name);
-            }
-            else
-                // Unknown exception.
-                throw;
-        }
-
-        return entry.ID;
+        return entry;
     }
 
 
     public static Task<EventKind> GetByNameAsync(MainDbContext databaseContext, Chain chain, string name)
     {
         return databaseContext.EventKinds.FirstOrDefaultAsync(x => x.Chain == chain && x.NAME == name);
-    }
-
-
-    public static EventKind GetById(MainDbContext databaseContext, int id)
-    {
-        return databaseContext.EventKinds.FirstOrDefault(x => x.ID == id);
     }
 }
