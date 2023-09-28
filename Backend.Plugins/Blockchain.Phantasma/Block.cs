@@ -28,15 +28,8 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    // When we reach this number of new loaded events, we report it in log.
-    private const int MaxEventsForOneSession = 1000;
-    private static int _overallEventsLoadedCount;
-
-
     private void FetchBlocksRange(int chainId, string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
-        var startTime = DateTime.Now;
-
         BigInteger i;
         using ( MainDbContext databaseContext = new() )
         {
@@ -45,16 +38,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         
         if ( i < fromHeight ) i = fromHeight;
         
-        _overallEventsLoadedCount = 0;
-        while ( FetchByHeight(i, chainId, chainName).Result && 
-                _overallEventsLoadedCount < MaxEventsForOneSession &&
+        while ( FetchByHeight(i, chainId, chainName).Result &&
                 i <= toHeight
-               ) i++;
-
-        var fetchTime = DateTime.Now - startTime;
-        Log.Information(
-            "[{Name}] Events load took {FetchTime} sec, {OverallEventsLoadedCount} events added",
-            Name, Math.Round(fetchTime.TotalSeconds, 3), _overallEventsLoadedCount);
+              )
+        {
+            i++;
+        }
     }
 
     private async Task<bool> FetchByHeight(BigInteger blockHeight, int chainId, string chainName)
@@ -274,8 +263,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 Name, kind, eventIndex + 1, Math.Round(transactionEnd.TotalSeconds, 3));
 
                             if ( eventAdded ) eventsAddedCount++;
-
-                            _overallEventsLoadedCount++;
 
                             transactionStart = DateTime.Now;
                             switch ( kind )
