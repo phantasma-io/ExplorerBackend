@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.ApiCache;
 
@@ -52,19 +54,19 @@ public static class ChainMethods
     }
 
 
-    public static Chain Get(ApiCacheDbContext databaseContext, int id)
+    public static Task<Chain> GetAsync(ApiCacheDbContext databaseContext, int id)
     {
-        return databaseContext.Chains.Single(x => x.ID == id);
+        return databaseContext.Chains.SingleAsync(x => x.ID == id);
     }
 
 
-    public static BigInteger? GetLastProcessedBlock(ApiCacheDbContext databaseContext, int chainId)
+    public static async Task<BigInteger?> GetLastProcessedBlockAsync(ApiCacheDbContext databaseContext, int chainId)
     {
-        var chain = Get(databaseContext, chainId);
+        var chain = await GetAsync(databaseContext, chainId);
 
         if ( chain?.CURRENT_HEIGHT == null ) return null;
 
-        return BigInteger.Parse(Get(databaseContext, chainId).CURRENT_HEIGHT);
+        return BigInteger.Parse(chain.CURRENT_HEIGHT);
     }
 
 

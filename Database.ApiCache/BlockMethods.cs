@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.ApiCache;
 
@@ -9,9 +11,9 @@ public static class BlockMethods
 {
     // Checks if table has entry with given height,
     // and adds new entry, if there's no entry available.
-    public static Block GetByHeight(ApiCacheDbContext databaseContext, int chainId, string height)
+    public static Task<Block> GetByHeightAsync(ApiCacheDbContext databaseContext, int chainId, string height)
     {
-        return databaseContext.Blocks.FirstOrDefault(x => x.ChainId == chainId && x.HEIGHT == height);
+        return databaseContext.Blocks.FirstOrDefaultAsync(x => x.ChainId == chainId && x.HEIGHT == height);
     }
 
 

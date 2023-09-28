@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Backend.Api;
 using Backend.Commons;
 using Backend.PluginEngine;
@@ -45,7 +46,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         if ( i < fromHeight ) i = fromHeight;
         
         _overallEventsLoadedCount = 0;
-        while ( FetchByHeight(i, chainId, chainName) && 
+        while ( FetchByHeight(i, chainId, chainName).Result && 
                 _overallEventsLoadedCount < MaxEventsForOneSession &&
                 i <= toHeight
                ) i++;
@@ -79,7 +80,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 i = Settings.Default.FirstBlock;
 
             _overallEventsLoadedCount = 0;
-            while ( FetchByHeight(i, chainId, chainName) && _overallEventsLoadedCount < MaxEventsForOneSession ) i++;
+            while ( FetchByHeight(i, chainId, chainName).Result && _overallEventsLoadedCount < MaxEventsForOneSession ) i++;
 
             var fetchTime = DateTime.Now - startTime;
             Log.Information(
@@ -89,17 +90,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
 
-    private bool FetchByHeight(BigInteger blockHeight, int chainId, string chainName)
+    private async Task<bool> FetchByHeight(BigInteger blockHeight, int chainId, string chainName)
     {
         var startTime = DateTime.Now;
 
         JsonDocument blockData = null;
         TimeSpan downloadTime = default;
 
-        using ( ApiCacheDbContext databaseApiCacheContext = new() )
+        await using ( ApiCacheDbContext databaseApiCacheContext = new() )
         {
             var highestApiBlock =
-                Database.ApiCache.ChainMethods.GetLastProcessedBlock(databaseApiCacheContext, chainId);
+                await Database.ApiCache.ChainMethods.GetLastProcessedBlockAsync(databaseApiCacheContext, chainId);
 
             //just to be sure
             if ( highestApiBlock != null )
@@ -112,7 +113,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( useCache )
                 {
-                    var block = BlockMethods.GetByHeight(databaseApiCacheContext, chainId, blockHeight.ToString());
+                    var block = await BlockMethods.GetByHeightAsync(databaseApiCacheContext, chainId, blockHeight.ToString());
                     blockData = block.DATA;
                 }
             }
@@ -158,7 +159,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Dictionary<string, Nft> nftsInThisBlock = new();
         Dictionary<string, bool> symbolFungible = new();
 
-        using MainDbContext databaseContext = new();
+        await using MainDbContext databaseContext = new();
         try
         {
             var timestampUnixSeconds = blockData.RootElement.GetProperty("timestamp").GetUInt32();
@@ -176,7 +177,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 timestampUnixSeconds, blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward,
                 false);
 
-            using ( ApiCacheDbContext databaseApiCacheContext = new() )
+            await using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
                 BlockMethods.Upsert(databaseApiCacheContext, blockHeight.ToString(), timestampUnixSeconds, blockData,
                     Database.ApiCache.ChainMethods.Get(databaseApiCacheContext, chainName));
@@ -787,7 +788,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             ChainMethods.SetLastProcessedBlock(databaseContext, chainId, blockHeight, false);
 
             transactionStart = DateTime.Now;
-            databaseContext.SaveChanges();
+            await databaseContext.SaveChangesAsync();
             transactionEnd = DateTime.Now - transactionStart;
             Log.Verbose("[{Name}] Commit took {Time} sec, after Process of Block {Height}", Name,
                 Math.Round(transactionEnd.TotalSeconds, 3), blockHeight);
