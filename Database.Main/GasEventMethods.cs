@@ -1,16 +1,17 @@
 using System.Numerics;
+using System.Threading.Tasks;
 using Backend.Commons;
 
 namespace Database.Main;
 
 public static class GasEventMethods
 {
-    public static GasEvent Upsert(MainDbContext databaseContext, string address, string price, string amount,
+    public static async Task<GasEvent> UpsertAsync(MainDbContext databaseContext, string address, string price, string amount,
         Event databaseEvent, Chain chain)
     {
         if ( string.IsNullOrEmpty(address) || string.IsNullOrEmpty(price) || string.IsNullOrEmpty(amount) ) return null;
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address);
+        var addressEntry = await AddressMethods.UpsertAsync(databaseContext, chain, address);
 
         //get KCAL token here, to find out the decimals
         var decimals = TokenMethods.GetKcalDecimals(databaseContext, chain);
@@ -25,7 +26,7 @@ public static class GasEventMethods
             Event = databaseEvent
         };
 
-        databaseContext.GasEvents.Add(gasEvent);
+        await databaseContext.GasEvents.AddAsync(gasEvent);
 
         return gasEvent;
     }

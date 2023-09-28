@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -117,10 +119,10 @@ public static class AddressMethods
     }
 
 
-    public static Address Upsert(MainDbContext databaseContext, Chain chain, string address)
+    public static async Task<Address> UpsertAsync(MainDbContext databaseContext, Chain chain, string address)
     {
-        var entry = databaseContext.Addresses
-            .FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
+        var entry = await databaseContext.Addresses
+            .FirstOrDefaultAsync(x => x.Chain == chain && x.ADDRESS == address);
 
         if ( entry != null ) return entry;
 
@@ -132,7 +134,7 @@ public static class AddressMethods
         if ( entry != null ) return entry;
 
         entry = new Address {Chain = chain, ADDRESS = address};
-        databaseContext.Addresses.Add(entry);
+        await databaseContext.Addresses.AddAsync(entry);
 
         return entry;
     }

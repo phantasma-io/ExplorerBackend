@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Backend.Api;
 using Backend.Commons;
 using Backend.PluginEngine;
@@ -293,7 +294,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount, processed);
     }
 
-    private Address SyncAddressByName(MainDbContext databaseContext, Chain chain, string addressName, Organization organization)
+    private async Task<Address> SyncAddressByNameAsync(MainDbContext databaseContext, Chain chain, string addressName, Organization organization)
     {
         var startTime = DateTime.Now;
 
@@ -336,7 +337,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     name = jsonName.GetString();
                 }
-                addressEntry = AddressMethods.Upsert(databaseContext, chain, address);
+                addressEntry = await AddressMethods.UpsertAsync(databaseContext, chain, address);
                 if ( name == "anonymous" ) name = null;
 
                 addressEntry.ADDRESS_NAME = name;

@@ -136,7 +136,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var chainEntry = ChainMethods.Get(databaseContext, chainName);
 
             // Block in main database
-            var block = Database.Main.BlockMethods.Upsert(databaseContext, chainEntry, blockHeight,
+            var block = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, blockHeight,
                 timestampUnixSeconds, blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward);
 
             await using ( ApiCacheDbContext databaseApiCacheContext = new() )
@@ -183,7 +183,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     // Current transaction
                     var scriptRaw = tx.GetProperty("script").GetString();
 
-                    var transaction = TransactionMethods.Upsert(databaseContext, block, txIndex,
+                    var transaction = await TransactionMethods.UpsertAsync(databaseContext, block, txIndex,
                         tx.GetProperty("hash").GetString(), tx.GetProperty("timestamp").GetUInt32(),
                         tx.GetProperty("payload").GetString(), scriptRaw, tx.GetProperty("result").GetString(),
                         tx.GetProperty("fee").GetString(), tx.GetProperty("expiration").GetUInt32(),
@@ -245,7 +245,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             }
 
                             transactionStart = DateTime.Now;
-                            var addressEntry = AddressMethods.Upsert(databaseContext, chainEntry, addressString);
+                            var addressEntry = await AddressMethods.UpsertAsync(databaseContext, chainEntry, addressString);
                             transactionEnd = DateTime.Now - transactionStart;
                             Log.Verbose("[{Name}] Added Address {Address} in {Time} sec",
                                 Name, addressString, Math.Round(transactionEnd.TotalSeconds, 3));
@@ -609,7 +609,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     //databaseEvent we need it here, so check it
                                     if ( eventEntry != null )
-                                        AddressEventMethods.Upsert(databaseContext, address, eventEntry, chainEntry);
+                                        await AddressEventMethods.UpsertAsync(databaseContext, address, eventEntry, chainEntry);
 
                                     break;
                                 }
@@ -652,7 +652,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     //databaseEvent we need it here, so check it
                                     if ( eventEntry != null )
-                                        GasEventMethods.Upsert(databaseContext, address, price, amount, eventEntry,
+                                        await GasEventMethods.UpsertAsync(databaseContext, address, price, amount, eventEntry,
                                             chainEntry);
 
                                     break;
@@ -682,7 +682,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     //databaseEvent we need it here, so check it
                                     if ( eventEntry != null )
-                                        OrganizationEventMethods.Upsert(databaseContext, organization, memberAddress,
+                                        await OrganizationEventMethods.UpsertAsync(databaseContext, organization, memberAddress,
                                             eventEntry, chainEntry);
 
                                     break;
