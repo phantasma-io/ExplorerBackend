@@ -22,7 +22,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private static List<Chain> _chainList;
 
-    private readonly Queue<Tuple<string, int, long>> _methodQueue = new();
+    private readonly Queue<Tuple<string, string, long>> _methodQueue = new();
     private bool _running = true;
     public override string Name => "PHA";
     public string[] ChainNames { get; private set; }
@@ -134,7 +134,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 try
                 {
                     height = GetCurrentBlockHeight(chain.NAME);
-                    FetchBlocksRange(chain.ID, chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height);
+                    FetchBlocksRange(chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height);
 
                     Thread.Sleep(Settings.Default.BlocksProcessingInterval *
                                  1000); // We sync blocks every BlocksProcessingInterval seconds

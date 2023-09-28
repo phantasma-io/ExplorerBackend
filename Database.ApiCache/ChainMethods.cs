@@ -54,15 +54,15 @@ public static class ChainMethods
     }
 
 
-    public static Task<Chain> GetAsync(ApiCacheDbContext databaseContext, int id)
+    public static Task<Chain> GetAsync(ApiCacheDbContext databaseContext, string name)
     {
-        return databaseContext.Chains.SingleAsync(x => x.ID == id);
+        return databaseContext.Chains.SingleAsync(x => x.SHORT_NAME == name);
     }
 
 
-    public static async Task<BigInteger?> GetLastProcessedBlockAsync(ApiCacheDbContext databaseContext, int chainId)
+    public static async Task<BigInteger?> GetLastProcessedBlockAsync(ApiCacheDbContext databaseContext, string chainName)
     {
-        var chain = await GetAsync(databaseContext, chainId);
+        var chain = await GetAsync(databaseContext, chainName);
 
         if ( chain?.CURRENT_HEIGHT == null ) return null;
 

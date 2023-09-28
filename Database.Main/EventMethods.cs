@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -80,12 +81,12 @@ public static class EventMethods
     }
 
 
-    public static Event UpdateValues(MainDbContext databaseContext, out bool eventUpdated, Event eventItem, Nft nft,
+    public static async Task<(Event, bool)> UpdateValuesAsync(MainDbContext databaseContext, Event eventItem, Nft nft,
         string tokenId, Chain chain, EventKind eventKind, Contract contract)
     {
-        eventUpdated = false;
+        var eventUpdated = false;
 
-        if ( eventItem == null ) return null;
+        if ( eventItem == null ) return (null, eventUpdated);
 
         eventItem.Chain = chain;
         eventItem.Contract = contract;
@@ -95,8 +96,8 @@ public static class EventMethods
 
         eventUpdated = true;
 
-        var burnEvent = EventKindMethods.GetByName(databaseContext, chain, "TokenBurn");
-        if ( burnEvent == null || eventKind != burnEvent || nft == null ) return eventItem;
+        var burnEvent = await EventKindMethods.GetByNameAsync(databaseContext, chain, "TokenBurn");
+        if ( burnEvent == null || eventKind != burnEvent || nft == null ) return (eventItem, eventUpdated);
 
         //TODO check if always needed
         // For burns we must release all infused nfts.
@@ -106,6 +107,6 @@ public static class EventMethods
         var updateTime = DateTime.Now - startTime;
         Log.Verbose("Process Burned, processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
 
-        return eventItem;
+        return (eventItem, eventUpdated);
     }
 }

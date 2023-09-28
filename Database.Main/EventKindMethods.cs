@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -48,9 +50,9 @@ public static class EventKindMethods
     }
 
 
-    public static EventKind GetByName(MainDbContext databaseContext, Chain chain, string name)
+    public static Task<EventKind> GetByNameAsync(MainDbContext databaseContext, Chain chain, string name)
     {
-        return databaseContext.EventKinds.FirstOrDefault(x => x.Chain == chain && x.NAME == name);
+        return databaseContext.EventKinds.FirstOrDefaultAsync(x => x.Chain == chain && x.NAME == name);
     }
 
 

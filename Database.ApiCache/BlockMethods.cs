@@ -11,9 +11,9 @@ public static class BlockMethods
 {
     // Checks if table has entry with given height,
     // and adds new entry, if there's no entry available.
-    public static Task<Block> GetByHeightAsync(ApiCacheDbContext databaseContext, int chainId, string height)
+    public static Task<Block> GetByHeightAsync(ApiCacheDbContext databaseContext, string chainName, string height)
     {
-        return databaseContext.Blocks.FirstOrDefaultAsync(x => x.ChainId == chainId && x.HEIGHT == height);
+        return databaseContext.Blocks.FirstOrDefaultAsync(x => x.Chain.SHORT_NAME == chainName && x.HEIGHT == height);
     }
 
 

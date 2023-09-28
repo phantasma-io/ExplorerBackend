@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -72,9 +74,9 @@ public static class ContractMethods
     }
 
 
-    public static Contract Get(MainDbContext databaseContext, Chain chain, string name, string hash)
+    public static async Task<Contract> GetAsync(MainDbContext databaseContext, Chain chain, string name, string hash)
     {
-        return databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.NAME == name && x.HASH == hash) ??
+        return await databaseContext.Contracts.FirstOrDefaultAsync(x => x.Chain == chain && x.NAME == name && x.HASH == hash) ??
                DbHelper.GetTracked<Contract>(databaseContext)
                    .FirstOrDefault(x => x.Chain == chain && x.NAME == name && x.HASH == hash);
     }

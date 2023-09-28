@@ -28,17 +28,17 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private void FetchBlocksRange(int chainId, string chainName, BigInteger fromHeight, BigInteger toHeight)
+    private void FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
         BigInteger i;
         using ( MainDbContext databaseContext = new() )
         {
-            i = ChainMethods.GetLastProcessedBlock(databaseContext, chainId) + 1;
+            i = ChainMethods.GetLastProcessedBlock(databaseContext, chainName) + 1;
         }
         
         if ( i < fromHeight ) i = fromHeight;
         
-        while ( FetchByHeight(i, chainId, chainName).Result &&
+        while ( FetchByHeight(i, chainName).Result &&
                 i <= toHeight
               )
         {
@@ -46,7 +46,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
     }
 
-    private async Task<bool> FetchByHeight(BigInteger blockHeight, int chainId, string chainName)
+    private async Task<bool> FetchByHeight(BigInteger blockHeight, string chainName)
     {
         var startTime = DateTime.Now;
 
@@ -56,7 +56,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         await using ( ApiCacheDbContext databaseApiCacheContext = new() )
         {
             var highestApiBlock =
-                await Database.ApiCache.ChainMethods.GetLastProcessedBlockAsync(databaseApiCacheContext, chainId);
+                await Database.ApiCache.ChainMethods.GetLastProcessedBlockAsync(databaseApiCacheContext, chainName);
 
             //just to be sure
             if ( highestApiBlock != null )
@@ -69,7 +69,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( useCache )
                 {
-                    var block = await BlockMethods.GetByHeightAsync(databaseApiCacheContext, chainId, blockHeight.ToString());
+                    var block = await BlockMethods.GetByHeightAsync(databaseApiCacheContext, chainName, blockHeight.ToString());
                     blockData = block.DATA;
                 }
             }
@@ -126,7 +126,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var validatorAddress = blockData.RootElement.GetProperty("validatorAddress").GetString();
             var reward = blockData.RootElement.GetProperty("reward").GetString();
 
-            var chainEntry = ChainMethods.Get(databaseContext, chainId);
+            var chainEntry = ChainMethods.Get(databaseContext, chainName);
 
             // Block in main database
             var block = Database.Main.BlockMethods.Upsert(databaseContext, chainEntry, blockHeight,
@@ -210,12 +210,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                             transactionStart = DateTime.Now;
                             var eventKindEntry =
-                                EventKindMethods.GetByName(databaseContext, chainEntry, kind.ToString());
+                                await EventKindMethods.GetByNameAsync(databaseContext, chainEntry, kind.ToString());
                             if ( eventKindEntry == null )
                             {
-                                using MainDbContext context = new();
-                                var chain = ChainMethods.Get(context, chainId);
-                                var kindId = EventKindMethods.Upsert(context, chain, kind.ToString());
+                                var chain = ChainMethods.Get(databaseContext, chainName);
+                                var kindId = EventKindMethods.Upsert(databaseContext, chain, kind.ToString(), false);
 
                                 eventKindEntry = EventKindMethods.GetById(databaseContext, kindId);
                             }
@@ -236,7 +235,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                             //create here the event, and below update the data if needed
                             var contractEntry =
-                                ContractMethods.Get(databaseContext, chainEntry, contract, evnt.Contract);
+                                await ContractMethods.GetAsync(databaseContext, chainEntry, contract, evnt.Contract);
                             if ( contractEntry == null )
                             {
                                 transactionStart = DateTime.Now;
@@ -321,7 +320,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
 
                                     //parse also a new contract, just in case
-                                    eventEntry = EventMethods.UpdateValues(databaseContext, out var eventUpdated,
+                                    (eventEntry, var eventUpdated) = await EventMethods.UpdateValuesAsync(databaseContext,
                                         eventEntry, nft, tokenId, chainEntry, eventKindEntry, contractEntry);
 
                                     Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
@@ -389,7 +388,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     }
 
                                     //parse also a new contract, just in case
-                                    eventEntry = EventMethods.UpdateValues(databaseContext, out var eventUpdated,
+                                    (eventEntry, var eventUpdated) = await EventMethods.UpdateValuesAsync(databaseContext,
                                         eventEntry, nft, tokenValue, chainEntry, eventKindEntry, contractEntry);
 
                                     Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
@@ -466,7 +465,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     }
 
                                     //parse also a new contract, just in case
-                                    eventEntry = EventMethods.UpdateValues(databaseContext, out var eventUpdated,
+                                    (eventEntry, var eventUpdated) = await EventMethods.UpdateValuesAsync(databaseContext,
                                         eventEntry, nft, tokenId, chainEntry, eventKindEntry, contractEntry);
 
                                     Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
@@ -497,7 +496,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         case EventKind.ContractUpgrade:
                                         {
-                                            var queueTuple = new Tuple<string, int, long>(stringData, chainId,
+                                            var queueTuple = new Tuple<string, string, long>(stringData, chainName,
                                                 timestampUnixSeconds);
                                             if ( !_methodQueue.Contains(queueTuple) )
                                             {
@@ -739,7 +738,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
             }
 
-            ChainMethods.SetLastProcessedBlock(databaseContext, chainId, blockHeight, false);
+            ChainMethods.SetLastProcessedBlock(databaseContext, chainName, blockHeight, false);
 
             transactionStart = DateTime.Now;
             await databaseContext.SaveChangesAsync();

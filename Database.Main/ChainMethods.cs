@@ -44,16 +44,16 @@ public static class ChainMethods
     }
 
 
-    public static BigInteger GetLastProcessedBlock(MainDbContext databaseContext, int chainId)
+    public static BigInteger GetLastProcessedBlock(MainDbContext databaseContext, string chainName)
     {
-        return BigInteger.Parse(Get(databaseContext, chainId).CURRENT_HEIGHT);
+        return BigInteger.Parse(Get(databaseContext, chainName).CURRENT_HEIGHT);
     }
 
 
-    public static void SetLastProcessedBlock(MainDbContext databaseContext, int chainId, BigInteger height,
+    public static void SetLastProcessedBlock(MainDbContext databaseContext, string chainName, BigInteger height,
         bool saveChanges = true)
     {
-        var chain = Get(databaseContext, chainId);
+        var chain = Get(databaseContext, chainName);
         chain.CURRENT_HEIGHT = height.ToString();
 
         if ( saveChanges ) databaseContext.SaveChanges();
