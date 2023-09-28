@@ -99,14 +99,7 @@ public partial class Endpoints
                 symbol = x.Token != null ? x.Token.SYMBOL : null,
                 price = new Price
                 {
-                    usd = x.PRICE_USD != 0 ? x.PRICE_USD : null,
-                    eur = x.PRICE_EUR != 0 ? x.PRICE_EUR : null,
-                    gbp = x.PRICE_GBP != 0 ? x.PRICE_GBP : null,
-                    jpy = x.PRICE_JPY != 0 ? x.PRICE_JPY : null,
-                    cad = x.PRICE_CAD != 0 ? x.PRICE_CAD : null,
-                    aud = x.PRICE_AUD != 0 ? x.PRICE_AUD : null,
-                    cny = x.PRICE_CNY != 0 ? x.PRICE_CNY : null,
-                    rub = x.PRICE_RUB != 0 ? x.PRICE_RUB : null
+                    usd = x.PRICE_USD != 0 ? x.PRICE_USD : null
                 },
                 token = with_token == 1 && x.Token != null
                     ? new Token

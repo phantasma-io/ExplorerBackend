@@ -1459,41 +1459,6 @@ public class Price
     ///     US Dollar
     /// </summary>
     public decimal? usd { get; set; }
-
-    /// <summary>
-    ///     Euro
-    /// </summary>
-    public decimal? eur { get; set; }
-
-    /// <summary>
-    ///     Pound Sterling
-    /// </summary>
-    public decimal? gbp { get; set; }
-
-    /// <summary>
-    ///     Japanese Yen
-    /// </summary>
-    public decimal? jpy { get; set; }
-
-    /// <summary>
-    ///     Canadian Dollar
-    /// </summary>
-    public decimal? cad { get; set; }
-
-    /// <summary>
-    ///     Australian Dollar
-    /// </summary>
-    public decimal? aud { get; set; }
-
-    /// <summary>
-    ///     Chinese Yuan
-    /// </summary>
-    public decimal? cny { get; set; }
-
-    /// <summary>
-    ///     Russian Rubel
-    /// </summary>
-    public decimal? rub { get; set; }
 }
 
 /// <summary>

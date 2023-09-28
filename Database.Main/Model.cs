@@ -1405,17 +1405,7 @@ public class TokenDailyPrice
 {
     public int ID { get; set; }
     public long DATE_UNIX_SECONDS { get; set; }
-    public decimal PRICE_SOUL { get; set; }
-    public decimal PRICE_NEO { get; set; }
-    public decimal PRICE_ETH { get; set; }
     public decimal PRICE_USD { get; set; }
-    public decimal PRICE_EUR { get; set; }
-    public decimal PRICE_GBP { get; set; }
-    public decimal PRICE_JPY { get; set; }
-    public decimal PRICE_CAD { get; set; }
-    public decimal PRICE_AUD { get; set; }
-    public decimal PRICE_CNY { get; set; }
-    public decimal PRICE_RUB { get; set; }
     public int TokenId { get; set; }
     public virtual Token Token { get; set; }
 
@@ -1423,7 +1413,7 @@ public class TokenDailyPrice
     public override string ToString()
     {
         return
-            $"Token daily price '{Token.SYMBOL}' for {UnixSeconds.Log(DATE_UNIX_SECONDS)}: SOUL: {PRICE_SOUL}, NEO: {PRICE_NEO}, ETH: {PRICE_ETH}, USD: {PRICE_USD}, EUR: {PRICE_EUR}, GBP: {PRICE_GBP}, JPY: {PRICE_JPY}, CAD: {PRICE_CAD}, AUD: {PRICE_AUD}, CNY: {PRICE_CNY}, RUB: {PRICE_RUB}";
+            $"Token daily price '{Token.SYMBOL}' for {UnixSeconds.Log(DATE_UNIX_SECONDS)}: USD: {PRICE_USD}";
     }
 }
 
