@@ -1,32 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace Database.Main;
 
 public static class OrganizationAddressMethods
 {
-    public static OrganizationAddress Upsert(MainDbContext databaseContext, Organization organization, string address,
-        int chainId, bool saveChanges = true)
-    {
-        if ( organization == null || string.IsNullOrEmpty(address) ) return null;
-
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, address, saveChanges);
-
-        var organizationAddress = databaseContext.OrganizationAddresses.FirstOrDefault(x =>
-            x.Address.ADDRESS == address && x.Organization == organization);
-
-        if ( organizationAddress != null ) return organizationAddress;
-
-        organizationAddress = new OrganizationAddress {Address = addressEntry, Organization = organization};
-
-        databaseContext.OrganizationAddresses.Add(organizationAddress);
-        if ( saveChanges ) databaseContext.SaveChanges();
-
-        return organizationAddress;
-    }
-    
     public static void RemoveFromOrganizationAddressesIfNeeded(MainDbContext databaseContext, Organization organization, List<string> addressesOrCurrentMembers)
     {
         if ( organization == null || !addressesOrCurrentMembers.Any() ) return;

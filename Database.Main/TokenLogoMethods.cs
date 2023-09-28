@@ -5,38 +5,6 @@ namespace Database.Main;
 
 public static class TokenLogoMethods
 {
-    public static TokenLogo Upsert(MainDbContext databaseContext, Token token, string name, string url,
-        bool saveChanges = true)
-    {
-        var tokenLogoType = TokenLogoTypeMethods.Upsert(databaseContext, name);
-
-        var tokenLogo =
-            databaseContext.TokenLogos.FirstOrDefault(x => x.Token == token && x.TokenLogoType == tokenLogoType) ??
-            DbHelper
-                .GetTracked<TokenLogo>(databaseContext)
-                .FirstOrDefault(x => x.Token == token && x.TokenLogoType == tokenLogoType);
-
-        if ( tokenLogo == null )
-        {
-            tokenLogo = new TokenLogo
-            {
-                Token = token,
-                URL = url,
-                TokenLogoType = tokenLogoType
-            };
-            databaseContext.TokenLogos.Add(tokenLogo);
-
-            if ( saveChanges ) databaseContext.SaveChanges();
-        }
-        else
-            tokenLogo.URL = url;
-
-        if ( saveChanges ) databaseContext.SaveChanges();
-
-        return tokenLogo;
-    }
-
-
     public static void InsertIfNotExistList(MainDbContext databaseContext, Token token,
         Dictionary<string, string> tokenLogoList, bool saveChanges = true)
     {

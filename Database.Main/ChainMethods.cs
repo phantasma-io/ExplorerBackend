@@ -65,14 +65,6 @@ public static class ChainMethods
         return dbContext.Chains.ToList();
     }
 
-
-    public static List<int> GetChainsIds(MainDbContext dbContext)
-    {
-        var chainList = GetChains(dbContext);
-        return chainList.Select(chain => chain.ID).ToList();
-    }
-
-
     public static List<string> GetChainNames(MainDbContext dbContext)
     {
         return GetChains(dbContext).Select(chain => chain.NAME).ToList();

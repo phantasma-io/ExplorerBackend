@@ -25,11 +25,4 @@ public static class PlatformMethods
         return databaseContext.Platforms
             .FirstOrDefault(x => x.NAME == name);
     }
-
-
-    public static Platform Get(MainDbContext databaseContext, string name, string chain)
-    {
-        return databaseContext.Platforms
-            .FirstOrDefault(x => x.NAME == name && x.CHAIN == chain);
-    }
 }

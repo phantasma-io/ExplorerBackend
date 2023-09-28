@@ -22,22 +22,6 @@ public static class FiatExchangeRateMethods
         if ( saveChanges ) databaseContext.SaveChanges();
     }
 
-
-    public static decimal Convert(MainDbContext databaseContext, decimal price, string fromSymbol, string toSymbol)
-    {
-        var usdPrice = databaseContext.FiatExchangeRates.Where(x => x.SYMBOL == fromSymbol).Select(x => x.USD_PRICE)
-            .SingleOrDefault();
-        if ( usdPrice == 0 ) return 0;
-
-        price /= usdPrice;
-
-        var toSymbolPrice = databaseContext.FiatExchangeRates.Where(x => x.SYMBOL == toSymbol)
-            .Select(x => x.USD_PRICE)
-            .SingleOrDefault();
-        return price * toSymbolPrice;
-    }
-
-
     // Gets fiat prices dictionary against USD.
     // Dictionary key contains fiat currency symbol, and value contains price in USD.
     public static Dictionary<string, decimal> GetPrices(MainDbContext databaseContext)
@@ -59,34 +43,6 @@ public static class FiatExchangeRateMethods
         price /= usdPrice;
 
         var toSymbolPrice = fiatPricesInUsd.Where(x => x.Key == toSymbol).Select(x => x.Value).SingleOrDefault();
-        return price * toSymbolPrice;
-    }
-
-
-    public static decimal ConvertEx(IEnumerable<TokenMethods.TokenPrice> tokenPrices,
-        Dictionary<string, decimal> fiatPricesInUsd,
-        string priceInTokens, string quoteSymbol, decimal price, string fromSymbol, string toSymbol)
-    {
-        if ( price == 0 )
-        {
-            // This is needed to calculate today's prices when usd price is not yet available.
-            // TODO think of something better.
-            if ( !string.IsNullOrEmpty(priceInTokens) && !string.IsNullOrEmpty(quoteSymbol) )
-                return ( decimal ) TokenMethods.CalculatePrice(tokenPrices, priceInTokens, quoteSymbol);
-
-            return 0;
-        }
-
-        if ( string.IsNullOrEmpty(fromSymbol) || string.IsNullOrEmpty(toSymbol) || fromSymbol == toSymbol )
-            return price; // No calculation is needed.
-
-        var usdPrice = fiatPricesInUsd.Where(x => x.Key == fromSymbol).Select(x => x.Value).SingleOrDefault();
-        if ( usdPrice == 0 ) return 0;
-
-        price /= usdPrice;
-
-        var toSymbolPrice = fiatPricesInUsd.Where(x => x.Key == toSymbol).Select(x => x.Value).SingleOrDefault();
-
         return price * toSymbolPrice;
     }
 }

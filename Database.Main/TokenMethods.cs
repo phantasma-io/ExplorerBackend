@@ -90,42 +90,10 @@ public static class TokenMethods
         return entry;
     }
 
-
     public static Token Get(MainDbContext databaseContext, int chainId, string symbol)
     {
         return databaseContext.Tokens.SingleOrDefault(x => x.ChainId == chainId && x.SYMBOL == symbol);
     }
-
-
-    public static int[] GetIds(MainDbContext databaseContext, string symbols,
-        bool returnNonexistentAddressIfNoneFound = true, string defaultChain = null)
-    {
-        var values = symbols.Contains(',') ? symbols.Split(',') : new[] {symbols};
-
-        // Getting tokens' ids.
-        var ids = new List<int>();
-        for ( var i = 0; i < values.Length; i++ )
-            if ( string.IsNullOrEmpty(defaultChain) )
-                ids.AddRange(databaseContext.Tokens.Where(x => string.Equals(x.SYMBOL.ToUpper(), values[i].ToUpper()))
-                    .Select(x => x.ID).ToArray());
-            else
-                ids.AddRange(databaseContext.Tokens
-                    .Where(x => string.Equals(x.SYMBOL.ToUpper(), values[i].ToUpper()) &&
-                                string.Equals(x.Chain.NAME.ToUpper(), defaultChain.ToUpper()))
-                    .Select(x => x.ID).ToArray());
-
-        if ( returnNonexistentAddressIfNoneFound && ids.Count == 0 ) ids.Add(0);
-
-        return ids.ToArray();
-    }
-
-
-    // Returns all token symbols currently used in auctions.
-    public static List<string> GetSymbols(MainDbContext databaseContext)
-    {
-        return databaseContext.Tokens.Select(x => x.SYMBOL).ToList();
-    }
-
 
     // Returns all supported token symbols <chainShortName, tokenSymbol>.
     public static List<Symbol> GetSupportedTokens(MainDbContext databaseContext)
@@ -298,20 +266,6 @@ public static class TokenMethods
 
         return ( double ) ( tokenPrice * priceInTokensDecimal );
     }
-
-
-    public static double CalculatePrice(IEnumerable<TokenPrice> prices, decimal priceInTokens, string tokenSymbol)
-    {
-        if ( priceInTokens == 0 || string.IsNullOrEmpty(tokenSymbol) ) return 0;
-
-        var tokenPrice = prices
-            .Where(x => string.Equals(x.Symbol.ToUpper(), tokenSymbol.ToUpper()))
-            .Select(x => x.Price)
-            .FirstOrDefault();
-
-        return ( double ) ( tokenPrice * priceInTokens );
-    }
-
 
     public static Token Get(MainDbContext databaseContext, int id)
     {

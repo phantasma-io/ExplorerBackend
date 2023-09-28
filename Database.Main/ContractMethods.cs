@@ -37,12 +37,6 @@ public static class ContractMethods
     }
 
 
-    public static void Prepend0x(ref string contract, string chainShortName = null)
-    {
-        contract = Prepend0x(contract, chainShortName);
-    }
-
-
     // Checks if "Contracts" table has entry with given hash,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.

@@ -45,13 +45,6 @@ public static class EventMethods
         return dbContext.Events.OrderByDescending(x => x.ID).Skip(skip).FirstOrDefault();
     }
 
-
-    public static Event GetById(MainDbContext dbContext, int id)
-    {
-        return dbContext.Events.FirstOrDefault(x => x.ID == id);
-    }
-
-
     public static Event Upsert(MainDbContext databaseContext,
         out bool newEventCreated,
         long timestampUnixSeconds,

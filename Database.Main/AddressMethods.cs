@@ -4,61 +4,8 @@ using System.Linq;
 
 namespace Database.Main;
 
-public class AddressParsed
-{
-    public readonly string address;
-    public readonly bool caseSensitive;
-    public readonly string chain;
-
-
-    public AddressParsed(string address, string chainShortName = null)
-    {
-        this.address = ParseExtendedFormat(address, out caseSensitive, out chain, chainShortName);
-    }
-
-
-    private static string ParseExtendedFormat(string address, out bool caseSensitivity,
-        out string resultingChainShortName, string chainShortName = null)
-    {
-        if ( address.Contains(':') )
-        {
-            var parsed = address.Split(':');
-            if ( parsed.Length != 2 ) throw new Exception($"Incorrect address format: '{address}'.");
-
-            chainShortName = parsed[0];
-            address = parsed[1];
-        }
-
-        caseSensitivity = true;
-
-        resultingChainShortName = chainShortName;
-
-        ContractMethods.Drop0x(ref address);
-
-        return address;
-    }
-}
-
 public static class AddressMethods
 {
-    public static string Prepend0x(string address, string chainShortName = null, bool lowercaseWhenApplicable = true)
-    {
-        if ( string.IsNullOrEmpty(address) ) return address;
-
-        // return "0x" + (lowercaseWhenApplicable ? address.ToLower() : address);
-
-        return address;
-    }
-
-
-    private static AddressParsed[] ParseExtendedFormat(string addresses, string chainShortName = null)
-    {
-        var values = addresses.Contains(',') ? addresses.Split(',') : new[] {addresses};
-
-        return values.Select(value => new AddressParsed(value, chainShortName)).ToArray();
-    }
-
-
     // Checks if "Addresses" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.

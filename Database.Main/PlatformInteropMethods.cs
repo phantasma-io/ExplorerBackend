@@ -6,32 +6,6 @@ namespace Database.Main;
 
 public static class PlatformInteropMethods
 {
-    public static void Upsert(MainDbContext databaseContext, string localAddress, string externalAddress, int chainId,
-        Platform platform, bool saveChanges = true)
-    {
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, localAddress, saveChanges);
-
-        var platformInterop =
-            databaseContext.PlatformInterops.FirstOrDefault(x =>
-                x.EXTERNAL == externalAddress && x.LocalAddressId == addressEntry.ID);
-        if ( platformInterop != null )
-            return;
-
-
-        platformInterop = new PlatformInterop
-            {EXTERNAL = externalAddress, LocalAddress = addressEntry, Platform = platform};
-
-        databaseContext.PlatformInterops.Add(platformInterop);
-        if ( saveChanges ) databaseContext.SaveChanges();
-    }
-
-
-    public static PlatformInterop Get(MainDbContext databaseContext, string externalAddress)
-    {
-        return databaseContext.PlatformInterops.FirstOrDefault(x => x.EXTERNAL == externalAddress);
-    }
-
-
     public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> interopList,
         Chain chain, Platform platform, bool saveChanges = true)
     {

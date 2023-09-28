@@ -50,29 +50,14 @@ public static class BlockMethods
         return entry;
     }
 
-
     public static Block Get(MainDbContext databaseContext, int dbBlockId)
     {
         return databaseContext.Blocks.FirstOrDefault(x => x.ID == dbBlockId);
     }
 
-
-    public static async Task<Block> GetByHeightAsync(MainDbContext databaseContext, int chainId, BigInteger height)
-    {
-        return await databaseContext.Blocks.AsQueryable()
-            .Where(x => x.ChainId == chainId && x.HEIGHT == height.ToString()).FirstOrDefaultAsync();
-    }
-
-
     public static Block GetHighestBlock(MainDbContext dbContext, int chainId)
     {
         var id = dbContext.Blocks.Where(x => x.ChainId == chainId).Max(x => ( int? ) x.ID);
         return id != null ? Get(dbContext, ( int ) id) : null;
-    }
-
-
-    public static Block GetByHash(MainDbContext databaseContext, string hash)
-    {
-        return databaseContext.Blocks.FirstOrDefault(x => x.HASH == hash);
     }
 }
