@@ -57,39 +57,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Name, Math.Round(fetchTime.TotalSeconds, 3), _overallEventsLoadedCount);
     }
 
-    private void FetchBlocks(int chainId, string chainName)
-    {
-        //not needed anymore, normally 
-        CheckData(chainId);
-
-        do
-        {
-            var startTime = DateTime.Now;
-
-
-            BigInteger i;
-            using ( MainDbContext databaseContext = new() )
-            {
-                i = ChainMethods.GetLastProcessedBlock(databaseContext, chainId) + 1;
-            }
-
-            if ( i == 1 )
-                // 16664: First CROWN NFT minted on Phantasma blockchain at 2019-12-30 19:11:09.
-                // 21393: First NFT minted on Phantasma blockchain at 2020-02-14 16:03:50.
-                // 31172: First NFT traded on Phantasma blockchain at 2020-02-28 12:15:51.
-                i = Settings.Default.FirstBlock;
-
-            _overallEventsLoadedCount = 0;
-            while ( FetchByHeight(i, chainId, chainName).Result && _overallEventsLoadedCount < MaxEventsForOneSession ) i++;
-
-            var fetchTime = DateTime.Now - startTime;
-            Log.Information(
-                "[{Name}] Events load took {FetchTime} sec, {OverallEventsLoadedCount} events added",
-                Name, Math.Round(fetchTime.TotalSeconds, 3), _overallEventsLoadedCount);
-        } while ( _overallEventsLoadedCount > 0 );
-    }
-
-
     private async Task<bool> FetchByHeight(BigInteger blockHeight, int chainId, string chainName)
     {
         var startTime = DateTime.Now;
