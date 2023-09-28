@@ -74,7 +74,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     interop.GetProperty("external").GetString())).ToList();
 
                             PlatformInteropMethods.InsertIfNotExists(databaseContext, interopList, chainEntry,
-                                platformItem, false);
+                                platformItem);
 
                             transactionEnd = DateTime.Now - transactionStart;
                             Log.Verbose("[{Name}] Processed {Count} InteropItems in {Time} sec", Name,

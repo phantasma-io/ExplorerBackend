@@ -26,7 +26,7 @@ public static class OrganizationAddressMethods
     {
         if ( organization == null || !addresses.Any() ) return;
 
-        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, false);
+        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, addresses);
 
         var organizationAddressesToInsert = ( from address in addresses
             let organizationAddress =

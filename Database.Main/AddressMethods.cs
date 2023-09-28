@@ -85,7 +85,7 @@ public static class AddressMethods
 
 
     public static Dictionary<string, Address> InsertIfNotExists(MainDbContext databaseContext, Chain chain,
-        List<string> addresses, bool saveChanges = true)
+        List<string> addresses)
     {
         if ( !addresses.Any() || chain == null ) return null;
 
@@ -112,7 +112,6 @@ public static class AddressMethods
         }
 
         databaseContext.Addresses.AddRange(addressesToInsert);
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return addressMap;
     }

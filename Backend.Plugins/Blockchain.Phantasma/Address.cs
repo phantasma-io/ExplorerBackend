@@ -362,7 +362,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
     // TODO: Finish this feature 
-    private void FetchAllAddressesBySymbol(MainDbContext databaseContext, string chain, string symbol, bool extended = false, bool saveChanges = true)
+    private void FetchAllAddressesBySymbol(MainDbContext databaseContext, string chain, string symbol, bool extended = false)
     {
          var startTime = DateTime.Now;
 
@@ -412,7 +412,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         //addresses.Add(addressAddress);
         
-        AddressMethods.InsertIfNotExists(databaseContext, chainEntity, addresses, saveChanges);
+        AddressMethods.InsertIfNotExists(databaseContext, chainEntity, addresses);
         
         var lookUpTime = DateTime.Now - startTime;
         Log.Information("Get all addresses by symbol took {Time} sec", Math.Round(lookUpTime.TotalSeconds, 3));
@@ -426,7 +426,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             Log.Verbose("[{Symbol}] Fetching all the users.", token.NativeSymbol);
 
-            FetchAllAddressesBySymbol(databaseContext, chain, token.NativeSymbol, false, true);
+            MainDbContext databaseContext2 = new();
+            FetchAllAddressesBySymbol(databaseContext2, chain, token.NativeSymbol, false);
+            databaseContext2.SaveChanges();
         }
     }
 }
