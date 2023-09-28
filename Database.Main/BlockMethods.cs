@@ -11,8 +11,7 @@ public static class BlockMethods
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
     public static Block Upsert(MainDbContext databaseContext, Chain chain, BigInteger height, long timestampUnixSeconds,
-        string hash, string previousHash, int protocol, string chainAddress, string validatorAddress, string reward,
-        bool saveChanges = true)
+        string hash, string previousHash, int protocol, string chainAddress, string validatorAddress, string reward)
     {
         var entry = databaseContext.Blocks.FirstOrDefault(x =>
             x.Chain == chain && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds && x.HEIGHT == height.ToString());
@@ -26,8 +25,8 @@ public static class BlockMethods
 
         if ( entry != null ) return entry;
 
-        var chainAddressEntry = AddressMethods.Upsert(databaseContext, chain, chainAddress, saveChanges);
-        var validatorAddressEntry = AddressMethods.Upsert(databaseContext, chain, validatorAddress, saveChanges);
+        var chainAddressEntry = AddressMethods.Upsert(databaseContext, chain, chainAddress);
+        var validatorAddressEntry = AddressMethods.Upsert(databaseContext, chain, validatorAddress);
 
 
         entry = new Block
@@ -44,8 +43,6 @@ public static class BlockMethods
         };
 
         databaseContext.Blocks.Add(entry);
-
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return entry;
     }

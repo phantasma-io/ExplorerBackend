@@ -25,8 +25,8 @@ public static class TokenMethods
     {
         var contractEntry = await ContractMethods.UpsertAsync(databaseContext, symbol, chain, contractHash, symbol);
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address, false);
-        var ownerEntry = AddressMethods.Upsert(databaseContext, chain, owner, false);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address);
+        var ownerEntry = AddressMethods.Upsert(databaseContext, chain, owner);
 
 
         var entry = Get(databaseContext, chain, symbol);

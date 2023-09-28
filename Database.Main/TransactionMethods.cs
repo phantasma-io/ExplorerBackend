@@ -10,8 +10,7 @@ public static class TransactionMethods
     // Returns new or existing entry's Id.
     public static Transaction Upsert(MainDbContext databaseContext, Block block, int txIndex, string hash,
         long timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, long expiration,
-        string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
-        bool saveChanges = true)
+        string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget)
     {
         var entry = databaseContext.Transactions
             .FirstOrDefault(x => x.Block == block && x.HASH == hash) ?? DbHelper
@@ -20,10 +19,10 @@ public static class TransactionMethods
 
         if ( entry != null ) return entry;
 
-        var transactionState = TransactionStateMethods.Upsert(databaseContext, state, saveChanges);
-        var senderAddress = AddressMethods.Upsert(databaseContext, block.Chain, sender, saveChanges);
-        var gasPayerAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasPayer, saveChanges);
-        var gasTargetAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasTarget, saveChanges);
+        var transactionState = TransactionStateMethods.Upsert(databaseContext, state, false);
+        var senderAddress = AddressMethods.Upsert(databaseContext, block.Chain, sender);
+        var gasPayerAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasPayer);
+        var gasTargetAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasTarget);
 
         var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, block.Chain);
         entry = new Transaction
@@ -49,8 +48,6 @@ public static class TransactionMethods
         };
 
         databaseContext.Transactions.Add(entry);
-
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return entry;
     }

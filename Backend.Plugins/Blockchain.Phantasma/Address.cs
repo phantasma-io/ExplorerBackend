@@ -293,7 +293,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount, processed);
     }
 
-    private Address SyncAddressByName(MainDbContext databaseContext, Chain chain, string addressName, Organization organization, bool saveChanges)
+    private Address SyncAddressByName(MainDbContext databaseContext, Chain chain, string addressName, Organization organization)
     {
         var startTime = DateTime.Now;
 
@@ -336,7 +336,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     name = jsonName.GetString();
                 }
-                addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
+                addressEntry = AddressMethods.Upsert(databaseContext, chain, address);
                 if ( name == "anonymous" ) name = null;
 
                 addressEntry.ADDRESS_NAME = name;

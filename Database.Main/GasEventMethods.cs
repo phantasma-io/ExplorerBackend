@@ -6,11 +6,11 @@ namespace Database.Main;
 public static class GasEventMethods
 {
     public static GasEvent Upsert(MainDbContext databaseContext, string address, string price, string amount,
-        Event databaseEvent, Chain chain, bool saveChanges = true)
+        Event databaseEvent, Chain chain)
     {
         if ( string.IsNullOrEmpty(address) || string.IsNullOrEmpty(price) || string.IsNullOrEmpty(amount) ) return null;
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
+        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address);
 
         //get KCAL token here, to find out the decimals
         var decimals = TokenMethods.GetKcalDecimals(databaseContext, chain);
@@ -26,7 +26,6 @@ public static class GasEventMethods
         };
 
         databaseContext.GasEvents.Add(gasEvent);
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return gasEvent;
     }

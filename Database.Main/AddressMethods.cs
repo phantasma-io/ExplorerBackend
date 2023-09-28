@@ -117,7 +117,7 @@ public static class AddressMethods
     }
 
 
-    public static Address Upsert(MainDbContext databaseContext, Chain chain, string address, bool saveChanges = true)
+    public static Address Upsert(MainDbContext databaseContext, Chain chain, string address)
     {
         var entry = databaseContext.Addresses
             .FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
@@ -133,8 +133,6 @@ public static class AddressMethods
 
         entry = new Address {Chain = chain, ADDRESS = address};
         databaseContext.Addresses.Add(entry);
-
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return entry;
     }

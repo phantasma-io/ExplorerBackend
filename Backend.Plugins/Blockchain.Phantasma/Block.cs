@@ -137,8 +137,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             // Block in main database
             var block = Database.Main.BlockMethods.Upsert(databaseContext, chainEntry, blockHeight,
-                timestampUnixSeconds, blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward,
-                false);
+                timestampUnixSeconds, blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward);
 
             await using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
@@ -190,7 +189,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         tx.GetProperty("fee").GetString(), tx.GetProperty("expiration").GetUInt32(),
                         tx.GetProperty("gasPrice").GetString(), tx.GetProperty("gasLimit").GetString(),
                         tx.GetProperty("state").GetString(), tx.GetProperty("sender").GetString(),
-                        tx.GetProperty("gasPayer").GetString(), tx.GetProperty("gasTarget").GetString(), false);
+                        tx.GetProperty("gasPayer").GetString(), tx.GetProperty("gasTarget").GetString());
 
                     if ( tx.TryGetProperty("signatures", out var signaturesProperty) )
                     {
@@ -246,7 +245,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             }
 
                             transactionStart = DateTime.Now;
-                            var addressEntry = AddressMethods.Upsert(databaseContext, chainEntry, addressString, false);
+                            var addressEntry = AddressMethods.Upsert(databaseContext, chainEntry, addressString);
                             transactionEnd = DateTime.Now - transactionStart;
                             Log.Verbose("[{Name}] Added Address {Address} in {Time} sec",
                                 Name, addressString, Math.Round(transactionEnd.TotalSeconds, 3));
@@ -610,8 +609,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     //databaseEvent we need it here, so check it
                                     if ( eventEntry != null )
-                                        AddressEventMethods.Upsert(databaseContext, address, eventEntry, chainEntry,
-                                            false);
+                                        AddressEventMethods.Upsert(databaseContext, address, eventEntry, chainEntry);
 
                                     break;
                                 }
@@ -655,7 +653,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     //databaseEvent we need it here, so check it
                                     if ( eventEntry != null )
                                         GasEventMethods.Upsert(databaseContext, address, price, amount, eventEntry,
-                                            chainEntry, false);
+                                            chainEntry);
 
                                     break;
                                 }
@@ -685,7 +683,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     //databaseEvent we need it here, so check it
                                     if ( eventEntry != null )
                                         OrganizationEventMethods.Upsert(databaseContext, organization, memberAddress,
-                                            eventEntry, chainEntry, false);
+                                            eventEntry, chainEntry);
 
                                     break;
                                 }
