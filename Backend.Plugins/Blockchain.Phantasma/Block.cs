@@ -87,7 +87,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var url =
                 $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
-            var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
+            var (response, stringResponse) = await Client.ApiRequestAsync(url, 10);
             if ( response == null ) return false;
 
             downloadTime = DateTime.Now - startTime;

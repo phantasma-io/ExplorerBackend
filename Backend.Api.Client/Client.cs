@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
+using System.Threading.Tasks;
 using Serilog;
 
 namespace Backend.Api;
@@ -151,26 +152,109 @@ public static class Client
         return default;
     }
 
-
-    public static JsonDocument RPCRequest(string url, string method, out string stringResponse,
-        Action<string> errorHandlingCallback = null, int timeoutInSeconds = 0, params object[] parameters)
+    public static async Task<(JsonDocument, string)> ApiRequestAsync(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
     {
-        RpcRequest rpcRequest = new() {jsonrpc = "2.0", method = method, id = "1", @params = parameters};
+        Log.Debug("[API request]: url: " + url);
 
-        var json = JsonSerializer.Serialize(rpcRequest);
+        const int max = 5;
+        for (var i = 1; i <= max; i++)
+        {
+            try
+            {
+                string stringResponse;
+                using (var httpClient = new HttpClient())
+                {
+                    httpClient.Timeout = Timeout.InfiniteTimeSpan;
+                    using var cts = new CancellationTokenSource();
+                    cts.CancelAfter(TimeSpan.FromSeconds(timeoutInSeconds > 0 ? timeoutInSeconds : 100));
 
-        Log.Debug("RPC request\nurl: {Url}\njson: {Json}", url, json);
+                    DateTime startTime = DateTime.Now;
+                    switch (requestType)
+                    {
+                        case RequestType.Get:
+                            httpClient.DefaultRequestHeaders.Add("User-Agent", "Other");
+                            var response = await httpClient.GetAsync(url, cts.Token);
+                            Log.Debug($"[API request]: header code: {response.StatusCode}");
+                            using (var content = response.Content)
+                            {
+                                stringResponse = await content.ReadAsStringAsync(cts.Token);
+                                Log.Debug($"[API request]: response: {stringResponse}");
+                            }
+                            break;
+                        case RequestType.Post:
+                            {
+                                if(string.IsNullOrEmpty(postString)) throw new Exception("Empty POST body");
+                                var content = new StringContent(postString, Encoding.UTF8, "application/json");
+                                var responsePost = await httpClient.PostAsync(url, content, cts.Token);
+                                var responseContent = responsePost.Content;
+                                stringResponse = await responseContent.ReadAsStringAsync(cts.Token);
+                                break;
+                            }
+                        default:
+                            throw new Exception("Unknown RequestType");
+                    }
+                    var responseTime = DateTime.Now - startTime;
 
-        return ApiRequest<JsonDocument>(url, out stringResponse, errorHandlingCallback, timeoutInSeconds, json,
-            RequestType.Post);
-    }
+                    Log.Debug($"API response\nurl: {url}\nResponse time: {Math.Round(responseTime.TotalSeconds, 3)} sec.{(string.IsNullOrEmpty(stringResponse) ? " Empty response" : "")}");
+                }
 
+                if (string.IsNullOrEmpty(stringResponse))
+                    return (default, stringResponse);
 
-    private class RpcRequest
-    {
-        public string jsonrpc { get; set; }
-        public string method { get; set; }
-        public string id { get; set; }
-        public object[] @params { get; set; }
+                JsonDocument node = null;
+
+                try
+                {
+                    node = JsonDocument.Parse(stringResponse);
+                }
+                catch (Exception e)
+                {
+                    Log.Debug($"API request error for {url}:\nJSON parsing error:\n{e.Message}\nResponse: {stringResponse}");
+                }
+
+                return (node, stringResponse);
+            }
+            catch (Exception e)
+            {
+                string logMessage;
+                if (e.Message.Contains("The operation has timed out.") ||
+                    e.Message.Contains("A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.") ||
+                    e.Message.Contains("Authentication failed because the remote party has closed the transport stream.")
+                    )
+                {
+                    logMessage = $"API request timeout for {url}";
+                    Log.Debug(logMessage);
+                }
+                else
+                {
+                    logMessage = $"API request error for {url}:\n{e.Message}";
+
+                    // We don't need stacktrace for known errors like "response ended prematurely".
+                    if (!e.Message.Contains("An error occurred while sending the request. The response ended prematurely.") &&
+                        !e.Message.ToUpper().Contains("TOO MANY REQUESTS"))
+                    {
+                        var inner = e.InnerException;
+                        while (inner != null)
+                        {
+                            logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
+
+                            inner = inner.InnerException;
+                        }
+
+                        logMessage += "\n\n" + e.StackTrace;
+                    }
+
+                    Log.Debug(logMessage);
+                }
+
+                if (i < max)
+                {
+                    Thread.Sleep(1000 * i);
+                    Log.Debug($"API request for {url}:\nTrying again...");
+                }
+            }
+        }
+
+        return default;
     }
 }
