@@ -304,8 +304,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         nft = nftsInThisBlock.GetValueOrDefault(tokenId);
                                     else
                                     {
-                                        nft = NftMethods.Upsert(databaseContext, out var newNftCreated, chainEntry,
-                                            tokenId, null, contractEntry, false);
+                                        (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
+                                            tokenId, null, contractEntry);
                                         Log.Verbose(
                                             "[{Name}] using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
                                             Name, nft.ID, nft.TOKEN_ID, newNftCreated);
@@ -367,8 +367,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         nft = nftsInThisBlock.GetValueOrDefault(tokenValue);
                                     else
                                     {
-                                        nft = NftMethods.Upsert(databaseContext, out var newNftCreated, chainEntry,
-                                            tokenValue, null, contractEntry, false);
+                                        (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
+                                            tokenValue, null, contractEntry);
                                         Log.Verbose(
                                             "[{Name}] using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
                                             Name, nft.ID, nft.TOKEN_ID, newNftCreated);
@@ -445,8 +445,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         nft = nftsInThisBlock.GetValueOrDefault(tokenId);
                                     else
                                     {
-                                        nft = NftMethods.Upsert(databaseContext, out var newNftCreated, chainEntry,
-                                            tokenId, null, contractEntry, false);
+                                        (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
+                                            tokenId, null, contractEntry);
                                         Log.Verbose(
                                             "[{Name}] using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
                                             Name, nft.ID, nft.TOKEN_ID, newNftCreated);
