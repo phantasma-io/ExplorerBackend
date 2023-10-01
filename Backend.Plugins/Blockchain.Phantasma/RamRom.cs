@@ -144,7 +144,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         // NFT was burned, marking it.
                         nft.BURNED = true;
                         nft.DM_UNIX_SECONDS = UnixSeconds.Now();
-                        Log.Warning("[{Name}] NFT {ID} is apparently burned", Name, nft.TOKEN_ID);
+                        // Log.Verbose("[{Name}] NFT {ID} is apparently burned", Name, nft.TOKEN_ID);
                     }
                     else
                         Log.Error("[{Name}] Request error: {Error}", Name, error);
