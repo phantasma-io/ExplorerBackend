@@ -160,7 +160,8 @@ public class CoinGecko : Plugin, IDBAccessPlugin
             foreach ( var cryptoSymbol in cryptoSymbols )
             {
                 var chain = ChainMethods.Get(databaseContext, cryptoSymbol.ChainName);
-                var token = TokenMethods.Get(databaseContext, chain, cryptoSymbol.NativeSymbol);
+                // TODO async
+                var token = TokenMethods.GetAsync(databaseContext, chain, cryptoSymbol.NativeSymbol).Result;
 
                 if ( string.IsNullOrEmpty(cryptoSymbol.ApiSymbol) ) continue;
 
@@ -218,7 +219,8 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                         lastLoadedDateString);
 
                     var chain = ChainMethods.Get(databaseContext, cryptoSymbol.ChainName);
-                    var token = TokenMethods.Get(databaseContext, chain, cryptoSymbol.NativeSymbol);
+                    // TODO async
+                    var token = TokenMethods.GetAsync(databaseContext, chain, cryptoSymbol.NativeSymbol).Result;
 
                     if ( token == null )
                     {
@@ -282,14 +284,16 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
                     if ( cryptoSymbol.NativeSymbol.ToUpper() == "SOUL" )
                     {
-                        token = TokenMethods.Get(databaseContext, chain, "GOATI");
+                        // TODO async
+                        token = TokenMethods.GetAsync(databaseContext, chain, "GOATI").Result;
                         // Setting GOATI pegged to 0.1 USD.
                         TokenDailyPricesMethods.Upsert(databaseContext, lastLoadedDate, token,
                             priceUsd,
                             false);
                     }
 
-                    token = TokenMethods.Get(databaseContext, chain, cryptoSymbol.NativeSymbol);
+                    // TODO async
+                    token = TokenMethods.GetAsync(databaseContext, chain, cryptoSymbol.NativeSymbol).Result;
                     TokenDailyPricesMethods.Upsert(databaseContext, lastLoadedDate, token,
                         priceUsd,
                         false);

@@ -283,8 +283,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     fungible = symbolFungible.GetValueOrDefault(infusionEventData.BaseSymbol);
                                 else
                                 {
-                                    fungible = TokenMethods.Get(databaseContext, chainEntry,
-                                        infusionEventData.BaseSymbol).FUNGIBLE;
+                                    fungible = (await TokenMethods.GetAsync(databaseContext, chainEntry,
+                                        infusionEventData.BaseSymbol)).FUNGIBLE;
                                     symbolFungible.Add(infusionEventData.BaseSymbol, fungible);
                                 }
 
@@ -325,9 +325,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
                                     eventUpdated);
 
-                                InfusionEventMethods.Upsert(databaseContext, infusionEventData.TokenID.ToString(),
+                                await InfusionEventMethods.InsertAsync(databaseContext, infusionEventData.TokenID.ToString(),
                                     infusionEventData.BaseSymbol, infusionEventData.InfusedSymbol,
-                                    infusionEventData.InfusedValue.ToString(), chainEntry, eventEntry, false);
+                                    infusionEventData.InfusedValue.ToString(), chainEntry, eventEntry);
                                 break;
                             }
                             case EventKind.TokenMint or EventKind.TokenClaim or EventKind.TokenBurn
@@ -344,7 +344,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     fungible = symbolFungible.GetValueOrDefault(tokenEventData.Symbol);
                                 else
                                 {
-                                    fungible = TokenMethods.Get(databaseContext, chainEntry, tokenEventData.Symbol)
+                                    fungible = (await TokenMethods.GetAsync(databaseContext, chainEntry, tokenEventData.Symbol))
                                         .FUNGIBLE;
                                     symbolFungible.Add(tokenEventData.Symbol, fungible);
                                 }
@@ -399,8 +399,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
                                         timestampUnixSeconds, addressEntry, false);
 
-                                TokenEventMethods.Upsert(databaseContext, tokenEventData.Symbol,
-                                    tokenEventData.ChainName, tokenValue, chainEntry, eventEntry, false);
+                                await TokenEventMethods.UpsertAsync(databaseContext, tokenEventData.Symbol,
+                                    tokenEventData.ChainName, tokenValue, chainEntry, eventEntry);
 
                                 break;
                             }
@@ -416,8 +416,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     fungible = symbolFungible.GetValueOrDefault(marketEventData.BaseSymbol);
                                 else
                                 {
-                                    fungible = TokenMethods.Get(databaseContext, chainEntry,
-                                        marketEventData.BaseSymbol).FUNGIBLE;
+                                    fungible = (await TokenMethods.GetAsync(databaseContext, chainEntry,
+                                        marketEventData.BaseSymbol)).FUNGIBLE;
                                     symbolFungible.Add(marketEventData.BaseSymbol, fungible);
                                 }
 
@@ -469,10 +469,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
                                     eventUpdated);
 
-                                MarketEventMethods.Upsert(databaseContext, marketEventData.Type.ToString(),
+                                await MarketEventMethods.InsertAsync(databaseContext, marketEventData.Type.ToString(),
                                     marketEventData.BaseSymbol, marketEventData.QuoteSymbol,
                                     marketEventData.Price.ToString(), marketEventData.EndPrice.ToString(),
-                                    marketEventData.ID.ToString(), chainEntry, eventEntry, false);
+                                    marketEventData.ID.ToString(), chainEntry, eventEntry);
 
                                 break;
                             }
@@ -507,7 +507,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     }
                                     case EventKind.TokenCreate:
                                     {
-                                        var token = TokenMethods.Get(databaseContext, chainEntry, stringData);
+                                        var token = await TokenMethods.GetAsync(databaseContext, chainEntry, stringData);
                                         if ( token != null )
                                         {
                                             Log.Verbose("[{Name}] Linking Event to Token {Token}", Name,

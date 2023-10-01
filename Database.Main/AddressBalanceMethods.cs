@@ -20,7 +20,8 @@ public static class AddressBalanceMethods
             var chain = ChainMethods.Get(databaseContext, chainName);
             if ( chain == null ) continue;
 
-            var token = TokenMethods.Get(databaseContext, chain, symbol);
+            // TODO async
+            var token = TokenMethods.GetAsync(databaseContext, chain, symbol).Result;
             if ( token == null ) continue;
 
             var entry = databaseContext.AddressBalances.FirstOrDefault(x =>

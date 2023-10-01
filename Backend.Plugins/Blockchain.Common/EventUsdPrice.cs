@@ -78,8 +78,9 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
     {
         var toCalculate = endPrice ? marketEvent.END_PRICE : marketEvent.PRICE;
 
-        var price = TokenDailyPricesMethods.Calculate(databaseContext, marketEvent.Event.Chain,
-            marketEvent.Event.DATE_UNIX_SECONDS, marketEvent.QuoteToken.SYMBOL, toCalculate);
+        // TODO async
+        var price = TokenDailyPricesMethods.CalculateAsync(databaseContext, marketEvent.Event.Chain,
+            marketEvent.Event.DATE_UNIX_SECONDS, marketEvent.QuoteToken.SYMBOL, toCalculate).Result;
 
         if ( price == 0 )
             price = ( decimal ) TokenMethods.CalculatePrice(tokenPrices, toCalculate, marketEvent.QuoteToken.SYMBOL);

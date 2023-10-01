@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Backend.Commons;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -29,7 +30,7 @@ public static class TokenMethods
         var ownerEntry = await AddressMethods.UpsertAsync(databaseContext, chain, owner);
 
 
-        var entry = Get(databaseContext, chain, symbol);
+        var entry = await GetAsync(databaseContext, chain, symbol);
 
 
         if ( entry != null )
@@ -272,9 +273,9 @@ public static class TokenMethods
     }
 
 
-    public static Token Get(MainDbContext databaseContext, Chain chain, string symbol)
+    public static Task<Token> GetAsync(MainDbContext databaseContext, Chain chain, string symbol)
     {
-        return databaseContext.Tokens.SingleOrDefault(x => x.Chain == chain && x.SYMBOL == symbol);
+        return databaseContext.Tokens.SingleOrDefaultAsync(x => x.Chain == chain && x.SYMBOL == symbol);
     }
 
 
@@ -323,14 +324,16 @@ public static class TokenMethods
 
     public static int GetKcalDecimals(MainDbContext databaseContext, Chain chain)
     {
-        kcalToken ??= Get(databaseContext, chain, "KCAL");
+        // TODO async
+        kcalToken ??= GetAsync(databaseContext, chain, "KCAL").Result;
         return kcalToken.DECIMALS;
     }
 
 
     public static int GetSoulDecimals(MainDbContext databaseContext, Chain chain)
     {
-        soulToken ??= Get(databaseContext, chain, "SOUL");
+        // TODO async
+        soulToken ??= GetAsync(databaseContext, chain, "SOUL").Result;
         return soulToken.DECIMALS;
     }
 

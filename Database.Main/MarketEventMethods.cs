@@ -1,18 +1,19 @@
+using System.Threading.Tasks;
+
 namespace Database.Main;
 
 public static class MarketEventMethods
 {
-    public static MarketEvent Upsert(MainDbContext databaseContext, string marketKind, string baseSymbol,
-        string quoteSymbol, string price, string endPrice, string marketId, Chain chain, Event databaseEvent,
-        bool saveChanges = true)
+    public static async Task InsertAsync(MainDbContext databaseContext, string marketKind, string baseSymbol,
+        string quoteSymbol, string price, string endPrice, string marketId, Chain chain, Event databaseEvent)
     {
         if ( string.IsNullOrEmpty(marketKind) || string.IsNullOrEmpty(baseSymbol) ||
-             string.IsNullOrEmpty(quoteSymbol) ) return null;
+             string.IsNullOrEmpty(quoteSymbol) ) return;
 
-        var baseToken = TokenMethods.Get(databaseContext, chain, baseSymbol);
-        var quoteToken = TokenMethods.Get(databaseContext, chain, quoteSymbol);
+        var baseToken = await TokenMethods.GetAsync(databaseContext, chain, baseSymbol);
+        var quoteToken = await TokenMethods.GetAsync(databaseContext, chain, quoteSymbol);
 
-        var marketEventKind = MarketEventKindMethods.Upsert(databaseContext, marketKind, chain, saveChanges);
+        var marketEventKind = await MarketEventKindMethods.UpsertAsync(databaseContext, marketKind, chain);
 
         var marketEvent = new MarketEvent
         {
@@ -25,9 +26,6 @@ public static class MarketEventMethods
             Event = databaseEvent
         };
 
-        databaseContext.MarketEvents.Add(marketEvent);
-        if ( saveChanges ) databaseContext.SaveChanges();
-
-        return marketEvent;
+        await databaseContext.MarketEvents.AddAsync(marketEvent);
     }
 }

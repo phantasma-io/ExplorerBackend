@@ -1,5 +1,7 @@
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -29,12 +31,12 @@ public static class TokenDailyPricesMethods
     }
 
 
-    public static decimal Get(MainDbContext databaseContext, Token token, long dateUnixSeconds)
+    private static async Task<decimal> GetAsync(MainDbContext databaseContext, Token token, long dateUnixSeconds)
     {
         // Ensure it's a date without time
         dateUnixSeconds = UnixSeconds.GetDate(dateUnixSeconds);
 
-        var entry = databaseContext.TokenDailyPrices.FirstOrDefault(x =>
+        var entry = await databaseContext.TokenDailyPrices.FirstOrDefaultAsync(x =>
             x.Token == token && x.DATE_UNIX_SECONDS == dateUnixSeconds);
         if ( entry == null ) return 0;
 
@@ -42,16 +44,16 @@ public static class TokenDailyPricesMethods
     }
 
 
-    public static decimal Calculate(MainDbContext databaseContext, Chain chain, long dateUnixSeconds,
+    public static async Task<decimal> CalculateAsync(MainDbContext databaseContext, Chain chain, long dateUnixSeconds,
         string tokenSymbol, string priceInTokens)
     {
-        return Get(databaseContext, chain, dateUnixSeconds, tokenSymbol) *
+        return await GetAsync(databaseContext, chain, dateUnixSeconds, tokenSymbol) *
                TokenMethods.ToDecimal(priceInTokens, tokenSymbol);
     }
 
 
-    public static decimal Get(MainDbContext databaseContext, Chain chain, long dateUnixSeconds, string symbol)
+    private static async Task<decimal> GetAsync(MainDbContext databaseContext, Chain chain, long dateUnixSeconds, string symbol)
     {
-        return Get(databaseContext, TokenMethods.Get(databaseContext, chain, symbol), dateUnixSeconds);
+        return await GetAsync(databaseContext, await TokenMethods.GetAsync(databaseContext, chain, symbol), dateUnixSeconds);
     }
 }
