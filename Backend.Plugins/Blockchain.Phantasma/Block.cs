@@ -16,7 +16,6 @@ using Phantasma.Core.Domain;
 using Phantasma.Core.Numerics;
 using Serilog;
 using Address = Phantasma.Core.Cryptography.Address;
-using BlockMethods = Database.ApiCache.BlockMethods;
 using ChainMethods = Database.Main.ChainMethods;
 using ContractMethods = Database.Main.ContractMethods;
 using Event = Phantasma.Core.Domain.Event;
@@ -28,94 +27,105 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private bool TryCache = true;
-    private void FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
+    private const int FetchBlocksPerIterationMax = 100;
+
+    private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
         BigInteger i;
-        using ( MainDbContext databaseContext = new() )
+        await using ( MainDbContext databaseContext = new() )
         {
             i = ChainMethods.GetLastProcessedBlock(databaseContext, chainName) + 1;
         }
         
         if ( i < fromHeight ) i = fromHeight;
-        
-        while ( FetchByHeight(i, chainName).Result &&
-                i <= toHeight
-              )
+
+        while ( i <= toHeight )
         {
-            i++;
+            var fetchPerIteration = BigInteger.Min(FetchBlocksPerIterationMax, toHeight - i + 1);
+
+            var startTime = DateTime.Now;
+            var blocks = await GetBlockRange(chainName, i, fetchPerIteration);
+            var fetchTime = DateTime.Now - startTime;
+            
+            startTime = DateTime.Now;
+            foreach ( var (blockHeight, block) in blocks )
+            {
+                // Log.Information("PROCESSING HEIGHT " + blockHeight);
+                await ProcessBlock(blockHeight, block, chainName);
+            }
+            var processTime = DateTime.Now - startTime;
+            
+            Log.Information("{Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec. Sync speed: {BlocksPerSecond} blocks per second",
+                blocks.Count,
+                i,
+                i + blocks.Count - 1,
+                Math.Round(fetchTime.TotalSeconds, 3),
+                Math.Round(processTime.TotalSeconds, 3),
+                Math.Round(blocks.Count / (fetchTime.TotalSeconds + processTime.TotalSeconds), 2));
+            
+            i += fetchPerIteration;
         }
     }
 
-    private async Task<bool> FetchByHeight(BigInteger blockHeight, string chainName)
+    private static async Task<(BigInteger, JsonDocument)> GetBlockAsync(string chainName, BigInteger blockHeight)
+    {
+        await using ApiCacheDbContext dbApiCacheContext = new();
+        var block = await Database.ApiCache.BlockMethods.GetByHeightAsync(dbApiCacheContext, chainName, blockHeight.ToString());
+        if ( block != default )
+        {
+            return (blockHeight, block.DATA);
+        }
+        
+        var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
+
+        var (response, stringResponse) = await Client.ApiRequestAsync(url, 10);
+
+        if (response.RootElement.TryGetProperty("error", out var errorProperty))
+        {
+            throw new Exception(errorProperty.ValueKind == JsonValueKind.String ? errorProperty.GetString() : errorProperty.GetProperty("message").GetString());
+        }
+        
+        await Database.ApiCache.BlockMethods.UpsertAsync(dbApiCacheContext, blockHeight.ToString(),
+            response.RootElement.GetProperty("timestamp").GetUInt32(),
+            response,
+            chainName);
+
+        await dbApiCacheContext.SaveChangesAsync();
+        
+        return (blockHeight, response);
+    }
+
+
+    private static async Task<List<(BigInteger, JsonDocument)>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
+    {
+        // Log.Information("FETCHING RANGE " + fromHeight + " - " + (fromHeight + blockCount - 1));
+        var tasks = new List<Task<(BigInteger, JsonDocument)>>();
+        var smallTasks = new List<Task<(BigInteger, JsonDocument)>>();
+        for (var i = fromHeight; i < fromHeight + blockCount; i++)
+        {
+            var task = GetBlockAsync(chainName, i);
+            tasks.Add(task);
+            smallTasks.Add(task);
+
+            if (smallTasks.Count == 50)
+            {
+                await Task.WhenAll(smallTasks.ToArray());
+                smallTasks = new List<Task<(BigInteger, JsonDocument)>>();
+                await Task.Delay(1000);
+            }
+        }
+
+        if (smallTasks.Count > 0)
+            await Task.WhenAll(smallTasks.ToArray());
+
+        return tasks.Select(task => task.Result).ToList();
+    }
+    
+    private async Task<bool> ProcessBlock(BigInteger blockHeight, JsonDocument blockData, string chainName)
     {
         var startTime = DateTime.Now;
 
-        JsonDocument blockData = null;
-        TimeSpan downloadTime = default;
-
-        if ( TryCache )
-        {
-            await using ApiCacheDbContext databaseApiCacheContext = new();
-            var highestApiBlock =
-                await Database.ApiCache.ChainMethods.GetLastProcessedBlockAsync(databaseApiCacheContext, chainName);
-
-            //just to be sure
-            if ( highestApiBlock != null )
-            {
-                var useCache = highestApiBlock > blockHeight;
-
-                Log.Information(
-                    "[{Name}] Highest Block in Cache {CacheHeight}, Current need {Height}, Should use Cache {Cache}",
-                    Name, highestApiBlock, blockHeight, useCache);
-
-                if ( useCache )
-                {
-                    var block = await BlockMethods.GetByHeightAsync(databaseApiCacheContext, chainName,
-                        blockHeight.ToString());
-                    blockData = block.DATA;
-                }
-                else
-                {
-                    TryCache = false; // Disabling cache search, cache has no newer blocks
-                }
-            }
-        }
-
-        if ( blockData == null )
-        {
-            var url =
-                $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
-
-            var (response, stringResponse) = await Client.ApiRequestAsync(url, 10);
-            if ( response == null ) return false;
-
-            downloadTime = DateTime.Now - startTime;
-            startTime = DateTime.Now;
-
-            var error = "";
-            if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
-                error = errorProperty.GetString();
-
-            if ( error == "block not found" )
-            {
-                Log.Debug("[{Name}] getBlockByHeight(): Block {BlockHeight} not found", Name, blockHeight);
-                return false;
-            }
-
-            if ( !string.IsNullOrEmpty(error) )
-            {
-                Log.Error("[{Name}] getBlockByHeight() error: {Error}", Name, error);
-                return false;
-            }
-
-            blockData = response;
-        }
-
         var eventsAddedCount = 0;
-
-        Log.Information("[{Name}] Block #{BlockHeight}: {@Response}", Name, blockHeight, blockData);
-
 
         // We cache NFTs in this block to speed up code
         // and avoid some unpleasant situations leading to bugs.
@@ -138,12 +148,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             // Block in main database
             var block = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, blockHeight,
                 timestampUnixSeconds, blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward);
-
-            await using ( ApiCacheDbContext databaseApiCacheContext = new() )
-            {
-                BlockMethods.Upsert(databaseApiCacheContext, blockHeight.ToString(), timestampUnixSeconds, blockData,
-                    Database.ApiCache.ChainMethods.Get(databaseApiCacheContext, chainName));
-            }
 
             DateTime transactionStart;
             TimeSpan transactionEnd;
@@ -747,10 +751,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
 
         var processingTime = DateTime.Now - startTime;
-        Log.Information(
-            "[{Name}] Block {BlockHeight} loaded in {DownloadTime} sec, processed in {ProcessingTime} sec, {EventsAddedCount} events added, {NftsInThisBlock} NFTs processed",
-            Name, blockHeight, Math.Round(downloadTime.TotalSeconds, 3), Math.Round(processingTime.TotalSeconds, 3),
-            eventsAddedCount, nftsInThisBlock.Count);
+        if ( processingTime.TotalSeconds > 1 ) // Log only if processing of the block took > 1 second
+        {
+            Log.Information(
+                "[{Name}] Block {BlockHeight} processed in {ProcessingTime} sec, {EventsAddedCount} events, {NftsInThisBlock} NFTs",
+                Name, blockHeight, Math.Round(processingTime.TotalSeconds, 3),
+                eventsAddedCount, nftsInThisBlock.Count);
+        }
 
         return true;
     }

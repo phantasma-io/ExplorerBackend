@@ -134,7 +134,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 try
                 {
                     height = GetCurrentBlockHeight(chain.NAME);
-                    FetchBlocksRange(chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height);
+                    FetchBlocksRange(chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height).Wait();
 
                     Thread.Sleep(Settings.Default.BlocksProcessingInterval *
                                  1000); // We sync blocks every BlocksProcessingInterval seconds

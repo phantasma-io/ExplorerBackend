@@ -201,18 +201,7 @@ public static class Client
                 if (string.IsNullOrEmpty(stringResponse))
                     return (default, stringResponse);
 
-                JsonDocument node = null;
-
-                try
-                {
-                    node = JsonDocument.Parse(stringResponse);
-                }
-                catch (Exception e)
-                {
-                    Log.Debug($"API request error for {url}:\nJSON parsing error:\n{e.Message}\nResponse: {stringResponse}");
-                }
-
-                return (node, stringResponse);
+                return (JsonDocument.Parse(stringResponse), stringResponse);
             }
             catch (Exception e)
             {

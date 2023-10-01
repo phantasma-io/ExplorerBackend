@@ -17,42 +17,19 @@ public static class BlockMethods
     }
 
 
-    public static Block Upsert(ApiCacheDbContext databaseContext, string height, long unixTimestampInSeconds,
-        JsonDocument data, Chain chain, bool saveChanges = true)
+    public static async Task UpsertAsync(ApiCacheDbContext dbContext, string height, long unixTimestampInSeconds,
+        JsonDocument data, string chainName)
     {
         if ( string.IsNullOrEmpty(height) ) throw new ArgumentException("Argument cannot be null or empty.", "height");
 
-        var block = databaseContext.Blocks.FirstOrDefault(x => x.Chain == chain && x.HEIGHT == height);
+        var chain = await ChainMethods.GetAsync(dbContext, chainName);
+        var block = await dbContext.Blocks.FirstOrDefaultAsync(x => x.Chain == chain && x.HEIGHT == height);
 
-        if ( block != null ) return null;
+        if ( block != null ) return;
 
         block = new Block {Chain = chain, HEIGHT = height, TIMESTAMP = unixTimestampInSeconds, DATA = data};
-        databaseContext.Blocks.Add(block);
+        await dbContext.Blocks.AddAsync(block);
 
-        ChainMethods.SetLastProcessedBlock(databaseContext, chain, BigInteger.Parse(height));
-
-        if ( !saveChanges ) return null;
-
-        try
-        {
-            databaseContext.SaveChanges();
-        }
-        catch ( Exception ex )
-        {
-            var exMessage = ex.ToString();
-            if ( exMessage.Contains("duplicate key value violates unique constraint") &&
-                 exMessage.Contains("IX_Blocks_ChainId_HEIGHT") )
-            {
-                // We tried to create same record in two threads concurrently.
-                // Now we should just remove duplicating record and get an existing record.
-                databaseContext.Blocks.Remove(block);
-                block = databaseContext.Blocks.First(x => x.Chain == chain && x.HEIGHT == height);
-            }
-            else
-                // Unknown exception.
-                throw;
-        }
-
-        return block;
+        // ChainMethods.SetLastProcessedBlock(dbContext, chain, BigInteger.Parse(height));
     }
 }
