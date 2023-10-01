@@ -29,7 +29,5 @@ public static class BlockMethods
 
         block = new Block {Chain = chain, HEIGHT = height, TIMESTAMP = unixTimestampInSeconds, DATA = data};
         await dbContext.Blocks.AddAsync(block);
-
-        // ChainMethods.SetLastProcessedBlock(dbContext, chain, BigInteger.Parse(height));
     }
 }

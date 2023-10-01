@@ -143,7 +143,6 @@ public class Chain
 {
     public int ID { get; set; }
     public string SHORT_NAME { get; set; }
-    public string CURRENT_HEIGHT { get; set; }
     public virtual List<Contract> Contracts { get; set; }
     public virtual List<Block> Blocks { get; set; }
 }

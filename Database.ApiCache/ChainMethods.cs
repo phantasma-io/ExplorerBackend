@@ -59,31 +59,11 @@ public static class ChainMethods
         return databaseContext.Chains.SingleAsync(x => x.SHORT_NAME == name);
     }
 
-
-    public static async Task<BigInteger?> GetLastProcessedBlockAsync(ApiCacheDbContext databaseContext, string chainName)
-    {
-        var chain = await GetAsync(databaseContext, chainName);
-
-        if ( chain?.CURRENT_HEIGHT == null ) return null;
-
-        return BigInteger.Parse(chain.CURRENT_HEIGHT);
-    }
-
-
     public static Chain Get(ApiCacheDbContext databaseContext, string shortName)
     {
         if ( string.IsNullOrEmpty(shortName) )
             throw new ArgumentException("Argument cannot be null or empty.", "shortName");
 
         return databaseContext.Chains.FirstOrDefault(x => x.SHORT_NAME == shortName);
-    }
-
-
-    public static void SetLastProcessedBlock(ApiCacheDbContext databaseContext, Chain chain, BigInteger height,
-        bool saveChanges = true)
-    {
-        chain.CURRENT_HEIGHT = height.ToString();
-
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 }
