@@ -577,9 +577,47 @@ public partial class Endpoints
             event_kind = e.EventKind.NAME,
             address = e.Address.ADDRESS,
             address_name = e.Address.ADDRESS_NAME,
-            contract = CreateContract(databaseContext, e, chainName),
-            nft_metadata = with_nft == 1 && e.Nft != null ?  CreateNftMetadata(databaseContext, e) : null,
-            series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(databaseContext, e) : null,
+            contract = e.Contract != null ? new Contract
+            {
+                name = e.Contract.NAME,
+                hash = e.Contract.HASH,
+                symbol = e.Contract.SYMBOL
+            } : null,
+            nft_metadata = with_nft == 1 && e.Nft != null ?
+                new NftMetadata
+                {
+                    name = e.Nft.NAME,
+                    description = e.Nft.DESCRIPTION,
+                    image = e.Nft.IMAGE,
+                    video = e.Nft.VIDEO,
+                    rom = e.Nft.ROM,
+                    ram = e.Nft.RAM,
+                    mint_date = e.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
+                    mint_number = e.Nft.MINT_NUMBER.ToString()
+                } : null,
+            series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?
+                new Series
+                {
+                    id = e.Nft.Series.ID,
+                    series_id = e.Nft.Series.SERIES_ID,
+                    creator = e.Nft.Series.CreatorAddress != null
+                        ? e.Nft.Series.CreatorAddress.ADDRESS
+                        : null,
+                    current_supply = e.Nft.Series.CURRENT_SUPPLY,
+                    max_supply = e.Nft.Series.MAX_SUPPLY,
+                    mode_name = e.Nft.Series.SeriesMode != null ? e.Nft.Series.SeriesMode.MODE_NAME : null,
+                    name = e.Nft.Series.NAME,
+                    description = e.Nft.Series.DESCRIPTION,
+                    image = e.Nft.Series.IMAGE,
+                    royalties = e.Nft.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
+                    type = e.Nft.Series.TYPE,
+                    attr_type_1 = e.Nft.Series.ATTR_TYPE_1,
+                    attr_value_1 = e.Nft.Series.ATTR_VALUE_1,
+                    attr_type_2 = e.Nft.Series.ATTR_TYPE_2,
+                    attr_value_2 = e.Nft.Series.ATTR_VALUE_2,
+                    attr_type_3 = e.Nft.Series.ATTR_TYPE_3,
+                    attr_value_3 = e.Nft.Series.ATTR_VALUE_3
+                } : null,
             address_event = with_event_data == 1 && e.TargetAddress != null ?
                 new AddressEvent
                 {
@@ -778,92 +816,5 @@ public partial class Endpoints
                         : null
                 } : null
         };
-    }
-
-
-    private static Contract CreateContract(MainDbContext mainDbContext, Database.Main.Event e, string chainName)
-    {
-        var contract = mainDbContext.Contracts
-            .Where(c => c.ID == e.ContractId)
-            .Take(1)
-            .Select(c => new Contract
-            {
-                name = c.NAME,
-                hash = c.HASH,
-                symbol = c.SYMBOL
-            })
-            .FirstOrDefault();
-        
-        if ( contract == null)
-        {
-            return null;
-        }
-
-        return contract;
-    }
-
-
-    private static NftMetadata CreateNftMetadata(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        var nft = mainDbContext.Nfts.Where(n => n.ID == e.NftId)
-            .Take(1)
-            .Select(n => new NftMetadata
-            {
-                name = n.NAME,
-                description = n.DESCRIPTION,
-                image = n.IMAGE,
-                video = n.VIDEO,
-                rom = n.ROM,
-                ram = n.RAM,
-                mint_date = n.MINT_DATE_UNIX_SECONDS.ToString(),
-                mint_number = n.MINT_NUMBER.ToString()
-            }).FirstOrDefault();
-        
-        if ( nft == null)
-        {
-            return null;
-        }
-        
-        return nft;
-    }
-
-
-    private static Series CreateSeries(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        //e = mainDbContext.Events.Find(e.ID);
-        var series = mainDbContext.Serieses.Where(s => s.ID == e.Nft.Series.ID)
-            .Include(s => s.CreatorAddress)
-            .Include(s => s.SeriesMode)
-            .Take(1)
-            .Select(s => new Series
-            {
-                id = s.ID,
-                series_id = s.SERIES_ID,
-                creator = s.CreatorAddress != null
-                    ? s.CreatorAddress.ADDRESS
-                    : null,
-                current_supply = s.CURRENT_SUPPLY,
-                max_supply = s.MAX_SUPPLY,
-                mode_name = s.SeriesMode != null ? s.SeriesMode.MODE_NAME : null,
-                name = s.NAME,
-                description =s.DESCRIPTION,
-                image = s.IMAGE,
-                royalties = s.ROYALTIES.ToString(CultureInfo.InvariantCulture),
-                type = s.TYPE,
-                attr_type_1 = s.ATTR_TYPE_1,
-                attr_value_1 = s.ATTR_VALUE_1,
-                attr_type_2 = s.ATTR_TYPE_2,
-                attr_value_2 = s.ATTR_VALUE_2,
-                attr_type_3 = s.ATTR_TYPE_3,
-                attr_value_3 = s.ATTR_VALUE_3
-            })
-            .FirstOrDefault();
-        
-        if ( series == null)
-        {
-            return null;
-        }
-
-        return series;
     }
 }
