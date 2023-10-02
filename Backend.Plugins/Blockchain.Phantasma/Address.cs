@@ -60,18 +60,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 address.NAME_LAST_UPDATED_UNIX_SECONDS = UnixSeconds.Now();
 
-                if ( response.RootElement.TryGetProperty("txs", out var transactionProperty) )
-                {
-                    transactionStart = DateTime.Now;
-                    var transactions = transactionProperty.EnumerateArray()
-                        .Select(transaction => transaction.ToString()).ToList();
-                    AddressTransactionMethods.InsertIfNotExists(databaseContext, address, transactions);
-
-                    transactionEnd = DateTime.Now - transactionStart;
-                    Log.Verbose("[{Name}] Processed {Count} TransactionAddresses in {Time} sec", Name,
-                        transactions.Count, Math.Round(transactionEnd.TotalSeconds, 3));
-                }
-
                 if ( response.RootElement.TryGetProperty("stakes", out var stakesProperty) )
                 {
                     var amount = stakesProperty.GetProperty("amount").GetString();
@@ -203,18 +191,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     }
 
                     address.NAME_LAST_UPDATED_UNIX_SECONDS = UnixSeconds.Now();
-
-                    if ( account.TryGetProperty("txs", out var transactionProperty) )
-                    {
-                        transactionStart = DateTime.Now;
-                        var transactions = transactionProperty.EnumerateArray()
-                            .Select(transaction => transaction.ToString()).ToList();
-                        AddressTransactionMethods.InsertIfNotExists(databaseContext, address, transactions);
-
-                        transactionEnd = DateTime.Now - transactionStart;
-                        Log.Verbose("[{Name}] Processed {Count} TransactionAddresses in {Time} sec", Name,
-                            transactions.Count, Math.Round(transactionEnd.TotalSeconds, 3));
-                    }
 
                     if ( account.TryGetProperty("stakes", out var stakesProperty) )
                     {

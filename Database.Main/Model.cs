@@ -56,7 +56,6 @@ public class MainDbContext : DbContext
     public DbSet<Signature> Signatures { get; set; }
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
     public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
-    public DbSet<AddressTransaction> AddressTransactions { get; set; }
     public DbSet<AddressBalance> AddressBalances { get; set; }
     public DbSet<AddressValidatorKind> AddressValidatorKinds { get; set; }
     public DbSet<ContractMethod> ContractMethods { get; set; }
@@ -1001,42 +1000,6 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.PRICE_END_USD, x.PRICE_USD});
 
         //////////////////////
-        // AddressTransaction
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<AddressTransaction>()
-            .HasOne(x => x.Address)
-            .WithMany(y => y.AddressTransactions)
-            .HasForeignKey(x => x.AddressId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<AddressTransaction>()
-            .HasOne(x => x.Transaction)
-            .WithMany(y => y.AddressTransactions)
-            .HasForeignKey(x => x.TransactionId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // Indexes
-
-
-        //////////////////////
-        // AddressStake
-        //////////////////////
-
-        // FKs
-
-        // Indexes
-
-        //////////////////////
-        // AddressStorage
-        //////////////////////
-
-        // FKs
-
-        // Indexes
-
-        //////////////////////
         // AddressBalance
         //////////////////////
 
@@ -1217,7 +1180,6 @@ public class Transaction
     public virtual Address GasTarget { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<Signature> Signatures { get; set; }
-    public virtual List<AddressTransaction> AddressTransactions { get; set; }
 }
 
 public class EventKind
@@ -1256,7 +1218,6 @@ public class Address
     public virtual List<Block> ChainAddressBlocks { get; set; }
     public virtual List<Block> ValidatorAddressBlocks { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
-    public virtual List<AddressTransaction> AddressTransactions { get; set; }
     public virtual List<AddressBalance> AddressBalances { get; set; }
     public int? AddressValidatorKindId { get; set; }
     public virtual AddressValidatorKind AddressValidatorKind { get; set; }
@@ -1747,16 +1708,6 @@ public class MarketEventFiatPrice
     public string FIAT_NAME { get; set; }
     public int MarketEventId { get; set; }
     public virtual MarketEvent MarketEvent { get; set; }
-}
-
-//NEW
-public class AddressTransaction
-{
-    public int ID { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
-    public int TransactionId { get; set; }
-    public virtual Transaction Transaction { get; set; }
 }
 
 public class AddressBalance
