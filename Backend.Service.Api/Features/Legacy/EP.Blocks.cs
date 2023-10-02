@@ -240,14 +240,14 @@ public partial class Endpoints
                                         attr_value_3 = e.Nft.Series.ATTR_VALUE_3
                                     }
                                     : null,
-                                address_event = with_event_data == 1 && e.AddressEvent != null
+                                address_event = with_event_data == 1 && e.TargetAddress != null
                                     ? new AddressEvent
                                     {
-                                        address = e.AddressEvent.Address != null
+                                        address = e.TargetAddress != null
                                             ? new Address
                                             {
-                                                address_name = e.AddressEvent.Address.ADDRESS_NAME,
-                                                address = e.AddressEvent.Address.ADDRESS
+                                                address_name = e.TargetAddress.ADDRESS_NAME,
+                                                address = e.TargetAddress.ADDRESS
                                             }
                                             : null
                                     }

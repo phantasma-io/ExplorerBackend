@@ -40,7 +40,6 @@ public class MainDbContext : DbContext
     public DbSet<Organization> Organizations { get; set; }
     public DbSet<OrganizationEvent> OrganizationEvents { get; set; }
     public DbSet<StringEvent> StringEvents { get; set; }
-    public DbSet<AddressEvent> AddressEvents { get; set; }
     public DbSet<TransactionSettleEvent> TransactionSettleEvents { get; set; }
     public DbSet<HashEvent> HashEvents { get; set; }
     public DbSet<GasEvent> GasEvents { get; set; }
@@ -367,9 +366,9 @@ public class MainDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
-            .HasOne(x => x.AddressEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<AddressEvent>(x => x.EventId)
+            .HasOne(x => x.TargetAddress)
+            .WithMany(y => y.ValidatorEvents)
+            .HasForeignKey(x => x.TargetAddressId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
@@ -768,19 +767,6 @@ public class MainDbContext : DbContext
         // FKs
 
         // Indexes
-
-        //////////////////////
-        // AddressEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<AddressEvent>()
-            .HasOne(x => x.Address)
-            .WithMany(y => y.AddressEvents)
-            .HasForeignKey(x => x.AddressId);
-
-        // Indexes
-
 
         //////////////////////
         // TransactionSettleEvent
@@ -1275,7 +1261,6 @@ public class Address
     public virtual List<NftOwnership> NftOwnerships { get; set; }
     public virtual List<Series> Serieses { get; set; }
     public virtual List<GasEvent> GasEvents { get; set; }
-    public virtual List<AddressEvent> AddressEvents { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<PlatformInterop> PlatformInterops { get; set; }
     public virtual List<Block> ChainAddressBlocks { get; set; }
@@ -1296,6 +1281,7 @@ public class Address
     public virtual List<Transaction> Senders { get; set; }
     public virtual List<Transaction> GasPayers { get; set; }
     public virtual List<Transaction> GasTargets { get; set; }
+    public virtual List<Event> ValidatorEvents { get; set; }
 }
 
 public class Event
@@ -1327,7 +1313,9 @@ public class Event
     public virtual Nft Nft { get; set; }
     public virtual OrganizationEvent OrganizationEvent { get; set; }
     public virtual StringEvent StringEvent { get; set; }
-    public virtual AddressEvent AddressEvent { get; set; }
+    // Address which is used in election events
+    public int? TargetAddressId { get; set; }
+    public virtual Address TargetAddress { get; set; }
     public virtual TransactionSettleEvent TransactionSettleEvent { get; set; }
     public virtual HashEvent HashEvent { get; set; }
     public virtual GasEvent GasEvent { get; set; }
@@ -1597,16 +1585,6 @@ public class StringEvent
 {
     public int ID { get; set; }
     public string STRING_VALUE { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-//used for validator event data, atm
-public class AddressEvent
-{
-    public int ID { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
 }

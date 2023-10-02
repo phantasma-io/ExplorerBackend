@@ -611,7 +611,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 //databaseEvent we need it here, so check it
                                 if ( eventEntry != null )
-                                    await AddressEventMethods.UpsertAsync(databaseContext, address, eventEntry, chainEntry);
+                                    eventEntry.TargetAddress = await AddressMethods.UpsertAsync(databaseContext, chainEntry, address);
 
                                 break;
                             }

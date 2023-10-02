@@ -274,14 +274,14 @@ public partial class Endpoints
                             attr_value_3 = x.Nft.Series.ATTR_VALUE_3
                         }
                         : null,
-                    address_event = with_event_data == 1 && x.AddressEvent != null
+                    address_event = with_event_data == 1 && x.TargetAddress != null
                         ? new AddressEvent
                         {
-                            address = x.AddressEvent.Address != null
+                            address = x.TargetAddress != null
                                 ? new Address
                                 {
-                                    address_name = x.AddressEvent.Address.ADDRESS_NAME,
-                                    address = x.AddressEvent.Address.ADDRESS
+                                    address_name = x.TargetAddress.ADDRESS_NAME,
+                                    address = x.TargetAddress.ADDRESS
                                 }
                                 : null
                         }

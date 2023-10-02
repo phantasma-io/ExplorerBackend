@@ -586,7 +586,7 @@ public partial class Endpoints
             contract = CreateContract(databaseContext, e, chainName),
             nft_metadata = with_nft == 1 && e.Nft != null ?  CreateNftMetadata(databaseContext, e) : null,
             series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(databaseContext, e) : null,
-            address_event = with_event_data == 1 && e.AddressEvent != null ?  CreateAddressEvent(databaseContext, e) : null,
+            address_event = with_event_data == 1 && e.TargetAddress != null ?  CreateAddressEvent(databaseContext, e) : null,
             chain_event = with_event_data == 1 && e.ChainEvent != null  ?  CreateChainEvent(databaseContext, e, chainName) : null,
             gas_event = with_event_data == 1 && e.GasEvent != null ?  CreateGasEvent(databaseContext, e) : null,
             hash_event = with_event_data == 1 && e.HashEvent != null  ?  CreateHashEvent(databaseContext, e) : null,
@@ -625,7 +625,7 @@ public partial class Endpoints
             contract = CreateContract(databaseContext, e, chainName),
             nft_metadata = with_nft == 1 && e.Nft != null ?  CreateNftMetadata(databaseContext, e) : null,
             series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(databaseContext, e) : null,
-            address_event = with_event_data == 1 && e.AddressEvent != null ?  CreateAddressEvent(databaseContext, e) : null,
+            address_event = with_event_data == 1 && e.TargetAddress != null ?  CreateAddressEvent(databaseContext, e) : null,
             chain_event = with_event_data == 1 && e.ChainEvent != null  ?  CreateChainEvent(databaseContext, e, chainName) : null,
             gas_event = with_event_data == 1 && e.GasEvent != null ?  CreateGasEvent(databaseContext, e) : null,
             hash_event = with_event_data == 1 && e.HashEvent != null  ?  CreateHashEvent(databaseContext, e) : null,
@@ -729,26 +729,14 @@ public partial class Endpoints
 
     private static AddressEvent CreateAddressEvent(MainDbContext mainDbContext, Database.Main.Event e)
     {
-        var addressEvent = mainDbContext.AddressEvents.Where(a => a.EventId == e.ID)
-            .Include(a => a.Address)
-            .Take(1)
-            .Select(a => new AddressEvent
+        return e.TargetAddress != null ? new AddressEvent
             {
-                address = a.Address != null
-                    ? new Address
+                address = new Address
                     {
-                        address_name = a.Address.ADDRESS_NAME,
-                        address = a.Address.ADDRESS
+                        address_name = e.TargetAddress.ADDRESS_NAME,
+                        address = e.TargetAddress.ADDRESS
                     }
-                    : null
-            }).FirstOrDefault();
-            
-        if ( addressEvent == null)
-        {
-            return null;
-        }
-
-        return addressEvent;
+            } : null;
     }
 
 
@@ -1217,14 +1205,14 @@ public partial class Endpoints
                 attr_value_3 = _transactionEvent.Nft.Series.ATTR_VALUE_3
             }
             : null;
-        _event.address_event = with_event_data == 1 && _transactionEvent.AddressEvent != null
+        _event.address_event = with_event_data == 1 && _transactionEvent.TargetAddress != null
             ? new AddressEvent
             {
-                address = _transactionEvent.AddressEvent.Address != null
+                address = _transactionEvent.TargetAddress != null
                     ? new Address
                     {
-                        address_name = _transactionEvent.AddressEvent.Address.ADDRESS_NAME,
-                        address = _transactionEvent.AddressEvent.Address.ADDRESS
+                        address_name = _transactionEvent.TargetAddress.ADDRESS_NAME,
+                        address = _transactionEvent.TargetAddress.ADDRESS
                     }
                     : null
             }
