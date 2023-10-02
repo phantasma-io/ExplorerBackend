@@ -589,7 +589,29 @@ public partial class Endpoints
             organization_event = with_event_data == 1 && e.OrganizationEvent != null?  CreateOrganizationEvent(databaseContext, e) : null,
             sale_event = with_event_data == 1 && e.SaleEvent != null  ?  CreateSaleEvent(databaseContext, e) : null,
             string_event = with_event_data == 1 && e.StringEvent != null  ?  CreateStringEvent(databaseContext, e) : null,
-            token_event = with_event_data == 1 && e.TokenEvent != null ?  CreateTokenEvent(databaseContext, e) : null,
+            token_event = with_event_data == 1 && e.TokenEvent != null ? 
+                new TokenEvent
+                {
+                    token = e.TokenEvent.Token != null
+                        ? new Token
+                        {
+                            symbol = e.TokenEvent.Token.SYMBOL,
+                            fungible = e.TokenEvent.Token.FUNGIBLE,
+                            transferable = e.TokenEvent.Token.TRANSFERABLE,
+                            finite = e.TokenEvent.Token.FINITE,
+                            divisible = e.TokenEvent.Token.DIVISIBLE,
+                            fiat = e.TokenEvent.Token.FIAT,
+                            fuel = e.TokenEvent.Token.FUEL,
+                            swappable = e.TokenEvent.Token.SWAPPABLE,
+                            burnable = e.TokenEvent.Token.BURNABLE,
+                            stakable = e.TokenEvent.Token.STAKABLE,
+                            decimals = e.TokenEvent.Token.DECIMALS
+                        }
+                        : null,
+                    value = e.TokenEvent.VALUE,
+                    value_raw = e.TokenEvent.VALUE_RAW,
+                    chain_name = e.TokenEvent.CHAIN_NAME 
+                } : null,
             transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? 
                 new TransactionSettleEvent
                 {
@@ -978,42 +1000,5 @@ public partial class Endpoints
         }
 
         return stringEvent;
-    }
-
-
-    private static TokenEvent CreateTokenEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        var token = mainDbContext.TokenEvents.Where(t => t.EventId == e.ID)
-            .Include(t => t.Token)
-            .Take(1)
-            .Select(t => new TokenEvent
-            {
-                token = t.Token != null
-                    ? new Token
-                    {
-                        symbol = t.Token.SYMBOL,
-                        fungible = t.Token.FUNGIBLE,
-                        transferable = t.Token.TRANSFERABLE,
-                        finite = t.Token.FINITE,
-                        divisible = t.Token.DIVISIBLE,
-                        fiat = t.Token.FIAT,
-                        fuel = t.Token.FUEL,
-                        swappable = t.Token.SWAPPABLE,
-                        burnable = t.Token.BURNABLE,
-                        stakable = t.Token.STAKABLE,
-                        decimals = t.Token.DECIMALS
-                    }
-                    : null,
-                value = t.VALUE,
-                value_raw = t.VALUE_RAW,
-                chain_name = t.CHAIN_NAME 
-            }).FirstOrDefault();
-        
-        if ( token == null)
-        {
-            return null;
-        }
-
-        return token;
     }
 }
