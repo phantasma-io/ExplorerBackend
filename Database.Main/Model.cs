@@ -57,7 +57,6 @@ public class MainDbContext : DbContext
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
     public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
     public DbSet<AddressTransaction> AddressTransactions { get; set; }
-    public DbSet<AddressStake> AddressStakes { get; set; }
     public DbSet<AddressStorage> AddressStorages { get; set; }
     public DbSet<AddressBalance> AddressBalances { get; set; }
     public DbSet<AddressValidatorKind> AddressValidatorKinds { get; set; }
@@ -276,12 +275,6 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Chain)
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.ChainId);
-
-        modelBuilder.Entity<Address>()
-            .HasOne(x => x.AddressStake)
-            .WithOne(y => y.Address)
-            .HasForeignKey<AddressStake>(x => x.AddressId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Address>()
             .HasOne(x => x.AddressStorage)
@@ -1250,10 +1243,11 @@ public class Address
     public string ADDRESS_NAME { get; set; }
     public string USER_NAME { get; set; }
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
-    public string STAKE { get; set; }
-    public string STAKE_RAW { get; set; }
-    public string UNCLAIMED { get; set; }
-    public string UNCLAIMED_RAW { get; set; }
+    public long STAKE_TIMESTAMP { get; set; }
+    public string STAKED_AMOUNT { get; set; }
+    public string STAKED_AMOUNT_RAW { get; set; }
+    public string UNCLAIMED_AMOUNT { get; set; }
+    public string UNCLAIMED_AMOUNT_RAW { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
     public virtual List<Event> Events { get; set; }
@@ -1268,7 +1262,6 @@ public class Address
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
     public virtual List<AddressTransaction> AddressTransactions { get; set; }
     public virtual List<AddressBalance> AddressBalances { get; set; }
-    public virtual AddressStake AddressStake { get; set; }
     public virtual AddressStorage AddressStorage { get; set; }
     public int? AddressValidatorKindId { get; set; }
     public virtual AddressValidatorKind AddressValidatorKind { get; set; }
@@ -1769,18 +1762,6 @@ public class AddressTransaction
     public virtual Address Address { get; set; }
     public int TransactionId { get; set; }
     public virtual Transaction Transaction { get; set; }
-}
-
-public class AddressStake
-{
-    public int ID { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
-    public string AMOUNT { get; set; }
-    public string AMOUNT_RAW { get; set; }
-    public long TIME { get; set; }
-    public string UNCLAIMED { get; set; }
-    public string UNCLAIMED_RAW { get; set; }
 }
 
 public class AddressStorage

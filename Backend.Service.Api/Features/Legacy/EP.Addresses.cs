@@ -144,10 +144,10 @@ public partial class Endpoints
                 address = x.ADDRESS,
                 address_name = x.ADDRESS_NAME,
                 validator_kind = x.AddressValidatorKind != null ? x.AddressValidatorKind.NAME : null,
-                stake = x.STAKE,
-                stake_raw = x.STAKE_RAW,
-                unclaimed = x.UNCLAIMED,
-                unclaimed_raw = x.UNCLAIMED_RAW,
+                stake = x.STAKED_AMOUNT,
+                stake_raw = x.STAKED_AMOUNT_RAW,
+                unclaimed = x.UNCLAIMED_AMOUNT,
+                unclaimed_raw = x.UNCLAIMED_AMOUNT_RAW,
                 storage = with_storage == 1 && x.AddressStorage != null
                     ? new AddressStorage
                     {
@@ -156,14 +156,14 @@ public partial class Endpoints
                         avatar = x.AddressStorage.AVATAR
                     }
                     : null,
-                stakes = with_stakes == 1 && x.AddressStake != null
+                stakes = with_stakes == 1 && (!string.IsNullOrEmpty(x.STAKED_AMOUNT) || !string.IsNullOrEmpty(x.UNCLAIMED_AMOUNT)) 
                     ? new AddressStakes
                     {
-                        amount = x.AddressStake.AMOUNT,
-                        amount_raw = x.AddressStake.AMOUNT_RAW,
-                        time = x.AddressStake.TIME,
-                        unclaimed = x.AddressStake.UNCLAIMED,
-                        unclaimed_raw = x.AddressStake.UNCLAIMED_RAW
+                        amount = x.STAKED_AMOUNT,
+                        amount_raw = x.STAKED_AMOUNT_RAW,
+                        time = x.STAKE_TIMESTAMP,
+                        unclaimed = x.UNCLAIMED_AMOUNT,
+                        unclaimed_raw = x.UNCLAIMED_AMOUNT_RAW
                     }
                     : null,
                 balances = with_balance == 1 && x.AddressBalances != null

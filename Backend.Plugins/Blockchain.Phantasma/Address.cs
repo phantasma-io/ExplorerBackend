@@ -77,10 +77,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     var amount = stakesProperty.GetProperty("amount").GetString();
                     var unclaimed = stakesProperty.GetProperty("unclaimed").GetString();
 
-                    AddressStakeMethods.Upsert(databaseContext, address,
-                        Commons.Utils.ToDecimal(amount, soulDecimals), amount,
-                        stakesProperty.GetProperty("time").GetInt32(),
-                        Commons.Utils.ToDecimal(unclaimed, kcalDecimals), unclaimed);
+                    address.STAKE_TIMESTAMP = stakesProperty.GetProperty("time").GetInt32();
+                    address.STAKED_AMOUNT = Commons.Utils.ToDecimal(amount, soulDecimals);
+                    address.STAKED_AMOUNT_RAW = amount;
+                    address.UNCLAIMED_AMOUNT = Commons.Utils.ToDecimal(unclaimed, kcalDecimals);
+                    address.UNCLAIMED_AMOUNT_RAW = unclaimed;
                 }
 
                 if ( response.RootElement.TryGetProperty("balances", out var balancesProperty) )
@@ -219,10 +220,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var amount = stakesProperty.GetProperty("amount").GetString();
                         var unclaimed = stakesProperty.GetProperty("unclaimed").GetString();
 
-                        AddressStakeMethods.Upsert(databaseContext, address,
-                            Commons.Utils.ToDecimal(amount, soulDecimals), amount,
-                            stakesProperty.GetProperty("time").GetInt32(),
-                            Commons.Utils.ToDecimal(unclaimed, kcalDecimals), unclaimed);
+                        address.STAKE_TIMESTAMP = stakesProperty.GetProperty("time").GetInt32();
+                        address.STAKED_AMOUNT = Commons.Utils.ToDecimal(amount, soulDecimals);
+                        address.STAKED_AMOUNT_RAW = amount;
+                        address.UNCLAIMED_AMOUNT = Commons.Utils.ToDecimal(unclaimed, kcalDecimals);
+                        address.UNCLAIMED_AMOUNT_RAW = unclaimed;
                     }
 
                     if ( account.TryGetProperty("balances", out var balancesProperty) )
@@ -249,11 +251,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             
                     
                     var stake = account.GetProperty("stake").GetString();
-                    address.STAKE = Commons.Utils.ToDecimal(stake, soulDecimals);
-                    address.STAKE_RAW = stake;
+                    address.STAKED_AMOUNT = Commons.Utils.ToDecimal(stake, soulDecimals);
+                    address.STAKED_AMOUNT_RAW = stake;
                     var unclaimedStorage = account.GetProperty("unclaimed").GetString();
-                    address.UNCLAIMED = Commons.Utils.ToDecimal(unclaimedStorage, kcalDecimals);
-                    address.UNCLAIMED_RAW = unclaimedStorage;
+                    address.UNCLAIMED_AMOUNT = Commons.Utils.ToDecimal(unclaimedStorage, kcalDecimals);
+                    address.UNCLAIMED_AMOUNT_RAW = unclaimedStorage;
 
                     var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
                         account.GetProperty("validator").GetString());
