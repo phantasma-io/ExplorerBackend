@@ -586,9 +586,34 @@ public partial class Endpoints
             hash_event = with_event_data == 1 && e.HashEvent != null  ?  CreateHashEvent(databaseContext, e) : null,
             infusion_event = with_event_data == 1 && e.InfusionEvent != null  ?  CreateInfusionEvent(databaseContext, e) : null,
             market_event = with_event_data == 1 && e.MarketEvent != null ?  CreateMarketEvent(databaseContext, e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
-            organization_event = with_event_data == 1 && e.OrganizationEvent != null?  CreateOrganizationEvent(databaseContext, e) : null,
-            sale_event = with_event_data == 1 && e.SaleEvent != null  ?  CreateSaleEvent(databaseContext, e) : null,
-            string_event = with_event_data == 1 && e.StringEvent != null  ?  CreateStringEvent(databaseContext, e) : null,
+            organization_event = with_event_data == 1 && e.OrganizationEvent != null ?
+                new OrganizationEvent
+                {
+                    organization = e.OrganizationEvent.Organization != null
+                        ? new Organization
+                        {
+                            name = e.OrganizationEvent.Organization.NAME
+                        }
+                        : null,
+                    address = e.OrganizationEvent.Address != null
+                        ? new Address
+                        {
+                            address = e.OrganizationEvent.Address.ADDRESS,
+                            address_name = e.OrganizationEvent.Address.ADDRESS_NAME
+                        }
+                        : null
+                } : null,
+            sale_event = with_event_data == 1 && e.SaleEvent != null ?
+                new SaleEvent
+                {
+                    hash = e.SaleEvent.HASH,
+                    sale_event_kind = e.SaleEvent.SaleEventKind.NAME
+                } : null,
+            string_event = with_event_data == 1 && e.StringEvent != null ?
+                new StringEvent
+                {
+                    string_value = e.StringEvent.STRING_VALUE
+                } : null,
             token_event = with_event_data == 1 && e.TokenEvent != null ? 
                 new TokenEvent
                 {
@@ -926,79 +951,5 @@ public partial class Endpoints
         }
 
         return marketEvent;
-    }
-
-
-    private static OrganizationEvent CreateOrganizationEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        var organizationEvent = mainDbContext.OrganizationEvents.Where(o => o.EventId == e.ID)
-            .Include(o => o.Organization)
-            .Include(o => o.Address)
-            .Take(1)
-            .Select(o => new OrganizationEvent
-            {
-                organization = o.Organization != null
-                    ? new Organization
-                    {
-                        name = o.Organization.NAME
-                    }
-                    : null,
-                address = e.OrganizationEvent.Address != null
-                    ? new Address
-                    {
-                        address = o.Address.ADDRESS,
-                        address_name = o.Address.ADDRESS_NAME
-                    }
-                    : null
-            }).FirstOrDefault();
-        
-        if ( organizationEvent == null)
-        {
-            return null;
-        }
-
-        return organizationEvent;
-    }
-
-
-    private static SaleEvent CreateSaleEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        //e = mainDbContext.Events.Find(e.ID);
-        var saleEvent = mainDbContext.SaleEvents.Where(s => s.EventId == e.ID)
-            .Include(s => s.SaleEventKind)
-            .Take(1)
-            .Select(s => new SaleEvent
-            {
-                hash = e.SaleEvent.HASH,
-                sale_event_kind = e.SaleEvent.SaleEventKind.NAME
-            })
-            .FirstOrDefault();
-        
-        if ( saleEvent == null)
-        {
-            return null;
-        }
-
-        return saleEvent;
-    }
-
-
-    private static StringEvent CreateStringEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        //e = mainDbContext.Events.Find(e.ID);
-        var stringEvent = mainDbContext.StringEvents.Where(s => s.EventId == e.ID)
-            .Take(1)
-            .Select(s => new StringEvent
-            {
-                string_value = e.StringEvent.STRING_VALUE
-            })
-            .FirstOrDefault();
-        
-        if ( stringEvent == null)
-        {
-            return null;
-        }
-
-        return stringEvent;
     }
 }
