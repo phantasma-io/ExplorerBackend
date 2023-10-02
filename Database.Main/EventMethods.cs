@@ -77,12 +77,12 @@ public static class EventMethods
     }
 
 
-    public static async Task<(Event, bool)> UpdateValuesAsync(MainDbContext databaseContext, Event eventItem, Nft nft,
+    public static async Task<bool> UpdateValuesAsync(MainDbContext databaseContext, Event eventItem, Nft nft,
         string tokenId, Chain chain, EventKind eventKind, Contract contract)
     {
         var eventUpdated = false;
 
-        if ( eventItem == null ) return (null, eventUpdated);
+        if ( eventItem == null ) return eventUpdated;
 
         eventItem.Chain = chain;
         eventItem.Contract = contract;
@@ -93,7 +93,7 @@ public static class EventMethods
         eventUpdated = true;
 
         var burnEvent = await EventKindMethods.GetByNameAsync(databaseContext, chain, "TokenBurn");
-        if ( burnEvent == null || eventKind != burnEvent || nft == null ) return (eventItem, eventUpdated);
+        if ( burnEvent == null || eventKind != burnEvent || nft == null ) return eventUpdated;
 
         //TODO check if always needed
         // For burns we must release all infused nfts.
@@ -103,6 +103,6 @@ public static class EventMethods
         var updateTime = DateTime.Now - startTime;
         Log.Verbose("Process Burned, processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
 
-        return (eventItem, eventUpdated);
+        return eventUpdated;
     }
 }

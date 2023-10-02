@@ -319,7 +319,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
 
                                 //parse also a new contract, just in case
-                                (eventEntry, var eventUpdated) = await EventMethods.UpdateValuesAsync(databaseContext,
+                                var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenId, chainEntry, eventKindEntry, contractEntry);
 
                                 Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
@@ -387,7 +387,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
 
                                 //parse also a new contract, just in case
-                                (eventEntry, var eventUpdated) = await EventMethods.UpdateValuesAsync(databaseContext,
+                                var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenValue, chainEntry, eventKindEntry, contractEntry);
 
                                 Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
@@ -463,7 +463,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
 
                                 //parse also a new contract, just in case
-                                (eventEntry, var eventUpdated) = await EventMethods.UpdateValuesAsync(databaseContext,
+                                var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenId, chainEntry, eventKindEntry, contractEntry);
 
                                 Log.Verbose("[{Name}] Updated event {Kind} with {Updated}", Name, kind,
