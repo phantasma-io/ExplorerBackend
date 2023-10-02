@@ -57,7 +57,6 @@ public class MainDbContext : DbContext
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
     public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
     public DbSet<AddressTransaction> AddressTransactions { get; set; }
-    public DbSet<AddressStorage> AddressStorages { get; set; }
     public DbSet<AddressBalance> AddressBalances { get; set; }
     public DbSet<AddressValidatorKind> AddressValidatorKinds { get; set; }
     public DbSet<ContractMethod> ContractMethods { get; set; }
@@ -275,12 +274,6 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Chain)
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.ChainId);
-
-        modelBuilder.Entity<Address>()
-            .HasOne(x => x.AddressStorage)
-            .WithOne(y => y.Address)
-            .HasForeignKey<AddressStorage>(x => x.AddressId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Address>()
             .HasOne(x => x.AddressValidatorKind)
@@ -1248,6 +1241,9 @@ public class Address
     public string STAKED_AMOUNT_RAW { get; set; }
     public string UNCLAIMED_AMOUNT { get; set; }
     public string UNCLAIMED_AMOUNT_RAW { get; set; }
+    public long STORAGE_AVAILABLE { get; set; }
+    public long STORAGE_USED { get; set; }
+    public string AVATAR { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
     public virtual List<Event> Events { get; set; }
@@ -1262,7 +1258,6 @@ public class Address
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
     public virtual List<AddressTransaction> AddressTransactions { get; set; }
     public virtual List<AddressBalance> AddressBalances { get; set; }
-    public virtual AddressStorage AddressStorage { get; set; }
     public int? AddressValidatorKindId { get; set; }
     public virtual AddressValidatorKind AddressValidatorKind { get; set; }
     public virtual List<Token> Tokens { get; set; }
@@ -1762,16 +1757,6 @@ public class AddressTransaction
     public virtual Address Address { get; set; }
     public int TransactionId { get; set; }
     public virtual Transaction Transaction { get; set; }
-}
-
-public class AddressStorage
-{
-    public int ID { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
-    public long AVAILABLE { get; set; }
-    public long USED { get; set; }
-    public string AVATAR { get; set; }
 }
 
 public class AddressBalance

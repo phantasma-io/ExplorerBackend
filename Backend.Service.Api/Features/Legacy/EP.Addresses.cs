@@ -148,12 +148,12 @@ public partial class Endpoints
                 stake_raw = x.STAKED_AMOUNT_RAW,
                 unclaimed = x.UNCLAIMED_AMOUNT,
                 unclaimed_raw = x.UNCLAIMED_AMOUNT_RAW,
-                storage = with_storage == 1 && x.AddressStorage != null
+                storage = with_storage == 1 && x.STORAGE_AVAILABLE > 0
                     ? new AddressStorage
                     {
-                        available = x.AddressStorage.AVAILABLE,
-                        used = x.AddressStorage.USED,
-                        avatar = x.AddressStorage.AVATAR
+                        available = x.STORAGE_AVAILABLE,
+                        used = x.STORAGE_USED,
+                        avatar = x.AVATAR
                     }
                     : null,
                 stakes = with_stakes == 1 && (!string.IsNullOrEmpty(x.STAKED_AMOUNT) || !string.IsNullOrEmpty(x.UNCLAIMED_AMOUNT)) 

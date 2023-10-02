@@ -100,10 +100,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
 
                 if ( response.RootElement.TryGetProperty("storage", out var storageProperty) )
-                    AddressStorageMethods.Upsert(databaseContext, address,
-                        storageProperty.GetProperty("available").GetUInt32(),
-                        storageProperty.GetProperty("used").GetUInt32(),
-                        storageProperty.GetProperty("avatar").GetString());
+                {
+                    address.STORAGE_AVAILABLE = storageProperty.GetProperty("available").GetUInt32();
+                    address.STORAGE_USED = storageProperty.GetProperty("used").GetUInt32();
+                    address.AVATAR = storageProperty.GetProperty("avatar").GetString();
+                }
 
                 var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
                     response.RootElement.GetProperty("validator").GetString());
@@ -244,11 +245,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     }
 
                     if ( account.TryGetProperty("storage", out var storageProperty) )
-                        AddressStorageMethods.Upsert(databaseContext, address,
-                            storageProperty.GetProperty("available").GetUInt32(),
-                            storageProperty.GetProperty("used").GetUInt32(),
-                            storageProperty.GetProperty("avatar").GetString());
-                            
+                    {
+                        address.STORAGE_AVAILABLE = storageProperty.GetProperty("available").GetUInt32();
+                        address.STORAGE_USED = storageProperty.GetProperty("used").GetUInt32();
+                        address.AVATAR = storageProperty.GetProperty("avatar").GetString();
+                    }
                     
                     var stake = account.GetProperty("stake").GetString();
                     address.STAKED_AMOUNT = Commons.Utils.ToDecimal(stake, soulDecimals);
