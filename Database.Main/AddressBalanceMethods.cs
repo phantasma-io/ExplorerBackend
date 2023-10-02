@@ -25,7 +25,7 @@ public static class AddressBalanceMethods
             if ( token == null ) continue;
 
             var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
-                x.Address == address && x.Chain == chain && x.Token == token);
+                x.Address == address && x.Token == token);
 
             var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
             if ( entry != null )
@@ -39,7 +39,6 @@ public static class AddressBalanceMethods
                 {
                     Token = token,
                     Address = address,
-                    Chain = chain,
                     AMOUNT = amountConverted,
                     AMOUNT_RAW = amount
                 };

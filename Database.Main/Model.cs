@@ -1070,12 +1070,6 @@ public class MainDbContext : DbContext
 
         // FKs
         modelBuilder.Entity<AddressBalance>()
-            .HasOne(x => x.Chain)
-            .WithMany(y => y.AddressBalances)
-            .HasForeignKey(x => x.ChainId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<AddressBalance>()
             .HasOne(x => x.Address)
             .WithMany(y => y.AddressBalances)
             .HasForeignKey(x => x.AddressId)
@@ -1175,7 +1169,6 @@ public class Chain
 
     //public virtual List<TokenEvent> TokenEvents { get; set; } currently not in use
     public virtual List<MarketEventKind> MarketEventKinds { get; set; }
-    public virtual List<AddressBalance> AddressBalances { get; set; }
 }
 
 public class Contract
@@ -1827,8 +1820,6 @@ public class AddressBalance
     public int ID { get; set; }
     public int TokenId { get; set; }
     public virtual Token Token { get; set; }
-    public int ChainId { get; set; }
-    public virtual Chain Chain { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }

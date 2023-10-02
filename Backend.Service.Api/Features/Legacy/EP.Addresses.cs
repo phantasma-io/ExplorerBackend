@@ -185,12 +185,11 @@ public partial class Endpoints
                                     decimals = b.Token.DECIMALS
                                 }
                                 : null,
-                            chain = b.Chain != null
-                                ? new Chain
+                            chain = new Chain
                                 {
-                                    chain_name = b.Chain.NAME
-                                }
-                                : null,
+                                    // TODO probably useless, check if can be removed
+                                    chain_name = b.Address.Chain.NAME
+                                },
                             amount = b.AMOUNT,
                             amount_raw = b.AMOUNT_RAW
                         }
