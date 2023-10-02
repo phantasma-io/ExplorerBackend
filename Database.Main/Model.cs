@@ -222,17 +222,17 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Transaction>()
             .HasOne(x => x.Sender)
-            .WithMany(y => y.Senders)
+            .WithMany(y => y.SentTransactions)
             .HasForeignKey(x => x.SenderId);
 
         modelBuilder.Entity<Transaction>()
             .HasOne(x => x.GasPayer)
-            .WithMany(y => y.GasPayers)
+            .WithMany(y => y.TransactionsWithThisGasPayer)
             .HasForeignKey(x => x.GasPayerId);
 
         modelBuilder.Entity<Transaction>()
             .HasOne(x => x.GasTarget)
-            .WithMany(y => y.GasTargets)
+            .WithMany(y => y.TransactionsWithThisGasTarget)
             .HasForeignKey(x => x.GasTargetId);
 
         // Indexes
@@ -1266,9 +1266,9 @@ public class Address
     public int? OrganizationId { get; set; }
     public virtual Organization Organization { get; set; }
     public virtual List<Organization> Organizations { get; set; }
-    public virtual List<Transaction> Senders { get; set; }
-    public virtual List<Transaction> GasPayers { get; set; }
-    public virtual List<Transaction> GasTargets { get; set; }
+    public virtual List<Transaction> SentTransactions { get; set; }
+    public virtual List<Transaction> TransactionsWithThisGasPayer { get; set; }
+    public virtual List<Transaction> TransactionsWithThisGasTarget { get; set; }
     public virtual List<Event> ValidatorEvents { get; set; }
 }
 
