@@ -580,12 +580,138 @@ public partial class Endpoints
             contract = CreateContract(databaseContext, e, chainName),
             nft_metadata = with_nft == 1 && e.Nft != null ?  CreateNftMetadata(databaseContext, e) : null,
             series = with_nft == 1 && e.Nft != null && e.Nft.Series != null ?  CreateSeries(databaseContext, e) : null,
-            address_event = with_event_data == 1 && e.TargetAddress != null ?  CreateAddressEvent(databaseContext, e) : null,
-            chain_event = with_event_data == 1 && e.ChainEvent != null  ?  CreateChainEvent(databaseContext, e, chainName) : null,
-            gas_event = with_event_data == 1 && e.GasEvent != null ?  CreateGasEvent(databaseContext, e) : null,
-            hash_event = with_event_data == 1 && e.HashEvent != null  ?  CreateHashEvent(databaseContext, e) : null,
-            infusion_event = with_event_data == 1 && e.InfusionEvent != null  ?  CreateInfusionEvent(databaseContext, e) : null,
-            market_event = with_event_data == 1 && e.MarketEvent != null ?  CreateMarketEvent(databaseContext, e, with_fiat, fiatCurrency, fiatPricesInUsd) : null,
+            address_event = with_event_data == 1 && e.TargetAddress != null ?
+                new AddressEvent
+                {
+                    address = new Address
+                    {
+                        address_name = e.TargetAddress.ADDRESS_NAME,
+                        address = e.TargetAddress.ADDRESS
+                    }
+                } : null,
+            chain_event = with_event_data == 1 && e.ChainEvent != null ?
+                new ChainEvent
+                {
+                    name = e.ChainEvent.NAME,
+                    value = e.ChainEvent.VALUE,
+                    chain = e.ChainEvent.Chain != null
+                        ? new Chain
+                        {
+                            chain_name = chainName
+                        }
+                        : null
+                } : null,
+            gas_event = with_event_data == 1 && e.GasEvent != null ?
+                new GasEvent
+                {
+                    price = e.GasEvent.PRICE,
+                    amount = e.GasEvent.AMOUNT,
+                    fee = e.GasEvent.FEE,
+                    address = e.GasEvent.Address != null
+                        ? new Address
+                        {
+                            address = e.GasEvent.Address.ADDRESS,
+                            address_name = e.GasEvent.Address.ADDRESS_NAME
+                        }
+                        : null
+                } : null,
+            hash_event = with_event_data == 1 && e.HashEvent != null ?
+                new HashEvent
+                {
+                    hash = e.HashEvent.HASH
+                } : null,
+            infusion_event = with_event_data == 1 && e.InfusionEvent != null ?
+                new InfusionEvent
+                {
+                    token_id = e.InfusionEvent.TOKEN_ID,
+                    infused_value = e.InfusionEvent.INFUSED_VALUE,
+                    infused_value_raw = e.InfusionEvent.INFUSED_VALUE_RAW,
+                    base_token = e.InfusionEvent.BaseToken != null
+                        ? new Token
+                        {
+                            symbol = e.InfusionEvent.BaseToken.SYMBOL,
+                            fungible = e.InfusionEvent.BaseToken.FUNGIBLE,
+                            transferable = e.InfusionEvent.BaseToken.TRANSFERABLE,
+                            finite = e.InfusionEvent.BaseToken.FINITE,
+                            divisible = e.InfusionEvent.BaseToken.DIVISIBLE,
+                            fiat = e.InfusionEvent.BaseToken.FIAT,
+                            fuel = e.InfusionEvent.BaseToken.FUEL,
+                            swappable = e.InfusionEvent.BaseToken.SWAPPABLE,
+                            burnable = e.InfusionEvent.BaseToken.BURNABLE,
+                            stakable = e.InfusionEvent.BaseToken.STAKABLE,
+                            decimals = e.InfusionEvent.BaseToken.DECIMALS
+                        }
+                        : null,
+                    infused_token = e.InfusionEvent.InfusedToken != null
+                        ? new Token
+                        {
+                            symbol = e.InfusionEvent.InfusedToken.SYMBOL,
+                            fungible = e.InfusionEvent.InfusedToken.FUNGIBLE,
+                            transferable = e.InfusionEvent.InfusedToken.TRANSFERABLE,
+                            finite = e.InfusionEvent.InfusedToken.FINITE,
+                            divisible = e.InfusionEvent.InfusedToken.DIVISIBLE,
+                            fiat = e.InfusionEvent.InfusedToken.FIAT,
+                            fuel = e.InfusionEvent.InfusedToken.FUEL,
+                            swappable = e.InfusionEvent.InfusedToken.SWAPPABLE,
+                            burnable = e.InfusionEvent.InfusedToken.BURNABLE,
+                            stakable = e.InfusionEvent.InfusedToken.STAKABLE,
+                            decimals = e.InfusionEvent.InfusedToken.DECIMALS
+                        }
+                        : null
+                } : null,
+            market_event = with_event_data == 1 && e.MarketEvent != null ?
+                new MarketEvent
+                {
+                    base_token = e.MarketEvent.BaseToken != null
+                        ? new Token
+                        {
+                            symbol = e.MarketEvent.BaseToken.SYMBOL,
+                            fungible = e.MarketEvent.BaseToken.FUNGIBLE,
+                            transferable = e.MarketEvent.BaseToken.TRANSFERABLE,
+                            finite = e.MarketEvent.BaseToken.FINITE,
+                            divisible = e.MarketEvent.BaseToken.DIVISIBLE,
+                            fiat = e.MarketEvent.BaseToken.FIAT,
+                            fuel = e.MarketEvent.BaseToken.FUEL,
+                            swappable = e.MarketEvent.BaseToken.SWAPPABLE,
+                            burnable = e.MarketEvent.BaseToken.BURNABLE,
+                            stakable = e.MarketEvent.BaseToken.STAKABLE,
+                            decimals = e.MarketEvent.BaseToken.DECIMALS
+                        }
+                        : null,
+                    quote_token = e.MarketEvent.QuoteToken != null
+                        ? new Token
+                        {
+                            symbol = e.MarketEvent.QuoteToken.SYMBOL,
+                            fungible = e.MarketEvent.QuoteToken.FUNGIBLE,
+                            transferable = e.MarketEvent.QuoteToken.TRANSFERABLE,
+                            finite = e.MarketEvent.QuoteToken.FINITE,
+                            divisible = e.MarketEvent.QuoteToken.DIVISIBLE,
+                            fiat = e.MarketEvent.QuoteToken.FIAT,
+                            fuel = e.MarketEvent.QuoteToken.FUEL,
+                            swappable = e.MarketEvent.QuoteToken.SWAPPABLE,
+                            burnable = e.MarketEvent.QuoteToken.BURNABLE,
+                            stakable = e.MarketEvent.QuoteToken.STAKABLE,
+                            decimals = e.MarketEvent.QuoteToken.DECIMALS
+                        }
+                        : null,
+                    end_price = e.MarketEvent.END_PRICE,
+                    price = e.MarketEvent.PRICE,
+                    market_event_kind = e.MarketEvent.MarketEventKind.NAME,
+                    market_id = e.MarketEvent.MARKET_ID,
+                    fiat_price = with_fiat == 1
+                        ? new FiatPrice
+                        {
+                            fiat_currency = e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                            fiat_price = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
+                                e.MarketEvent.MarketEventFiatPrice.PRICE_USD,
+                                e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                                fiatCurrency).ToString("0.####"),
+                            fiat_price_end = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
+                                e.MarketEvent.MarketEventFiatPrice.PRICE_END_USD,
+                                e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
+                                fiatCurrency).ToString("0.####")
+                        } : null
+                } : null,
             organization_event = with_event_data == 1 && e.OrganizationEvent != null ?
                 new OrganizationEvent
                 {
@@ -739,217 +865,5 @@ public partial class Endpoints
         }
 
         return series;
-    }
-
-
-    private static AddressEvent CreateAddressEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        return e.TargetAddress != null ? new AddressEvent
-            {
-                address = new Address
-                    {
-                        address_name = e.TargetAddress.ADDRESS_NAME,
-                        address = e.TargetAddress.ADDRESS
-                    }
-            } : null;
-    }
-
-
-    private static ChainEvent CreateChainEvent(MainDbContext mainDbContext, Database.Main.Event e, string chainName)
-    {
-        var chainEvent = mainDbContext.ChainEvents.Where(c => c.EventId == e.ID)
-            .Take(1)
-            .Select(c => new ChainEvent
-            {
-                name = c.NAME,
-                value = c.VALUE,
-                chain = c.Chain != null
-                    ? new Chain
-                    {
-                        chain_name = chainName
-                    }
-                    : null
-            })
-            .FirstOrDefault();
-        
-        if ( chainEvent == null)
-        {
-            return null;
-        }
-
-        return chainEvent;
-    }
-
-
-    private static GasEvent CreateGasEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        var gasEvent = mainDbContext.GasEvents.Where(g => g.EventId == e.ID)
-            .Include(g => g.Address)
-            .Take(1)
-            .Select(g => new GasEvent
-            {
-                price = g.PRICE,
-                amount = g.AMOUNT,
-                fee = g.FEE,
-                address = g.Address != null
-                    ? new Address
-                    {
-                        address = g.Address.ADDRESS,
-                        address_name = g.Address.ADDRESS_NAME
-                    }
-                    : null
-            }).FirstOrDefault();
-        if ( gasEvent == null)
-        {
-            return null;
-        }
-
-        return gasEvent;
-    }
-
-
-    private static HashEvent CreateHashEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        var hashEvent =  mainDbContext.HashEvents.Where(h => h.EventId == e.ID)
-            .Take(1)
-            .Select(h => new HashEvent
-            {
-                hash = h.HASH
-            }).FirstOrDefault();
-        
-        if ( hashEvent == null)
-        {
-            return null;
-        }
-
-        return hashEvent;
-    }
-
-
-    private static InfusionEvent CreateInfusionEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        var infuseEvent = mainDbContext.InfusionEvents.Where(i => i.EventId == e.ID)
-            .Include(i => i.BaseToken)
-            .Include(i => i.InfusedToken)
-            .Take(1)
-            .Select(i => new InfusionEvent
-            {
-                token_id = i.TOKEN_ID,
-                infused_value = i.INFUSED_VALUE,
-                infused_value_raw = i.INFUSED_VALUE_RAW,
-                base_token = i.BaseToken != null
-                    ? new Token
-                    {
-                        symbol = i.BaseToken.SYMBOL,
-                        fungible = i.BaseToken.FUNGIBLE,
-                        transferable = i.BaseToken.TRANSFERABLE,
-                        finite = i.BaseToken.FINITE,
-                        divisible = i.BaseToken.DIVISIBLE,
-                        fiat = i.BaseToken.FIAT,
-                        fuel = i.BaseToken.FUEL,
-                        swappable = i.BaseToken.SWAPPABLE,
-                        burnable = i.BaseToken.BURNABLE,
-                        stakable = i.BaseToken.STAKABLE,
-                        decimals = i.BaseToken.DECIMALS
-                    }
-                    : null,
-                infused_token = i.InfusedToken != null
-                    ? new Token
-                    {
-                        symbol = i.InfusedToken.SYMBOL,
-                        fungible = i.InfusedToken.FUNGIBLE,
-                        transferable = i.InfusedToken.TRANSFERABLE,
-                        finite = i.InfusedToken.FINITE,
-                        divisible = i.InfusedToken.DIVISIBLE,
-                        fiat = i.InfusedToken.FIAT,
-                        fuel = i.InfusedToken.FUEL,
-                        swappable = i.InfusedToken.SWAPPABLE,
-                        burnable = i.InfusedToken.BURNABLE,
-                        stakable = i.InfusedToken.STAKABLE,
-                        decimals = i.InfusedToken.DECIMALS
-                    }
-                    : null
-            })
-            .FirstOrDefault();
-        
-        if ( infuseEvent == null)
-        {
-            return null;
-        }
-
-        return infuseEvent;
-    }
-
-
-    private static MarketEvent CreateMarketEvent(MainDbContext mainDbContext, Database.Main.Event e, int with_fiat, string fiatCurrency,
-        Dictionary<string, decimal> fiatPricesInUsd)
-    {
-        var marketEvent = mainDbContext.MarketEvents.Where(m => m.EventId == e.ID)
-            .Include(m => m.BaseToken)
-            .Include(m => m.QuoteToken)
-            .Include(m => m.MarketEventKind)
-            .Include(m => m.MarketEventFiatPrice)
-            .Take(1)
-            .Select(m =>  new MarketEvent
-            {
-
-                base_token = e.MarketEvent.BaseToken != null
-                    ? new Token
-                    {
-                        symbol = e.MarketEvent.BaseToken.SYMBOL,
-                        fungible = e.MarketEvent.BaseToken.FUNGIBLE,
-                        transferable = e.MarketEvent.BaseToken.TRANSFERABLE,
-                        finite = e.MarketEvent.BaseToken.FINITE,
-                        divisible = e.MarketEvent.BaseToken.DIVISIBLE,
-                        fiat = e.MarketEvent.BaseToken.FIAT,
-                        fuel = e.MarketEvent.BaseToken.FUEL,
-                        swappable = e.MarketEvent.BaseToken.SWAPPABLE,
-                        burnable = e.MarketEvent.BaseToken.BURNABLE,
-                        stakable = e.MarketEvent.BaseToken.STAKABLE,
-                        decimals = e.MarketEvent.BaseToken.DECIMALS
-                    }
-                    : null,
-                quote_token = e.MarketEvent.QuoteToken != null
-                    ? new Token
-                    {
-                        symbol = e.MarketEvent.QuoteToken.SYMBOL,
-                        fungible = e.MarketEvent.QuoteToken.FUNGIBLE,
-                        transferable = e.MarketEvent.QuoteToken.TRANSFERABLE,
-                        finite = e.MarketEvent.QuoteToken.FINITE,
-                        divisible = e.MarketEvent.QuoteToken.DIVISIBLE,
-                        fiat = e.MarketEvent.QuoteToken.FIAT,
-                        fuel = e.MarketEvent.QuoteToken.FUEL,
-                        swappable = e.MarketEvent.QuoteToken.SWAPPABLE,
-                        burnable = e.MarketEvent.QuoteToken.BURNABLE,
-                        stakable = e.MarketEvent.QuoteToken.STAKABLE,
-                        decimals = e.MarketEvent.QuoteToken.DECIMALS
-                    }
-                    : null,
-                end_price = e.MarketEvent.END_PRICE,
-                price = e.MarketEvent.PRICE,
-                market_event_kind = e.MarketEvent.MarketEventKind.NAME,
-                market_id = e.MarketEvent.MARKET_ID,
-                fiat_price = with_fiat == 1
-                    ? new FiatPrice
-                    {
-                        fiat_currency = e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
-                        fiat_price = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
-                            e.MarketEvent.MarketEventFiatPrice.PRICE_USD,
-                            e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
-                            fiatCurrency).ToString("0.####"),
-                        fiat_price_end = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
-                            e.MarketEvent.MarketEventFiatPrice.PRICE_END_USD,
-                            e.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
-                            fiatCurrency).ToString("0.####")
-                    }
-                    : null
-            })
-            .FirstOrDefault();
-        if ( marketEvent == null)
-        {
-            return null;
-        }
-
-        return marketEvent;
     }
 }
