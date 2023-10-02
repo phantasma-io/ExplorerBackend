@@ -28,7 +28,7 @@ public static class ContractMethods
 
 
     public static void InsertIfNotExistList(MainDbContext databaseContext, List<Tuple<string, string>> contractInfoList,
-        Chain chain, string symbol, bool saveChanges = true)
+        Chain chain, string symbol)
     {
         if ( !contractInfoList.Any() || string.IsNullOrEmpty(symbol) ) return;
 
@@ -49,7 +49,6 @@ public static class ContractMethods
         }
 
         databaseContext.Contracts.AddRange(contractList);
-        if ( !saveChanges ) databaseContext.SaveChanges();
     }
 
 

@@ -9,7 +9,7 @@ public static class ChainMethods
     // Checks if "Chains" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static Chain Upsert(MainDbContext databaseContext, string name, bool saveChanges = true)
+    public static Chain Upsert(MainDbContext databaseContext, string name)
     {
         var chain = databaseContext.Chains.FirstOrDefault(x => x.NAME == name);
 
@@ -18,7 +18,6 @@ public static class ChainMethods
         chain = new Chain {NAME = name, CURRENT_HEIGHT = "0"};
 
         databaseContext.Chains.Add(chain);
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return chain;
     }

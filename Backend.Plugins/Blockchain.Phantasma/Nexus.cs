@@ -151,7 +151,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 new Tuple<string, string>(external.GetProperty("platform").GetString(),
                                     external.GetProperty("hash").GetString())).ToList();
 
-                            ExternalMethods.InsertIfNotExists(databaseContext, externalList, tokenEntry, false);
+                            ExternalMethods.InsertIfNotExists(databaseContext, externalList, tokenEntry);
 
                             transactionEnd = DateTime.Now - transactionStart;
                             Log.Verbose("[{Name}] Processed {Count} Externals in {Time} sec", Name,

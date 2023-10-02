@@ -5,7 +5,7 @@ namespace Database.Main;
 public static class AddressStorageMethods
 {
     public static AddressStorage Upsert(MainDbContext databaseContext, Address address, long available, long used,
-        string avatar, bool saveChanges = true)
+        string avatar)
     {
         var entry = databaseContext.AddressStorages.FirstOrDefault(x => x.Address == address);
 
@@ -19,7 +19,6 @@ public static class AddressStorageMethods
                 AVATAR = avatar
             };
             databaseContext.AddressStorages.Add(entry);
-            if ( saveChanges ) databaseContext.SaveChanges();
         }
         else
         {

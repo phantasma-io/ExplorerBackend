@@ -106,7 +106,7 @@ public class Fetch
                         {
                             // We found "system" NFT, which is an internal non-tradable object.
                             // We should delete it.
-                            EventMethods.DeleteByNftId(databaseContext, nft.ID, false);
+                            EventMethods.DeleteByNftId(databaseContext, nft.ID);
                             NftMethods.Delete(databaseContext, nft.ID);
                             Log.Information(
                                 "DB: Deleting {NftSymbol} system NFT with type '{Type}'", NtfHash,

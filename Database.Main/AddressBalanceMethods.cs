@@ -8,7 +8,7 @@ namespace Database.Main;
 public static class AddressBalanceMethods
 {
     public static void InsertOrUpdateList(MainDbContext databaseContext, Address address,
-        List<Tuple<string, string, string>> balances, bool saveChanges = true)
+        List<Tuple<string, string, string>> balances)
     {
         if ( !balances.Any() || address == null ) return;
 
@@ -55,7 +55,5 @@ public static class AddressBalanceMethods
                 removeList.Add(balance);
 
         if ( !removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
-
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 }

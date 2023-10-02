@@ -65,7 +65,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     transactionStart = DateTime.Now;
                     var transactions = transactionProperty.EnumerateArray()
                         .Select(transaction => transaction.ToString()).ToList();
-                    AddressTransactionMethods.InsertIfNotExists(databaseContext, address, transactions, false);
+                    AddressTransactionMethods.InsertIfNotExists(databaseContext, address, transactions);
 
                     transactionEnd = DateTime.Now - transactionStart;
                     Log.Verbose("[{Name}] Processed {Count} TransactionAddresses in {Time} sec", Name,
@@ -80,7 +80,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     AddressStakeMethods.Upsert(databaseContext, address,
                         Commons.Utils.ToDecimal(amount, soulDecimals), amount,
                         stakesProperty.GetProperty("time").GetInt32(),
-                        Commons.Utils.ToDecimal(unclaimed, kcalDecimals), unclaimed, false);
+                        Commons.Utils.ToDecimal(unclaimed, kcalDecimals), unclaimed);
                 }
 
                 if ( response.RootElement.TryGetProperty("balances", out var balancesProperty) )
@@ -91,7 +91,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 balance.GetProperty("symbol").GetString(), balance.GetProperty("amount").GetString()))
                         .ToList();
 
-                    AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList, false);
+                    AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
 
                     transactionEnd = DateTime.Now - transactionStart;
                     Log.Verbose("[{Name}] Processed {Count} Balances in {Time} sec", Name,
@@ -102,7 +102,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     AddressStorageMethods.Upsert(databaseContext, address,
                         storageProperty.GetProperty("available").GetUInt32(),
                         storageProperty.GetProperty("used").GetUInt32(),
-                        storageProperty.GetProperty("avatar").GetString(), false);
+                        storageProperty.GetProperty("avatar").GetString());
 
                 var stake = response.RootElement.GetProperty("stake").GetString();
                 address.STAKE = Commons.Utils.ToDecimal(stake, soulDecimals);
@@ -214,7 +214,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         transactionStart = DateTime.Now;
                         var transactions = transactionProperty.EnumerateArray()
                             .Select(transaction => transaction.ToString()).ToList();
-                        AddressTransactionMethods.InsertIfNotExists(databaseContext, address, transactions, false);
+                        AddressTransactionMethods.InsertIfNotExists(databaseContext, address, transactions);
 
                         transactionEnd = DateTime.Now - transactionStart;
                         Log.Verbose("[{Name}] Processed {Count} TransactionAddresses in {Time} sec", Name,
@@ -229,7 +229,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         AddressStakeMethods.Upsert(databaseContext, address,
                             Commons.Utils.ToDecimal(amount, soulDecimals), amount,
                             stakesProperty.GetProperty("time").GetInt32(),
-                            Commons.Utils.ToDecimal(unclaimed, kcalDecimals), unclaimed, false);
+                            Commons.Utils.ToDecimal(unclaimed, kcalDecimals), unclaimed);
                     }
 
                     if ( account.TryGetProperty("balances", out var balancesProperty) )
@@ -241,7 +241,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     balance.GetProperty("amount").GetString()))
                             .ToList();
 
-                        AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList, false);
+                        AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
 
                         transactionEnd = DateTime.Now - transactionStart;
                         Log.Verbose("[{Name}] Processed {Count} Balances in {Time} sec", Name,
@@ -252,7 +252,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         AddressStorageMethods.Upsert(databaseContext, address,
                             storageProperty.GetProperty("available").GetUInt32(),
                             storageProperty.GetProperty("used").GetUInt32(),
-                            storageProperty.GetProperty("avatar").GetString(), false);
+                            storageProperty.GetProperty("avatar").GetString());
                             
                     
                     var stake = account.GetProperty("stake").GetString();

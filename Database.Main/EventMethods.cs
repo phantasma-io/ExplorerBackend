@@ -14,12 +14,10 @@ public static class EventMethods
     // Returns new or existing entry's Id.
 
 
-    public static void DeleteByNftId(MainDbContext databaseContext, int nftId, bool saveChanges = true)
+    public static void DeleteByNftId(MainDbContext databaseContext, int nftId)
     {
         var tokenEvents = databaseContext.Events.Where(x => x.NftId == nftId);
         foreach ( var tokenEvent in tokenEvents ) databaseContext.Entry(tokenEvent).State = EntityState.Deleted;
-
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
 
@@ -54,8 +52,7 @@ public static class EventMethods
         Transaction transaction,
         Contract contract,
         EventKind eventKind,
-        Address address,
-        bool saveChanges = true)
+        Address address)
     {
         newEventCreated = false;
 
@@ -73,7 +70,6 @@ public static class EventMethods
         };
 
         databaseContext.Events.Add(eventEntry);
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         newEventCreated = true;
 

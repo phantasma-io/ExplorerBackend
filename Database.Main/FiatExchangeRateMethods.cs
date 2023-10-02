@@ -8,7 +8,7 @@ public static class FiatExchangeRateMethods
     // Checks if "FiatExchangeRate" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static void Upsert(MainDbContext databaseContext, string symbol, decimal usdPrice, bool saveChanges = true)
+    public static void Upsert(MainDbContext databaseContext, string symbol, decimal usdPrice)
     {
         var entry = databaseContext.FiatExchangeRates.FirstOrDefault(x => x.SYMBOL == symbol);
         if ( entry != null )
@@ -18,8 +18,6 @@ public static class FiatExchangeRateMethods
             entry = new FiatExchangeRate {SYMBOL = symbol, USD_PRICE = usdPrice};
             databaseContext.FiatExchangeRates.Add(entry);
         }
-
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
     // Gets fiat prices dictionary against USD.

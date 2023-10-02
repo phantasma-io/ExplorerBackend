@@ -7,7 +7,7 @@ namespace Database.Main;
 public static class ExternalMethods
 {
     public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> externals,
-        Token token, bool saveChanges = true)
+        Token token)
     {
         if ( token == null || !externals.Any() ) return;
 
@@ -25,6 +25,5 @@ public static class ExternalMethods
         }
 
         databaseContext.Externals.AddRange(externalList);
-        if ( !saveChanges ) databaseContext.SaveChanges();
     }
 }

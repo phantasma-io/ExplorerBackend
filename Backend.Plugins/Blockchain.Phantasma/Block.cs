@@ -155,7 +155,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var oracles = oracleProperty.EnumerateArray().Select(oracle =>
                 new Tuple<string, string>(oracle.GetProperty("url").GetString(),
                     oracle.GetProperty("content").GetString())).ToList();
-            BlockOracleMethods.InsertIfNotExists(databaseContext, oracles, block, false);
+            BlockOracleMethods.InsertIfNotExists(databaseContext, oracles, block);
 
             transactionEnd = DateTime.Now - transactionStart;
             Log.Verbose("[{Name}] Processed {Count} Oracles in {Time} sec", Name,
@@ -255,7 +255,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         transactionStart = DateTime.Now;
                         var eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
                             timestampUnixSeconds, eventIndex + 1, chainEntry, transaction, contractEntry,
-                            eventKindEntry, addressEntry, false);
+                            eventKindEntry, addressEntry);
                         transactionEnd = DateTime.Now - transactionStart;
                         Log.Verbose(
                             "[{Name}] Added Base Event {Kind} Index {Index} in {Time} sec, going on with Processing EventData",
@@ -636,7 +636,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 //databaseEvent we need it here, so check it
                                 if ( eventEntry != null )
                                     ChainEventMethods.Upsert(databaseContext, valueEventName, value, chainEntry,
-                                        eventEntry, false);
+                                        eventEntry);
 
                                 break;
                             }
@@ -667,7 +667,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 //databaseEvent we need it here, so check it
                                 if ( eventEntry != null )
-                                    HashEventMethods.Upsert(databaseContext, hash, eventEntry, false);
+                                    HashEventMethods.Upsert(databaseContext, hash, eventEntry);
 
                                 break;
                             }

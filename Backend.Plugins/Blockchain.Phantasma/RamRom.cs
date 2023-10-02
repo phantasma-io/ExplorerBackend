@@ -182,7 +182,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     properties.Add(property);
                 }
 
-            nft.CreatorAddress = AddressMethods.Upsert(databaseContext, chainId, response.RootElement.GetProperty("creatorAddress").GetString(), false);
+            nft.CreatorAddress = AddressMethods.Upsert(databaseContext, chainId, response.RootElement.GetProperty("creatorAddress").GetString());
             var series = response.RootElement.GetProperty("series").GetString();
             // TODO remove later after changing SERIES_ID type to string
             // Hack for long series numbers (21 or 24 digits) inside GAME NFT descriptions

@@ -11,7 +11,7 @@ public static class AddressMethods
     // Checks if "Addresses" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static Address Upsert(MainDbContext databaseContext, int chainId, string address, bool saveChanges = true)
+    public static Address Upsert(MainDbContext databaseContext, int chainId, string address)
     {
         var entry = databaseContext.Addresses
             .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
@@ -28,29 +28,6 @@ public static class AddressMethods
         var chain = ChainMethods.Get(databaseContext, chainId);
         entry = new Address {Chain = chain, ADDRESS = address};
         databaseContext.Addresses.Add(entry);
-
-        if ( !saveChanges ) return entry;
-
-
-        try
-        {
-            databaseContext.SaveChanges();
-        }
-        catch ( Exception ex )
-        {
-            var exMessage = ex.ToString();
-            if ( exMessage.Contains("duplicate key value violates unique constraint") &&
-                 exMessage.Contains("IX_Addresses_ChainId_ADDRESS") )
-            {
-                // We tried to create same record in two threads concurrently.
-                // Now we should just remove duplicating record and get an existing record.
-                databaseContext.Addresses.Remove(entry);
-                entry = databaseContext.Addresses.First(x => x.ChainId == chainId && x.ADDRESS == address);
-            }
-            else
-                // Unknown exception.
-                throw;
-        }
 
         return entry;
     }

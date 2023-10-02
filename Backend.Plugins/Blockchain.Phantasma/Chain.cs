@@ -38,7 +38,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 //var currentChainHeight = element.GetProperty("height").GetInt64();
                 Log.Information("[{Name}] Chain name is {NameChain}", Name, chainName);
 
-                var chain = ChainMethods.Upsert(databaseContext, chainName, false);
+                var chain = ChainMethods.Upsert(databaseContext, chainName);
 
                 var apiChain = Database.ApiCache.ChainMethods.Upsert(apiCacheDbContext, chainName);
 
@@ -54,8 +54,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     var hashList = contractList.Select(tuple => tuple.Item1).ToList();
 
                     ContractMethods.InsertIfNotExists(apiCacheDbContext, hashList, apiChain);
-                    Database.Main.ContractMethods.InsertIfNotExistList(databaseContext, contractList, chain, null,
-                        false);
+                    Database.Main.ContractMethods.InsertIfNotExistList(databaseContext, contractList, chain, null);
 
                     var transactionEnd = DateTime.Now - transactionStart;
                     Log.Verbose("[{Name}] Processed {Count} Contracts in {Time} sec", Name,

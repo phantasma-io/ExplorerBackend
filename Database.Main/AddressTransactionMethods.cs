@@ -6,7 +6,7 @@ namespace Database.Main;
 public static class AddressTransactionMethods
 {
     public static void InsertIfNotExists(MainDbContext databaseContext, Address address,
-        List<string> transactionHashList, bool saveChanges = true)
+        List<string> transactionHashList)
     {
         if ( !transactionHashList.Any() ) return;
 
@@ -21,7 +21,6 @@ public static class AddressTransactionMethods
             select new AddressTransaction {Address = address, Transaction = transaction} ).ToList();
 
         databaseContext.AddressTransactions.AddRange(addressTransactionList);
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
 

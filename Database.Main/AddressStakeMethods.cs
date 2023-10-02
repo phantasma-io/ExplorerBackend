@@ -6,7 +6,7 @@ public static class AddressStakeMethods
 {
     public static AddressStake Upsert(MainDbContext databaseContext, Address address, string amount, string amount_raw,
         long time,
-        string unclaimed, string unclaimed_raw, bool saveChanges = true)
+        string unclaimed, string unclaimed_raw)
     {
         var entry = databaseContext.AddressStakes.FirstOrDefault(x => x.Address == address);
 
@@ -22,7 +22,6 @@ public static class AddressStakeMethods
                 UNCLAIMED_RAW = unclaimed_raw
             };
             databaseContext.AddressStakes.Add(entry);
-            if ( saveChanges ) databaseContext.SaveChanges();
         }
         else
         {

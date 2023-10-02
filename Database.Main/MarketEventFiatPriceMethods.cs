@@ -5,7 +5,7 @@ namespace Database.Main;
 public static class MarketEventFiatPriceMethods
 {
     public static MarketEventFiatPrice Upsert(MainDbContext databaseContext, MarketEvent marketEvent, decimal priceUsd,
-        decimal priceEndUsd, bool saveChanges = true)
+        decimal priceEndUsd)
     {
         if ( marketEvent is null ) return null;
 
@@ -31,8 +31,6 @@ public static class MarketEventFiatPriceMethods
             marketEventFiatPrice.PRICE_END_USD = priceEndUsd;
             marketEventFiatPrice.FIAT_NAME = "USD";
         }
-
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return marketEventFiatPrice;
     }
