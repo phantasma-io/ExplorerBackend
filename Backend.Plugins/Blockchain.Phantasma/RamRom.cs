@@ -161,9 +161,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             if ( responseSaved == null )
                 // We loaded it for the first time, we should save it.
             {
-                using ApiCacheDbContext databaseUsersContext = new();
-                NftMethods.SetApiResponses(databaseUsersContext, chainName,
-                    nft.Contract.HASH, nft.TOKEN_ID, null, nft.CHAIN_API_RESPONSE, true);
+                using ApiCacheDbContext dbApiCacheContext = new();
+                NftMethods.SetApiResponses(dbApiCacheContext, chainName,
+                    nft.Contract.HASH, nft.TOKEN_ID, null, nft.CHAIN_API_RESPONSE);
+                dbApiCacheContext.SaveChanges();
             }
 
             // Reading properties

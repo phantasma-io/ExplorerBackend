@@ -53,7 +53,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         new Tuple<string, string>(contract.ToString(), contract.ToString())).ToList();
                     var hashList = contractList.Select(tuple => tuple.Item1).ToList();
 
-                    ContractMethods.InsertIfNotExists(apiCacheDbContext, hashList, apiChain, false);
+                    ContractMethods.InsertIfNotExists(apiCacheDbContext, hashList, apiChain);
                     Database.Main.ContractMethods.InsertIfNotExistList(databaseContext, contractList, chain, null,
                         false);
 
