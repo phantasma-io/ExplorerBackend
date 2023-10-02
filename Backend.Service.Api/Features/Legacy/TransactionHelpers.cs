@@ -590,7 +590,20 @@ public partial class Endpoints
             sale_event = with_event_data == 1 && e.SaleEvent != null  ?  CreateSaleEvent(databaseContext, e) : null,
             string_event = with_event_data == 1 && e.StringEvent != null  ?  CreateStringEvent(databaseContext, e) : null,
             token_event = with_event_data == 1 && e.TokenEvent != null ?  CreateTokenEvent(databaseContext, e) : null,
-            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ?  CreateTransactionSettleEvent(databaseContext, e) : null
+            transaction_settle_event = with_event_data == 1 && e.TransactionSettleEvent != null  ? 
+                new TransactionSettleEvent
+                {
+                    hash = e.TransactionSettleEvent.HASH,
+                    platform = e.TransactionSettleEvent.Platform != null
+                        ? new Platform
+                        {
+                            name = e.TransactionSettleEvent.Platform.NAME,
+                            chain = e.TransactionSettleEvent.Platform.CHAIN,
+                            fuel = e.TransactionSettleEvent.Platform.FUEL
+                            //we do not add other information here for now
+                        }
+                        : null
+                } : null
         };
     }
 
@@ -1002,34 +1015,5 @@ public partial class Endpoints
         }
 
         return token;
-    }
-
-
-    private static TransactionSettleEvent CreateTransactionSettleEvent(MainDbContext mainDbContext, Database.Main.Event e)
-    {
-        //e = mainDbContext.Events.Find(e.ID);
-        var transactionSettleEvent = mainDbContext.TransactionSettleEvents.Where(t => t.EventId == e.ID)
-            .Include(t => t.Platform)
-            .Take(1)
-            .Select(t => new TransactionSettleEvent
-            {
-                hash = e.TransactionSettleEvent.HASH,
-                platform = e.TransactionSettleEvent.Platform != null
-                    ? new Platform
-                    {
-                        name = e.TransactionSettleEvent.Platform.NAME,
-                        chain = e.TransactionSettleEvent.Platform.CHAIN,
-                        fuel = e.TransactionSettleEvent.Platform.FUEL
-                        //we do not add other information here for now
-                    }
-                    : null
-            }).FirstOrDefault();
-        
-        if ( transactionSettleEvent == null)
-        {
-            return null;
-        }
-
-        return transactionSettleEvent;
     }
 }
