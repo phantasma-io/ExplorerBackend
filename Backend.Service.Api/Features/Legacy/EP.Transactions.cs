@@ -1,10 +1,7 @@
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
@@ -19,7 +16,7 @@ public partial class Endpoints
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
-    public static TransactionResult Transactions(
+    public static async Task<TransactionResult> Transactions(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -153,7 +150,7 @@ public partial class Endpoints
                 query = query.Take(1);
             }else if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            transactions = query.Select(x => new Transaction
+            transactions = await query.Select(x => new Transaction
                 {
                     hash = x.HASH,
                     block_hash = x.Block.HASH,
@@ -463,7 +460,7 @@ public partial class Endpoints
                             }).ToArray()
                         : null
                 }
-            ).ToArray();
+            ).ToArrayAsync();
             
             /*query.Select(_transaction => ProcessTransaction())*/
             var responseTime = DateTime.Now - startTime;

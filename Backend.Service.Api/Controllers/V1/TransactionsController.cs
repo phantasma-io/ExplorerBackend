@@ -61,7 +61,7 @@ public class TransactionsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Transactions(
+        return Endpoints.Transactions(
             order_by,
             order_direction,
             offset,
@@ -79,6 +79,6 @@ public class TransactionsController : BaseControllerV1
             with_event_data,
             with_fiat,
             with_script,
-            with_total));
+            with_total);
     }
 }
