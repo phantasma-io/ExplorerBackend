@@ -514,24 +514,8 @@ public partial class Endpoints
         var tasksEvents = new List<Task<Event[]>>();
         await using MainDbContext databaseContext = new();
 
-        var events = databaseContext.Events.Where(e => e.TransactionId == x.ID)
-            .Select(e=>new Database.Main.Event
-            {
-                ID = e.ID
-            }).AsNoTracking();
-        
-        var count = await events.CountAsync();
-
-        var chunks = events.AsEnumerable().Chunk(50);
-
-        Log.Information("Events retrieved from database, processing {count} events for transaction {hash}", count, x.HASH);
-        foreach ( var chunk in chunks )
-        {
-            Log.Information("Processing event {id} to {id_2} ", chunk.First().ID, chunk.Last().ID);
-
-            tasksEvents.Add(Task.Run( () => LoadFromChunk(chunk, x, with_nft, with_event_data, with_fiat, fiatCurrency,
-                fiatPricesInUsd)));
-        }
+        tasksEvents.Add(Task.Run( () => LoadFromChunk(x.Events, x, with_nft, with_event_data, with_fiat, fiatCurrency,
+            fiatPricesInUsd)));
         
         var resultsEvents = await Task.WhenAll(tasksEvents);
         
@@ -539,38 +523,26 @@ public partial class Endpoints
     }
 
 
-    private static async Task<Event[]> LoadFromChunk(Database.Main.Event[] chunk, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
+    private static async Task<Event[]> LoadFromChunk(List<Database.Main.Event> chunk, Database.Main.Transaction x, int with_nft, int with_event_data, int with_fiat, string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
         var tasks = new List<Event>();
         
-        await using MainDbContext databaseContext = new();
-
-        foreach (var e in chunk.AsEnumerable())
+        foreach (var e in chunk)
         {
-            tasks.Add(CreateEventWihoutTask(databaseContext, x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
+            tasks.Add(CreateEventWihoutTask(x, e, with_nft, with_event_data, with_fiat, fiatCurrency,
                 fiatPricesInUsd));
         }
-
-        await databaseContext.DisposeAsync();
 
         return tasks.ToArray();
     }
     
-    private static Event CreateEventWihoutTask(MainDbContext databaseContext, Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
+    private static Event CreateEventWihoutTask(Database.Main.Transaction x, Database.Main.Event e, int with_nft, int with_event_data, int with_fiat,
         string fiatCurrency, Dictionary<string, decimal> fiatPricesInUsd)
     {
-        e = databaseContext.Events.FirstOrDefault(_event => _event.ID == e.ID);
-        if ( e == null)
-        {
-            return null;
-        }
-
-        var chainName = e.Chain.NAME.ToLower();
-        
         return new Event
         {
             event_id = e.ID,
-            chain = chainName,
+            chain = e.Chain.NAME.ToLower(),
             date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
             transaction_hash = x.HASH,
             token_id = e.TOKEN_ID,
@@ -635,7 +607,7 @@ public partial class Endpoints
                     chain = e.ChainEvent.Chain != null
                         ? new Chain
                         {
-                            chain_name = chainName
+                            chain_name = e.Chain.NAME.ToLower()
                         }
                         : null
                 } : null,
