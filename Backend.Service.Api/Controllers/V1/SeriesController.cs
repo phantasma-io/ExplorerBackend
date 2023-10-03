@@ -48,7 +48,7 @@ public class SeriesController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Series(
+        return GetSeries.Execute(
             order_by,
             order_direction,
             offset,
@@ -61,6 +61,6 @@ public class SeriesController : BaseControllerV1
             contract,
             symbol,
             token_id,
-            with_total));
+            with_total);
     }
 }

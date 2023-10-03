@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetTokens
 {
     [ProducesResponseType(typeof(TokenResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TokenResult), "Returns the token on the backend.", false, 10)]
-    public static TokenResult Tokens(
+    public static async Task<TokenResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -53,7 +54,7 @@ public partial class Endpoints
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.Tokens.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol.ToUpper());
@@ -62,7 +63,7 @@ public partial class Endpoints
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -80,7 +81,7 @@ public partial class Endpoints
                     _ => query
                 };
 
-            tokenArray = query.Skip(offset).Take(limit).Select(x => new Token
+            tokenArray = await query.Skip(offset).Take(limit).Select(x => new Token
             {
                 symbol = x.SYMBOL,
                 fungible = x.FUNGIBLE,
@@ -140,7 +141,7 @@ public partial class Endpoints
                         url = t.URL
                     }).ToArray()
                     : null
-            }).ToArray();
+            }).ToArrayAsync();
             var responseTime = DateTime.Now - startTime;
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }

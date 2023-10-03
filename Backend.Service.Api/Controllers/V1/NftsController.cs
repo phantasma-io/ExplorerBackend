@@ -50,7 +50,7 @@ public class NftsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Nfts(
+        return GetNfts.Execute(
             order_by,
             order_direction,
             offset,
@@ -64,6 +64,6 @@ public class NftsController : BaseControllerV1
             token_id,
             series_id,
             status,
-            with_total));
+            with_total);
     }
 }

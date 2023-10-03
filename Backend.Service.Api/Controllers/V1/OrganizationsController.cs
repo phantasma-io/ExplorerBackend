@@ -44,7 +44,7 @@ public class OrganizationsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Organizations(
+        return GetOrganizations.Execute(
             order_by,
             order_direction,
             offset,
@@ -55,6 +55,6 @@ public class OrganizationsController : BaseControllerV1
             organization_name_partial,
             with_creation_event,
             with_address,
-            with_total));
+            with_total);
     }
 }

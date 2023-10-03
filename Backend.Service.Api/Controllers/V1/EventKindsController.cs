@@ -36,13 +36,13 @@ public class EventKindsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.EventKinds(
+        return GetEventKinds.Execute(
             order_by,
             order_direction,
             offset,
             limit,
             event_kind,
             chain,
-            with_total));
+            with_total);
     }
 }

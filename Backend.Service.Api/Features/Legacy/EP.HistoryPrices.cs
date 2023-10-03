@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetHistoryPrices
 {
     [ProducesResponseType(typeof(HistoryPriceResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(HistoryPriceResult), "Returns the Token Price History on the backend.", false, 10)]
-    public static HistoryPriceResult HistoryPrices(
+    public static async Task<HistoryPriceResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "date",
         string order_direction = "asc",
@@ -57,7 +58,7 @@ public partial class Endpoints
                 throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.TokenDailyPrices.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(symbol) )
@@ -72,7 +73,7 @@ public partial class Endpoints
 
 
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -94,7 +95,7 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            historyArray = query.Select(x => new HistoryPrice
+            historyArray = await query.Select(x => new HistoryPrice
             {
                 symbol = x.Token != null ? x.Token.SYMBOL : null,
                 price = new Price
@@ -126,7 +127,7 @@ public partial class Endpoints
                     }
                     : null,
                 date = x.DATE_UNIX_SECONDS.ToString()
-            }).ToArray();
+            }).ToArrayAsync();
 
             var responseTime = DateTime.Now - startTime;
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));

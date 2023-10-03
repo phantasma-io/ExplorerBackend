@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetChains
 {
     [ProducesResponseType(typeof(ChainResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ChainResult), "Returns the chains on the backend.", false, 10)]
-    public static ChainResult Chains(
+    public static async Task<ChainResult> Execute(
         // ReSharper disable InconsistentNaming
         int offset = 0,
         int limit = 50,
@@ -39,20 +40,20 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.Chains.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(chain) )
                 query = query.Where(x => x.NAME == chain);
 
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
-            chainArray = query.Skip(offset).Take(limit).Select(x => new Chain
+            chainArray = await query.Skip(offset).Take(limit).Select(x => new Chain
             {
                 chain_name = x.NAME,
                 chain_height = x.CURRENT_HEIGHT
-            }).ToArray();
+            }).ToArrayAsync();
 
             var responseTime = DateTime.Now - startTime;
 

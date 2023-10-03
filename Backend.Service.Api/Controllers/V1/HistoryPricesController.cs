@@ -40,7 +40,7 @@ public class HistoryPricesController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.HistoryPrices(
+        return GetHistoryPrices.Execute(
             order_by,
             order_direction,
             offset,
@@ -49,6 +49,6 @@ public class HistoryPricesController : BaseControllerV1
             date_less,
             date_greater,
             with_token,
-            with_total));
+            with_total);
     }
 }

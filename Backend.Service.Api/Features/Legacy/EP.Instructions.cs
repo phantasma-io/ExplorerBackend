@@ -2,18 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetInstructions
 {
     [ProducesResponseType(typeof(DisassemblerResult), ( int ) HttpStatusCode.OK)]
     [HttpPost("{script}")]
     [ApiInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script")]
-    public static DisassemblerResult Instructions([FromBody] Script script)
+    public static async Task<DisassemblerResult> Execute([FromBody] Script script)
     {
         long totalResults;
         Instruction[] instructionArray;

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetAddresses
 {
     [ProducesResponseType(typeof(AddressResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]
-    public static AddressResult Addresses(
+    public static async Task<AddressResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -78,7 +79,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
 
             var query = databaseContext.Addresses.AsQueryable().AsNoTracking();
 
@@ -114,7 +115,7 @@ public partial class Endpoints
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -139,7 +140,7 @@ public partial class Endpoints
             //limit -1 is just allowed if a filter is set
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            addressArray = query.Select(x => new Address
+            addressArray = await query.Select(x => new Address
             {
                 address = x.ADDRESS,
                 address_name = x.ADDRESS_NAME,
@@ -195,7 +196,7 @@ public partial class Endpoints
                         }
                     ).ToArray()
                     : null
-            }).ToArray();
+            }).ToArrayAsync();
 
             #endregion
 

@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -10,12 +11,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetSeries
 {
     [ProducesResponseType(typeof(SeriesResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(SeriesResult), "Returns series of NFTs available on the backend.", false, 10, cacheTag: "serieses")]
-    public static SeriesResult Series(
+    public static async Task<SeriesResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -80,7 +81,7 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.Serieses.AsQueryable().AsNoTracking();
 
             #region Filtering
@@ -122,7 +123,7 @@ public partial class Endpoints
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             if ( order_direction == "asc" )
                 query = order_by switch
@@ -143,7 +144,7 @@ public partial class Endpoints
 
             #region ResultArray
 
-            seriesArray = query.Skip(offset).Take(limit).Select(x => new Series
+            seriesArray = await query.Skip(offset).Take(limit).Select(x => new Series
             {
                 id = x.ID,
                 series_id = x.SERIES_ID ?? "",
@@ -162,7 +163,7 @@ public partial class Endpoints
                 attr_value_2 = x.ATTR_VALUE_2,
                 attr_type_3 = x.ATTR_TYPE_3,
                 attr_value_3 = x.ATTR_VALUE_3
-            }).ToArray();
+            }).ToArrayAsync();
 
             #endregion
 

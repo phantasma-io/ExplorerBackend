@@ -79,7 +79,7 @@ public class EventsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Events(
+        return GetEvents.Execute(
             order_by,
             order_direction,
             offset,
@@ -106,6 +106,6 @@ public class EventsController : BaseControllerV1
             with_fiat,
             with_nsfw,
             with_blacklisted,
-            with_total));
+            with_total);
     }
 }

@@ -29,10 +29,10 @@ public class ChainsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Chains(
+        return GetChains.Execute(
             offset,
             limit,
             chain,
-            with_total));
+            with_total);
     }
 }

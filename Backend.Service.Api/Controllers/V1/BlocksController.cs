@@ -63,7 +63,7 @@ public class BlocksController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Blocks(
+        return GetBlocks.Execute(
             order_by,
             order_direction,
             offset,
@@ -79,6 +79,6 @@ public class BlocksController : BaseControllerV1
             with_event_data,
             with_nft,
             with_fiat,
-            with_total));
+            with_total);
     }
 }

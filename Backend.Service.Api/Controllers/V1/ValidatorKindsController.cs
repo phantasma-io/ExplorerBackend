@@ -34,12 +34,12 @@ public class ValidatorKindsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.ValidatorKinds(
+        return GetValidatorKinds.Execute(
             order_by,
             order_direction,
             offset,
             limit,
             validator_kind,
-            with_total));
+            with_total);
     }
 }

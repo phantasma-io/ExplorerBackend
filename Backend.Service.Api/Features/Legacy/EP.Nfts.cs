@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -10,12 +11,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetNfts
 {
     [ProducesResponseType(typeof(NftsResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(NftsResult), "Returns NFTs available on Phantasma blockchain.", false, 10, cacheTag: "nfts")]
-    public static NftsResult Nfts(
+    public static async Task<NftsResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "mint_date",
         string order_direction = "asc",
@@ -87,7 +88,7 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.Nfts.AsQueryable().AsNoTracking();
 
             #region Filtering
@@ -143,11 +144,11 @@ public partial class Endpoints
                 };
 
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             #region ResultArray
 
-            nftArray = query.Skip(offset).Take(limit).Select(x => new Nft
+            nftArray = await query.Skip(offset).Take(limit).Select(x => new Nft
             {
                 token_id = x.TOKEN_ID,
                 chain = x.Chain.NAME,
@@ -223,7 +224,7 @@ public partial class Endpoints
                         }
                     }
                     : null
-            }).ToArray();
+            }).ToArrayAsync();
 
             #endregion
 

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetOrganizations
 {
     [ProducesResponseType(typeof(OrganizationResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(OrganizationResult), "Returns the Organizations on the backend.", false, 10)]
-    public static OrganizationResult Organizations(
+    public static async Task<OrganizationResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "name",
         string order_direction = "asc",
@@ -62,7 +63,7 @@ public partial class Endpoints
                 throw new ApiParameterException("Unsupported value for 'organization_name_partial' parameter.");
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.Organizations.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(organization_id) )
@@ -77,7 +78,7 @@ public partial class Endpoints
                 query = query.Where(x => x.NAME.Contains(organization_name_partial));
 
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -97,7 +98,7 @@ public partial class Endpoints
                     _ => query
                 };
 
-            organizationArray = query.Skip(offset).Take(limit).Select(x => new Organization
+            organizationArray = await query.Skip(offset).Take(limit).Select(x => new Organization
             {
                 id = x.ORGANIZATION_ID,
                 name = x.NAME,
@@ -135,7 +136,7 @@ public partial class Endpoints
                         address_name = x.ADDRESS_NAME
                     }
                     : null
-            }).ToArray();
+            }).ToArrayAsync();
 
 
             var responseTime = DateTime.Now - startTime;

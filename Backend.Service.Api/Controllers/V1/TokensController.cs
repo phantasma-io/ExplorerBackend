@@ -42,7 +42,7 @@ public class TokensController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Tokens(
+        return GetTokens.Execute(
             order_by,
             order_direction,
             offset,
@@ -52,6 +52,6 @@ public class TokensController : BaseControllerV1
             with_price,
             with_creation_event,
             with_logo,
-            with_total));
+            with_total);
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -10,12 +11,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetBlocks
 {
     [ProducesResponseType(typeof(BlockResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(BlockResult), "Returns the block information from backend.", false, 10, cacheTag: "block")]
-    public static BlockResult Blocks(
+    public static async Task<BlockResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -83,7 +84,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
             //just need that since we build the model so it knows what we can use
@@ -112,7 +113,7 @@ public partial class Endpoints
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -134,7 +135,7 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            blockArray = query.Select(x => new Block
+            blockArray = await query.Select(x => new Block
             {
                 height = x.HEIGHT,
                 hash = x.HASH,
@@ -455,7 +456,7 @@ public partial class Endpoints
                             : null
                     }).ToArray()
                     : null
-            }).ToArray();
+            }).ToArrayAsync();
 
             #endregion
 

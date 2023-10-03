@@ -46,7 +46,7 @@ public class ContractsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Contracts(
+        return GetContracts.Execute(
             order_by,
             order_direction,
             offset,
@@ -58,6 +58,6 @@ public class ContractsController : BaseControllerV1
             with_script,
             with_token,
             with_creation_event,
-            with_total));
+            with_total);
     }
 }

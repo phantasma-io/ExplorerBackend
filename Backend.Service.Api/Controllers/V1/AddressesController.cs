@@ -50,7 +50,7 @@ public class AssetController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Addresses(
+        return GetAddresses.Execute(
             order_by,
             order_direction,
             offset,
@@ -64,6 +64,6 @@ public class AssetController : BaseControllerV1
             with_storage,
             with_stakes,
             with_balance,
-            with_total));
+            with_total);
     }
 }

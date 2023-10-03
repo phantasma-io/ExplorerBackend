@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetContractMethodHistories
 {
     [ProducesResponseType(typeof(ContractMethodHistoryResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ContractMethodHistoryResult), "Returns the contract methods on the backend.", false, 10)]
-    public static ContractMethodHistoryResult ContractMethodHistories(
+    public static async Task<ContractMethodHistoryResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -67,7 +68,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.ContractMethods.AsQueryable().AsNoTracking();
 
             #region Filtering
@@ -88,7 +89,7 @@ public partial class Endpoints
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -109,7 +110,7 @@ public partial class Endpoints
                 };
 
 
-            contractMethodHistoryArray = query.Skip(offset).Take(limit).Select(x => new ContractMethodHistory
+            contractMethodHistoryArray = await query.Skip(offset).Take(limit).Select(x => new ContractMethodHistory
                 {
                     contract = new Contract
                     {
@@ -120,7 +121,7 @@ public partial class Endpoints
                     },
                     date = x.TIMESTAMP_UNIX_SECONDS.ToString()
                 }
-            ).ToArray();
+            ).ToArrayAsync();
 
 
             var responseTime = DateTime.Now - startTime;

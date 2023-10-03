@@ -22,6 +22,6 @@ public class InstructionsController : BaseControllerV1
         [FromBody] Script script
     )
     {
-        return Task.FromResult(Endpoints.Instructions(script));
+        return GetInstructions.Execute(script);
     }
 }

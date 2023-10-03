@@ -42,7 +42,7 @@ public class ContractMethodHistoriesController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.ContractMethodHistories(
+        return GetContractMethodHistories.Execute(
             order_by,
             order_direction,
             offset,
@@ -52,6 +52,6 @@ public class ContractMethodHistoriesController : BaseControllerV1
             chain,
             date_less,
             date_greater,
-            with_total));
+            with_total);
     }
 }

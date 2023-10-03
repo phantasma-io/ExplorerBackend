@@ -38,7 +38,7 @@ public class OraclesController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Oracles(
+        return GetOracles.Execute(
             order_by,
             order_direction,
             offset,
@@ -46,6 +46,6 @@ public class OraclesController : BaseControllerV1
             block_hash,
             block_height,
             chain,
-            with_total));
+            with_total);
     }
 }

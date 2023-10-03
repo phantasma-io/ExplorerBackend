@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -11,12 +12,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetEvents
 {
     [ProducesResponseType(typeof(EventsResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10, cacheTag: "events")]
-    public static EventsResult Events(
+    public static async Task<EventsResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -133,7 +134,7 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
 
@@ -197,7 +198,7 @@ public partial class Endpoints
 
             if ( with_total == 1 )
                 // Count total number of results before adding order and limit parts of query.
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             if ( order_direction == "asc" )
                 query = order_by switch
@@ -220,7 +221,7 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            eventsArray = query.Select(x => new Event
+            eventsArray = await query.Select(x => new Event
                 {
                     event_id = x.ID,
                     chain = x.Chain.NAME.ToLower(),
@@ -486,7 +487,7 @@ public partial class Endpoints
                         }
                         : null
                 }
-            ).ToArray();
+            ).ToArrayAsync();
 
             #endregion
 

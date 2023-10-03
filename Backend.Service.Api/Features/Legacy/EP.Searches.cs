@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -11,12 +12,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetSearch
 {
     [ProducesResponseType(typeof(SearchResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(SearchResult), "Returns the ValidatorKinds on the backend.", false, 10)]
-    public static SearchResult Searches(
+    public static async Task<SearchResult> Execute(
         // ReSharper disable InconsistentNaming
         [Required] string value
         // ReSharper enable InconsistentNaming
@@ -30,7 +31,7 @@ public partial class Endpoints
                 throw new ApiParameterException("Unsupported value for 'value' parameter.");
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
 
             var searches = new List<Tuple<string, string>>
             {

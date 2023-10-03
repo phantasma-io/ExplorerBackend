@@ -42,7 +42,7 @@ public class PlatformsController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Platforms(
+        return GetPlatforms.Execute(
             order_by,
             order_direction,
             offset,
@@ -52,6 +52,6 @@ public class PlatformsController : BaseControllerV1
             with_interops,
             with_token,
             with_creation_event,
-            with_total));
+            with_total);
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetPlatforms
 {
     [ProducesResponseType(typeof(PlatformResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(PlatformResult), "Returns the Platform on the backend.", false, 10)]
-    public static PlatformResult Platforms(
+    public static async Task<PlatformResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -50,7 +51,7 @@ public partial class Endpoints
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.Platforms.AsQueryable().AsNoTracking();
 
             query = query.Where(x => x.HIDDEN == false);
@@ -58,7 +59,7 @@ public partial class Endpoints
             if ( !string.IsNullOrEmpty(name) ) query = query.Where(x => x.NAME == name);
 
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -77,7 +78,7 @@ public partial class Endpoints
                 };
 
 
-            platformArray = query.Skip(offset).Take(limit).Select(x => new Platform
+            platformArray = await query.Skip(offset).Take(limit).Select(x => new Platform
             {
                 name = x.NAME,
                 chain = x.CHAIN,
@@ -157,7 +158,7 @@ public partial class Endpoints
                             : null
                     }
                     : null
-            }).ToArray();
+            }).ToArrayAsync();
 
             var responseTime = DateTime.Now - startTime;
 

@@ -26,7 +26,7 @@ public class SearchesController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Task.FromResult(Endpoints.Searches(
-            value));
+        return GetSearch.Execute(
+            value);
     }
 }

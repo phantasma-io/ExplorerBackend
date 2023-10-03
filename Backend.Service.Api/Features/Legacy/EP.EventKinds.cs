@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetEventKinds
 {
     [ProducesResponseType(typeof(EventKindResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(EventKindResult), "Returns the eventKinds on the backend.", false, 10)]
-    public static EventKindResult EventKinds(
+    public static async Task<EventKindResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -51,7 +52,7 @@ public partial class Endpoints
 
             var startTime = DateTime.Now;
 
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.EventKinds.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.NAME == event_kind);
@@ -60,7 +61,7 @@ public partial class Endpoints
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -78,10 +79,10 @@ public partial class Endpoints
                     _ => query
                 };
 
-            eventKindArray = query.Skip(offset).Take(limit).Select(x => new EventKind
+            eventKindArray = await query.Skip(offset).Take(limit).Select(x => new EventKind
             {
                 name = x.NAME
-            }).ToArray();
+            }).ToArrayAsync();
 
             var responseTime = DateTime.Now - startTime;
 

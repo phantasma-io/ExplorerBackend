@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetOracles
 {
     [ProducesResponseType(typeof(OracleResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(OracleResult), "Returns the Oracles on the backend.", false, 10)]
-    public static OracleResult Oracles(
+    public static async Task<OracleResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -59,7 +60,7 @@ public partial class Endpoints
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.BlockOracles.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(block_hash) )
@@ -72,7 +73,7 @@ public partial class Endpoints
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -94,11 +95,11 @@ public partial class Endpoints
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            oracleArray = query.Select(x => new Oracle
+            oracleArray = await query.Select(x => new Oracle
             {
                 url = x.Oracle.URL,
                 content = x.Oracle.CONTENT
-            }).ToArray();
+            }).ToArrayAsync();
 
             var responseTime = DateTime.Now - startTime;
 

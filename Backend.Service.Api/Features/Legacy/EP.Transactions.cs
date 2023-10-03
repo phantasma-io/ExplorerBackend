@@ -11,12 +11,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetTransactions
 {
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
-    public static async Task<TransactionResult> Transactions(
+    public static async Task<TransactionResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -91,7 +91,7 @@ public partial class Endpoints
             #endregion
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
             var query = databaseContext.Transactions.AsQueryable().AsNoTracking();
@@ -127,7 +127,7 @@ public partial class Endpoints
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )

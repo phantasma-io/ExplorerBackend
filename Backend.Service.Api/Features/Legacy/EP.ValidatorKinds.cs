@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ using Serilog;
 
 namespace Backend.Service.Api;
 
-public partial class Endpoints
+public static class GetValidatorKinds
 {
     [ProducesResponseType(typeof(ValidatorKindResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ValidatorKindResult), "Returns the ValidatorKinds on the backend.", false, 10)]
-    public static ValidatorKindResult ValidatorKinds(
+    public static async Task<ValidatorKindResult> Execute(
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
@@ -46,14 +47,14 @@ public partial class Endpoints
                 throw new ApiParameterException("Unsupported value for 'validator_kind' parameter.");
 
             var startTime = DateTime.Now;
-            using MainDbContext databaseContext = new();
+            await using MainDbContext databaseContext = new();
             var query = databaseContext.AddressValidatorKinds.AsQueryable().AsNoTracking();
 
             if ( !string.IsNullOrEmpty(validator_kind) ) query = query.Where(x => x.NAME == validator_kind);
 
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
-                totalResults = query.Count();
+                totalResults = await query.CountAsync();
 
             //in case we add more to sort
             if ( order_direction == "asc" )
@@ -71,10 +72,10 @@ public partial class Endpoints
                     _ => query
                 };
 
-            validatorKindArray = query.Skip(offset).Take(limit).Select(x => new ValidatorKind
+            validatorKindArray = await query.Skip(offset).Take(limit).Select(x => new ValidatorKind
             {
                 name = x.NAME
-            }).ToArray();
+            }).ToArrayAsync();
 
             var responseTime = DateTime.Now - startTime;
 
