@@ -56,9 +56,11 @@ public class TransactionController : BaseControllerV1
         // ReSharper enable InconsistentNaming
     )
     {
-        return Endpoints.Transaction(
+        return Endpoints.Transactions(
             order_by,
             order_direction,
+            0,
+            1,
             hash,
             hash_partial,
             address,

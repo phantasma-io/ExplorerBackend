@@ -462,7 +462,6 @@ public partial class Endpoints
                 }
             ).ToArrayAsync();
             
-            /*query.Select(_transaction => ProcessTransaction())*/
             var responseTime = DateTime.Now - startTime;
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
