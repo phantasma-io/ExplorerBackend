@@ -1,4 +1,4 @@
-using System.Numerics;
+using System.Linq;
 
 namespace Backend.Commons;
 
@@ -10,8 +10,13 @@ public static class Utils
         if ( amount == "0" || tokenDecimals == 0 )
             return amount;
 
-        var quotient = BigInteger.DivRem(BigInteger.Parse(amount), BigInteger.Pow(10, tokenDecimals), out var remainder);
-        
-        return quotient + "." + remainder;
+        if ( amount.Length <= tokenDecimals )
+        {
+            return "0." + amount.PadLeft(tokenDecimals - amount.Length, '0');
+        }
+
+        var decimalPart = amount.Substring(amount.Length - tokenDecimals);
+        decimalPart = decimalPart.Any(x => x != '0') ? decimalPart.TrimEnd('0') : null;
+        return amount.Substring(0, amount.Length - tokenDecimals) + (decimalPart != null ? "." + decimalPart : "");
     }
 }
