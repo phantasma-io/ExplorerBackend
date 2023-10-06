@@ -12,7 +12,7 @@ public static class Utils
 
         if ( amount.Length <= tokenDecimals )
         {
-            return "0." + amount.PadLeft(tokenDecimals - amount.Length, '0');
+            return "0." + amount.PadLeft(tokenDecimals, '0').TrimEnd('0');
         }
 
         var decimalPart = amount.Substring(amount.Length - tokenDecimals);
