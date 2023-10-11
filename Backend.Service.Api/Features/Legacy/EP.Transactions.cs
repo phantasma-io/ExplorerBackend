@@ -112,7 +112,14 @@ public static class GetTransactions
 
             if ( !string.IsNullOrEmpty(address) )
             {
-                query = query.Where(x => x.Sender.ADDRESS == address);
+                if ( Phantasma.Core.Cryptography.Address.IsValidAddress(address) )
+                {
+                    query = query.Where(x => x.Sender.ADDRESS == address);
+                }
+                else
+                {
+                    query = query.Where(x => x.Sender.ADDRESS_NAME == address);
+                }
             }
 
             if ( !string.IsNullOrEmpty(block_hash) )
