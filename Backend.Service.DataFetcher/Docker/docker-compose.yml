@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  api:
+    image: "explorer-backend-worker-production"
+    container_name: explorer-backend-worker-production
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    entrypoint: "./start-worker-service-docker.sh"
+    environment:
+      SENTRY_ENVIRONMENT: Production
+    networks:
+      - worker-production
+      - postgresql
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "20m"
+
+networks:
+   worker-production:
+      name: worker-production-network
+   postgresql:
+      name: postgresql-network
+      external: true
