@@ -41,7 +41,8 @@ public static class GetSearch
                 new("contracts", "hash"),
                 new("organizations", "organization_name"),
                 new("platforms", "name"),
-                new("tokens", "symbol")
+                new("tokens", "symbol"),
+                new("transactions", "hash")
             };
 
             foreach ( var (endpoint, parameter) in searches )
@@ -57,6 +58,7 @@ public static class GetSearch
                     "platforms" => databaseContext.Platforms.AsNoTracking().Any(x => x.NAME == value),
                     "tokens" => databaseContext.Tokens.AsNoTracking()
                         .Any(x => x.SYMBOL.ToLower().Equals(value.ToLower())),
+                    "transactions" => databaseContext.Transactions.AsNoTracking().Any(x => x.HASH == value),
                     _ => false
                 };
 
