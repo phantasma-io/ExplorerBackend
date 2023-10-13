@@ -30,7 +30,7 @@ public class AssetController : BaseControllerV1
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
     [HttpGet("addresses")]
-    [ApiInfo(typeof(AddressResult), "Returns addresses available on the chain", cacheDuration: 60, cacheTag: "addresses")]
+    [ApiInfo(typeof(AddressResult), "Returns addresses available on the chain", cacheDuration: 5, cacheTag: "addresses")]
     public Task<AddressResult> GetResults(
         // ReSharper disable InconsistentNaming
         [FromQuery] string order_by = "id",
