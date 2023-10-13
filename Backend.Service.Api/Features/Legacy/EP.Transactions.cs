@@ -114,11 +114,11 @@ public static class GetTransactions
             {
                 if ( Phantasma.Core.Cryptography.Address.IsValidAddress(address) )
                 {
-                    query = query.Where(x => x.Sender.ADDRESS == address);
+                    query = query.Where(x => x.Sender.ADDRESS == address || x.Events.Any(e => e.Address.ADDRESS == address));
                 }
                 else
                 {
-                    query = query.Where(x => x.Sender.ADDRESS_NAME == address);
+                    query = query.Where(x => x.Sender.ADDRESS_NAME == address || x.Events.Any(e => e.Address.ADDRESS_NAME == address));
                 }
             }
 
