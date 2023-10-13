@@ -76,7 +76,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         StartupRomRamSync(chain);
                         StartupSeriesSync(chain);
                         StartupAddressSync(chain);
-                        StartupAddressFetchSync(chain);
                         StartupInfusionSync(chain);
                         StartupContractSync(chain);
                         StartupContractMethodsSync(chain);
@@ -241,29 +240,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         });
         addressSyncThread.Start();
     }
-
-
-    private void StartupAddressFetchSync(Chain chain)
-    {
-        Thread addressFetchSync = new(() =>
-        {
-            while ( _running )
-                try
-                {
-                    FetchAllAddresses(chain.NAME);
-
-                    Thread.Sleep(14400 * 1000); // We sync names every NamesSyncInterval seconds (4h)
-                }
-                catch ( Exception e )
-                {
-                    LogEx.Exception("Address sync", e);
-
-                    Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
-                }
-        });
-        addressFetchSync.Start();
-    }
-
 
     private void StartupContractSync(Chain chain)
     {
