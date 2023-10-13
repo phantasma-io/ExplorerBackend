@@ -15,125 +15,6 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private void AddressDataSync(int chainId)
-    {
-        var startTime = DateTime.Now;
-        var unixSecondsNow = UnixSeconds.Now();
-
-        const int saveAfterCount = 100;
-
-        var namesUpdatedCount = 0;
-        var processed = 0;
-
-        using ( MainDbContext databaseContext = new() )
-        {
-            var addressesToUpdate = databaseContext.Addresses.Where(x =>
-                x.ChainId == chainId && ( x.NAME_LAST_UPDATED_UNIX_SECONDS == 0 ||
-                                          x.NAME_LAST_UPDATED_UNIX_SECONDS <
-                                          UnixSeconds.AddMinutes(unixSecondsNow, -30) )).ToList();
-            Log.Verbose("[{Name}] got {Count} Addresses to check", Name, addressesToUpdate.Count);
-
-            DateTime transactionStart;
-            TimeSpan transactionEnd;
-
-            var chain = ChainMethods.Get(databaseContext, chainId);
-            var soulDecimals = TokenMethods.GetSoulDecimals(databaseContext, chain);
-            var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, chain);
-            foreach ( var address in addressesToUpdate )
-            {
-                var url = $"{Settings.Default.GetRest()}/api/v1/getAccount?account={address.ADDRESS}";
-                var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
-                if ( response == null )
-                {
-                    Log.Error("[{Name}] Names sync: null result", Name);
-                    continue;
-                }
-
-                var name = response.RootElement.GetProperty("name").GetString();
-                if ( name == "anonymous" ) name = null;
-
-                if ( address.ADDRESS_NAME != name )
-                {
-                    address.ADDRESS_NAME = name;
-                    namesUpdatedCount++;
-                }
-
-                address.NAME_LAST_UPDATED_UNIX_SECONDS = UnixSeconds.Now();
-
-                if ( response.RootElement.TryGetProperty("stakes", out var stakesProperty) )
-                {
-                    var amount = stakesProperty.GetProperty("amount").GetString();
-                    var unclaimed = stakesProperty.GetProperty("unclaimed").GetString();
-
-                    address.STAKE_TIMESTAMP = stakesProperty.GetProperty("time").GetInt32();
-                    address.STAKED_AMOUNT = Commons.Utils.ToDecimal(amount, soulDecimals);
-                    address.STAKED_AMOUNT_RAW = amount;
-                    address.UNCLAIMED_AMOUNT = Commons.Utils.ToDecimal(unclaimed, kcalDecimals);
-                    address.UNCLAIMED_AMOUNT_RAW = unclaimed;
-                }
-
-                if ( response.RootElement.TryGetProperty("balances", out var balancesProperty) )
-                {
-                    transactionStart = DateTime.Now;
-                    var balancesList = balancesProperty.EnumerateArray().Select(balance =>
-                            new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
-                                balance.GetProperty("symbol").GetString(), balance.GetProperty("amount").GetString()))
-                        .ToList();
-
-                    AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
-
-                    transactionEnd = DateTime.Now - transactionStart;
-                    Log.Verbose("[{Name}] Processed {Count} Balances in {Time} sec", Name,
-                        balancesList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
-                }
-
-                if ( response.RootElement.TryGetProperty("storage", out var storageProperty) )
-                {
-                    address.STORAGE_AVAILABLE = storageProperty.GetProperty("available").GetUInt32();
-                    address.STORAGE_USED = storageProperty.GetProperty("used").GetUInt32();
-                    address.AVATAR = storageProperty.GetProperty("avatar").GetString();
-                }
-
-                var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
-                    response.RootElement.GetProperty("validator").GetString());
-                address.AddressValidatorKind = validatorKind;
-
-                //just to keep things up2date
-                address.Organization = null;
-                var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
-                if ( organization != null ) address.Organization = organization;
-                var organizationAddress = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
-                if ( organizationAddress != null ) address.Organizations = organizationAddress.ToList();
-                databaseContext.Update(address);
-
-                processed++;
-                if ( processed % saveAfterCount != 0 ) continue;
-                try
-                {
-                    transactionStart = DateTime.Now;
-                    databaseContext.SaveChanges();
-                    transactionEnd = DateTime.Now - transactionStart;
-                    Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name,
-                        Math.Round(transactionEnd.TotalSeconds, 3));
-                }
-                catch ( Exception e )
-                {
-                    Log.Verbose("Error: {e}" ,e.Message);
-                }
-               
-            }
-
-            transactionStart = DateTime.Now;
-            databaseContext.SaveChanges();
-            transactionEnd = DateTime.Now - transactionStart;
-            Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name, Math.Round(transactionEnd.TotalSeconds, 3));
-        }
-
-        var updateTime = DateTime.Now - startTime;
-        Log.Information("[{Name}] Address sync took {Time} sec, {Updated} names updated, Processed {Processed}", Name,
-            Math.Round(updateTime.TotalSeconds, 3), namesUpdatedCount, processed);
-    }
-    
     private void AddressDataSyncList(int chainId)
     {
         var startTime = DateTime.Now;
@@ -226,13 +107,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         address.STORAGE_USED = storageProperty.GetProperty("used").GetUInt32();
                         address.AVATAR = storageProperty.GetProperty("avatar").GetString();
                     }
-                    
-                    var stake = account.GetProperty("stake").GetString();
-                    address.STAKED_AMOUNT = Commons.Utils.ToDecimal(stake, soulDecimals);
-                    address.STAKED_AMOUNT_RAW = stake;
-                    var unclaimedStorage = account.GetProperty("unclaimed").GetString();
-                    address.UNCLAIMED_AMOUNT = Commons.Utils.ToDecimal(unclaimedStorage, kcalDecimals);
-                    address.UNCLAIMED_AMOUNT_RAW = unclaimedStorage;
 
                     var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
                         account.GetProperty("validator").GetString());
