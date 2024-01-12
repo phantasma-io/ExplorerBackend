@@ -17,7 +17,7 @@ RUN chmod 600 /root/.ssh/id_rsa
 RUN chmod 600 /root/.ssh/id_rsa.pub
 # add github to known hosts
 RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-# clone marketplace backend and checkout out single branch
+# clone explorer backend and checkout out single branch
 ARG BUILD_BRANCH
 RUN git clone -b $BUILD_BRANCH --single-branch git@github.com:phantasma-io/ExplorerBackend.git
 
