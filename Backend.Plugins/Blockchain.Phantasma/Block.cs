@@ -27,6 +27,7 @@ namespace Backend.Blockchain;
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private const int FetchBlocksPerIterationMax = 100;
+    private bool firstBlockSinceLaunch = true;
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
@@ -744,6 +745,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
+        
+        if ( firstBlockSinceLaunch )
+        {
+            // At start of the backend we reprocess balances of ALL known addresses
+            // It's a hackish way to fix explorer's old processing issues
+            // TODO remove later everything related to firstBlockSinceLaunch flag
+            addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Distinct().ToList();
+        }
+
         await UpdateAddressesBalancesAsync(databaseContext, chainEntry.ID, addressesToUpdate.Distinct().ToList());
 
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, blockHeight, false);
@@ -762,5 +772,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Name, blockHeight, Math.Round(processingTime.TotalSeconds, 3),
                 eventsAddedCount, nftsInThisBlock.Count);
         }
+        
+        firstBlockSinceLaunch = false;
     }
 }
