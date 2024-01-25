@@ -29,18 +29,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var soulDecimals = TokenMethods.GetSoulDecimals(databaseContext, chain);
         var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, chain);
 
-        var splitAddresses = addressesToUpdate.Chunk(100);
-        for ( int i = 0; i < splitAddresses.Count(); i++ )
+        var splitAddresses = addressesToUpdate.Chunk(100).ToList();
+        for ( var i = 0; i < splitAddresses.Count; i++ )
         {
-            var splited = splitAddresses.ElementAt(i).Select(x => x.ADDRESS).ToList();
-            var addressesComaSeparated = string.Join(",", splited);
+            var split = splitAddresses.ElementAt(i).Select(x => x.ADDRESS).ToList();
+            var addressesComaSeparated = string.Join(",", split);
             var url = $"{Settings.Default.GetRest()}/api/v1/getAccounts?accountText={addressesComaSeparated}&extended=false";
             Log.Information("[{Name}] Address query url: {Url}", Name, url);
             var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 1000);
 
             if ( response == null )
             {
-                Log.Error("[{Name}] Names sync: null result", Name);
+                Log.Error("[{Name}] Balance sync: null result", Name);
                 continue;
             }
 

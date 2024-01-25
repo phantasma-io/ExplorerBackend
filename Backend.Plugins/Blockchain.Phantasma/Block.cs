@@ -172,6 +172,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         if ( blockData.RootElement.TryGetProperty("txs", out var txsProperty) )
         {
             var txs = txsProperty.EnumerateArray();
+            
+            Log.Verbose("[{Name}] Block #{BlockHeight} Found {Count} txes in the block", Name, blockHeight,
+                txs.Count());
+            
             for ( var txIndex = 0; txIndex < txs.Count(); txIndex++ )
             {
                 var tx = txs.ElementAt(txIndex);
@@ -753,6 +757,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Distinct().ToList();
         }
 
+        Log.Verbose("[{Name}] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, blockHeight,
+            addressesToUpdate.Count);
         await UpdateAddressesBalancesAsync(databaseContext, chainEntry.ID, addressesToUpdate.Distinct().ToList());
 
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, blockHeight, false);
