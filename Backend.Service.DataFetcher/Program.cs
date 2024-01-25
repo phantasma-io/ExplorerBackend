@@ -29,7 +29,7 @@ public static class DataFetcher
 
         //load cfg now, process loglevel then rest
         var loggingData = LoggingSettings.Default;
-        if ( !Enum.TryParse(loggingData.Level, true, out LogEventLevel logLevel) ) logLevel = LogEventLevel.Information;
+        if ( !Enum.TryParse(loggingData.Level, true, out LogEventLevel logLevel) ) logLevel = LogEventLevel.Verbose;
 
         var logPath = "../logs";
         if ( !string.IsNullOrEmpty(loggingData.LogDirectoryPath) ) logPath = loggingData.LogDirectoryPath;
