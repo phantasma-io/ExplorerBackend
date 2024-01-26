@@ -759,7 +759,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         Log.Verbose("[{Name}] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, blockHeight,
             addressesToUpdate.Count);
-        await UpdateAddressesBalancesAsync(databaseContext, chainEntry.ID, addressesToUpdate.Distinct().ToList());
 
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, blockHeight, false);
 
@@ -769,6 +768,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Log.Verbose("[{Name}] Block #{BlockHeight} Commit took {Time} sec, after Process of Block {Height}", Name,
             blockHeight, Math.Round(transactionEnd.TotalSeconds, 3), blockHeight);
 
+        // TODO avoid second SaveChangesAsync() in the future,
+        // quick fix to solve issue with fresh addresses which
+        // does not exist in the database yet and following call cannot find them
+        // and cannot update balances.
+        await UpdateAddressesBalancesAsync(databaseContext, chainEntry.ID, addressesToUpdate.Distinct().ToList());
+        await databaseContext.SaveChangesAsync();
+        
         var processingTime = DateTime.Now - startTime;
         if ( processingTime.TotalSeconds > 1 ) // Log only if processing of the block took > 1 second
         {
