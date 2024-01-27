@@ -1,21 +1,23 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace Database.Main;
 
 public static class InfusionEventMethods
 {
-    public static InfusionEvent Upsert(MainDbContext databaseContext, string tokenId, string baseSymbol,
-        string infusedSymbol, string infusedValue, Chain chain, Event databaseEvent, bool saveChanges = true)
+    public static async Task InsertAsync(MainDbContext databaseContext, string tokenId, string baseSymbol,
+        string infusedSymbol, string infusedValue, Chain chain, Event databaseEvent)
     {
-        if ( string.IsNullOrEmpty(tokenId) || string.IsNullOrEmpty(baseSymbol) ) return null;
+        if ( string.IsNullOrEmpty(tokenId) || string.IsNullOrEmpty(baseSymbol) ) return;
 
         //use the chain name here to get the data
         //could use id too, but who knows what can be send in the future
-        var baseToken = TokenMethods.Get(databaseContext, chain, baseSymbol);
-        var infusedToken = TokenMethods.Get(databaseContext, chain, infusedSymbol);
+        var baseToken = await TokenMethods.GetAsync(databaseContext, chain, baseSymbol);
+        var infusedToken = await TokenMethods.GetAsync(databaseContext, chain, infusedSymbol);
 
 
         var infusionEvent = new InfusionEvent
@@ -31,24 +33,21 @@ public static class InfusionEventMethods
         if ( databaseEvent.Nft != null )
         {
             var startTime = DateTime.Now;
-            MarkNtfInfused(databaseContext, infusedToken, infusedValue, databaseEvent.Nft);
+            await MarkNtfInfused(databaseContext, infusedToken, infusedValue, databaseEvent.Nft);
             var updateTime = DateTime.Now - startTime;
             Log.Verbose("Marked infused processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
         }
 
-        databaseContext.InfusionEvents.Add(infusionEvent);
-        if ( saveChanges ) databaseContext.SaveChanges();
-
-        return infusionEvent;
+        await databaseContext.InfusionEvents.AddAsync(infusionEvent);
     }
 
 
-    private static void MarkNtfInfused(MainDbContext databaseContext, Token infusedToken, string infusedValue, Nft nft)
+    private static async Task MarkNtfInfused(MainDbContext databaseContext, Token infusedToken, string infusedValue, Nft nft)
     {
         if ( infusedToken == null || infusedToken.FUNGIBLE ) return;
 
         // NFT was infused, we should mark it as infused.
-        var infusedNft = databaseContext.Nfts.FirstOrDefault(x => x.TOKEN_ID == infusedValue) ??
+        var infusedNft = await databaseContext.Nfts.FirstOrDefaultAsync(x => x.TOKEN_ID == infusedValue) ??
                          DbHelper.GetTracked<Nft>(databaseContext).FirstOrDefault(x => x.TOKEN_ID == infusedValue);
 
         if ( infusedNft == null )

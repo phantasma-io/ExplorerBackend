@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Npgsql;
 
 namespace Database.ApiCache;
 
@@ -13,9 +14,17 @@ internal class Settings
     {
         var connectionSettings =
             section.GetSection("ApiCache").Get<DatabaseConnectionSettings>();
-        ConnectionString =
-            $"Host={connectionSettings.Host};Username={connectionSettings.Username};Password={connectionSettings.Password};Database={connectionSettings.Database};Include Error Detail=true";
 
+        ConnectionString = new NpgsqlConnectionStringBuilder {
+            Host = connectionSettings.Host,
+            Port = connectionSettings.Port,
+            Username = connectionSettings.Username,
+            Password = connectionSettings.Password,
+            Database = connectionSettings.Database,
+            IncludeErrorDetail = true,
+            MaxPoolSize = connectionSettings.MaximumPoolSize ?? 100
+        }.ToString();
+        
         ConnectMaxRetries = section.GetValue<int>("ConnectMaxRetries");
         ConnectRetryTimeout = section.GetValue<int>("ConnectRetryTimeout");
     }
@@ -33,8 +42,10 @@ internal class Settings
     public class DatabaseConnectionSettings
     {
         public string Host { get; set; }
+        public int Port { get; set; } = 5432;
         public string Database { get; set; }
         public string Username { get; set; }
         public string Password { get; set; }
+        public int? MaximumPoolSize { get; set; }
     }
 }

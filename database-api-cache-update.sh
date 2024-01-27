@@ -1,4 +1,9 @@
 #!/bin/bash
 
-#dotnet ef database update --project ./bin/Database.ApiCache/Database.ApiCache.csproj
-dotnet ef database update --project Database.ApiCache/Database.ApiCache.csproj
+dbproject=Database.ApiCache
+
+if [ -d "./$dbproject" ]; then
+    dotnet ef database update --project ./$dbproject/$dbproject.csproj
+else
+    dotnet ef database update --project ./bin/$dbproject/$dbproject.csproj
+fi

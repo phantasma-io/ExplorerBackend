@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,12 +32,10 @@ public static class NftMethods
     }
 
 
-    public static Nft Upsert(MainDbContext databaseContext, out bool newNftCreated, Chain chain, string tokenId,
-        string tokenUri, Contract contract, bool saveChanges = true)
+    public static async Task<(Nft, bool)> UpsertAsync(MainDbContext databaseContext, Chain chain, string tokenId,
+        string tokenUri, Contract contract)
     {
-        newNftCreated = false;
-
-        var entry = databaseContext.Nfts.FirstOrDefault(x =>
+        var entry = await databaseContext.Nfts.FirstOrDefaultAsync(x =>
             x.Chain == chain && x.Contract == contract && x.TOKEN_ID == tokenId) ?? DbHelper
             .GetTracked<Nft>(databaseContext).FirstOrDefault(x =>
                 x.Chain == chain && x.Contract == contract && x.TOKEN_ID == tokenId);
@@ -44,7 +43,7 @@ public static class NftMethods
         if ( entry != null )
         {
             entry.TOKEN_URI = tokenUri;
-            return entry;
+            return (entry, false);
         }
 
         entry = new Nft
@@ -56,12 +55,9 @@ public static class NftMethods
             DM_UNIX_SECONDS = UnixSeconds.Now()
         };
 
-        databaseContext.Nfts.Add(entry);
-        if ( saveChanges ) databaseContext.SaveChanges();
+        await databaseContext.Nfts.AddAsync(entry);
 
-        newNftCreated = true;
-
-        return entry;
+        return (entry, true);
     }
 
 

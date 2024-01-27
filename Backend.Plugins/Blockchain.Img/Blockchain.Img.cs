@@ -93,7 +93,8 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
             if ( token == Settings.Default.DefaultImage ) defaultImg = file.Name;
 
             if ( string.IsNullOrEmpty(token) ) continue;
-            var tokenEntry = TokenMethods.Get(databaseContext, chain, token);
+            // TODO async
+            var tokenEntry = TokenMethods.GetAsync(databaseContext, chain, token).Result;
 
             if ( tokenEntry == null ) continue;
 
@@ -104,7 +105,7 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
         }
 
         var tokensWithoutLogo = TokenMethods.GetTokensWithoutLogo(databaseContext);
-        if ( !defaultImg.IsNullOrEmpty() )
+        if ( !string.IsNullOrEmpty(defaultImg) )
         {
             Log.Verbose("[{Name}] building Links for Tokens with default Image", Name);
             foreach ( var token in tokensWithoutLogo )

@@ -12,6 +12,8 @@ rm --force -r Database.ApiCache/bin
 rm --force -r Database.ApiCache/obj
 rm --force -r Backend.Plugins/Blockchain.Common/bin
 rm --force -r Backend.Plugins/Blockchain.Common/obj
+rm --force -r Backend.Plugins/Blockchain.Img/bin
+rm --force -r Backend.Plugins/Blockchain.Img/obj
 rm --force -r Backend.Plugins/Blockchain.Phantasma/bin
 rm --force -r Backend.Plugins/Blockchain.Phantasma/obj
 rm --force -r Backend.Plugins/Nft.TTRS/bin
@@ -36,3 +38,4 @@ rm --force -r test/JsonTests/bin
 rm --force -r test/JsonTests/obj
 
 rm --force -r release/bin
+rm --force -r publish

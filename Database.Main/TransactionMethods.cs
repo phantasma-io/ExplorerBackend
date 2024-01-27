@@ -1,5 +1,7 @@
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -8,24 +10,21 @@ public static class TransactionMethods
     // Checks if "Transactions" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static Transaction Upsert(MainDbContext databaseContext, Block block, int txIndex, string hash,
+    public static async Task<Transaction> UpsertAsync(MainDbContext databaseContext, Block block, int txIndex, string hash,
         long timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, long expiration,
-        string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
-        bool saveChanges = true)
+        string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget)
     {
-        ContractMethods.Drop0x(ref hash);
-
-        var entry = databaseContext.Transactions
-            .FirstOrDefault(x => x.Block == block && x.HASH == hash) ?? DbHelper
+        var entry = await databaseContext.Transactions
+            .FirstOrDefaultAsync(x => x.Block == block && x.HASH == hash) ?? DbHelper
             .GetTracked<Transaction>(databaseContext)
             .FirstOrDefault(x => x.Block == block && x.HASH == hash);
 
         if ( entry != null ) return entry;
 
-        var transactionState = TransactionStateMethods.Upsert(databaseContext, state, saveChanges);
-        var senderAddress = AddressMethods.Upsert(databaseContext, block.Chain, sender, saveChanges);
-        var gasPayerAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasPayer, saveChanges);
-        var gasTargetAddress = AddressMethods.Upsert(databaseContext, block.Chain, gasTarget, saveChanges);
+        var transactionState = TransactionStateMethods.Upsert(databaseContext, state, false);
+        var senderAddress = await AddressMethods.UpsertAsync(databaseContext, block.Chain, sender);
+        var gasPayerAddress = await AddressMethods.UpsertAsync(databaseContext, block.Chain, gasPayer);
+        var gasTargetAddress = await AddressMethods.UpsertAsync(databaseContext, block.Chain, gasTarget);
 
         var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, block.Chain);
         entry = new Transaction
@@ -50,9 +49,7 @@ public static class TransactionMethods
             GasTarget = gasTargetAddress
         };
 
-        databaseContext.Transactions.Add(entry);
-
-        if ( saveChanges ) databaseContext.SaveChanges();
+        await databaseContext.Transactions.AddAsync(entry);
 
         return entry;
     }

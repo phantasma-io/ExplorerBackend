@@ -1,14 +1,15 @@
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
 public static class MarketEventKindMethods
 {
-    public static MarketEventKind Upsert(MainDbContext databaseContext, string name, Chain chain,
-        bool saveChanges = true)
+    public static async Task<MarketEventKind> UpsertAsync(MainDbContext databaseContext, string name, Chain chain)
     {
-        var marketEventKind = databaseContext.MarketEventKinds
-            .FirstOrDefault(x => x.NAME == name && x.Chain == chain);
+        var marketEventKind = await databaseContext.MarketEventKinds
+            .FirstOrDefaultAsync(x => x.NAME == name && x.Chain == chain);
         if ( marketEventKind != null ) return marketEventKind;
 
         marketEventKind = DbHelper.GetTracked<MarketEventKind>(databaseContext)
@@ -17,8 +18,7 @@ public static class MarketEventKindMethods
 
         marketEventKind = new MarketEventKind {NAME = name, Chain = chain};
 
-        databaseContext.MarketEventKinds.Add(marketEventKind);
-        if ( saveChanges ) databaseContext.SaveChanges();
+        await databaseContext.MarketEventKinds.AddAsync(marketEventKind);
 
         return marketEventKind;
     }

@@ -7,45 +7,8 @@ namespace Database.Main;
 
 public static class AddressBalanceMethods
 {
-    public static AddressBalance Upsert(MainDbContext databaseContext, Address address, string chainName, string symbol,
-        string amount, bool saveChanges = true)
-    {
-        var chain = ChainMethods.Get(databaseContext, chainName);
-        if ( chain == null ) return null;
-
-        var token = TokenMethods.Get(databaseContext, chain.ID, symbol);
-        if ( token == null ) return null;
-
-        var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
-            x.Address == address && x.Chain == chain && x.Token == token);
-
-        var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
-
-        if ( entry != null )
-        {
-            entry.AMOUNT = amountConverted;
-            entry.AMOUNT_RAW = amount;
-        }
-        else
-        {
-            entry = new AddressBalance
-            {
-                Token = token,
-                Chain = chain,
-                Address = address,
-                AMOUNT = amountConverted,
-                AMOUNT_RAW = amount
-            };
-            databaseContext.AddressBalances.Add(entry);
-            if ( saveChanges ) databaseContext.SaveChanges();
-        }
-
-        return entry;
-    }
-
-
     public static void InsertOrUpdateList(MainDbContext databaseContext, Address address,
-        List<Tuple<string, string, string>> balances, bool saveChanges = true)
+        List<Tuple<string, string, string>> balances)
     {
         if ( !balances.Any() || address == null ) return;
 
@@ -57,11 +20,12 @@ public static class AddressBalanceMethods
             var chain = ChainMethods.Get(databaseContext, chainName);
             if ( chain == null ) continue;
 
-            var token = TokenMethods.Get(databaseContext, chain, symbol);
+            // TODO async
+            var token = TokenMethods.GetAsync(databaseContext, chain, symbol).Result;
             if ( token == null ) continue;
 
             var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
-                x.Address == address && x.Chain == chain && x.Token == token);
+                x.Address == address && x.Token == token);
 
             var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
             if ( entry != null )
@@ -75,7 +39,6 @@ public static class AddressBalanceMethods
                 {
                     Token = token,
                     Address = address,
-                    Chain = chain,
                     AMOUNT = amountConverted,
                     AMOUNT_RAW = amount
                 };
@@ -91,7 +54,5 @@ public static class AddressBalanceMethods
                 removeList.Add(balance);
 
         if ( !removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
-
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 }

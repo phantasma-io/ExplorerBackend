@@ -21,10 +21,4 @@ public static class SeriesModeMethods
 
         return seriesMode;
     }
-
-
-    public static SeriesMode Get(MainDbContext databaseContext, string name)
-    {
-        return databaseContext.SeriesModes.FirstOrDefault(x => x.MODE_NAME == name);
-    }
 }

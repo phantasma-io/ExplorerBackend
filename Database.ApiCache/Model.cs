@@ -12,31 +12,44 @@ namespace Database.ApiCache;
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 public class ApiCacheDbContext : DbContext
 {
-    // Keeping DB configs on same level as "bin" folder.
-    // If path contains "Database.ApiCache" - it means we are running database update.
-    private static readonly string configDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.ApiCache")
-        ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..")
-        : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
-
-    private static string ConfigFile => Path.Combine(configDirectory, "explorer-backend-config.json");
-
     public DbSet<Chain> Chains { get; set; }
     public DbSet<Contract> Contracts { get; set; }
     public DbSet<Nft> Nfts { get; set; }
     public DbSet<Block> Blocks { get; set; }
+    
+    private static string DetectConfigFilePath()
+    {
+        var fileName = "explorer-backend-config.json";
 
+        // TODO move into "config" subfolder everywhere
+        // This path is valid when we are updating database on deployed server.
+        var configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..", fileName);
+        if (!File.Exists(configFile))
+        {
+            // This path is valid when we are launching our deployed server.
+            configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", fileName);
+            if (!File.Exists(configFile))
+            {
+                // Checking if we are using it locally to create/update local database.
+                configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../..", fileName);
+            }
+        }
 
+        return configFile;
+    }
+    
     private static string GetConnectionString()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
-            .GetSection("DatabaseConfiguration"));
-        return Settings.Default.ConnectionString;
+        if (!string.IsNullOrEmpty(Settings.Default?.ConnectionString))
+            return Settings.Default.ConnectionString;
+        
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), optional: false).Build().GetSection("DatabaseConfiguration"));
+        return Settings.Default!.ConnectionString;
     }
-
 
     public static int GetConnectionMaxRetries()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
         return Settings.Default.ConnectMaxRetries;
     }
@@ -45,7 +58,7 @@ public class ApiCacheDbContext : DbContext
     //for now...
     public int GetConnectionRetryTimeout()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
         return Settings.Default.ConnectRetryTimeout;
     }
@@ -130,7 +143,6 @@ public class Chain
 {
     public int ID { get; set; }
     public string SHORT_NAME { get; set; }
-    public string CURRENT_HEIGHT { get; set; }
     public virtual List<Contract> Contracts { get; set; }
     public virtual List<Block> Blocks { get; set; }
 }

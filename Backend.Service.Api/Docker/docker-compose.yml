@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  api:
+    image: "explorer-backend-api-production"
+    container_name: explorer-backend-api-production
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    entrypoint: "./start-api-service-docker.sh"
+    environment:
+      SENTRY_ENVIRONMENT: Production
+    ports:
+      - "9000:8000"
+    networks:
+      - api-production
+      - postgresql
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "20m"
+
+networks:
+   api-production:
+      name: api-production-network
+   postgresql:
+      name: postgresql-network
+      external: true

@@ -98,7 +98,7 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
                     continue;
                 }
 
-                FiatExchangeRateMethods.Upsert(databaseContext, fiatSymbol, price, false);
+                FiatExchangeRateMethods.Upsert(databaseContext, fiatSymbol, price);
 
                 // Setting pegged token prices.
 

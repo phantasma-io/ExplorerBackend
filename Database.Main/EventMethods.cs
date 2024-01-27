@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -13,12 +14,10 @@ public static class EventMethods
     // Returns new or existing entry's Id.
 
 
-    public static void DeleteByNftId(MainDbContext databaseContext, int nftId, bool saveChanges = true)
+    public static void DeleteByNftId(MainDbContext databaseContext, int nftId)
     {
         var tokenEvents = databaseContext.Events.Where(x => x.NftId == nftId);
         foreach ( var tokenEvent in tokenEvents ) databaseContext.Entry(tokenEvent).State = EntityState.Deleted;
-
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 
 
@@ -45,13 +44,6 @@ public static class EventMethods
         return dbContext.Events.OrderByDescending(x => x.ID).Skip(skip).FirstOrDefault();
     }
 
-
-    public static Event GetById(MainDbContext dbContext, int id)
-    {
-        return dbContext.Events.FirstOrDefault(x => x.ID == id);
-    }
-
-
     public static Event Upsert(MainDbContext databaseContext,
         out bool newEventCreated,
         long timestampUnixSeconds,
@@ -60,8 +52,7 @@ public static class EventMethods
         Transaction transaction,
         Contract contract,
         EventKind eventKind,
-        Address address,
-        bool saveChanges = true)
+        Address address)
     {
         newEventCreated = false;
 
@@ -79,7 +70,6 @@ public static class EventMethods
         };
 
         databaseContext.Events.Add(eventEntry);
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         newEventCreated = true;
 
@@ -87,12 +77,12 @@ public static class EventMethods
     }
 
 
-    public static Event UpdateValues(MainDbContext databaseContext, out bool eventUpdated, Event eventItem, Nft nft,
+    public static async Task<bool> UpdateValuesAsync(MainDbContext databaseContext, Event eventItem, Nft nft,
         string tokenId, Chain chain, EventKind eventKind, Contract contract)
     {
-        eventUpdated = false;
+        var eventUpdated = false;
 
-        if ( eventItem == null ) return null;
+        if ( eventItem == null ) return eventUpdated;
 
         eventItem.Chain = chain;
         eventItem.Contract = contract;
@@ -102,8 +92,8 @@ public static class EventMethods
 
         eventUpdated = true;
 
-        var burnEvent = EventKindMethods.GetByName(databaseContext, chain, "TokenBurn");
-        if ( burnEvent == null || eventKind != burnEvent || nft == null ) return eventItem;
+        var burnEvent = await EventKindMethods.GetByNameAsync(databaseContext, chain, "TokenBurn");
+        if ( burnEvent == null || eventKind != burnEvent || nft == null ) return eventUpdated;
 
         //TODO check if always needed
         // For burns we must release all infused nfts.
@@ -113,6 +103,6 @@ public static class EventMethods
         var updateTime = DateTime.Now - startTime;
         Log.Verbose("Process Burned, processed in {Time} sec", Math.Round(updateTime.TotalSeconds, 3));
 
-        return eventItem;
+        return eventUpdated;
     }
 }

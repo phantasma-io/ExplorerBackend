@@ -10,11 +10,10 @@ public static class BlockMethods
     // Checks if "Blocks" table has entry with given chain id and height,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static Block Upsert(MainDbContext databaseContext, Chain chain, BigInteger height, long timestampUnixSeconds,
-        string hash, string previousHash, int protocol, string chainAddress, string validatorAddress, string reward,
-        bool saveChanges = true)
+    public static async Task<Block> UpsertAsync(MainDbContext databaseContext, Chain chain, BigInteger height, long timestampUnixSeconds,
+        string hash, string previousHash, int protocol, string chainAddress, string validatorAddress, string reward)
     {
-        var entry = databaseContext.Blocks.FirstOrDefault(x =>
+        var entry = await databaseContext.Blocks.FirstOrDefaultAsync(x =>
             x.Chain == chain && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds && x.HEIGHT == height.ToString());
 
         /*if (entry == null)
@@ -26,8 +25,8 @@ public static class BlockMethods
 
         if ( entry != null ) return entry;
 
-        var chainAddressEntry = AddressMethods.Upsert(databaseContext, chain, chainAddress, saveChanges);
-        var validatorAddressEntry = AddressMethods.Upsert(databaseContext, chain, validatorAddress, saveChanges);
+        var chainAddressEntry = await AddressMethods.UpsertAsync(databaseContext, chain, chainAddress);
+        var validatorAddressEntry = await AddressMethods.UpsertAsync(databaseContext, chain, validatorAddress);
 
 
         entry = new Block
@@ -43,36 +42,19 @@ public static class BlockMethods
             ValidatorAddress = validatorAddressEntry
         };
 
-        databaseContext.Blocks.Add(entry);
-
-        if ( saveChanges ) databaseContext.SaveChanges();
+        await databaseContext.Blocks.AddAsync(entry);
 
         return entry;
     }
-
 
     public static Block Get(MainDbContext databaseContext, int dbBlockId)
     {
         return databaseContext.Blocks.FirstOrDefault(x => x.ID == dbBlockId);
     }
 
-
-    public static async Task<Block> GetByHeightAsync(MainDbContext databaseContext, int chainId, BigInteger height)
-    {
-        return await databaseContext.Blocks.AsQueryable()
-            .Where(x => x.ChainId == chainId && x.HEIGHT == height.ToString()).FirstOrDefaultAsync();
-    }
-
-
     public static Block GetHighestBlock(MainDbContext dbContext, int chainId)
     {
         var id = dbContext.Blocks.Where(x => x.ChainId == chainId).Max(x => ( int? ) x.ID);
         return id != null ? Get(dbContext, ( int ) id) : null;
-    }
-
-
-    public static Block GetByHash(MainDbContext databaseContext, string hash)
-    {
-        return databaseContext.Blocks.FirstOrDefault(x => x.HASH == hash);
     }
 }

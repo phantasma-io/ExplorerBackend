@@ -28,8 +28,7 @@ public static class OracleMethods
 
 
     public static IEnumerable<Oracle> InsertIfNotExists(MainDbContext databaseContext,
-        List<Tuple<string, string>> oracleList,
-        bool saveChanges = true)
+        List<Tuple<string, string>> oracleList)
     {
         if ( !oracleList.Any() ) return null;
 
@@ -56,7 +55,6 @@ public static class OracleMethods
         }
 
         databaseContext.Oracles.AddRange(oracleListToInsert);
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return oracleListToReturn;
     }

@@ -18,10 +18,28 @@ namespace Database.Main.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.9")
+                .HasAnnotation("ProductVersion", "7.0.11")
+                .HasAnnotation("Proxies:ChangeTracking", false)
+                .HasAnnotation("Proxies:CheckEquality", false)
+                .HasAnnotation("Proxies:LazyLoading", true)
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("AddressOrganization", b =>
+                {
+                    b.Property<int>("AddressesID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OrganizationsID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("AddressesID", "OrganizationsID");
+
+                    b.HasIndex("OrganizationsID");
+
+                    b.ToTable("AddressOrganization");
+                });
 
             modelBuilder.Entity("Database.Main.Address", b =>
                 {
@@ -37,6 +55,9 @@ namespace Database.Main.Migrations
                     b.Property<string>("ADDRESS_NAME")
                         .HasColumnType("text");
 
+                    b.Property<string>("AVATAR")
+                        .HasColumnType("text");
+
                     b.Property<int?>("AddressValidatorKindId")
                         .HasColumnType("integer");
 
@@ -49,16 +70,25 @@ namespace Database.Main.Migrations
                     b.Property<int?>("OrganizationId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("STAKE")
+                    b.Property<string>("STAKED_AMOUNT")
                         .HasColumnType("text");
 
-                    b.Property<string>("STAKE_RAW")
+                    b.Property<string>("STAKED_AMOUNT_RAW")
                         .HasColumnType("text");
 
-                    b.Property<string>("UNCLAIMED")
+                    b.Property<long>("STAKE_TIMESTAMP")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("STORAGE_AVAILABLE")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("STORAGE_USED")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("UNCLAIMED_AMOUNT")
                         .HasColumnType("text");
 
-                    b.Property<string>("UNCLAIMED_RAW")
+                    b.Property<string>("UNCLAIMED_AMOUNT_RAW")
                         .HasColumnType("text");
 
                     b.Property<string>("USER_NAME")
@@ -67,8 +97,6 @@ namespace Database.Main.Migrations
                     b.HasKey("ID");
 
                     b.HasIndex("AddressValidatorKindId");
-
-                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("ADDRESS", "ADDRESS_NAME");
 
@@ -97,9 +125,6 @@ namespace Database.Main.Migrations
                     b.Property<int>("AddressId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("ChainId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("TokenId")
                         .HasColumnType("integer");
 
@@ -107,120 +132,9 @@ namespace Database.Main.Migrations
 
                     b.HasIndex("AddressId");
 
-                    b.HasIndex("ChainId");
-
                     b.HasIndex("TokenId");
 
                     b.ToTable("AddressBalances");
-                });
-
-            modelBuilder.Entity("Database.Main.AddressEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("AddressId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("AddressId");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.ToTable("AddressEvents");
-                });
-
-            modelBuilder.Entity("Database.Main.AddressStake", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<string>("AMOUNT")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AMOUNT_RAW")
-                        .HasColumnType("text");
-
-                    b.Property<int>("AddressId")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("TIME")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("UNCLAIMED")
-                        .HasColumnType("text");
-
-                    b.Property<string>("UNCLAIMED_RAW")
-                        .HasColumnType("text");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("AddressId")
-                        .IsUnique();
-
-                    b.ToTable("AddressStakes");
-                });
-
-            modelBuilder.Entity("Database.Main.AddressStorage", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<long>("AVAILABLE")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("AVATAR")
-                        .HasColumnType("text");
-
-                    b.Property<int>("AddressId")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("USED")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("AddressId")
-                        .IsUnique();
-
-                    b.ToTable("AddressStorages");
-                });
-
-            modelBuilder.Entity("Database.Main.AddressTransaction", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("AddressId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TransactionId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("AddressId");
-
-                    b.HasIndex("TransactionId");
-
-                    b.ToTable("AddressTransactions");
                 });
 
             modelBuilder.Entity("Database.Main.AddressValidatorKind", b =>
@@ -493,6 +407,9 @@ namespace Database.Main.Migrations
                     b.Property<string>("TOKEN_ID")
                         .HasColumnType("text");
 
+                    b.Property<int?>("TargetAddressId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("TransactionId")
                         .HasColumnType("integer");
 
@@ -509,6 +426,8 @@ namespace Database.Main.Migrations
                     b.HasIndex("NftId");
 
                     b.HasIndex("TIMESTAMP_UNIX_SECONDS");
+
+                    b.HasIndex("TargetAddressId");
 
                     b.HasIndex("TransactionId");
 
@@ -981,6 +900,12 @@ namespace Database.Main.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+
+                    b.Property<string>("ADDRESS")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ADDRESS_NAME")
+                        .HasColumnType("text");
 
                     b.Property<int?>("CreateEventId")
                         .HasColumnType("integer");
@@ -1490,36 +1415,6 @@ namespace Database.Main.Migrations
                     b.Property<long>("DATE_UNIX_SECONDS")
                         .HasColumnType("bigint");
 
-                    b.Property<decimal>("PRICE_AUD")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_CAD")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_CNY")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_ETH")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_EUR")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_GBP")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_JPY")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_NEO")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_RUB")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_SOUL")
-                        .HasColumnType("numeric");
-
                     b.Property<decimal>("PRICE_USD")
                         .HasColumnType("numeric");
 
@@ -1611,33 +1506,6 @@ namespace Database.Main.Migrations
                     b.HasIndex("NAME");
 
                     b.ToTable("TokenLogoTypes");
-                });
-
-            modelBuilder.Entity("Database.Main.TokenPriceState", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<bool>("COIN_GECKO")
-                        .HasColumnType("boolean");
-
-                    b.Property<long>("LAST_CHECK_DATE_UNIX_SECONDS")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("TokenId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("LAST_CHECK_DATE_UNIX_SECONDS");
-
-                    b.HasIndex("TokenId")
-                        .IsUnique();
-
-                    b.ToTable("TokenPriceStates");
                 });
 
             modelBuilder.Entity("Database.Main.Transaction", b =>
@@ -1766,6 +1634,21 @@ namespace Database.Main.Migrations
                     b.ToTable("TransactionStates");
                 });
 
+            modelBuilder.Entity("AddressOrganization", b =>
+                {
+                    b.HasOne("Database.Main.Address", null)
+                        .WithMany()
+                        .HasForeignKey("AddressesID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Database.Main.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationsID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Database.Main.Address", b =>
                 {
                     b.HasOne("Database.Main.AddressValidatorKind", "AddressValidatorKind")
@@ -1778,15 +1661,9 @@ namespace Database.Main.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Database.Main.Organization", "Organization")
-                        .WithMany("Addresses")
-                        .HasForeignKey("OrganizationId");
-
                     b.Navigation("AddressValidatorKind");
 
                     b.Navigation("Chain");
-
-                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("Database.Main.AddressBalance", b =>
@@ -1794,12 +1671,6 @@ namespace Database.Main.Migrations
                     b.HasOne("Database.Main.Address", "Address")
                         .WithMany("AddressBalances")
                         .HasForeignKey("AddressId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Chain", "Chain")
-                        .WithMany("AddressBalances")
-                        .HasForeignKey("ChainId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1811,69 +1682,7 @@ namespace Database.Main.Migrations
 
                     b.Navigation("Address");
 
-                    b.Navigation("Chain");
-
                     b.Navigation("Token");
-                });
-
-            modelBuilder.Entity("Database.Main.AddressEvent", b =>
-                {
-                    b.HasOne("Database.Main.Address", "Address")
-                        .WithMany("AddressEvents")
-                        .HasForeignKey("AddressId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("AddressEvent")
-                        .HasForeignKey("Database.Main.AddressEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Address");
-
-                    b.Navigation("Event");
-                });
-
-            modelBuilder.Entity("Database.Main.AddressStake", b =>
-                {
-                    b.HasOne("Database.Main.Address", "Address")
-                        .WithOne("AddressStake")
-                        .HasForeignKey("Database.Main.AddressStake", "AddressId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Address");
-                });
-
-            modelBuilder.Entity("Database.Main.AddressStorage", b =>
-                {
-                    b.HasOne("Database.Main.Address", "Address")
-                        .WithOne("AddressStorage")
-                        .HasForeignKey("Database.Main.AddressStorage", "AddressId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Address");
-                });
-
-            modelBuilder.Entity("Database.Main.AddressTransaction", b =>
-                {
-                    b.HasOne("Database.Main.Address", "Address")
-                        .WithMany("AddressTransactions")
-                        .HasForeignKey("AddressId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Transaction", "Transaction")
-                        .WithMany("AddressTransactions")
-                        .HasForeignKey("TransactionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Address");
-
-                    b.Navigation("Transaction");
                 });
 
             modelBuilder.Entity("Database.Main.Block", b =>
@@ -2017,6 +1826,11 @@ namespace Database.Main.Migrations
                         .WithMany("Events")
                         .HasForeignKey("NftId");
 
+                    b.HasOne("Database.Main.Address", "TargetAddress")
+                        .WithMany("ValidatorEvents")
+                        .HasForeignKey("TargetAddressId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Database.Main.Transaction", "Transaction")
                         .WithMany("Events")
                         .HasForeignKey("TransactionId")
@@ -2032,6 +1846,8 @@ namespace Database.Main.Migrations
                     b.Navigation("EventKind");
 
                     b.Navigation("Nft");
+
+                    b.Navigation("TargetAddress");
 
                     b.Navigation("Transaction");
                 });
@@ -2518,17 +2334,6 @@ namespace Database.Main.Migrations
                     b.Navigation("TokenLogoType");
                 });
 
-            modelBuilder.Entity("Database.Main.TokenPriceState", b =>
-                {
-                    b.HasOne("Database.Main.Token", "Token")
-                        .WithOne("TokenPriceState")
-                        .HasForeignKey("Database.Main.TokenPriceState", "TokenId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Token");
-                });
-
             modelBuilder.Entity("Database.Main.Transaction", b =>
                 {
                     b.HasOne("Database.Main.Block", "Block")
@@ -2538,19 +2343,19 @@ namespace Database.Main.Migrations
                         .IsRequired();
 
                     b.HasOne("Database.Main.Address", "GasPayer")
-                        .WithMany("GasPayers")
+                        .WithMany("TransactionsWithThisGasPayer")
                         .HasForeignKey("GasPayerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Database.Main.Address", "GasTarget")
-                        .WithMany("GasTargets")
+                        .WithMany("TransactionsWithThisGasTarget")
                         .HasForeignKey("GasTargetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Database.Main.Address", "Sender")
-                        .WithMany("Senders")
+                        .WithMany("SentTransactions")
                         .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2595,14 +2400,6 @@ namespace Database.Main.Migrations
                 {
                     b.Navigation("AddressBalances");
 
-                    b.Navigation("AddressEvents");
-
-                    b.Navigation("AddressStake");
-
-                    b.Navigation("AddressStorage");
-
-                    b.Navigation("AddressTransactions");
-
                     b.Navigation("ChainAddressBlocks");
 
                     b.Navigation("Contracts");
@@ -2610,10 +2407,6 @@ namespace Database.Main.Migrations
                     b.Navigation("Events");
 
                     b.Navigation("GasEvents");
-
-                    b.Navigation("GasPayers");
-
-                    b.Navigation("GasTargets");
 
                     b.Navigation("NftOwnerships");
 
@@ -2625,7 +2418,7 @@ namespace Database.Main.Migrations
 
                     b.Navigation("PlatformInterops");
 
-                    b.Navigation("Senders");
+                    b.Navigation("SentTransactions");
 
                     b.Navigation("Serieses");
 
@@ -2633,7 +2426,13 @@ namespace Database.Main.Migrations
 
                     b.Navigation("Tokens");
 
+                    b.Navigation("TransactionsWithThisGasPayer");
+
+                    b.Navigation("TransactionsWithThisGasTarget");
+
                     b.Navigation("ValidatorAddressBlocks");
+
+                    b.Navigation("ValidatorEvents");
                 });
 
             modelBuilder.Entity("Database.Main.AddressValidatorKind", b =>
@@ -2650,8 +2449,6 @@ namespace Database.Main.Migrations
 
             modelBuilder.Entity("Database.Main.Chain", b =>
                 {
-                    b.Navigation("AddressBalances");
-
                     b.Navigation("Addresses");
 
                     b.Navigation("Blocks");
@@ -2691,8 +2488,6 @@ namespace Database.Main.Migrations
 
             modelBuilder.Entity("Database.Main.Event", b =>
                 {
-                    b.Navigation("AddressEvent");
-
                     b.Navigation("ChainEvent");
 
                     b.Navigation("CreateContract");
@@ -2760,8 +2555,6 @@ namespace Database.Main.Migrations
 
             modelBuilder.Entity("Database.Main.Organization", b =>
                 {
-                    b.Navigation("Addresses");
-
                     b.Navigation("OrganizationAddresses");
 
                     b.Navigation("OrganizationEvents");
@@ -2821,8 +2614,6 @@ namespace Database.Main.Migrations
                     b.Navigation("TokenEvents");
 
                     b.Navigation("TokenLogos");
-
-                    b.Navigation("TokenPriceState");
                 });
 
             modelBuilder.Entity("Database.Main.TokenLogoType", b =>
@@ -2832,8 +2623,6 @@ namespace Database.Main.Migrations
 
             modelBuilder.Entity("Database.Main.Transaction", b =>
                 {
-                    b.Navigation("AddressTransactions");
-
                     b.Navigation("Events");
 
                     b.Navigation("Signatures");

@@ -22,7 +22,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private static List<Chain> _chainList;
 
-    private readonly Queue<Tuple<string, int, long>> _methodQueue = new();
+    private readonly Queue<Tuple<string, string, long>> _methodQueue = new();
     private bool _running = true;
     public override string Name => "PHA";
     public string[] ChainNames { get; private set; }
@@ -47,34 +47,48 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            //starting chain thread
-            using ( MainDbContext databaseContext = new() )
+            while ( _running )
             {
-                InitChains();
+                try
+                {
+                    //starting chain thread
+                    using ( MainDbContext databaseContext = new() )
+                    {
+                        InitChains();
 
-                _chainList = ChainMethods.GetChains(databaseContext).ToList();
-                ChainNames = ChainMethods.GetChainNames(databaseContext).ToArray();
+                        _chainList = ChainMethods.GetChains(databaseContext).ToList();
+                        ChainNames = ChainMethods.GetChainNames(databaseContext).ToArray();
 
-                //init tokens once too, cause we might need them, to keep them update, thread them later
+                        //init tokens once too, cause we might need them, to keep them update, thread them later
 
-                foreach ( var chain in _chainList ) InitNexusData(chain.ID);
-            }
+                        foreach ( var chain in _chainList ) InitNexusData(chain.ID);
+                    }
 
-            Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, _chainList.Count);
-            foreach ( var chain in _chainList )
-            {
-                Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name, chain.NAME,
-                    chain.ID);
-                
-                StartupNexusSync(chain);
-                StartupBlockSync(chain);
-                StartupRomRamSync(chain);
-                StartupSeriesSync(chain);
-                StartupAddressSync(chain);
-                StartupAddressFetchSync(chain);
-                StartupInfusionSync(chain);
-                StartupContractSync(chain);
-                StartupContractMethodsSync(chain);
+                    Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, _chainList.Count);
+                    foreach ( var chain in _chainList )
+                    {
+                        Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name,
+                            chain.NAME,
+                            chain.ID);
+
+                        StartupNexusSync(chain);
+                        StartupBlockSync(chain);
+                        StartupRomRamSync(chain);
+                        StartupSeriesSync(chain);
+                        StartupInfusionSync(chain);
+                        StartupContractSync(chain);
+                        StartupContractMethodsSync(chain);
+                    }
+                    
+                    // Initialization was successful
+                    break;
+                }
+                catch ( Exception e )
+                {
+                    LogEx.Exception("Chains processing", e);
+
+                    Thread.Sleep(Settings.Default.TokensProcessingInterval * 1000);
+                }
             }
         });
         mainThread.Start();
@@ -118,8 +132,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 try
                 {
                     height = GetCurrentBlockHeight(chain.NAME);
-                    FetchBlocks(chain.ID, chain.NAME);
-                    FetchBlocksRange(chain.ID, chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height);
+                    FetchBlocksRange(chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height).Wait();
 
                     Thread.Sleep(Settings.Default.BlocksProcessingInterval *
                                  1000); // We sync blocks every BlocksProcessingInterval seconds
@@ -202,52 +215,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         });
         infusionsSyncThread.Start();
     }
-
-
-    private void StartupAddressSync(Chain chain)
-    {
-        Thread addressSyncThread = new(() =>
-        {
-            while ( _running )
-                try
-                {
-                    AddressDataSync(chain.ID);
-
-                    Thread.Sleep(Settings.Default.NamesSyncInterval *
-                                 1000); // We sync names every NamesSyncInterval seconds
-                }
-                catch ( Exception e )
-                {
-                    LogEx.Exception("Address sync", e);
-
-                    Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
-                }
-        });
-        addressSyncThread.Start();
-    }
-
-
-    private void StartupAddressFetchSync(Chain chain)
-    {
-        Thread addressFetchSync = new(() =>
-        {
-            while ( _running )
-                try
-                {
-                    FetchAllAddresses(chain);
-
-                    Thread.Sleep(14400 * 1000); // We sync names every NamesSyncInterval seconds (4h)
-                }
-                catch ( Exception e )
-                {
-                    LogEx.Exception("Address sync", e);
-
-                    Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
-                }
-        });
-        addressFetchSync.Start();
-    }
-
 
     private void StartupContractSync(Chain chain)
     {

@@ -106,7 +106,7 @@ public class Fetch
                         {
                             // We found "system" NFT, which is an internal non-tradable object.
                             // We should delete it.
-                            EventMethods.DeleteByNftId(databaseContext, nft.ID, false);
+                            EventMethods.DeleteByNftId(databaseContext, nft.ID);
                             NftMethods.Delete(databaseContext, nft.ID);
                             Log.Information(
                                 "DB: Deleting {NftSymbol} system NFT with type '{Type}'", NtfHash,
@@ -119,7 +119,8 @@ public class Fetch
 
                             using ApiCacheDbContext databaseApiCacheContext = new();
                             Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, ChainName, NtfHash,
-                                nft.TOKEN_ID, JsonDocument.Parse(item.ToJsonString()), null, true);
+                                nft.TOKEN_ID, JsonDocument.Parse(item.ToJsonString()), null);
+                            databaseApiCacheContext.SaveChanges();
 
 
                             if ( itemInfo != null )
@@ -238,7 +239,8 @@ public class Fetch
             using ( ApiCacheDbContext databaseApiCacheContext = new() )
             {
                 Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, ChainName, GameHash, id,
-                    metaJsonDocument, null, true);
+                    metaJsonDocument, null);
+                databaseApiCacheContext.SaveChanges();
             }
 
             using ( MainDbContext databaseContext = new() )

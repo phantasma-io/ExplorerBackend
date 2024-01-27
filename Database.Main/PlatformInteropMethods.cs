@@ -6,38 +6,12 @@ namespace Database.Main;
 
 public static class PlatformInteropMethods
 {
-    public static void Upsert(MainDbContext databaseContext, string localAddress, string externalAddress, int chainId,
-        Platform platform, bool saveChanges = true)
-    {
-        var addressEntry = AddressMethods.Upsert(databaseContext, chainId, localAddress, saveChanges);
-
-        var platformInterop =
-            databaseContext.PlatformInterops.FirstOrDefault(x =>
-                x.EXTERNAL == externalAddress && x.LocalAddressId == addressEntry.ID);
-        if ( platformInterop != null )
-            return;
-
-
-        platformInterop = new PlatformInterop
-            {EXTERNAL = externalAddress, LocalAddress = addressEntry, Platform = platform};
-
-        databaseContext.PlatformInterops.Add(platformInterop);
-        if ( saveChanges ) databaseContext.SaveChanges();
-    }
-
-
-    public static PlatformInterop Get(MainDbContext databaseContext, string externalAddress)
-    {
-        return databaseContext.PlatformInterops.FirstOrDefault(x => x.EXTERNAL == externalAddress);
-    }
-
-
     public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> interopList,
-        Chain chain, Platform platform, bool saveChanges = true)
+        Chain chain, Platform platform)
     {
         //item1 = local address
         var addresses = interopList.Select(tuple => tuple.Item1).ToList();
-        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, addresses, saveChanges);
+        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, addresses);
 
         var platformInteropList = new List<PlatformInterop>();
 
@@ -46,7 +20,7 @@ public static class PlatformInteropMethods
             var addressEntry = addressMap.GetValueOrDefault(localAddress);
             var platformInterop =
                 databaseContext.PlatformInterops.FirstOrDefault(x =>
-                    x.EXTERNAL == externalAddress && x.LocalAddressId == addressEntry.ID);
+                    x.EXTERNAL == externalAddress && x.LocalAddress == addressEntry);
             if ( platformInterop != null ) continue;
 
             platformInterop = new PlatformInterop
@@ -55,6 +29,5 @@ public static class PlatformInteropMethods
         }
 
         databaseContext.PlatformInterops.AddRange(platformInteropList);
-        if ( !saveChanges ) databaseContext.SaveChanges();
     }
 }

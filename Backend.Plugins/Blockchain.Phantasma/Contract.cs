@@ -64,7 +64,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if ( response.RootElement.TryGetProperty("methods", out var methodsProperty) )
                 {
                     //0 just that we have a value here
-                    var method = ContractMethodMethods.Insert(databaseContext, contract, methodsProperty, 0, false);
+                    var method = ContractMethodMethods.Insert(databaseContext, contract, methodsProperty, 0);
                     contract.ContractMethod = method;
                 }
 

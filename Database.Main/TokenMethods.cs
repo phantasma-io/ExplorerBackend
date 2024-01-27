@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -16,19 +18,19 @@ public static class TokenMethods
     // Returns new or existing entry's Id.
 
 
-    public static Token Upsert(MainDbContext databaseContext, Chain chain, string contractHash, string symbol,
+    public static async Task<Token> UpsertAsync(MainDbContext databaseContext, Chain chain, string contractHash, string symbol,
         int decimals, bool fungible, bool transferable, bool finite, bool divisible, bool fuel, bool stakable,
         bool fiat, bool swappable, bool burnable, bool mintable, string address, string owner, string currentSupply,
         string maxSupply,
-        string burnedSupply, string scriptRaw, bool saveChanges = true)
+        string burnedSupply, string scriptRaw)
     {
-        var contractEntry = ContractMethods.Upsert(databaseContext, symbol, chain, contractHash, symbol);
+        var contractEntry = await ContractMethods.UpsertAsync(databaseContext, symbol, chain, contractHash, symbol);
 
-        var addressEntry = AddressMethods.Upsert(databaseContext, chain, address, saveChanges);
-        var ownerEntry = AddressMethods.Upsert(databaseContext, chain, owner, saveChanges);
+        var addressEntry = await AddressMethods.UpsertAsync(databaseContext, chain, address);
+        var ownerEntry = await AddressMethods.UpsertAsync(databaseContext, chain, owner);
 
 
-        var entry = Get(databaseContext, chain, symbol);
+        var entry = await GetAsync(databaseContext, chain, symbol);
 
 
         if ( entry != null )
@@ -82,50 +84,16 @@ public static class TokenMethods
                 BURNED_SUPPLY_RAW = burnedSupply,
                 SCRIPT_RAW = scriptRaw
             };
-            databaseContext.Tokens.Add(entry);
-
-            if ( saveChanges ) databaseContext.SaveChanges();
+            await databaseContext.Tokens.AddAsync(entry);
         }
 
         return entry;
     }
 
-
     public static Token Get(MainDbContext databaseContext, int chainId, string symbol)
     {
         return databaseContext.Tokens.SingleOrDefault(x => x.ChainId == chainId && x.SYMBOL == symbol);
     }
-
-
-    public static int[] GetIds(MainDbContext databaseContext, string symbols,
-        bool returnNonexistentAddressIfNoneFound = true, string defaultChain = null)
-    {
-        var values = symbols.Contains(',') ? symbols.Split(',') : new[] {symbols};
-
-        // Getting tokens' ids.
-        var ids = new List<int>();
-        for ( var i = 0; i < values.Length; i++ )
-            if ( string.IsNullOrEmpty(defaultChain) )
-                ids.AddRange(databaseContext.Tokens.Where(x => string.Equals(x.SYMBOL.ToUpper(), values[i].ToUpper()))
-                    .Select(x => x.ID).ToArray());
-            else
-                ids.AddRange(databaseContext.Tokens
-                    .Where(x => string.Equals(x.SYMBOL.ToUpper(), values[i].ToUpper()) &&
-                                string.Equals(x.Chain.NAME.ToUpper(), defaultChain.ToUpper()))
-                    .Select(x => x.ID).ToArray());
-
-        if ( returnNonexistentAddressIfNoneFound && ids.Count == 0 ) ids.Add(0);
-
-        return ids.ToArray();
-    }
-
-
-    // Returns all token symbols currently used in auctions.
-    public static List<string> GetSymbols(MainDbContext databaseContext)
-    {
-        return databaseContext.Tokens.Select(x => x.SYMBOL).ToList();
-    }
-
 
     // Returns all supported token symbols <chainShortName, tokenSymbol>.
     public static List<Symbol> GetSupportedTokens(MainDbContext databaseContext)
@@ -299,29 +267,15 @@ public static class TokenMethods
         return ( double ) ( tokenPrice * priceInTokensDecimal );
     }
 
-
-    public static double CalculatePrice(IEnumerable<TokenPrice> prices, decimal priceInTokens, string tokenSymbol)
-    {
-        if ( priceInTokens == 0 || string.IsNullOrEmpty(tokenSymbol) ) return 0;
-
-        var tokenPrice = prices
-            .Where(x => string.Equals(x.Symbol.ToUpper(), tokenSymbol.ToUpper()))
-            .Select(x => x.Price)
-            .FirstOrDefault();
-
-        return ( double ) ( tokenPrice * priceInTokens );
-    }
-
-
     public static Token Get(MainDbContext databaseContext, int id)
     {
         return databaseContext.Tokens.SingleOrDefault(x => x.ID == id);
     }
 
 
-    public static Token Get(MainDbContext databaseContext, Chain chain, string symbol)
+    public static Task<Token> GetAsync(MainDbContext databaseContext, Chain chain, string symbol)
     {
-        return databaseContext.Tokens.SingleOrDefault(x => x.Chain == chain && x.SYMBOL == symbol);
+        return databaseContext.Tokens.SingleOrDefaultAsync(x => x.Chain == chain && x.SYMBOL == symbol);
     }
 
 
@@ -370,14 +324,16 @@ public static class TokenMethods
 
     public static int GetKcalDecimals(MainDbContext databaseContext, Chain chain)
     {
-        kcalToken ??= Get(databaseContext, chain, "KCAL");
+        // TODO async
+        kcalToken ??= GetAsync(databaseContext, chain, "KCAL").Result;
         return kcalToken.DECIMALS;
     }
 
 
     public static int GetSoulDecimals(MainDbContext databaseContext, Chain chain)
     {
-        soulToken ??= Get(databaseContext, chain, "SOUL");
+        // TODO async
+        soulToken ??= GetAsync(databaseContext, chain, "SOUL").Result;
         return soulToken.DECIMALS;
     }
 

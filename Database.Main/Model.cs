@@ -18,14 +18,6 @@ namespace Database.Main;
 
 public class MainDbContext : DbContext
 {
-    // Keeping DB configs on same level as "bin" folder.
-    // If path contains "Database.Main" - it means we are running database update.
-    private static readonly string ConfigDirectory = AppDomain.CurrentDomain.BaseDirectory.Contains("Database.Main")
-        ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..")
-        : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..");
-
-    private static string ConfigFile => Path.Combine(ConfigDirectory, "explorer-backend-config.json");
-
     public DbSet<Chain> Chains { get; set; }
     public DbSet<Contract> Contracts { get; set; }
     public DbSet<Block> Blocks { get; set; }
@@ -48,7 +40,6 @@ public class MainDbContext : DbContext
     public DbSet<Organization> Organizations { get; set; }
     public DbSet<OrganizationEvent> OrganizationEvents { get; set; }
     public DbSet<StringEvent> StringEvents { get; set; }
-    public DbSet<AddressEvent> AddressEvents { get; set; }
     public DbSet<TransactionSettleEvent> TransactionSettleEvents { get; set; }
     public DbSet<HashEvent> HashEvents { get; set; }
     public DbSet<GasEvent> GasEvents { get; set; }
@@ -65,10 +56,6 @@ public class MainDbContext : DbContext
     public DbSet<Signature> Signatures { get; set; }
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
     public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
-    public DbSet<TokenPriceState> TokenPriceStates { get; set; }
-    public DbSet<AddressTransaction> AddressTransactions { get; set; }
-    public DbSet<AddressStake> AddressStakes { get; set; }
-    public DbSet<AddressStorage> AddressStorages { get; set; }
     public DbSet<AddressBalance> AddressBalances { get; set; }
     public DbSet<AddressValidatorKind> AddressValidatorKinds { get; set; }
     public DbSet<ContractMethod> ContractMethods { get; set; }
@@ -76,19 +63,42 @@ public class MainDbContext : DbContext
     public DbSet<TokenLogoType> TokenLogoTypes { get; set; }
     public DbSet<TransactionState> TransactionStates { get; set; }
 
+    private static string DetectConfigFilePath()
+    {
+        var fileName = "explorer-backend-config.json";
+
+        // TODO move into "config" subfolder everywhere
+        // This path is valid when we are updating database on deployed server.
+        var configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../..", fileName);
+        if (!File.Exists(configFile))
+        {
+            // This path is valid when we are launching our deployed server.
+            configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", fileName);
+            if (!File.Exists(configFile))
+            {
+                // Checking if we are using it locally to create/update local database.
+                configFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../..", fileName);
+            }
+        }
+
+        return configFile;
+    }
 
     public static string GetConnectionString()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+        if (!string.IsNullOrEmpty(Settings.Default?.ConnectionString))
+            return Settings.Default.ConnectionString;
+
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
-        return Settings.Default.ConnectionString;
+        return Settings.Default!.ConnectionString;
     }
 
 
     //for now...
     public static int GetConnectionMaxRetries()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
         return Settings.Default.ConnectMaxRetries;
     }
@@ -97,7 +107,7 @@ public class MainDbContext : DbContext
     //for now...
     public static int GetConnectionRetryTimeout()
     {
-        Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
+        Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
         return Settings.Default.ConnectRetryTimeout;
     }
@@ -211,17 +221,17 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Transaction>()
             .HasOne(x => x.Sender)
-            .WithMany(y => y.Senders)
+            .WithMany(y => y.SentTransactions)
             .HasForeignKey(x => x.SenderId);
 
         modelBuilder.Entity<Transaction>()
             .HasOne(x => x.GasPayer)
-            .WithMany(y => y.GasPayers)
+            .WithMany(y => y.TransactionsWithThisGasPayer)
             .HasForeignKey(x => x.GasPayerId);
 
         modelBuilder.Entity<Transaction>()
             .HasOne(x => x.GasTarget)
-            .WithMany(y => y.GasTargets)
+            .WithMany(y => y.TransactionsWithThisGasTarget)
             .HasForeignKey(x => x.GasTargetId);
 
         // Indexes
@@ -265,21 +275,12 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.ChainId);
 
         modelBuilder.Entity<Address>()
-            .HasOne(x => x.AddressStake)
-            .WithOne(y => y.Address)
-            .HasForeignKey<AddressStake>(x => x.AddressId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Address>()
-            .HasOne(x => x.AddressStorage)
-            .WithOne(y => y.Address)
-            .HasForeignKey<AddressStorage>(x => x.AddressId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Address>()
             .HasOne(x => x.AddressValidatorKind)
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.AddressValidatorKindId);
+
+        /*modelBuilder.Entity<Address>()
+            .HasMany<Organization>(o => o.Organizations);*/
 
         modelBuilder.Entity<Address>()
             .Ignore(a => a.Organization);
@@ -350,9 +351,9 @@ public class MainDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
-            .HasOne(x => x.AddressEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<AddressEvent>(x => x.EventId)
+            .HasOne(x => x.TargetAddress)
+            .WithMany(y => y.ValidatorEvents)
+            .HasForeignKey(x => x.TargetAddressId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
@@ -461,12 +462,6 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Owner)
             .WithMany(y => y.TokenOwners)
             .HasForeignKey(x => x.OwnerId);
-
-        modelBuilder.Entity<Token>()
-            .HasOne(x => x.TokenPriceState)
-            .WithOne(y => y.Token)
-            .HasForeignKey<TokenPriceState>(x => x.TokenId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Token>()
             .HasOne(x => x.Contract)
@@ -720,6 +715,11 @@ public class MainDbContext : DbContext
             .HasMany(x => x.Addresses)
             .WithMany(y => y.Organizations);
 
+        /*modelBuilder.Entity<Organization>()
+            .HasOne(x => x.Address)
+            .WithOne(y => y.Organization)
+            .HasForeignKey<Organization>(z => z.AddressId); */
+
         // Indexes
         modelBuilder.Entity<Organization>()
             .HasIndex(x => x.NAME)
@@ -752,19 +752,6 @@ public class MainDbContext : DbContext
         // FKs
 
         // Indexes
-
-        //////////////////////
-        // AddressEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<AddressEvent>()
-            .HasOne(x => x.Address)
-            .WithMany(y => y.AddressEvents)
-            .HasForeignKey(x => x.AddressId);
-
-        // Indexes
-
 
         //////////////////////
         // TransactionSettleEvent
@@ -1013,62 +1000,10 @@ public class MainDbContext : DbContext
             .HasIndex(x => new {x.PRICE_END_USD, x.PRICE_USD});
 
         //////////////////////
-        // TokenPriceStates
-        //////////////////////
-
-        // FKs
-
-        // Indexes
-        modelBuilder.Entity<TokenPriceState>()
-            .HasIndex(x => new {x.LAST_CHECK_DATE_UNIX_SECONDS});
-
-        //////////////////////
-        // AddressTransaction
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<AddressTransaction>()
-            .HasOne(x => x.Address)
-            .WithMany(y => y.AddressTransactions)
-            .HasForeignKey(x => x.AddressId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<AddressTransaction>()
-            .HasOne(x => x.Transaction)
-            .WithMany(y => y.AddressTransactions)
-            .HasForeignKey(x => x.TransactionId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // Indexes
-
-
-        //////////////////////
-        // AddressStake
-        //////////////////////
-
-        // FKs
-
-        // Indexes
-
-        //////////////////////
-        // AddressStorage
-        //////////////////////
-
-        // FKs
-
-        // Indexes
-
-        //////////////////////
         // AddressBalance
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<AddressBalance>()
-            .HasOne(x => x.Chain)
-            .WithMany(y => y.AddressBalances)
-            .HasForeignKey(x => x.ChainId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         modelBuilder.Entity<AddressBalance>()
             .HasOne(x => x.Address)
             .WithMany(y => y.AddressBalances)
@@ -1169,7 +1104,6 @@ public class Chain
 
     //public virtual List<TokenEvent> TokenEvents { get; set; } currently not in use
     public virtual List<MarketEventKind> MarketEventKinds { get; set; }
-    public virtual List<AddressBalance> AddressBalances { get; set; }
 }
 
 public class Contract
@@ -1246,7 +1180,6 @@ public class Transaction
     public virtual Address GasTarget { get; set; }
     public virtual List<Event> Events { get; set; }
     public virtual List<Signature> Signatures { get; set; }
-    public virtual List<AddressTransaction> AddressTransactions { get; set; }
 }
 
 public class EventKind
@@ -1265,10 +1198,14 @@ public class Address
     public string ADDRESS_NAME { get; set; }
     public string USER_NAME { get; set; }
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
-    public string STAKE { get; set; }
-    public string STAKE_RAW { get; set; }
-    public string UNCLAIMED { get; set; }
-    public string UNCLAIMED_RAW { get; set; }
+    public long STAKE_TIMESTAMP { get; set; }
+    public string STAKED_AMOUNT { get; set; }
+    public string STAKED_AMOUNT_RAW { get; set; }
+    public string UNCLAIMED_AMOUNT { get; set; }
+    public string UNCLAIMED_AMOUNT_RAW { get; set; }
+    public long STORAGE_AVAILABLE { get; set; }
+    public long STORAGE_USED { get; set; }
+    public string AVATAR { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
     public virtual List<Event> Events { get; set; }
@@ -1276,16 +1213,12 @@ public class Address
     public virtual List<NftOwnership> NftOwnerships { get; set; }
     public virtual List<Series> Serieses { get; set; }
     public virtual List<GasEvent> GasEvents { get; set; }
-    public virtual List<AddressEvent> AddressEvents { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<PlatformInterop> PlatformInterops { get; set; }
     public virtual List<Block> ChainAddressBlocks { get; set; }
     public virtual List<Block> ValidatorAddressBlocks { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
-    public virtual List<AddressTransaction> AddressTransactions { get; set; }
     public virtual List<AddressBalance> AddressBalances { get; set; }
-    public virtual AddressStake AddressStake { get; set; }
-    public virtual AddressStorage AddressStorage { get; set; }
     public int? AddressValidatorKindId { get; set; }
     public virtual AddressValidatorKind AddressValidatorKind { get; set; }
     public virtual List<Token> Tokens { get; set; }
@@ -1294,9 +1227,10 @@ public class Address
     public int? OrganizationId { get; set; }
     public virtual Organization Organization { get; set; }
     public virtual List<Organization> Organizations { get; set; }
-    public virtual List<Transaction> Senders { get; set; }
-    public virtual List<Transaction> GasPayers { get; set; }
-    public virtual List<Transaction> GasTargets { get; set; }
+    public virtual List<Transaction> SentTransactions { get; set; }
+    public virtual List<Transaction> TransactionsWithThisGasPayer { get; set; }
+    public virtual List<Transaction> TransactionsWithThisGasTarget { get; set; }
+    public virtual List<Event> ValidatorEvents { get; set; }
 }
 
 public class Event
@@ -1328,7 +1262,9 @@ public class Event
     public virtual Nft Nft { get; set; }
     public virtual OrganizationEvent OrganizationEvent { get; set; }
     public virtual StringEvent StringEvent { get; set; }
-    public virtual AddressEvent AddressEvent { get; set; }
+    // Address which is used in election events
+    public int? TargetAddressId { get; set; }
+    public virtual Address TargetAddress { get; set; }
     public virtual TransactionSettleEvent TransactionSettleEvent { get; set; }
     public virtual HashEvent HashEvent { get; set; }
     public virtual GasEvent GasEvent { get; set; }
@@ -1389,7 +1325,6 @@ public class Token
     public virtual List<InfusionEvent> InfusedSymbolInfusionEvents { get; set; }
     public virtual List<MarketEvent> BaseSymbolMarketEvents { get; set; }
     public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
-    public virtual TokenPriceState TokenPriceState { get; set; }
     public virtual List<AddressBalance> AddressBalances { get; set; }
     public int? CreateEventId { get; set; }
     public virtual Event CreateEvent { get; set; }
@@ -1400,17 +1335,7 @@ public class TokenDailyPrice
 {
     public int ID { get; set; }
     public long DATE_UNIX_SECONDS { get; set; }
-    public decimal PRICE_SOUL { get; set; }
-    public decimal PRICE_NEO { get; set; }
-    public decimal PRICE_ETH { get; set; }
     public decimal PRICE_USD { get; set; }
-    public decimal PRICE_EUR { get; set; }
-    public decimal PRICE_GBP { get; set; }
-    public decimal PRICE_JPY { get; set; }
-    public decimal PRICE_CAD { get; set; }
-    public decimal PRICE_AUD { get; set; }
-    public decimal PRICE_CNY { get; set; }
-    public decimal PRICE_RUB { get; set; }
     public int TokenId { get; set; }
     public virtual Token Token { get; set; }
 
@@ -1418,7 +1343,7 @@ public class TokenDailyPrice
     public override string ToString()
     {
         return
-            $"Token daily price '{Token.SYMBOL}' for {UnixSeconds.Log(DATE_UNIX_SECONDS)}: SOUL: {PRICE_SOUL}, NEO: {PRICE_NEO}, ETH: {PRICE_ETH}, USD: {PRICE_USD}, EUR: {PRICE_EUR}, GBP: {PRICE_GBP}, JPY: {PRICE_JPY}, CAD: {PRICE_CAD}, AUD: {PRICE_AUD}, CNY: {PRICE_CNY}, RUB: {PRICE_RUB}";
+            $"Token daily price '{Token.SYMBOL}' for {UnixSeconds.Log(DATE_UNIX_SECONDS)}: USD: {PRICE_USD}";
     }
 }
 
@@ -1585,6 +1510,8 @@ public class Organization
     public int ID { get; set; }
     public string ORGANIZATION_ID { get; set; }
     public string NAME { get; set; }
+    public string ADDRESS_NAME { get; set; }
+    public string ADDRESS { get; set; }
     public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
     public int? CreateEventId { get; set; }
@@ -1607,16 +1534,6 @@ public class StringEvent
 {
     public int ID { get; set; }
     public string STRING_VALUE { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-//used for validator event data, atm
-public class AddressEvent
-{
-    public int ID { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
 }
@@ -1793,54 +1710,11 @@ public class MarketEventFiatPrice
     public virtual MarketEvent MarketEvent { get; set; }
 }
 
-public class TokenPriceState
-{
-    public int ID { get; set; }
-    public int TokenId { get; set; }
-    public virtual Token Token { get; set; }
-    public long LAST_CHECK_DATE_UNIX_SECONDS { get; set; }
-    public bool COIN_GECKO { get; set; }
-}
-
-//NEW
-public class AddressTransaction
-{
-    public int ID { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
-    public int TransactionId { get; set; }
-    public virtual Transaction Transaction { get; set; }
-}
-
-public class AddressStake
-{
-    public int ID { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
-    public string AMOUNT { get; set; }
-    public string AMOUNT_RAW { get; set; }
-    public long TIME { get; set; }
-    public string UNCLAIMED { get; set; }
-    public string UNCLAIMED_RAW { get; set; }
-}
-
-public class AddressStorage
-{
-    public int ID { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
-    public long AVAILABLE { get; set; }
-    public long USED { get; set; }
-    public string AVATAR { get; set; }
-}
-
 public class AddressBalance
 {
     public int ID { get; set; }
     public int TokenId { get; set; }
     public virtual Token Token { get; set; }
-    public int ChainId { get; set; }
-    public virtual Chain Chain { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }

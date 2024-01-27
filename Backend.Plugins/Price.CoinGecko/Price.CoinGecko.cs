@@ -63,87 +63,30 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                             case "ETH":
                                 t.ApiSymbol = "ethereum";
                                 break;
-                            case "WETH":
-                                t.ApiSymbol = "weth";
-                                break;
                             case "USDC":
                                 t.ApiSymbol = "usd-coin";
                                 break;
                             case "DAI":
                                 t.ApiSymbol = "dai";
                                 break;
+                            case "USDT":
+                                t.ApiSymbol = "tether";
+                                break;
                             case "BNB":
                                 t.ApiSymbol = "binancecoin";
                                 break;
-                            case "WBNB":
-                                t.ApiSymbol = "wbnb";
-                                break;
-                            case "BUSD":
-                                t.ApiSymbol = "binance-usd";
-                                break;
-                            case "SWTH":
-                                t.ApiSymbol = "switcheo";
-                                break;
-                            case "CAKE":
-                                t.ApiSymbol = "pancakeswap-token";
-                                break;
-                            case "MATIC":
-                                t.ApiSymbol = "matic-network";
-                                break;
-                            case "DYT":
-                                t.ApiSymbol = "dynamite";
-                                break;
                             case "NEO":
-                            case "BNEO":
                                 t.ApiSymbol = "neo";
                                 break;
-                            case "AVAX":
-                                t.ApiSymbol = "avalanche-2";
+                            case "GAS":
+                                t.ApiSymbol = "gas";
                                 break;
-                            case "WAVAX":
-                                t.ApiSymbol = "wrapped-avax";
-                                break;
-                            case "GOATI":
-                            case "TTRS":
-                            case "MKNI":
-                            case "CROWN":
-                            case "GHOST":
-                            case "SEM":
-                            case "BRCD":
-                            case "BRCB":
-                            case "BRCF":
-                            case "BRCG":
-                            case "GFEST":
-                            case "IGI":
-                            case "BRCP":
-                            case "HOD":
-                            case "XXC":
-                            case "SPECC":
-                            case "GFES":
-                            case "GFESS":
-                            case "MOV":
-                            case "GFESA":
-                            case "FESTG":
-                            case "GFNFT":
-                            case "GNFT":
-                            case "ALKS":
-                            case "ALK":
-                            case "TCKT":
-                            case "ALKA":
-                            case "USD":
-                            case "SMNFT":
+                            default:
                                 //maybe add that info somehow to the database
                                 // Just ignore, can't get this price from CoinGecko.
                                 t.ApiSymbol = null;
                                 break;
-                            default:
-                                // Here goes NEO, GAS, and all other tokens.
-                                t.ApiSymbol = t.NativeSymbol.ToLower(); // Case-sensitive!
-                                break;
                         }
-
-
-                    LoadCoinInformation(cryptoSymbols);
 
                     // Load prices for a given list of CoinGecko's ids.
                     LoadPrices(cryptoSymbols);
@@ -204,6 +147,12 @@ public class CoinGecko : Plugin, IDBAccessPlugin
         var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse);
         if ( response == null ) return;
 
+        if ( stringResponse.ToLowerInvariant().Contains("exceeded the rate limit") )
+        {
+            Log.Warning("[{Name}] Exceeded the rate limit, stopping for now", Name);
+            return;
+        }
+        
         var pricesUpdated = 0;
 
         using ( MainDbContext databaseContext = new() )
@@ -211,10 +160,10 @@ public class CoinGecko : Plugin, IDBAccessPlugin
             foreach ( var cryptoSymbol in cryptoSymbols )
             {
                 var chain = ChainMethods.Get(databaseContext, cryptoSymbol.ChainName);
-                var token = TokenMethods.Get(databaseContext, chain, cryptoSymbol.NativeSymbol);
+                // TODO async
+                var token = TokenMethods.GetAsync(databaseContext, chain, cryptoSymbol.NativeSymbol).Result;
 
-                if ( token is {TokenPriceState.COIN_GECKO: false} ||
-                     string.IsNullOrEmpty(cryptoSymbol.ApiSymbol) ) continue;
+                if ( string.IsNullOrEmpty(cryptoSymbol.ApiSymbol) ) continue;
 
                 if ( response.RootElement.TryGetProperty(cryptoSymbol.ApiSymbol.ToLower(), out var priceNode) )
                     foreach ( var fiatSymbol in fiatSymbols )
@@ -229,22 +178,12 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                             Log.Warning(
                                 "[{Name}] plugin: Can't find price for '{NativeSymbol}'/'{ApiSymbol}'/'{FiatSymbol}', url: {Url}",
                                 Name, cryptoSymbol.NativeSymbol, cryptoSymbol.ApiSymbol, fiatSymbol, url);
-                            if ( token != null ) TokenPriceStateMethods.Upsert(databaseContext, token, false);
                         }
 
                 else
                 {
-                    // TODO check fungibility through db when will be available
-                    if ( cryptoSymbol.NativeSymbol.ToUpper() != "GOATI" &&
-                         cryptoSymbol.NativeSymbol.ToUpper() != "MKNI" &&
-                         cryptoSymbol.NativeSymbol.ToUpper() != "CROWN" &&
-                         cryptoSymbol.NativeSymbol.ToUpper() != "GHOST" &&
-                         cryptoSymbol.NativeSymbol.ToUpper() != "SEM" &&
-                         cryptoSymbol.NativeSymbol.ToUpper() != "TTRS" &&
-                         cryptoSymbol.NativeSymbol.ToUpper() != "LEET" &&
-                         cryptoSymbol.NativeSymbol.ToUpper() != "NOMI" )
-                        Log.Warning("[{Name}] plugin: Price for '{NativeSymbol}' crypto is not available", Name,
-                            cryptoSymbol.NativeSymbol);
+                    Log.Warning("[{Name}] plugin: Price for '{NativeSymbol}' crypto is not available", Name,
+                        cryptoSymbol.NativeSymbol);
                 }
             }
 
@@ -267,7 +206,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
             lastLoadedDate = lastLoadedDate == 0
                 ? UnixSeconds.FromDateTime(Settings.Default.StartDate)
-                : UnixSeconds.AddDays(lastLoadedDate, 1);
+                : databaseContext.TokenDailyPrices.Count(x => x.DATE_UNIX_SECONDS == lastLoadedDate) < cryptoSymbols.Count ? lastLoadedDate : UnixSeconds.AddDays(lastLoadedDate, 1);
 
             var lastLoadedDateString = UnixSeconds.ToDateTime(lastLoadedDate).ToString("dd-MM-yyyy");
 
@@ -280,29 +219,13 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                         lastLoadedDateString);
 
                     var chain = ChainMethods.Get(databaseContext, cryptoSymbol.ChainName);
-                    var token = TokenMethods.Get(databaseContext, chain, cryptoSymbol.NativeSymbol);
+                    // TODO async
+                    var token = TokenMethods.GetAsync(databaseContext, chain, cryptoSymbol.NativeSymbol).Result;
 
                     if ( token == null )
                     {
                         Log.Warning("[{Name}] Symbol {Symbol} could not be found", Name, cryptoSymbol.NativeSymbol);
                         continue;
-                    }
-
-                    if ( token.TokenPriceState is {COIN_GECKO: false} )
-                    {
-                        Log.Verbose("[{Name}] Symbol {Symbol}, Date+1 {Date}, Now {Now}", Name,
-                            cryptoSymbol.NativeSymbol,
-                            UnixSeconds.AddDays(token.TokenPriceState.LAST_CHECK_DATE_UNIX_SECONDS, 1),
-                            UnixSeconds.Now());
-
-                        if ( UnixSeconds.AddDays(token.TokenPriceState.LAST_CHECK_DATE_UNIX_SECONDS, 1) >=
-                             UnixSeconds.Now() )
-                        {
-                            Log.Warning("[{Name}] Symbol {Symbol} was not found the last time we checked, Skipping",
-                                Name,
-                                cryptoSymbol.NativeSymbol);
-                            continue;
-                        }
                     }
 
                     var url = "https://api.coingecko.com/api/v3/coins/" + cryptoSymbol.ApiSymbol + "/history?date=" +
@@ -315,12 +238,20 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                                 "[{Name}] plugin: We reached request limit, saving changes and sleep for 5 seconds",
                                 Name);
                         });
+
                     if ( response == null )
                     {
                         databaseContext.SaveChanges();
                         Log.Error(
                             "[{Name}] plugin: Stuck on '{ApiSymbol}' price update for '{LastLoadedDate}. Return Go on Later.'",
                             Name, cryptoSymbol.ApiSymbol, lastLoadedDateString);
+                        return;
+                    }
+
+                    if ( stringResponse.ToLowerInvariant().Contains("exceeded the rate limit") )
+                    {
+                        databaseContext.SaveChanges();
+                        Log.Warning("[{Name}] Exceeded the rate limit, stopping for now", Name);
                         return;
                     }
 
@@ -331,88 +262,43 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
                         if ( errorProperty.ToString().ToUpper()
                             .Contains("Could not find coin with the given id".ToUpper()) )
-                            TokenPriceStateMethods.Upsert(databaseContext, token, false);
+                            Log.Warning(errorProperty.ToString());
                         continue;
                     }
 
-
-                    if ( !response.RootElement.TryGetProperty("market_data", out var marketProperty) ) continue;
-
-                    if ( marketProperty.TryGetProperty("current_price", out var priceNode) )
+                    var priceUsd = 0m;
+                    if ( !response.RootElement.TryGetProperty("market_data", out var marketProperty) )
                     {
-                        //it is send in lowercase now
-                        var priceAUD = priceNode.GetProperty("aud").GetDecimal();
-                        var priceCAD = priceNode.GetProperty("cad").GetDecimal();
-                        var priceCNY = priceNode.GetProperty("cny").GetDecimal();
-                        var priceEUR = priceNode.GetProperty("eur").GetDecimal();
-                        var priceGBP = priceNode.GetProperty("gbp").GetDecimal();
-                        var priceJPY = priceNode.GetProperty("jpy").GetDecimal();
-                        var priceRUB = priceNode.GetProperty("rub").GetDecimal();
-                        var priceUSD = priceNode.GetProperty("usd").GetDecimal();
-
-                        if ( cryptoSymbol.NativeSymbol.ToUpper() == "SOUL" )
-                        {
-                            // Calculating KCAL price as 1/5 of SOUL price for dates before 02.10.2020 (1601596800).
-                            if ( lastLoadedDate < 1601596800 )
-                            {
-                                token = TokenMethods.Get(databaseContext, chain, "KCAL");
-                                TokenDailyPricesMethods.Upsert(databaseContext, lastLoadedDate, token,
-                                    new Dictionary<string, decimal>
-                                    {
-                                        {"AUD", priceAUD / 5},
-                                        {"CAD", priceCAD / 5},
-                                        {"CNY", priceCNY / 5},
-                                        {"EUR", priceEUR / 5},
-                                        {"GBP", priceGBP / 5},
-                                        {"JPY", priceJPY / 5},
-                                        {"RUB", priceRUB / 5},
-                                        {"USD", priceUSD / 5}
-                                    },
-                                    false);
-                            }
-
-                            token = TokenMethods.Get(databaseContext, chain, "GOATI");
-                            // Setting GOATI pegged to 0.1 USD.
-                            TokenDailyPricesMethods.Upsert(databaseContext, lastLoadedDate, token,
-                                new Dictionary<string, decimal>
-                                {
-                                    {"AUD", 0.1m * priceAUD / priceUSD},
-                                    {"CAD", 0.1m * priceCAD / priceUSD},
-                                    {"CNY", 0.1m * priceCNY / priceUSD},
-                                    {"EUR", 0.1m * priceEUR / priceUSD},
-                                    {"GBP", 0.1m * priceGBP / priceUSD},
-                                    {"JPY", 0.1m * priceJPY / priceUSD},
-                                    {"RUB", 0.1m * priceRUB / priceUSD},
-                                    {"USD", 0.1m}
-                                },
-                                false);
-                        }
-
-                        token = TokenMethods.Get(databaseContext, chain, cryptoSymbol.NativeSymbol);
-                        TokenDailyPricesMethods.Upsert(databaseContext, lastLoadedDate, token,
-                            new Dictionary<string, decimal>
-                            {
-                                {"AUD", priceAUD},
-                                {"CAD", priceCAD},
-                                {"CNY", priceCNY},
-                                {"EUR", priceEUR},
-                                {"GBP", priceGBP},
-                                {"JPY", priceJPY},
-                                {"RUB", priceRUB},
-                                {"USD", priceUSD}
-                            },
-                            false);
-
-                        pricesUpdated += 8;
+                        Log.Warning(
+                            "[{Name}] plugin: market_data is unavailable for symbol {Symbol}, response: {Response}.'",
+                            Name, cryptoSymbol.ApiSymbol, stringResponse);
                     }
                     else
                     {
-                        if ( ( lastLoadedDate >= 1601596800 || cryptoSymbol.NativeSymbol.ToUpper() != "KCAL" ) &&
-                             cryptoSymbol.NativeSymbol.ToUpper() != "GOATI" )
-                            Log.Information(
-                                "[{Name}] plugin: Price for '{NativeSymbol}' crypto is not available", Name,
-                                cryptoSymbol.NativeSymbol);
+                        if ( marketProperty.TryGetProperty("current_price", out var priceNode) )
+                        {
+                            //it is send in lowercase now
+                            priceUsd = priceNode.GetProperty("usd").GetDecimal();
+                        }
                     }
+
+                    if ( cryptoSymbol.NativeSymbol.ToUpper() == "SOUL" )
+                    {
+                        // TODO async
+                        token = TokenMethods.GetAsync(databaseContext, chain, "GOATI").Result;
+                        // Setting GOATI pegged to 0.1 USD.
+                        TokenDailyPricesMethods.Upsert(databaseContext, lastLoadedDate, token,
+                            priceUsd,
+                            false);
+                    }
+
+                    // TODO async
+                    token = TokenMethods.GetAsync(databaseContext, chain, cryptoSymbol.NativeSymbol).Result;
+                    TokenDailyPricesMethods.Upsert(databaseContext, lastLoadedDate, token,
+                        priceUsd,
+                        false);
+
+                    pricesUpdated += 1;
                 }
 
                 lastLoadedDate = UnixSeconds.AddDays(lastLoadedDate, 1);
@@ -421,161 +307,6 @@ public class CoinGecko : Plugin, IDBAccessPlugin
             databaseContext.SaveChanges();
         }
 
-        // Second pass. Updating crypto pairs.
-        using ( MainDbContext databaseContext = new() )
-        {
-            // Searching for fiat pairs that are not initialized.
-            // Take earliest date with uninitialized price.
-            var firstIncompleteDate = databaseContext.TokenDailyPrices
-                .Where(x => x.PRICE_SOUL == 0 || x.PRICE_NEO == 0 || x.PRICE_ETH == 0)
-                .OrderBy(x => x.DATE_UNIX_SECONDS).Select(x => x.DATE_UNIX_SECONDS).FirstOrDefault();
-
-            if ( firstIncompleteDate == 0 )
-                // Nothing to do.
-                return;
-
-            var chainEntry = ChainMethods.Get(databaseContext, "main");
-            while ( firstIncompleteDate <= UnixSeconds.Now() )
-            {
-                Dictionary<string, decimal> tokenUsdPrices = new()
-                {
-                    ["SOUL"] = TokenDailyPricesMethods.Get(databaseContext, chainEntry, firstIncompleteDate, "SOUL",
-                        "USD"),
-                    ["KCAL"] = TokenDailyPricesMethods.Get(databaseContext, chainEntry, firstIncompleteDate, "KCAL",
-                        "USD"),
-                    ["GOATI"] = 0.1m,
-                    ["NEO"] = TokenDailyPricesMethods.Get(databaseContext, chainEntry, firstIncompleteDate, "NEO",
-                        "USD"),
-                    ["ETH"] = TokenDailyPricesMethods.Get(databaseContext, chainEntry, firstIncompleteDate, "ETH",
-                        "USD")
-                };
-
-                if ( tokenUsdPrices["SOUL"] == 0 || tokenUsdPrices["NEO"] == 0 || tokenUsdPrices["ETH"] == 0 )
-                {
-                    Log.Information(
-                        "[{Name}] plugin: Prices for '{FirstIncompleteDate}' are not yet available", Name,
-                        UnixSeconds.LogDate(firstIncompleteDate));
-                    break;
-                }
-
-
-                // Taking every crypto token and calculating SOUL/NEO/ETH price for them using USD as common price.
-                foreach ( var cryptoSymbol in cryptoSymbols.Where(
-                             x => !string.IsNullOrEmpty(x.ApiSymbol)) )
-                {
-                    var chain = ChainMethods.Get(databaseContext, cryptoSymbol.ChainName);
-                    var token = TokenMethods.Get(databaseContext, chain, cryptoSymbol.NativeSymbol);
-
-                    var tokenUsdPrice = TokenDailyPricesMethods.Get(databaseContext, token, firstIncompleteDate, "USD");
-                    TokenDailyPricesMethods.Upsert(databaseContext, firstIncompleteDate, token,
-                        new Dictionary<string, decimal>
-                        {
-                            {"SOUL", tokenUsdPrice / tokenUsdPrices["SOUL"]},
-                            {"NEO", tokenUsdPrice / tokenUsdPrices["NEO"]},
-                            {"ETH", tokenUsdPrice / tokenUsdPrices["ETH"]}
-                        },
-                        false);
-                }
-
-                firstIncompleteDate = UnixSeconds.AddDays(firstIncompleteDate, 1);
-            }
-
-            databaseContext.SaveChanges();
-        }
-
-        Log.Information("[{Name}] plugin: {PricesUpdated} prices updated", Name, pricesUpdated);
-    }
-
-
-    private void LoadCoinInformation(IEnumerable<TokenMethods.Symbol> cryptoSymbols)
-    {
-        var cryptoList = cryptoSymbols.ToList();
-        MainDbContext databaseContext = new();
-        var tokenUpdated = 0;
-
-        //first check what coins coingecko supports
-        const string urlList = "https://api.coingecko.com/api/v3/coins/list";
-        var responseList = Client.ApiRequest<JsonDocument>(urlList, out var stringListResponse, error =>
-        {
-            Log.Information("[{Name}] plugin: We might have reached request limit", Name);
-            databaseContext.SaveChanges();
-        });
-
-        if ( responseList != null )
-        {
-            var symbolList = responseList.RootElement.EnumerateArray().Select(id => id.GetProperty("id").GetString())
-                .ToList();
-
-            Log.Debug("[{Name}] plugin: got {Count} from Page", Name, symbolList.Count);
-
-            var onGecko = cryptoList.Where(x => symbolList.Any(y => y == x.ApiSymbol)).ToList();
-            var notOnGecko = cryptoList.Where(x => symbolList.All(y => y != x.ApiSymbol)).ToList();
-
-            Log.Debug("[{Name}] plugin: got {Count} on gecko we need", Name, onGecko.Count);
-            Log.Debug("[{Name}] plugin: got {Count} on not gecko we need", Name, notOnGecko.Count);
-
-            foreach ( var token in from symbol in onGecko
-                     let chain = ChainMethods.Get(databaseContext, symbol.ChainName)
-                     select TokenMethods.Get(databaseContext, chain, symbol.NativeSymbol) )
-            {
-                TokenPriceStateMethods.Upsert(databaseContext, token, true);
-                tokenUpdated++;
-            }
-
-            foreach ( var token in from symbol in notOnGecko
-                     let chain = ChainMethods.Get(databaseContext, symbol.ChainName)
-                     select TokenMethods.Get(databaseContext, chain, symbol.NativeSymbol) )
-            {
-                TokenPriceStateMethods.Upsert(databaseContext, token, false);
-                tokenUpdated++;
-            }
-
-            if ( tokenUpdated > 0 ) databaseContext.SaveChanges();
-        }
-
-        Log.Debug("[{Name}] plugin: done updating Coin Information, Tokens Updated {Count}", Name, tokenUpdated);
-
-        /*
-        var tokenUrlCount = 0;
-        foreach ( var cryptoSymbol in cryptoList.Where(x => !string.IsNullOrEmpty(x.ApiSymbol)) )
-        {
-            var chain = ChainMethods.Get(databaseContext, cryptoSymbol.ChainName);
-            var token = TokenMethods.Get(databaseContext, chain, cryptoSymbol.NativeSymbol);
-
-            if ( token is {TokenPriceState.COIN_GECKO: false} ) continue;
-
-
-            var url = "https://api.coingecko.com/api/v3/coins/" + cryptoSymbol.ApiSymbol;
-            var response = Client.APIRequest<JsonDocument>(url, out var stringResponse, error =>
-            {
-                Log.Information("[{Name}] plugin: We might have reached request limit", Name);
-                databaseContext.SaveChanges();
-            });
-
-            if ( response == null ) continue;
-
-            if ( !response.RootElement.TryGetProperty("image", out var logoProperty) ) continue;
-
-            Dictionary<string, string> logoMap = new();
-
-            if ( logoProperty.TryGetProperty("thumb", out var thumbProperty) )
-                logoMap.Add("thumb", thumbProperty.GetString());
-
-            if ( logoProperty.TryGetProperty("small", out var smallProperty) )
-                logoMap.Add("small", smallProperty.GetString());
-
-            if ( logoProperty.TryGetProperty("large", out var largeProperty) )
-                logoMap.Add("large", largeProperty.GetString());
-
-            TokenLogoMethods.InsertIfNotExistList(databaseContext, token, logoMap, false);
-            foreach ( var (type, path) in logoMap )
-                Log.Verbose("[{Name}] Got logo type {Type}, {Logo}", Name, type, path);
-
-            tokenUrlCount++;
-        }
-
-        if ( tokenUrlCount > 0 ) databaseContext.SaveChanges();
-        Log.Information("[{Name}] plugin: {Count} Token for Urls processed", Name, tokenUrlCount);
-        */
+        Log.Information("[{Name}] plugin: {PricesUpdated} daily prices updated", Name, pricesUpdated);
     }
 }

@@ -46,10 +46,10 @@ public static class NftMethods
 
 
     public static void SetApiResponses(ApiCacheDbContext databaseContext, string chainShortName, string contractHash,
-        string tokenId, JsonDocument offchainApiResponse, JsonDocument chainApiResponse, bool saveChanges = false)
+        string tokenId, JsonDocument offchainApiResponse, JsonDocument chainApiResponse)
     {
-        var chain = ChainMethods.Upsert(databaseContext, chainShortName, false);
-        var contract = ContractMethods.Upsert(databaseContext, chain, contractHash, false);
+        var chain = ChainMethods.Upsert(databaseContext, chainShortName);
+        var contract = ContractMethods.Upsert(databaseContext, chain, contractHash);
 
         var nft = Upsert(databaseContext, contract, tokenId, out var newNftCreated);
 
@@ -64,7 +64,5 @@ public static class NftMethods
             nft.CHAIN_API_RESPONSE = chainApiResponse;
             nft.CHAIN_API_RESPONSE_DM_UNIX_SECONDS = UnixSeconds.Now();
         }
-
-        if ( saveChanges ) databaseContext.SaveChanges();
     }
 }

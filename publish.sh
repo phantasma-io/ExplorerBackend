@@ -2,7 +2,7 @@
 
 OUT_FOLDER=./publish
 OUT_BIN_FOLDER=$OUT_FOLDER/bin
-NET_SUBFOLDER=net6.0
+NET_SUBFOLDER=net7.0
 
 rm -r --force $OUT_FOLDER
 mkdir --parents $OUT_BIN_FOLDER

@@ -1,44 +1,77 @@
 {
-    "Kestrel": {
-      "Endpoints": {
-        "Http": {
-          "Url": "http://0.0.0.0:8000/"
-        },
-        "Https": {
-          "Url": "https://0.0.0.0:8001/",
-          "Certificate": {
-            "Path": "../cert.pfx",
-            "Password": ""
-          }
-        }
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://0.0.0.0:8000/"
+      }
+    }
+  },
+  "DatabaseConfiguration": {
+    "Main":
+      {
+        "Host": "localhost",
+        "Database": "explorer-backend",
+        "Username": "postgres",
+        "Password": "masterkey"
+      },
+    "ApiCache":
+      {
+        "Host": "localhost",
+        "Database": "explorer-backend-api-cache",
+        "Username": "postgres",
+        "Password": "masterkey"
+      },
+    "ConnectMaxRetries": 6,
+    "ConnectRetryTimeout": 5000
+  },
+  "ApiServiceConfiguration": {
+    "PerformanceMetrics": {
+      "CountsEnabled": false,
+      "AveragesEnabled": false,
+      "MaxRequestsPerAverage": 100,
+      "LongRunningRequestThreshold": 500,
+      "LongRunningSqlQueryThreshold": 200,
+      "SqlQueryTimeLoggingEnabled": true
+    }
+  },
+  "FetcherServiceConfiguration": {
+    "FetchInterval": 30
+  },
+  "Serilog": {
+    "Using": [
+      "Serilog.Sinks.Console",
+      "Serilog.Sinks.File"
+    ],
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "AspNetCore.Authentication.ApiKey": "Warning"
       }
     },
-    "DatabaseConfiguration": {
-        "Main":
-            {
-                "Host": "localhost",
-                "Database": "explorer-backend",
-                "Username": "postgres",
-                "Password": "masterkey"
-            },
-        "ApiCache":
-            {
-                "Host": "localhost",
-                "Database": "explorer-backend-api-cache",
-                "Username": "postgres",
-                "Password": "masterkey"
-            },
-        "ConnectMaxRetries": 6,
-        "ConnectRetryTimeout": 5000
-    },
-    "ApiServiceConfiguration": {
-    },
-    "FetcherServiceConfiguration": {
-        "FetchInterval": 30
-    },
-    "Logging": { 
-        "Level": "Verbose",
-        "LogOverwrite": true,
-        "LogDirectoryPath": "../logs"
+    "WriteTo": [
+      {
+        "Name": "Console",
+        "Args": {
+          "outputTemplate": "{Timestamp:u} {Timestamp:ffff} [{Level:u3}] <{ThreadId}> {Prefix}{Message:lj}{NewLine}{Exception}"
+        }
+      },
+      {
+        "Name": "File",
+        "Args": {
+          "path": "../logs/api-.log",
+          "rollingInterval": "Day",
+          "outputTemplate": "{Timestamp:u} {Timestamp:ffff} [{Level:u3}] <{ThreadId}> {Prefix}{Message:lj}{NewLine}{Exception}"
+        }
+      }
+    ],
+    "Enrich": [
+      "FromLogContext",
+      "WithMachineName",
+      "WithThreadId"
+    ],
+    "Properties": {
+      "Application": "Explorer API"
     }
+  }
 }

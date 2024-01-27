@@ -49,14 +49,12 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                 "Got {Count} Events loaded, First Timers {First}, Rechecking {Recheck}, processed in {Time} sec",
                 events.Count, eventsFirst.Count, eventsNoPrice.Count, Math.Round(eventTimeEnd.TotalSeconds, 3));
 
-            const string fiat = "USD";
-
             foreach ( var marketEvent in events )
                 try
                 {
                     MarketEventFiatPriceMethods.Upsert(databaseContext, marketEvent,
-                        GetSymbolPrice(databaseContext, marketEvent, fiat, tokenPrices, false),
-                        GetSymbolPrice(databaseContext, marketEvent, fiat, tokenPrices, true), fiat);
+                        GetSymbolPrice(databaseContext, marketEvent, tokenPrices, false),
+                        GetSymbolPrice(databaseContext, marketEvent, tokenPrices, true));
 
                     pricesProcessed++;
                 }
@@ -75,13 +73,14 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
     }
 
 
-    private static decimal GetSymbolPrice(MainDbContext databaseContext, MarketEvent marketEvent, string fiat,
+    private static decimal GetSymbolPrice(MainDbContext databaseContext, MarketEvent marketEvent,
         IEnumerable<TokenMethods.TokenPrice> tokenPrices, bool endPrice)
     {
         var toCalculate = endPrice ? marketEvent.END_PRICE : marketEvent.PRICE;
 
-        var price = TokenDailyPricesMethods.Calculate(databaseContext, marketEvent.Event.Chain,
-            marketEvent.Event.DATE_UNIX_SECONDS, marketEvent.QuoteToken.SYMBOL, toCalculate, fiat);
+        // TODO async
+        var price = TokenDailyPricesMethods.CalculateAsync(databaseContext, marketEvent.Event.Chain,
+            marketEvent.Event.DATE_UNIX_SECONDS, marketEvent.QuoteToken.SYMBOL, toCalculate).Result;
 
         if ( price == 0 )
             price = ( decimal ) TokenMethods.CalculatePrice(tokenPrices, toCalculate, marketEvent.QuoteToken.SYMBOL);

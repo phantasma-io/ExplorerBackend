@@ -1,17 +1,18 @@
+using System.Threading.Tasks;
 using Backend.Commons;
 
 namespace Database.Main;
 
 public static class TokenEventMethods
 {
-    public static TokenEvent Upsert(MainDbContext databaseContext, string symbol, string chainName, string value,
-        Chain chain, Event databaseEvent, bool saveChanges = true)
+    public static async Task UpsertAsync(MainDbContext databaseContext, string symbol, string chainName, string value,
+        Chain chain, Event databaseEvent)
     {
-        if ( string.IsNullOrEmpty(symbol) || string.IsNullOrEmpty(value) ) return null;
+        if ( string.IsNullOrEmpty(symbol) || string.IsNullOrEmpty(value) ) return;
 
         //use the chain name here to get the data
         //maybe
-        var token = TokenMethods.Get(databaseContext, chain, symbol);
+        var token = await TokenMethods.GetAsync(databaseContext, chain, symbol);
         //var chainNameChain = ChainMethods.Get(databaseContext, chainName);
 
         var tokenEvent = new TokenEvent
@@ -23,9 +24,6 @@ public static class TokenEventMethods
             Event = databaseEvent
         };
 
-        databaseContext.TokenEvents.Add(tokenEvent);
-        if ( saveChanges ) databaseContext.SaveChanges();
-
-        return tokenEvent;
+        await databaseContext.TokenEvents.AddAsync(tokenEvent);
     }
 }

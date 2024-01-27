@@ -9,7 +9,7 @@ public static class ChainMethods
     // Checks if "Chains" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
-    public static Chain Upsert(MainDbContext databaseContext, string name, bool saveChanges = true)
+    public static Chain Upsert(MainDbContext databaseContext, string name)
     {
         var chain = databaseContext.Chains.FirstOrDefault(x => x.NAME == name);
 
@@ -18,7 +18,6 @@ public static class ChainMethods
         chain = new Chain {NAME = name, CURRENT_HEIGHT = "0"};
 
         databaseContext.Chains.Add(chain);
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return chain;
     }
@@ -44,16 +43,16 @@ public static class ChainMethods
     }
 
 
-    public static BigInteger GetLastProcessedBlock(MainDbContext databaseContext, int chainId)
+    public static BigInteger GetLastProcessedBlock(MainDbContext databaseContext, string chainName)
     {
-        return BigInteger.Parse(Get(databaseContext, chainId).CURRENT_HEIGHT);
+        return BigInteger.Parse(Get(databaseContext, chainName).CURRENT_HEIGHT);
     }
 
 
-    public static void SetLastProcessedBlock(MainDbContext databaseContext, int chainId, BigInteger height,
+    public static void SetLastProcessedBlock(MainDbContext databaseContext, string chainName, BigInteger height,
         bool saveChanges = true)
     {
-        var chain = Get(databaseContext, chainId);
+        var chain = Get(databaseContext, chainName);
         chain.CURRENT_HEIGHT = height.ToString();
 
         if ( saveChanges ) databaseContext.SaveChanges();
@@ -64,14 +63,6 @@ public static class ChainMethods
     {
         return dbContext.Chains.ToList();
     }
-
-
-    public static List<int> GetChainsIds(MainDbContext dbContext)
-    {
-        var chainList = GetChains(dbContext);
-        return chainList.Select(chain => chain.ID).ToList();
-    }
-
 
     public static List<string> GetChainNames(MainDbContext dbContext)
     {
