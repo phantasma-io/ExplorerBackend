@@ -193,8 +193,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             var organizationName = responseOrg.RootElement.GetProperty("name").ToString();
                             //try to find address, if not found we need to trigger a lookUpName and then getAddress and insert it
 
-                            var orgItem = OrganizationMethods.Upsert(databaseContext, organizationId, organizationName,
-                                false);
+                            var orgItem = OrganizationMethods.Upsert(databaseContext, organizationId, organizationName);
                             var addressEntry = SyncAddressByNameAsync(databaseContext, chainEntry, organizationId, orgItem).Result;
 
                             orgItem.ADDRESS = addressEntry.ADDRESS;

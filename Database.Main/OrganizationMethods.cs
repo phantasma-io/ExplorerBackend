@@ -4,22 +4,21 @@ namespace Database.Main;
 
 public static class OrganizationMethods
 {
-    public static Organization Upsert(MainDbContext databaseContext, string id, string name, bool saveChanges = true)
+    public static Organization Upsert(MainDbContext databaseContext, string id, string name)
     {
         var organization =
-            databaseContext.Organizations.FirstOrDefault(x => x.ORGANIZATION_ID == id && x.NAME == name);
+            databaseContext.Organizations.FirstOrDefault(x => x.ORGANIZATION_ID == id);
         if ( organization != null )
             return organization;
 
         organization = DbHelper.GetTracked<Organization>(databaseContext)
-            .FirstOrDefault(x => x.ORGANIZATION_ID == id && x.NAME == name);
+            .FirstOrDefault(x => x.ORGANIZATION_ID == id);
         if ( organization != null )
             return organization;
 
         organization = new Organization {ORGANIZATION_ID = id, NAME = name};
 
         databaseContext.Organizations.Add(organization);
-        if ( saveChanges ) databaseContext.SaveChanges();
 
         return organization;
     }
