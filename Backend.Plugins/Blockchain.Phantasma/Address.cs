@@ -79,7 +79,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 balance.GetProperty("amount").GetString()))
                         .ToList();
 
-                    AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
+                    await AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
                 }
 
                 if ( account.TryGetProperty("storage", out var storageProperty) )

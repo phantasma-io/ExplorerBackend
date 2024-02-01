@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,7 @@ namespace Database.Main;
 
 public static class AddressBalanceMethods
 {
-    public static void InsertOrUpdateList(MainDbContext databaseContext, Address address,
+    public static async Task InsertOrUpdateList(MainDbContext databaseContext, Address address,
         List<Tuple<string, string, string>> balances)
     {
         var currentBalances = databaseContext.AddressBalances.Where(x => x.Address == address);
@@ -17,14 +18,13 @@ public static class AddressBalanceMethods
         var balanceListAll = new List<AddressBalance>();
         foreach ( var (chainName, symbol, amount) in balances )
         {
-            var chain = ChainMethods.Get(databaseContext, chainName);
+            var chain = await ChainMethods.GetAsync(databaseContext, chainName);
             if ( chain == null ) continue;
 
-            // TODO async
-            var token = TokenMethods.GetAsync(databaseContext, chain, symbol).Result;
+            var token = await TokenMethods.GetAsync(databaseContext, chain, symbol);
             if ( token == null ) continue;
 
-            var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
+            var entry = await databaseContext.AddressBalances.FirstOrDefaultAsync(x =>
                 x.Address == address && x.Token == token);
 
             var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
@@ -47,7 +47,7 @@ public static class AddressBalanceMethods
             balanceListAll.Add(entry);
         }
 
-        databaseContext.AddressBalances.AddRange(balanceListToAdd);
+        await databaseContext.AddressBalances.AddRangeAsync(balanceListToAdd);
 
         var removeList = new List<AddressBalance>();
         foreach ( var balance in currentBalances.Include(x => x.Token) )
