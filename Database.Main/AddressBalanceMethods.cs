@@ -18,10 +18,7 @@ public static class AddressBalanceMethods
         var balanceListAll = new List<AddressBalance>();
         foreach ( var (chainName, symbol, amount) in balances )
         {
-            var chain = await ChainMethods.GetAsync(databaseContext, chainName);
-            if ( chain == null ) continue;
-
-            var token = await TokenMethods.GetAsync(databaseContext, chain, symbol);
+            var token = await TokenMethods.GetAsync(databaseContext, address.Chain, symbol);
             if ( token == null ) continue;
 
             var entry = await databaseContext.AddressBalances.FirstOrDefaultAsync(x =>

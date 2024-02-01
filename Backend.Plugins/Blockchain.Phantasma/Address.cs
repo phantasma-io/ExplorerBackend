@@ -15,17 +15,16 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private async Task UpdateAddressesBalancesAsync(MainDbContext databaseContext, int chainId, List<string> addresses, int updateChunkSize)
+    private async Task UpdateAddressesBalancesAsync(MainDbContext databaseContext, Chain chain, List<string> addresses, int updateChunkSize)
     {
         var startTime = DateTime.Now;
         
         var processed = 0;
 
         var addressesToUpdate = await databaseContext.Addresses.Where(x =>
-            x.ChainId == chainId && addresses.Contains(x.ADDRESS)).ToListAsync();
+            x.Chain == chain && addresses.Contains(x.ADDRESS)).ToListAsync();
         Log.Verbose("[{Name}] got {Count} Addresses to check", Name, addressesToUpdate.Count);
 
-        var chain = ChainMethods.Get(databaseContext, chainId);
         var soulDecimals = TokenMethods.GetSoulDecimals(databaseContext, chain);
         var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, chain);
 
@@ -44,7 +43,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if ( updateChunkSize > 1 )
                 {
                     // Temp solution for situation when batch of addresses crash API
-                    await UpdateAddressesBalancesAsync(databaseContext, chainId, split, 1);
+                    await UpdateAddressesBalancesAsync(databaseContext, chain, split, 1);
                 }
                 continue;
             }

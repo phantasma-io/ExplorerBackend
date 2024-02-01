@@ -772,7 +772,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         // quick fix to solve issue with fresh addresses which
         // does not exist in the database yet and following call cannot find them
         // and cannot update balances.
-        await UpdateAddressesBalancesAsync(databaseContext, chainEntry.ID, addressesToUpdate.Distinct().ToList(), 100);
+        await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesToUpdate.Distinct().ToList(), 100);
         await databaseContext.SaveChangesAsync();
         
         var processingTime = DateTime.Now - startTime;
