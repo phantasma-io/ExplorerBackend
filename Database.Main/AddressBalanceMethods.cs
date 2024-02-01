@@ -11,8 +11,6 @@ public static class AddressBalanceMethods
     public static void InsertOrUpdateList(MainDbContext databaseContext, Address address,
         List<Tuple<string, string, string>> balances)
     {
-        if ( !balances.Any() || address == null ) return;
-
         var currentBalances = databaseContext.AddressBalances.Where(x => x.Address == address);
 
         var balanceListToAdd = new List<AddressBalance>();
@@ -56,6 +54,6 @@ public static class AddressBalanceMethods
             if ( balanceListAll.All(x => x.Token != balance.Token) )
                 removeList.Add(balance);
 
-        if ( !removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
+        if ( removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
     }
 }
