@@ -49,10 +49,7 @@ public static class AddressBalanceMethods
 
         await databaseContext.AddressBalances.AddRangeAsync(balanceListToAdd);
 
-        var removeList = new List<AddressBalance>();
-        foreach ( var balance in currentBalances.Include(x => x.Token) )
-            if ( balanceListAll.All(x => x.Token != balance.Token) )
-                removeList.Add(balance);
+        var removeList = currentBalances.Include(x => x.Token).Where(tokenBalance => balanceListAll.All(x => x.Token != tokenBalance.Token)).ToList();
 
         if ( removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
     }
