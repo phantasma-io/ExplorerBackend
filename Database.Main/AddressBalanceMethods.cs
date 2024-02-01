@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Backend.Commons;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -14,7 +15,8 @@ public static class AddressBalanceMethods
 
         var currentBalances = databaseContext.AddressBalances.Where(x => x.Address == address);
 
-        var balanceList = new List<AddressBalance>();
+        var balanceListToAdd = new List<AddressBalance>();
+        var balanceListAll = new List<AddressBalance>();
         foreach ( var (chainName, symbol, amount) in balances )
         {
             var chain = ChainMethods.Get(databaseContext, chainName);
@@ -42,15 +44,16 @@ public static class AddressBalanceMethods
                     AMOUNT = amountConverted,
                     AMOUNT_RAW = amount
                 };
-                balanceList.Add(entry);
+                balanceListToAdd.Add(entry);
             }
+            balanceListAll.Add(entry);
         }
 
-        databaseContext.AddressBalances.AddRange(balanceList);
+        databaseContext.AddressBalances.AddRange(balanceListToAdd);
 
         var removeList = new List<AddressBalance>();
-        foreach ( var balance in currentBalances )
-            if ( balanceList.All(x => x.Token != balance.Token) )
+        foreach ( var balance in currentBalances.Include(x => x.Token) )
+            if ( balanceListAll.All(x => x.Token != balance.Token) )
                 removeList.Add(balance);
 
         if ( !removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
