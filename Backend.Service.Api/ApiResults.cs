@@ -599,6 +599,12 @@ public class AddressResult
 public class Token
 {
     /// <summary>
+    ///     Returns name of the token contract
+    /// </summary>
+    /// <example>Phantasma Stake</example>
+    public string? name { get; set; }
+    
+    /// <summary>
     ///     Returns Symbol
     /// </summary>
     /// <example>SOUL</example>

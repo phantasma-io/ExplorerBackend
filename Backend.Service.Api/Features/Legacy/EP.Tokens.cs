@@ -84,6 +84,7 @@ public static class GetTokens
             tokenArray = await query.Skip(offset).Take(limit).Select(x => new Token
             {
                 symbol = x.SYMBOL,
+                name = x.NAME,
                 fungible = x.FUNGIBLE,
                 transferable = x.TRANSFERABLE,
                 finite = x.FINITE,
