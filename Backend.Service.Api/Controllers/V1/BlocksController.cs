@@ -16,6 +16,7 @@ public class BlocksController : BaseControllerV1
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="id">block height or hash</param>
     /// <param name="hash">block hash</param>
     /// <param name="hash_partial">hash (partial match)</param>
     /// <param name="height">height of the <a href='#model-Backend.Service.Api.Block'>Block</a></param>
@@ -48,6 +49,7 @@ public class BlocksController : BaseControllerV1
         [FromQuery] string order_direction = "asc",
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
+        [FromQuery] string id = "",
         [FromQuery] string hash = "",
         [FromQuery] string hash_partial = "",
         [FromQuery] string height = "",
@@ -68,6 +70,7 @@ public class BlocksController : BaseControllerV1
             order_direction,
             offset,
             limit,
+            id,
             hash,
             hash_partial,
             height,

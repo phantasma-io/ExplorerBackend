@@ -1282,6 +1282,7 @@ public class Event
 public class Token
 {
     public int ID { get; set; }
+    public string NAME { get; set; }
     public string SYMBOL { get; set; }
     public bool FUNGIBLE { get; set; }
     public bool TRANSFERABLE { get; set; }

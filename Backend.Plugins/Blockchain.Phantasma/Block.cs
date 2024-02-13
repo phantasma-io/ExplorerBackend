@@ -47,11 +47,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var blocks = await GetBlockRange(chainName, i, fetchPerIteration);
             var fetchTime = DateTime.Now - startTime;
             
+            List<string> addressesToUpdate = new();
+            
             startTime = DateTime.Now;
             foreach ( var (blockHeight, block) in blocks )
             {
                 // Log.Information("PROCESSING HEIGHT " + blockHeight);
-                await ProcessBlock(blockHeight, block, chainName);
+                addressesToUpdate.AddRange(await ProcessBlock(blockHeight, block, chainName));
             }
             var processTime = DateTime.Now - startTime;
             
@@ -63,6 +65,24 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Math.Round(processTime.TotalSeconds, 3),
                 Math.Round(blocks.Count / (fetchTime.TotalSeconds + processTime.TotalSeconds), 2));
             
+            // Updating balances for affected addresses
+            startTime = DateTime.Now;
+            addressesToUpdate = addressesToUpdate.Distinct().ToList();
+            await using ( MainDbContext databaseContext = new() )
+            {
+                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
+                await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesToUpdate,
+                    100);
+                await databaseContext.SaveChangesAsync();
+            }
+            processTime = DateTime.Now - startTime;
+            Log.Information("{Count} addresses updated for blocks ({From}-{To}) in {ProcessTime} sec. Sync speed: {AddressesPerSecond} addresses per second",
+                addressesToUpdate.Count,
+                i,
+                i + blocks.Count - 1,
+                Math.Round(processTime.TotalSeconds, 3),
+                Math.Round(addressesToUpdate.Count / processTime.TotalSeconds, 2));
+
             i += fetchPerIteration;
         }
     }
@@ -121,7 +141,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         return tasks.Select(task => task.Result).ToList();
     }
     
-    private async Task ProcessBlock(BigInteger blockHeight, JsonDocument blockData, string chainName)
+    private async Task<List<string>> ProcessBlock(BigInteger blockHeight, JsonDocument blockData, string chainName)
     {
         var startTime = DateTime.Now;
 
@@ -147,7 +167,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         addressesToUpdate.Add(validatorAddress);
         var reward = blockData.RootElement.GetProperty("reward").GetString();
 
-        var chainEntry = ChainMethods.Get(databaseContext, chainName);
+        var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
 
         // Block in main database
         var block = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, blockHeight,
@@ -768,13 +788,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Log.Verbose("[{Name}] Block #{BlockHeight} Commit took {Time} sec, after Process of Block {Height}", Name,
             blockHeight, Math.Round(transactionEnd.TotalSeconds, 3), blockHeight);
 
-        // TODO avoid second SaveChangesAsync() in the future,
-        // quick fix to solve issue with fresh addresses which
-        // does not exist in the database yet and following call cannot find them
-        // and cannot update balances.
-        await UpdateAddressesBalancesAsync(databaseContext, chainEntry.ID, addressesToUpdate.Distinct().ToList());
-        await databaseContext.SaveChangesAsync();
-        
         var processingTime = DateTime.Now - startTime;
         if ( processingTime.TotalSeconds > 1 ) // Log only if processing of the block took > 1 second
         {
@@ -785,5 +798,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
         
         firstBlockSinceLaunch = false;
+        return addressesToUpdate.Distinct().ToList();
     }
 }

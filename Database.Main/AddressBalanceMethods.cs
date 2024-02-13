@@ -1,30 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Backend.Commons;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
 public static class AddressBalanceMethods
 {
-    public static void InsertOrUpdateList(MainDbContext databaseContext, Address address,
+    public static async Task InsertOrUpdateList(MainDbContext databaseContext, Address address,
         List<Tuple<string, string, string>> balances)
     {
-        if ( !balances.Any() || address == null ) return;
-
         var currentBalances = databaseContext.AddressBalances.Where(x => x.Address == address);
 
-        var balanceList = new List<AddressBalance>();
+        var balanceListToAdd = new List<AddressBalance>();
+        var balanceListAll = new List<AddressBalance>();
         foreach ( var (chainName, symbol, amount) in balances )
         {
-            var chain = ChainMethods.Get(databaseContext, chainName);
-            if ( chain == null ) continue;
-
-            // TODO async
-            var token = TokenMethods.GetAsync(databaseContext, chain, symbol).Result;
+            var token = await TokenMethods.GetAsync(databaseContext, address.Chain, symbol);
             if ( token == null ) continue;
 
-            var entry = databaseContext.AddressBalances.FirstOrDefault(x =>
+            var entry = await databaseContext.AddressBalances.FirstOrDefaultAsync(x =>
                 x.Address == address && x.Token == token);
 
             var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
@@ -42,17 +39,17 @@ public static class AddressBalanceMethods
                     AMOUNT = amountConverted,
                     AMOUNT_RAW = amount
                 };
-                balanceList.Add(entry);
+                balanceListToAdd.Add(entry);
             }
+            balanceListAll.Add(entry);
         }
 
-        databaseContext.AddressBalances.AddRange(balanceList);
+        await databaseContext.AddressBalances.AddRangeAsync(balanceListToAdd);
 
-        var removeList = new List<AddressBalance>();
-        foreach ( var balance in currentBalances )
-            if ( balanceList.All(x => x.Token != balance.Token) )
-                removeList.Add(balance);
+        var removeList = currentBalances
+            .Where(tokenBalance => !balanceListAll.Select(x => x.TokenId).Contains(tokenBalance.TokenId))
+            .ToList();
 
-        if ( !removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
+        if ( removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
     }
 }

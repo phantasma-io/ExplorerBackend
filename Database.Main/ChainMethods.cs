@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Database.Main;
 
@@ -32,6 +34,11 @@ public static class ChainMethods
     public static Chain Get(MainDbContext databaseContext, string name)
     {
         return databaseContext.Chains.Single(x => x.NAME == name);
+    }
+    
+    public static async Task<Chain> GetAsync(MainDbContext databaseContext, string name)
+    {
+        return await databaseContext.Chains.SingleAsync(x => x.NAME == name);
     }
 
 

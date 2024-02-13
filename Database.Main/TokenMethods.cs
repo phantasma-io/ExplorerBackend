@@ -18,7 +18,7 @@ public static class TokenMethods
     // Returns new or existing entry's Id.
 
 
-    public static async Task<Token> UpsertAsync(MainDbContext databaseContext, Chain chain, string contractHash, string symbol,
+    public static async Task<Token> UpsertAsync(MainDbContext databaseContext, Chain chain, string contractHash, string name, string symbol,
         int decimals, bool fungible, bool transferable, bool finite, bool divisible, bool fuel, bool stakable,
         bool fiat, bool swappable, bool burnable, bool mintable, string address, string owner, string currentSupply,
         string maxSupply,
@@ -35,6 +35,7 @@ public static class TokenMethods
 
         if ( entry != null )
         {
+            entry.NAME = name;
             entry.DECIMALS = decimals;
             entry.FUNGIBLE = fungible;
             entry.TRANSFERABLE = transferable;
@@ -62,6 +63,7 @@ public static class TokenMethods
             {
                 Chain = chain,
                 Contract = contractEntry,
+                NAME = name,
                 SYMBOL = symbol,
                 DECIMALS = decimals,
                 FUNGIBLE = fungible,

@@ -22,6 +22,7 @@ public static class GetBlocks
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
+        string id = "",
         string hash = "",
         string hash_partial = "",
         string height = "",
@@ -42,7 +43,7 @@ public static class GetBlocks
         const string fiatCurrency = "USD";
 
         //chain is not considered a filter atm
-        var filter = !string.IsNullOrEmpty(hash) || !string.IsNullOrEmpty(hash_partial) ||
+        var filter = !string.IsNullOrEmpty(id) || !string.IsNullOrEmpty(hash) || !string.IsNullOrEmpty(hash_partial) ||
                      !string.IsNullOrEmpty(height) || !string.IsNullOrEmpty(date_less) ||
                      !string.IsNullOrEmpty(date_greater);
 
@@ -91,6 +92,11 @@ public static class GetBlocks
             var query = databaseContext.Blocks.AsQueryable().AsNoTracking();
 
             #region Filtering
+
+            if ( !string.IsNullOrEmpty(id) )
+            {
+                query = id.Length == 64 ? query.Where(x => x.HASH == id || x.HEIGHT == id) : query.Where(x => x.HEIGHT == id);
+            }
 
             if ( !string.IsNullOrEmpty(hash) )
                 query = query.Where(x => x.HASH == hash);
