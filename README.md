@@ -1,6 +1,229 @@
 # Explorer Backend
 A backend for Phantasma explorer
 
+## Installation
+
+### User
+
+Create user 'pha'. All following steps will be using this user and home directory '/home/pha'.
+
+### Docker
+
+Install Docker according to the following instruction: https://docs.docker.com/engine/install/
+
+Create folder for containers:
+```
+mkdir /home/pha/docker
+```
+
+### PostgreSQL
+
+Create folder for PostgreSQL:
+```
+mkdir /home/pha/docker/postgresql
+```
+
+Create /home/pha/docker/postgresql/docker-compose.yml with the following content, replacing `CHANGE_ME` with real values:
+
+```
+services:
+  postgres:
+    image: postgres:16
+    hostname: postgres
+    container_name: postgres
+    shm_size: 4gb
+    expose:
+      - 5432
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: CHANGE_ME
+      POSTGRES_PASSWORD: CHANGE_ME
+    volumes:
+      - ./postgres-db:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
+    restart: unless-stopped
+    networks:
+     - postgresql
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+networks:
+   postgresql:
+      name: postgresql-network
+```
+
+Get PostgreSQL configuration file from the container and put it here:
+/home/pha/docker/postgresql/postgresql.conf
+
+To copy configuration from a running container following command can be used:
+```
+docker cp `docker ps -aqf "name=^postgres$"`:/var/lib/postgresql/data/postgresql.conf /home/pha/docker/postgresql/
+```
+
+This tool can be used to get optimized settings for postgres: https://pgtune.leopard.in.ua/
+Place optimized settings at the start of postgresql.conf.
+
+Start PostgreSQL with following commands:
+```
+docker compose pull
+docker compose up -d
+```
+
+### EFCore tools
+
+Install dotnet-sdk-8.0 using following instructions:
+
+https://learn.microsoft.com/dotnet/core/install/linux
+
+Install Entity framework tools using following command:
+```
+dotnet tool install --global dotnet-ef
+```
+
+### Backend: Step 1: Prepare folders
+
+Create following folders:
+```
+mkdir -p /home/pha/docker/explorer-backend/api
+mkdir -p /home/pha/docker/explorer-backend/database-migration
+mkdir -p /home/pha/docker/explorer-backend/worker
+```
+
+Copy content of ExplorerBackend/Backend.Service.Api/Docker folder into /home/pha/docker/explorer-backend/api.
+
+Copy content of ExplorerBackend/Backend.Service.DataFetcher/Docker folder into /home/pha/docker/explorer-backend/worker.
+
+Copy backend's configuration file ExplorerBackend/explorer-backend-config.json to 'api/config' and 'worker/config' folders, ensuring that DatabaseConfiguration->Main and DatabaseConfiguration->ApiCache sections of config contain correct settings, specifically database user name and password.
+
+Create link to config for database-migration folder using command:
+```
+ln -s /home/pha/docker/explorer-backend/worker/config/explorer-backend-config.json /home/pha/docker/explorer-backend/database-migration/explorer-backend-config.json
+```
+
+Copy files ExplorerBackend/database-api-cache-update.sh and ExplorerBackend/database-update.sh into /home/pha/docker/explorer-backend/database-migration.
+
+### Backend: Step 2: Create databases
+
+On machine with installed dotnet-sdk-7.0 run following command to publish database migrations:
+```
+ExplorerBackend/publish-db-migrations.sh
+```
+
+Copy ExplorerBackend/publish/bin to target machine to folder /home/pha/docker/explorer-backend/database-migration/bin.
+
+Switch to /home/pha/docker/explorer-backend/database-migration/ folder and create new databases using following commands:
+
+```
+sh database-api-cache-update.sh
+sh database-update.sh
+```
+
+### Backend: Step 3: Finish deployment
+
+Add files /home/pha/docker/explorer-backend/api/.env and /home/pha/docker/explorer-backend/worker/.env with the following content:
+```
+# Github branch to be used
+BUILD_BRANCH=main
+```
+where 'main' is main github branch of backend project which we use for production deployment.
+
+Launch both API and Worker services from corresponding folders /home/pha/docker/explorer-backend/api and /home/pha/docker/explorer-backend/worker by either using sh script 'deploy.sh'
+```
+deploy.sh
+```
+or by running commands
+```
+docker compose pull
+docker compose up -d
+```
+
+### Nginx
+
+Switch to 'root' user or use sudo.
+
+Install Nginx package.
+
+Place list of Cloudflare IP addresses into this file:
+
+/etc/nginx/cloudflare-allow.conf
+
+Content for this file can be obtained here: https://www.cloudflare.com/ips
+
+Set these rights:
+```
+chmod 644 /etc/nginx/cloudflare-allow.conf
+```
+
+Place phantasma.info certificate and certificate key into following locations:
+
+/etc/ssl/certs/cf-phantasma.info.pem
+
+/etc/ssl/private/cf-phantasma.info.key
+
+Set rights for these files
+
+```
+chmod 644 /etc/ssl/certs/cf-phantasma.info.pem
+chmod 600 /etc/ssl/private/cf-phantasma.info.key
+```
+
+Add following file:
+```
+/etc/nginx/sites-available/explorer-api
+```
+
+with the following content:
+```
+server {
+    listen        443 ssl;
+
+    include /etc/nginx/cloudflare-allow.conf;
+    deny all;
+
+    server_name   api-explorer.phantasma.info;
+    ssl_certificate     /etc/ssl/certs/cf-phantasma.info.pem;
+    ssl_certificate_key /etc/ssl/private/cf-phantasma.info.key;
+    ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    location / {
+        proxy_pass         http://127.0.0.1:9000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection keep-alive;
+        proxy_set_header   Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Set these rights:
+```
+chmod 644 /etc/nginx/sites-available/explorer-api
+```
+
+Create link with the following command:
+```
+ln -s /etc/nginx/sites-available/explorer-api /etc/nginx/sites-enabled/explorer-api
+```
+
+Test Nginx configuration using command:
+```
+sudo nginx -t
+```
+
+Restart Nginx to apply changes:
+```
+sudo /etc/init.d/nginx restart
+```
+
+### Test backend API
+
+To test if deployment was successful, following url can be used:
+
+https://api-explorer.phantasma.info/
+
 ## Sources structure
 File / Folder | Description
 ------------- | -------------
@@ -27,168 +250,3 @@ publish.sh | script to setup the folder sturcture we later deploy with
 install_files.sh | stops the services, copies current version, copies publish and overwrite folder to /opt/explorer-backend, starts and enable services
 
 *All scripts are designed to be used in OS Linux, or in OS Windows with MSYS distributive available in PATH environment variable*
-
-## Windows installation
-
-Download and install latest PostgreSQL distributive from here: https://www.postgresql.org/download/windows/
-
-For Cyrillic Windows:
-Edit file C:/postgres-data/postgresql.conf, where "C:/postgres-data" is a folder where Postgres data is stored.
-
-Change lc_messages parameter to the following:
-
-    lc_messages = 'en_US.UTF-8'
-
-It will enable correct error reporting, otherwise error messages will consist of "?" symbols.
-
-### Self-signed SSL certificate generation for test machine
-
-    makecert -r -pe -n "CN=localhost" -sky exchange -sv cert-test.pvk cert-test.cer
-
-*Use 'cert-test-pwd' password for test certificate*
-
-    pvk2pfx -pvk cert-test.pvk -spc cert-test.cer -pfx cert-test.pfx -pi cert-test-pwd
-    rm cert-test.pvk cert-test.cer
-
-Place cert-test.pfx to backend bin folder.
-
-*TO BE CONTINUED...*
-
-## Debian 9/10 installation
-
-Create backend folder /opt/explorer-backend and ensure it has correct permissions.
-
-### PostgreSQL installation
-
-Install latest PostgreSQL following this instruction (version 12 for example): https://www.postgresql.org/download/linux/debian/
-
-Make sure to install postgresql-12 and postgresql-client-12 packages:
-
-    apt-get install postgresql-12 postgresql-client-12
-
-Edit confihuration file /etc/postgresql/12/main/pg_hba.conf: Change "ident" or "peer" parameter to "trust":
-
-    local   all         all                               trust
-
-Restart PostgreSQL server:
-
-    /etc/init.d/postgresql reload
-
-### New database user configuration (example, optional)
-
-Add new system user:
-
-    sudo adduser postgres_new
-
-Add new database user:
-
-    sudo su - postgres
-    createuser postgres_new
-
-Set new database user password:
-
-    sudo -u postgres psql
-    \password postgres_new
-    <input user password>
-    \q
-
-Add new database user database creation:
-
-    sudo -u postgres psql
-    alter user postgres_new createdb;
-    \q
-
-### Dependencies installation
-
-Install Entity Framework:
-
-    sudo dotnet tool install --global dotnet-ef
-
-### SSL certificate generation
-
-Install certbot following instructions: https://certbot.eff.org/
-
-If apache is running, stop and disable it:
-
-    ps -e | grep apache
-    sudo systemctl disable apache2 && sudo systemctl stop apache2
-
-Ensure that ports 80 and 443 are not occupied:
-
-    sudo netstat -tulpn | grep :80
-    sudo netstat -tulpn | grep :443
-
-Install certbot:
-
-    sudo apt-get install certbot
-
-Create certificate:
-
-    sudo certbot certonly --standalone -d explorer.phantasma.io
-
-Convert certificate:
-
-    openssl pkcs12 -export -out /opt/cert-explorer-phantasma-io.pfx -inkey /etc/letsencrypt/live/explorer.phantasma.io/privkey.pem -in /etc/letsencrypt/live/explorer.phantasma.io/fullchain.pem -name "SSL Signed Certificate"
-
-### SSL certificate renewal
-
-Renew certificate:
-
-    certbot renew
-
-Convert certificate:
-
-    openssl pkcs12 -export -out /opt/cert-explorer-phantasma-io.pfx -inkey /etc/letsencrypt/live/explorer.phantasma.io/privkey.pem -in /etc/letsencrypt/live/explorer.phantasma.io/fullchain.pem -name "SSL Signed Certificate"
-
-
-### Backend installation
-
-Unpack backend distributive in /opt/explorer-backend folder.
-
-Install authbind and setup 443 port rights:
-
-    sudo apt-get install authbind
-    sudo touch /etc/authbind/byport/443
-    sudo chmod 500 /etc/authbind/byport/443
-    sudo chown <user> /etc/authbind/byport/443
-
-Do same thing for port 80 to enable HTTP redirection.
-
-Recreate database running script in /opt/explorer-backend folder (*make sure it has correct user name and password*):
-
-    database-recreate.sh
-
-Make sure that following scripts has execution rights:
-
-    sudo chmod u+x /opt/explorer-backend/start-data-fetcher.sh
-    sudo chmod u+x /opt/explorer-backend/start-api-service.sh
-
-Edit crontab and add following lines:
-
-    crontab -e
-
-    @reboot  cd /opt/explorer-backend; screen -dmS ExplorerFetcherScreen bash -c './start-data-fetcher.sh; exec bash'
-    @reboot  cd /opt/explorer-backend; screen -dmS ExplorerApiScreen bash -c './start-api-service.sh; exec bash'
-
-Reboot machine to start backend services.
-
-### Backend installation (alternative)
-
-as backend/normal user
-
-    cd <source_folder>
-    dotnet build
-    ./publish.sh
-
-database update
-
-    // First stop the services
-    sudo service api-service stop
-    sudo service data-fetcher stop
-    
-    // Then run the following commands
-    <TODO insert commands here>
-
-as root
-
-    ./install_files.sh
