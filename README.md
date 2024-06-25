@@ -80,7 +80,7 @@ Install Entity framework tools using following command:
 dotnet tool install --global dotnet-ef
 ```
 
-### Backend
+### Backend: Step 1: Prepare folders
 
 Create following folders:
 ```
@@ -102,12 +102,23 @@ ln -s /home/pha/docker/explorer-backend/worker/config/explorer-backend-config.js
 
 Copy files ExplorerBackend/database-api-cache-update.sh and ExplorerBackend/database-update.sh into /home/pha/docker/explorer-backend/database-migration.
 
+### Backend: Step 2: Create databases
+
+On machine with installed dotnet-sdk-7.0 run following command to publish database migrations:
+```
+ExplorerBackend/publish-db-migrations.sh
+```
+
+Copy ExplorerBackend/publish/bin to target machine to folder /home/pha/docker/explorer-backend/database-migration/bin.
+
 Switch to /home/pha/docker/explorer-backend/database-migration/ folder and create new databases using following commands:
 
 ```
 sh database-api-cache-update.sh
 sh database-update.sh
 ```
+
+### Backend: Step 3: Finish deployment
 
 Add files /home/pha/docker/explorer-backend/api/.env and /home/pha/docker/explorer-backend/worker/.env with the following content:
 ```
