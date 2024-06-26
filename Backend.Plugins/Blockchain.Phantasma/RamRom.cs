@@ -11,10 +11,11 @@ using Backend.PluginEngine;
 using Database.ApiCache;
 using Database.Main;
 using Phantasma.Core.Cryptography;
-using Phantasma.Core.Domain;
+using Phantasma.Core.Domain.VM;
+using Phantasma.Core.Domain.VM.Enums;
 using Phantasma.Core.Numerics;
 using Serilog;
-using Address = Phantasma.Core.Cryptography.Address;
+using Address = Phantasma.Core.Cryptography.Structs.Address;
 using Nft = Database.Main.Nft;
 using NftMethods = Database.ApiCache.NftMethods;
 

@@ -14,7 +14,7 @@ using Phantasma.Core.Cryptography;
 using Phantasma.Core.Numerics;
 using Phantasma.Core.Utils;
 using Serilog;
-using Address = Phantasma.Core.Cryptography.Address;
+using Address = Phantasma.Core.Cryptography.Structs.Address;
 
 namespace Backend.Blockchain;
 
