@@ -104,7 +104,7 @@ Copy files ExplorerBackend/database-api-cache-update.sh and ExplorerBackend/data
 
 ### Backend: Step 2: Create databases
 
-On machine with installed dotnet-sdk-7.0 run following command to publish database migrations:
+On machine with installed dotnet-sdk-8.0 run following command to publish database migrations:
 ```
 ExplorerBackend/publish-db-migrations.sh
 ```
