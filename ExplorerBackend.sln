@@ -10,7 +10,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Database.ApiCache", "Databa
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backend.Service.Api", "Backend.Service.Api\Backend.Service.Api.csproj", "{9D75C28F-8235-4004-B846-081854E6931D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backend.Service.DataFetcher", "Backend.Service.DataFetcher\Backend.Service.DataFetcher.csproj", "{50AA5885-09A8-4FDF-90D1-1B13DCF21DCE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backend.Service.Worker", "Backend.Service.Worker\Backend.Service.Worker.csproj", "{50AA5885-09A8-4FDF-90D1-1B13DCF21DCE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backend.PostgreSQLConnector", "Backend.PostgreSQLConnector\Backend.PostgreSQLConnector.csproj", "{974F9761-3388-48AA-9DF6-EA5A85F5C168}"
 EndProject

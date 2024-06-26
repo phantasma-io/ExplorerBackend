@@ -12,9 +12,9 @@ cp -a Backend.Commons/bin/$CONFIGURATION/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
 cp -a Backend.Commons/bin/$CONFIGURATION/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
 cp -a Backend.Commons/bin/$CONFIGURATION/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
 
-cp -a Backend.Service.DataFetcher/bin/$CONFIGURATION/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
-cp -a Backend.Service.DataFetcher/bin/$CONFIGURATION/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
-cp -a Backend.Service.DataFetcher/bin/$CONFIGURATION/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
+cp -a Backend.Service.Worker/bin/$CONFIGURATION/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
+cp -a Backend.Service.Worker/bin/$CONFIGURATION/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+cp -a Backend.Service.Worker/bin/$CONFIGURATION/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
 
 mkdir --parents $OUT_BIN_FOLDER/Plugins
 cp -a Backend.Api.Client/bin/$CONFIGURATION/$NET_SUBFOLDER/Backend.Api.Client.* $OUT_BIN_FOLDER/Plugins
@@ -37,6 +37,6 @@ cp -a Backend.Plugins/Blockchain.Img/bin/$CONFIGURATION/$NET_SUBFOLDER/Blockchai
 cp -a Backend.Plugins/Blockchain.Img/*.json $OUT_FOLDER
 
 cp -a explorer-backend-config.json $OUT_FOLDER
-cp -a start-data-fetcher.sh $OUT_FOLDER
+cp -a start-worker.sh $OUT_FOLDER
 
 mkdir -p $OUT_FOLDER/img 

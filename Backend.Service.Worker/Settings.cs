@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace Backend.Service.DataFetcher;
+namespace Backend.Service.Worker;
 
 internal class Settings
 {

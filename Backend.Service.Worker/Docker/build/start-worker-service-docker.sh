@@ -4,4 +4,4 @@ cp ./config/*.json .
 
 cd ./bin/
 
-dotnet Backend.Service.DataFetcher.dll
+dotnet Backend.Service.Worker.dll

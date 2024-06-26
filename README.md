@@ -91,7 +91,7 @@ mkdir -p /home/pha/docker/explorer-backend/worker
 
 Copy content of ExplorerBackend/Backend.Service.Api/Docker folder into /home/pha/docker/explorer-backend/api.
 
-Copy content of ExplorerBackend/Backend.Service.DataFetcher/Docker folder into /home/pha/docker/explorer-backend/worker.
+Copy content of ExplorerBackend/Backend.Service.Worker/Docker folder into /home/pha/docker/explorer-backend/worker.
 
 Copy backend's configuration file ExplorerBackend/explorer-backend-config.json to 'api/config' and 'worker/config' folders, ensuring that DatabaseConfiguration->Main and DatabaseConfiguration->ApiCache sections of config contain correct settings, specifically database user name and password.
 
@@ -233,7 +233,7 @@ Backend.Plugins | Folder with plugins for fetching blockchains and NFTs data
 Backend.Plugins/Blockchain.Phantasma | Phantasma blockchain plugin, retrieves all necessary data from blockchain and stores it in the database
 Backend.Plugins/Nft.TTRS | 22 Racing series NFT plugin, retrieves all necessary data from 22 series site and stores it in the database
 Backend.Service.Api | 1st of 2 backend services, provides endpoints for frontend
-Backend.Service.DataFetcher | 2nd of 2 backend services, runs available blockchain and NFT plugins to fetch necessary data and save it in the database
+Backend.Service.Worker | 2nd of 2 backend services, runs available blockchain and NFT plugins to fetch necessary data and save it in the database
 Backend.PluginEngine | Plugin engine library used by both backend services, provides plugin mechanisms and interfaces
 Backend.PostgreSQLConnector | Library for raw SQL querying of PastgresSQL database, can be used with current EF database implementation
 clean.sh | Development script, cleans sources from binaries and temporal VS files. Close VS before running
@@ -243,9 +243,9 @@ Backend.ExplorerBackend.sln | MSVS solution for explorer backend
 explorer-backend-config.json | Default backend configuration file, should be placed on same level as backend's bin folder
 README.md | This readme file
 start-api-service.sh | Starts API service (can be replaced with the service files)
-start-data-fetcher.sh | Starts Data Fetcher service (can be replaced with the service files)
+start-worker.sh | Starts Worker service (can be replaced with the service files)
 api-service.service | systemd service file for the API service
-data-fetcher.service | systemd service file for the Data Fetcher service 
+data-fetcher.service | systemd service file for the Worker service 
 publish.sh | script to setup the folder sturcture we later deploy with
 install_files.sh | stops the services, copies current version, copies publish and overwrite folder to /opt/explorer-backend, starts and enable services
 

@@ -10,9 +10,9 @@ using Serilog.Events;
 
 // ReSharper disable LoopVariableIsNeverChangedInsideLoop
 
-namespace Backend.Service.DataFetcher;
+namespace Backend.Service.Worker;
 
-public static class DataFetcher
+public static class Worker
 {
     private static int _fetchInterval = 30;
 
@@ -35,15 +35,15 @@ public static class DataFetcher
         if ( !string.IsNullOrEmpty(loggingData.LogDirectoryPath) ) logPath = loggingData.LogDirectoryPath;
 
         Directory.CreateDirectory(logPath);
-        LogEx.Init(Path.Combine(logPath, "data-fetcher-service-.log"), logLevel, loggingData.LogOverwrite);
+        LogEx.Init(Path.Combine(logPath, "worker-service-.log"), logLevel, loggingData.LogOverwrite);
 
         Log.Information("\n\n*********************************************************\n" +
-                        "************** Data Fetcher Service Started *************\n" +
+                        "************** Worker Service Started *************\n" +
                         "*********************************************************\n" +
                         "Log level: {Level}, LogOverwrite: {Overwrite}, Path: {Path}, Config: {Config}", logLevel,
             loggingData.LogOverwrite, logPath, ConfigFile);
 
-        Log.Information("Initializing Data Fetcher Service...");
+        Log.Information("Initializing Worker Service...");
 
         Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
             .GetSection("FetcherServiceConfiguration"));
@@ -87,7 +87,7 @@ public static class DataFetcher
         foreach ( var plugin in Plugin.DBAPlugins ) plugin.Startup();
 
         _fetchInterval = Settings.Default.FetchInterval;
-        Log.Information("Data Fetcher Service is ready, Interval {Interval}", _fetchInterval);
+        Log.Information("Worker Service is ready, Interval {Interval}", _fetchInterval);
 
         var running = true;
 
