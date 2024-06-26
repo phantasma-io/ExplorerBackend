@@ -76,7 +76,7 @@ public class Startup
                 options.JsonSerializerOptions.Converters.Add(new EnumerableJsonConverterFactory());
             })
             .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<Startup>());
-        services.AddMediatR(typeof(Startup).Assembly);
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Startup).Assembly));
         
         services.AddSingleton<ICacheClient>(sp => new InMemoryCacheClient(optionsBuilder =>
             optionsBuilder.CloneValues(true).MaxItems(10000)
