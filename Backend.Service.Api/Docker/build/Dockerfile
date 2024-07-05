@@ -52,5 +52,3 @@ COPY start-api-service-docker.sh start-api-service-docker.sh
 
 # allow execution of these start scripts
 RUN chmod +x *.sh
-
-ENTRYPOINT ./start-api-service-docker.sh

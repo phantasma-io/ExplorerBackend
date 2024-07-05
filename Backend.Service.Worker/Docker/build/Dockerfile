@@ -52,5 +52,3 @@ COPY start-worker-service-docker.sh start-worker-service-docker.sh
 
 # allow execution of these start scripts
 RUN chmod +x *.sh
-
-ENTRYPOINT ./start-worker-service-docker.sh
