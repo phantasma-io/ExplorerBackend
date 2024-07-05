@@ -26,8 +26,8 @@ rm --force -r Backend.Plugins/TemplatePlugin/bin
 rm --force -r Backend.Plugins/TemplatePlugin/obj
 rm --force -r Backend.Service.Api/bin
 rm --force -r Backend.Service.Api/obj
-rm --force -r Backend.Service.DataFetcher/bin
-rm --force -r Backend.Service.DataFetcher/obj
+rm --force -r Backend.Service.Worker/bin
+rm --force -r Backend.Service.Worker/obj
 rm --force -r Backend.PluginEngine/bin
 rm --force -r Backend.PluginEngine/obj
 rm --force -r Backend.PostgreSQLConnector/bin

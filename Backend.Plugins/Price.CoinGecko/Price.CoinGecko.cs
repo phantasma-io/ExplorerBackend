@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using Backend.Api;
 using Backend.Commons;
@@ -257,12 +258,31 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
                     if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
                     {
-                        Log.Error("[{Name}] Cannot fetch Info. Error: {Error}",
-                            Name, errorProperty.GetString());
+                        if ( errorProperty.TryGetProperty("status", out var statusProperty) )
+                        {
+                            if ( statusProperty.TryGetProperty("error_message", out var errorMessageProperty) )
+                            {
+                                var errorMessage = errorMessageProperty.GetString();
+                                Log.Error("[{Name}] Cannot fetch data. Error: {Error}",
+                                    Name, errorMessage);
 
-                        if ( errorProperty.ToString().ToUpper()
-                            .Contains("Could not find coin with the given id".ToUpper()) )
-                            Log.Warning(errorProperty.ToString());
+                                if ( errorMessage is not null &&
+                                     errorMessage.Contains("Could not find coin with the given id",
+                                         StringComparison.CurrentCultureIgnoreCase) )
+                                {
+                                    Log.Warning(errorMessage);
+                                }
+                            }
+                            else
+                            {
+                                Log.Error("[{Name}] Cannot parse status of error message, raw error: {Error}", Name, JsonObject.Create(errorProperty)?.ToJsonString());
+                            }
+                        }
+                        else
+                        {
+                            Log.Error("[{Name}] Cannot parse error message, raw error: {Error}", Name, JsonObject.Create(errorProperty)?.ToJsonString());
+                        }
+
                         continue;
                     }
 

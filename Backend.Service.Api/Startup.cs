@@ -17,6 +17,7 @@ using Backend.Service.Api.Middleware;
 using Backend.Service.Api.StartupActions;
 using Backend.Service.Api.Swagger;
 using Database.Main;
+using FluentValidation;
 using Foundatio.Caching;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -74,9 +75,12 @@ public class Startup
                 options.JsonSerializerOptions.IncludeFields = true;
                 options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
                 options.JsonSerializerOptions.Converters.Add(new EnumerableJsonConverterFactory());
-            })
-            .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<Startup>());
-        services.AddMediatR(typeof(Startup).Assembly);
+            });
+        
+        services.AddFluentValidationAutoValidation();
+        services.AddValidatorsFromAssemblyContaining<Startup>();
+        
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Startup).Assembly));
         
         services.AddSingleton<ICacheClient>(sp => new InMemoryCacheClient(optionsBuilder =>
             optionsBuilder.CloneValues(true).MaxItems(10000)

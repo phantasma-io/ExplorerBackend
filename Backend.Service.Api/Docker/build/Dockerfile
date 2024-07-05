@@ -1,7 +1,7 @@
-FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 # required for cloning with ssh
 RUN apt update
@@ -52,5 +52,3 @@ COPY start-api-service-docker.sh start-api-service-docker.sh
 
 # allow execution of these start scripts
 RUN chmod +x *.sh
-
-ENTRYPOINT ./start-api-service-docker.sh

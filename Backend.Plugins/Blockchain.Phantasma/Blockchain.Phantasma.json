@@ -3,12 +3,18 @@
     "enabled": true,
     "startDelay": 3,
     "first.block": 1,
-    "phantasma.nexus": "testnet",
+    "phantasma.nexus": "mainnet",
     "phantasma.rpc.nodes": [
-      "http://testnet.phantasma.io:5101/rpc"
+      "https://pharpc1.phantasma.info/rpc",
+      "https://pharpc2.phantasma.info/rpc",
+      "https://pharpc3.phantasma.info/rpc",
+      "https://pharpc4.phantasma.info/rpc"
     ],
     "phantasma.rest.nodes": [
-      "http://testnet.phantasma.io:5101"
+      "https://pharpc1.phantasma.info",
+      "https://pharpc2.phantasma.info",
+      "https://pharpc3.phantasma.info",
+      "https://pharpc4.phantasma.info"
     ],
     "tokensProcessingInterval": 30,
     "blocksProcessingInterval": 10,
