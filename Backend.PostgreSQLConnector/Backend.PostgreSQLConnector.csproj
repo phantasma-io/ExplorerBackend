@@ -6,7 +6,7 @@
     <RootNamespace>Backend.PostgreSQLConnector</RootNamespace>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU' Or '$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>bin\</OutputPath>
   </PropertyGroup>
 

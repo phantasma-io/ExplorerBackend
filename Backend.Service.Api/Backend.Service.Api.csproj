@@ -7,7 +7,7 @@
     <RootNamespace>Backend.Service.Api</RootNamespace>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU' Or '$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>bin\</OutputPath>
   </PropertyGroup>
 
