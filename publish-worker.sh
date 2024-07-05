@@ -36,6 +36,6 @@ cp -a Backend.Plugins/Blockchain.Img/bin/$NET_SUBFOLDER/Blockchain.Img.* $OUT_BI
 cp -a Backend.Plugins/Blockchain.Img/*.json $OUT_FOLDER
 
 cp -a explorer-backend-config.json $OUT_FOLDER
-cp -a start-worker.sh $OUT_FOLDER
+cp -a start-worker-service.sh $OUT_FOLDER
 
 mkdir -p $OUT_FOLDER/img 
