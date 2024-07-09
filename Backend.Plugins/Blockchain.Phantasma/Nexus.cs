@@ -35,7 +35,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var chainEntry = ChainMethods.Get(databaseContext, chainId);
 
             var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
-            if ( response != null )
+            if ( response == null )
+            {
+                throw new Exception("Cannot get result for getNexus call");
+            }
             {
                 if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
                     Log.Error("[{Name}] Cannot fetch Token info. Error: {Error}",
