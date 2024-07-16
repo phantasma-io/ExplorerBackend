@@ -27,7 +27,7 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private const int FetchBlocksPerIterationMax = 100;
+    private const int FetchBlocksPerIterationMax = 1;
     private bool firstBlockSinceLaunch = true;
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
