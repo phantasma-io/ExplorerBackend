@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace Database.Main;
 
@@ -14,6 +15,8 @@ public static class TransactionMethods
         long timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, long expiration,
         string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget)
     {
+        Log.Information("TransactionMethods.UpsertAsync(): payload: " + payload);
+        
         var entry = await databaseContext.Transactions
             .FirstOrDefaultAsync(x => x.Block == block && x.HASH == hash) ?? DbHelper
             .GetTracked<Transaction>(databaseContext)
