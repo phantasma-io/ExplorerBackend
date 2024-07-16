@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Backend.Api;
@@ -140,6 +141,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             await Task.WhenAll(smallTasks.ToArray());
 
         return tasks.Select(task => task.Result).ToList();
+    }
+    
+    public static string CleanString(string str) {
+        StringBuilder sb = new StringBuilder();
+        foreach (char c in str) {
+            if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '.' || c == '_') {
+                sb.Append(c);
+            }
+        }
+        return sb.ToString();
     }
     
     private async Task<List<string>> ProcessBlock(BigInteger blockHeight, JsonDocument blockData, string chainName)
@@ -519,7 +530,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 //databaseEvent we need it here, so check it
                                 if ( eventEntry != null )
-                                    StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
+                                    StringEventMethods.Upsert(databaseContext, CleanString(stringData), eventEntry, false);
 
                                 switch ( kind )
                                 {
