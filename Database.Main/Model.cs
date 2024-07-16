@@ -1231,6 +1231,11 @@ public class Address
     public virtual List<Transaction> TransactionsWithThisGasPayer { get; set; }
     public virtual List<Transaction> TransactionsWithThisGasTarget { get; set; }
     public virtual List<Event> ValidatorEvents { get; set; }
+    
+    public override string ToString()
+    {
+        return $"Address: ADDRESS '{ADDRESS}' ADDRESS_NAME '{ADDRESS_NAME}' USER_NAME '{USER_NAME}' STAKED_AMOUNT '{STAKED_AMOUNT}' STAKED_AMOUNT_RAW '{STAKED_AMOUNT_RAW}' UNCLAIMED_AMOUNT '{UNCLAIMED_AMOUNT}' UNCLAIMED_AMOUNT_RAW '{UNCLAIMED_AMOUNT_RAW}' AVATAR '{AVATAR}'";
+    }
 }
 
 public class Event
@@ -1277,6 +1282,11 @@ public class Event
     public virtual Platform CreatePlatform { get; set; }
     public virtual Contract CreateContract { get; set; }
     public virtual Organization CreateOrganization { get; set; }
+    
+    public override string ToString()
+    {
+        return $"Event: TOKEN_ID '{TOKEN_ID}'";
+    }
 }
 
 public class Token
@@ -1537,6 +1547,10 @@ public class StringEvent
     public string STRING_VALUE { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
+    public override string ToString()
+    {
+        return $"StringEvent: STRING_VALUE '{STRING_VALUE}'";
+    }
 }
 
 public class TransactionSettleEvent
@@ -1571,6 +1585,11 @@ public class GasEvent
     public virtual Address Address { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
+
+    public override string ToString()
+    {
+        return $"GasEvent: PRICE '{PRICE}' AMOUNT '{AMOUNT}' FEE '{FEE}'";
+    }
 }
 
 public class SaleEventKind
@@ -1613,6 +1632,11 @@ public class TokenEvent
     public string CHAIN_NAME { get; set; }
     public int EventId { get; set; }
     public virtual Event Event { get; set; }
+    
+    public override string ToString()
+    {
+        return $"TokenEvent: VALUE '{VALUE}' VALUE_RAW '{VALUE_RAW}' CHAIN_NAME '{CHAIN_NAME}'";
+    }
 }
 
 public class InfusionEvent
