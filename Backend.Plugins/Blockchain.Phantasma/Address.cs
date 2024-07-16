@@ -33,7 +33,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             var split = splitAddresses.ElementAt(i).Select(x => x.ADDRESS).ToList();
             var addressesComaSeparated = string.Join(",", split);
-            var url = $"{Settings.Default.GetRest()}/api/v1/getAccounts?accountText={addressesComaSeparated}&extended=false";
+            var url = $"{Settings.Default.GetRest()}/api/v1/getAccounts?accounts={addressesComaSeparated}&extended=false";
             Log.Information("[{Name}] Address query url: {Url}", Name, url);
             var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 1000);
 
