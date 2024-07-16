@@ -783,6 +783,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, blockHeight, false);
 
+        DbHelper.LogTracked(databaseContext);
+        
         transactionStart = DateTime.Now;
         await databaseContext.SaveChangesAsync();
         transactionEnd = DateTime.Now - transactionStart;

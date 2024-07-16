@@ -27,4 +27,14 @@ public static class DbHelper
                                  x.Entity is Type).Select(x => x.Entity) )
             Log.Information("Entry: type {Type}, {String}", e.GetType(), e.ToString());
     }
+
+    public static void LogTracked(MainDbContext databaseContext)
+    {
+        Log.Information("LogTracked():");
+        foreach ( var e in databaseContext.ChangeTracker.Entries()
+                     .Select(x => x.Entity) )
+        {
+            Log.Information("Entry: type {Type}, {String}", e.GetType(), e.ToString());
+        }
+    }
 }
