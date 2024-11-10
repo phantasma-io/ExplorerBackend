@@ -14,227 +14,224 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         var startTime = DateTime.Now;
 
-        int updatedTokensCount;
-        int updatedPlatformsCount;
-        int updatedOrganizationsCount;
+        using MainDbContext databaseContext = new();
 
-        using ( MainDbContext databaseContext = new() )
+        var updatedTokensCount = 0;
+        var updatedPlatformsCount = 0;
+        var updatedOrganizationsCount = 0;
+        var url = $"{Settings.Default.GetRest()}/api/v1/getNexus?extended=true";
+
+        //TODO fix
+        PlatformMethods.Upsert(databaseContext, "phantasma", null, null, false, true);
+        updatedPlatformsCount++;
+
+        DateTime transactionStart;
+        TimeSpan transactionEnd;
+
+        var chainEntry = ChainMethods.Get(databaseContext, chainId);
+
+        var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
+        if ( response == null )
         {
-            updatedTokensCount = 0;
-            updatedPlatformsCount = 0;
-            updatedOrganizationsCount = 0;
-            var url = $"{Settings.Default.GetRest()}/api/v1/getNexus?extended=true";
+            throw new Exception("Cannot get result for getNexus call");
+        }
 
-            //TODO fix
-            PlatformMethods.Upsert(databaseContext, "phantasma", null, null, false, true);
-            updatedPlatformsCount++;
+        if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
+            Log.Error("[{Name}] Cannot fetch Token info. Error: {Error}",
+                Name, errorProperty.GetString());
 
-            DateTime transactionStart;
-            TimeSpan transactionEnd;
-
-            var chainEntry = ChainMethods.Get(databaseContext, chainId);
-
-            var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
-            if ( response != null )
+        //platforms, first, might need it for tokens
+        if ( response.RootElement.TryGetProperty("platforms", out var platformsProperty) )
+        {
+            var platforms = platformsProperty.EnumerateArray();
+            foreach ( var platform in platforms )
             {
-                if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
-                    Log.Error("[{Name}] Cannot fetch Token info. Error: {Error}",
-                        Name, errorProperty.GetString());
+                var platformName = platform.GetProperty("platform").GetString();
+                var chainHash = platform.GetProperty("chain").GetString();
+                var fuel = platform.GetProperty("fuel").GetString();
 
-                //platforms, first, might need it for tokens
-                if ( response.RootElement.TryGetProperty("platforms", out var platformsProperty) )
+                //create platform now
+                var platformItem =
+                    PlatformMethods.Upsert(databaseContext, platformName, chainHash, fuel, false);
+
+                if ( platform.TryGetProperty("tokens", out var platformTokenProperty) )
                 {
-                    var platforms = platformsProperty.EnumerateArray();
-                    foreach ( var platform in platforms )
-                    {
-                        var platformName = platform.GetProperty("platform").GetString();
-                        var chainHash = platform.GetProperty("chain").GetString();
-                        var fuel = platform.GetProperty("fuel").GetString();
-
-                        //create platform now
-                        var platformItem =
-                            PlatformMethods.Upsert(databaseContext, platformName, chainHash, fuel, false);
-
-                        if ( platform.TryGetProperty("tokens", out var platformTokenProperty) )
-                        {
-                            transactionStart = DateTime.Now;
-                            var tokenList = platformTokenProperty.EnumerateArray().Select(token => token.ToString())
-                                .ToList();
-                            PlatformTokenMethods.InsertIfNotExists(databaseContext, tokenList, platformItem, false);
-                            transactionEnd = DateTime.Now - transactionStart;
-                            Log.Verbose("[{Name}] Processed {Count} PlatformTokens in {Time} sec", Name,
-                                tokenList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
-                        }
-
-                        if ( platform.TryGetProperty("interop", out var platformInteropProperty) )
-                        {
-                            transactionStart = DateTime.Now;
-                            var interopList = platformInteropProperty.EnumerateArray().Select(interop =>
-                                new Tuple<string, string>(interop.GetProperty("local").GetString(),
-                                    interop.GetProperty("external").GetString())).ToList();
-
-                            PlatformInteropMethods.InsertIfNotExists(databaseContext, interopList, chainEntry,
-                                platformItem);
-
-                            transactionEnd = DateTime.Now - transactionStart;
-                            Log.Verbose("[{Name}] Processed {Count} InteropItems in {Time} sec", Name,
-                                interopList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
-                        }
-
-                        Log.Verbose(
-                            "[{Name}] got Platform {Platform}, Hash {Hash}, fuel {Fuel}",
-                            Name, platformName ?? string.Empty, chainHash ?? string.Empty, fuel ?? string.Empty);
-
-                        updatedPlatformsCount++;
-                    }
+                    transactionStart = DateTime.Now;
+                    var tokenList = platformTokenProperty.EnumerateArray().Select(token => token.ToString())
+                        .ToList();
+                    PlatformTokenMethods.InsertIfNotExists(databaseContext, tokenList, platformItem, false);
+                    transactionEnd = DateTime.Now - transactionStart;
+                    Log.Verbose("[{Name}] Processed {Count} PlatformTokens in {Time} sec", Name,
+                        tokenList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                 }
 
-                //tokens
-                if ( response.RootElement.TryGetProperty("tokens", out var tokensProperty) )
+                if ( platform.TryGetProperty("interop", out var platformInteropProperty) )
                 {
-                    var tokens = tokensProperty.EnumerateArray();
+                    transactionStart = DateTime.Now;
+                    var interopList = platformInteropProperty.EnumerateArray().Select(interop =>
+                        new Tuple<string, string>(interop.GetProperty("local").GetString(),
+                            interop.GetProperty("external").GetString())).ToList();
 
-                    foreach ( var token in tokens )
+                    PlatformInteropMethods.InsertIfNotExists(databaseContext, interopList, chainEntry,
+                        platformItem);
+
+                    transactionEnd = DateTime.Now - transactionStart;
+                    Log.Verbose("[{Name}] Processed {Count} InteropItems in {Time} sec", Name,
+                        interopList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
+                }
+
+                Log.Verbose(
+                    "[{Name}] got Platform {Platform}, Hash {Hash}, fuel {Fuel}",
+                    Name, platformName ?? string.Empty, chainHash ?? string.Empty, fuel ?? string.Empty);
+
+                updatedPlatformsCount++;
+            }
+        }
+
+        //tokens
+        if ( response.RootElement.TryGetProperty("tokens", out var tokensProperty) )
+        {
+            var tokens = tokensProperty.EnumerateArray();
+
+            foreach ( var token in tokens )
+            {
+                var tokenSymbol = token.GetProperty("symbol").GetString();
+                var tokenName = token.GetProperty("name").GetString();
+                var tokenDecimal = token.GetProperty("decimals").GetInt32();
+                var currentSupply = token.GetProperty("currentSupply").GetString();
+                var maxSupply = token.GetProperty("maxSupply").GetString();
+                var burnedSupply = token.GetProperty("burnedSupply").GetString();
+                var address = token.GetProperty("address").GetString();
+                var owner = token.GetProperty("owner").GetString();
+                var scriptRaw = token.GetProperty("script").GetString();
+
+                var fungible = false;
+                var transferable = false;
+                var finite = false;
+                var divisible = false;
+                var fuel = false;
+                var stakable = false;
+                var fiat = false;
+                var swappable = false;
+                var burnable = false;
+                var mintable = false;
+
+                if ( token.TryGetProperty("flags", out var flags) )
+                    if ( flags.ToString().Contains("Fungible") )
+                        fungible = true;
+                    else if ( flags.ToString().Contains("Transferable") )
+                        transferable = true;
+                    else if ( flags.ToString().Contains("Finite") )
+                        finite = true;
+                    else if ( flags.ToString().Contains("Divisible") )
+                        divisible = true;
+                    else if ( flags.ToString().Contains("Fuel") )
+                        fuel = true;
+                    else if ( flags.ToString().Contains("Stakable") )
+                        stakable = true;
+                    else if ( flags.ToString().Contains("Fiat") )
+                        fiat = true;
+                    else if ( flags.ToString().Contains("Swappable") )
+                        swappable = true;
+                    else if ( flags.ToString().Contains("Burnable") )
+                        burnable = true;
+                    else if ( flags.ToString().Contains("Mintable") )
+                        mintable = true;
+
+
+                var tokenEntry = TokenMethods.UpsertAsync(databaseContext, chainEntry, tokenSymbol, tokenName, tokenSymbol,
+                    tokenDecimal, fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable,
+                    burnable, mintable, address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw).Result;
+
+                if ( token.TryGetProperty("external", out var externalsProperty) )
+                {
+                    transactionStart = DateTime.Now;
+                    var externalList = externalsProperty.EnumerateArray().Select(external =>
+                        new Tuple<string, string>(external.GetProperty("platform").GetString(),
+                            external.GetProperty("hash").GetString())).ToList();
+
+                    ExternalMethods.InsertIfNotExists(databaseContext, externalList, tokenEntry);
+
+                    transactionEnd = DateTime.Now - transactionStart;
+                    Log.Verbose("[{Name}] Processed {Count} Externals in {Time} sec", Name,
+                        externalList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
+                }
+                
+                // TODO: Add the fetch for address / Tokens
+                //FetchAllAddressesBySymbol(databaseContext, chainEntry, tokenSymbol, false, false );
+
+                Log.Verbose(
+                    "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
+                    Name, tokenSymbol, tokenName, fungible, tokenDecimal, tokenEntry.ID);
+
+                updatedTokensCount++;
+            }
+        }
+
+        //technically not needed for tokens, but we still got the data here
+        if ( response.RootElement.TryGetProperty("organizations", out var organizationsProperty) )
+        {
+            var organizations = organizationsProperty.EnumerateArray();
+
+            foreach ( var organization in organizations )
+            {
+                Log.Verbose(
+                    "[{Name}] got Platform {Organization}",
+                    Name, organization.ToString());
+
+                var urlOrg =
+                    $"{Settings.Default.GetRest()}/api/v1/getOrganization?ID={organization.ToString()}";
+                var responseOrg = Client.ApiRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
+                if ( responseOrg != null )
+                {
+                    if ( responseOrg.RootElement.TryGetProperty("error", out var errorPropertyOrg) )
+                        Log.Error("[{Name}] Cannot fetch Organization info. Error: {Error}",
+                            Name, errorPropertyOrg.GetString());
+
+                    var organizationId = responseOrg.RootElement.GetProperty("id").ToString();
+                    var organizationName = responseOrg.RootElement.GetProperty("name").ToString();
+                    //try to find address, if not found we need to trigger a lookUpName and then getAddress and insert it
+
+                    var orgItem = OrganizationMethods.Upsert(databaseContext, organizationId, organizationName);
+                    var addressEntry = SyncAddressByNameAsync(databaseContext, chainEntry, organizationId, orgItem).Result;
+
+                    orgItem.ADDRESS = addressEntry.ADDRESS;
+                    orgItem.ADDRESS_NAME = addressEntry.ADDRESS_NAME;
+
+                    Log.Verbose(
+                        "[{Name}] Organization {OrganizationName}, Address {Address}, AddressName {AddressName}",
+                        Name, orgItem.ORGANIZATION_ID, addressEntry.ADDRESS, addressEntry.ADDRESS_NAME);
+
+                    if ( responseOrg.RootElement.TryGetProperty("members", out var membersProperty) )
                     {
-                        var tokenSymbol = token.GetProperty("symbol").GetString();
-                        var tokenName = token.GetProperty("name").GetString();
-                        var tokenDecimal = token.GetProperty("decimals").GetInt32();
-                        var currentSupply = token.GetProperty("currentSupply").GetString();
-                        var maxSupply = token.GetProperty("maxSupply").GetString();
-                        var burnedSupply = token.GetProperty("burnedSupply").GetString();
-                        var address = token.GetProperty("address").GetString();
-                        var owner = token.GetProperty("owner").GetString();
-                        var scriptRaw = token.GetProperty("script").GetString();
+                        transactionStart = DateTime.Now;
+                        var memberList = membersProperty.EnumerateArray().Select(member => member.ToString())
+                            .ToList();
+                        Log.Verbose("[{Name}] got {Count} Addresses to process", Name, memberList.Count);
 
-                        var fungible = false;
-                        var transferable = false;
-                        var finite = false;
-                        var divisible = false;
-                        var fuel = false;
-                        var stakable = false;
-                        var fiat = false;
-                        var swappable = false;
-                        var burnable = false;
-                        var mintable = false;
+                        OrganizationAddressMethods.RemoveFromOrganizationAddressesIfNeeded(databaseContext, orgItem, memberList);
 
-                        if ( token.TryGetProperty("flags", out var flags) )
-                            if ( flags.ToString().Contains("Fungible") )
-                                fungible = true;
-                            else if ( flags.ToString().Contains("Transferable") )
-                                transferable = true;
-                            else if ( flags.ToString().Contains("Finite") )
-                                finite = true;
-                            else if ( flags.ToString().Contains("Divisible") )
-                                divisible = true;
-                            else if ( flags.ToString().Contains("Fuel") )
-                                fuel = true;
-                            else if ( flags.ToString().Contains("Stakable") )
-                                stakable = true;
-                            else if ( flags.ToString().Contains("Fiat") )
-                                fiat = true;
-                            else if ( flags.ToString().Contains("Swappable") )
-                                swappable = true;
-                            else if ( flags.ToString().Contains("Burnable") )
-                                burnable = true;
-                            else if ( flags.ToString().Contains("Mintable") )
-                                mintable = true;
-
-
-                        var tokenEntry = TokenMethods.UpsertAsync(databaseContext, chainEntry, tokenSymbol, tokenName, tokenSymbol,
-                            tokenDecimal, fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable,
-                            burnable, mintable, address, owner, currentSupply, maxSupply, burnedSupply, scriptRaw).Result;
-
-                        if ( token.TryGetProperty("external", out var externalsProperty) )
-                        {
-                            transactionStart = DateTime.Now;
-                            var externalList = externalsProperty.EnumerateArray().Select(external =>
-                                new Tuple<string, string>(external.GetProperty("platform").GetString(),
-                                    external.GetProperty("hash").GetString())).ToList();
-
-                            ExternalMethods.InsertIfNotExists(databaseContext, externalList, tokenEntry);
-
-                            transactionEnd = DateTime.Now - transactionStart;
-                            Log.Verbose("[{Name}] Processed {Count} Externals in {Time} sec", Name,
-                                externalList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
-                        }
+                        OrganizationAddressMethods.InsertIfNotExists(databaseContext, orgItem, memberList,
+                            chainEntry);
                         
-                        // TODO: Add the fetch for address / Tokens
-                        //FetchAllAddressesBySymbol(databaseContext, chainEntry, tokenSymbol, false, false );
 
-                        Log.Verbose(
-                            "[{Name}] got Token Symbol {Symbol}, Name {TokenName}, Fungible {Fungible}, Decimal {Decimal}, Database Id {Id}",
-                            Name, tokenSymbol, tokenName, fungible, tokenDecimal, tokenEntry.ID);
-
-                        updatedTokensCount++;
+                        transactionEnd = DateTime.Now - transactionStart;
+                        Log.Verbose("[{Name}] Processed {Count} OrganizationAddresses in {Time} sec", Name,
+                            memberList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                     }
                 }
 
-                //technically not needed for tokens, but we still got the data here
-                if ( response.RootElement.TryGetProperty("organizations", out var organizationsProperty) )
-                {
-                    var organizations = organizationsProperty.EnumerateArray();
-
-                    foreach ( var organization in organizations )
-                    {
-                        Log.Verbose(
-                            "[{Name}] got Platform {Organization}",
-                            Name, organization.ToString());
-
-                        var urlOrg =
-                            $"{Settings.Default.GetRest()}/api/v1/getOrganization?ID={organization.ToString()}";
-                        var responseOrg = Client.ApiRequest<JsonDocument>(urlOrg, out var stringResponseOrg, null, 10);
-                        if ( responseOrg != null )
-                        {
-                            if ( responseOrg.RootElement.TryGetProperty("error", out var errorPropertyOrg) )
-                                Log.Error("[{Name}] Cannot fetch Organization info. Error: {Error}",
-                                    Name, errorPropertyOrg.GetString());
-
-                            var organizationId = responseOrg.RootElement.GetProperty("id").ToString();
-                            var organizationName = responseOrg.RootElement.GetProperty("name").ToString();
-                            //try to find address, if not found we need to trigger a lookUpName and then getAddress and insert it
-
-                            var orgItem = OrganizationMethods.Upsert(databaseContext, organizationId, organizationName);
-                            var addressEntry = SyncAddressByNameAsync(databaseContext, chainEntry, organizationId, orgItem).Result;
-
-                            orgItem.ADDRESS = addressEntry.ADDRESS;
-                            orgItem.ADDRESS_NAME = addressEntry.ADDRESS_NAME;
-
-                            Log.Verbose(
-                                "[{Name}] Organization {OrganizationName}, Address {Address}, AddressName {AddressName}",
-                                Name, orgItem.ORGANIZATION_ID, addressEntry.ADDRESS, addressEntry.ADDRESS_NAME);
-
-                            if ( responseOrg.RootElement.TryGetProperty("members", out var membersProperty) )
-                            {
-                                transactionStart = DateTime.Now;
-                                var memberList = membersProperty.EnumerateArray().Select(member => member.ToString())
-                                    .ToList();
-                                Log.Verbose("[{Name}] got {Count} Addresses to process", Name, memberList.Count);
-
-                                OrganizationAddressMethods.RemoveFromOrganizationAddressesIfNeeded(databaseContext, orgItem, memberList);
-
-                                OrganizationAddressMethods.InsertIfNotExists(databaseContext, orgItem, memberList,
-                                    chainEntry);
-                                
-
-                                transactionEnd = DateTime.Now - transactionStart;
-                                Log.Verbose("[{Name}] Processed {Count} OrganizationAddresses in {Time} sec", Name,
-                                    memberList.Count, Math.Round(transactionEnd.TotalSeconds, 3));
-                            }
-                        }
-
-                        updatedOrganizationsCount++;
-                    }
-                }
+                updatedOrganizationsCount++;
             }
+        }
 
-            if ( updatedTokensCount > 0 || updatedPlatformsCount > 0 || updatedOrganizationsCount > 0 )
-            {
-                transactionStart = DateTime.Now;
-                databaseContext.SaveChanges();
-                transactionEnd = DateTime.Now - transactionStart;
-                Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name,
-                    Math.Round(transactionEnd.TotalSeconds, 3));
-            }
+        if ( updatedTokensCount > 0 || updatedPlatformsCount > 0 || updatedOrganizationsCount > 0 )
+        {
+            transactionStart = DateTime.Now;
+            databaseContext.SaveChanges();
+            transactionEnd = DateTime.Now - transactionStart;
+            Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name,
+                Math.Round(transactionEnd.TotalSeconds, 3));
         }
 
         var updateTime = DateTime.Now - startTime;
