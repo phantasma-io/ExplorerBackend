@@ -112,14 +112,17 @@ public static class GetTransactions
 
             if ( !string.IsNullOrEmpty(address) )
             {
+                var addressId = 0;
                 if ( Phantasma.Core.Cryptography.Structs.Address.IsValidAddress(address) )
                 {
-                    query = query.Where(x => x.Sender.ADDRESS == address || x.Events.Any(e => e.Address.ADDRESS == address));
+                    addressId = await databaseContext.Addresses.Where(x => x.ADDRESS == address).Select(x => x.ID).FirstOrDefaultAsync();
                 }
                 else
                 {
-                    query = query.Where(x => x.Sender.ADDRESS_NAME == address || x.Events.Any(e => e.Address.ADDRESS_NAME == address));
+                    addressId = await databaseContext.Addresses.Where(x => x.ADDRESS_NAME == address).Select(x => x.ID).FirstOrDefaultAsync();
                 }
+                
+                query = query.Where(x => x.SenderId == addressId || x.Events.Any(e => e.AddressId == addressId));
             }
 
             if ( !string.IsNullOrEmpty(block_hash) )
