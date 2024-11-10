@@ -157,7 +157,7 @@ public static class GetTransactions
                 query = query.Take(1);
             }else if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            transactions = await query.Select(x => new Transaction
+            var select = query.Select(x => new Transaction
                 {
                     hash = x.HASH,
                     block_hash = x.Block.HASH,
@@ -467,9 +467,18 @@ public static class GetTransactions
                             }).ToArray()
                         : null
                 }
-            ).ToArrayAsync();
+            );
+
+            var queryString = select.ToQueryString();
+                
+            transactions = await select.ToArrayAsync();
             
             var responseTime = DateTime.Now - startTime;
+
+            if ( responseTime.TotalSeconds > 1 )
+            {
+                Log.Warning($"Slow query: " + queryString);
+            }
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
