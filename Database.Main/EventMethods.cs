@@ -72,6 +72,8 @@ public static class EventMethods
         databaseContext.Events.Add(eventEntry);
 
         newEventCreated = true;
+        
+        AddressTransactionMethods.UpsertAsync(databaseContext, address, transaction).Wait();
 
         return eventEntry;
     }

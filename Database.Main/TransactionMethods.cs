@@ -50,6 +50,16 @@ public static class TransactionMethods
         };
 
         await databaseContext.Transactions.AddAsync(entry);
+        
+        await AddressTransactionMethods.UpsertAsync(databaseContext, senderAddress, entry);
+        if ( gasPayerAddress.ADDRESS != senderAddress.ADDRESS )
+        {
+            await AddressTransactionMethods.UpsertAsync(databaseContext, gasPayerAddress, entry);
+        }
+        if ( gasTargetAddress.ADDRESS != gasPayerAddress.ADDRESS )
+        {
+            await AddressTransactionMethods.UpsertAsync(databaseContext, gasTargetAddress, entry);
+        }
 
         return entry;
     }

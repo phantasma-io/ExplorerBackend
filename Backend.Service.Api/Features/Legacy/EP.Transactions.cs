@@ -122,7 +122,7 @@ public static class GetTransactions
                     addressId = await databaseContext.Addresses.Where(x => x.ADDRESS_NAME == address).Select(x => x.ID).FirstOrDefaultAsync();
                 }
                 
-                query = query.Where(x => x.SenderId == addressId || x.Events.Any(e => e.AddressId == addressId));
+                query = query.Where(x => x.TransactionAddresses.Any(y => y.AddressId == addressId));
             }
 
             if ( !string.IsNullOrEmpty(block_hash) )
