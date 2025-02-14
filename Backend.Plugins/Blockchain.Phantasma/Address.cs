@@ -81,6 +81,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                     if(balancesList0.Count() > 0)
                     {
+                        Log.Information("Processing address: " + address.ADDRESS);
                         var balancesList = balancesList0.Select(balance =>
                                 new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
                                     balance.GetProperty("symbol").GetString(),
