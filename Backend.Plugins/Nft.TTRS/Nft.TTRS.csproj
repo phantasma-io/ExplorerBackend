@@ -8,16 +8,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Backend.PluginEngine\Backend.PluginEngine.csproj"/>
-    <ProjectReference Include="..\..\Backend.Api.Client\Backend.Api.Client.csproj"/>
-    <ProjectReference Include="..\..\Backend.Commons\Backend.Commons.csproj"/>
-    <ProjectReference Include="..\..\Database.ApiCache\Database.ApiCache.csproj"/>
+    <ProjectReference Include="..\..\Backend.PluginEngine\Backend.PluginEngine.csproj" />
+    <ProjectReference Include="..\..\Backend.Api.Client\Backend.Api.Client.csproj" />
+    <ProjectReference Include="..\..\Backend.Commons\Backend.Commons.csproj" />
+    <ProjectReference Include="..\..\Database.ApiCache\Database.ApiCache.csproj" />
   </ItemGroup>
 
 
