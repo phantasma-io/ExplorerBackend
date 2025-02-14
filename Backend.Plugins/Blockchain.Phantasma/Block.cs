@@ -200,13 +200,27 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 // Current transaction
                 var scriptRaw = tx.GetProperty("script").GetString();
 
+                // TODO parse whole tx, not field after field
+                var txHash = tx.GetProperty("hash").GetString();
+                var txTimestamp = tx.GetProperty("timestamp").GetUInt32();
+                var txPayload = tx.GetProperty("payload").GetString();
+                var txResult = tx.GetProperty("result").GetString();
+                var txFee = tx.GetProperty("fee").GetString();
+                var txExpiration = tx.GetProperty("expiration").GetUInt32();
+                var txGasPrice = tx.GetProperty("gasPrice").GetString();
+                var txGasLimit =  tx.GetProperty("gasLimit").GetString();
+                var txState = tx.GetProperty("state").GetString();
+                var txSender = tx.GetProperty("sender").GetString();
+                var txGasPayer = tx.GetProperty("gasPayer").GetString();
+                var txGasTarget = tx.GetProperty("gasTarget").GetString();
+
                 var transaction = await TransactionMethods.UpsertAsync(databaseContext, block, txIndex,
-                    tx.GetProperty("hash").GetString(), tx.GetProperty("timestamp").GetUInt32(),
-                    tx.GetProperty("payload").GetString(), scriptRaw, tx.GetProperty("result").GetString(),
-                    tx.GetProperty("fee").GetString(), tx.GetProperty("expiration").GetUInt32(),
-                    tx.GetProperty("gasPrice").GetString(), tx.GetProperty("gasLimit").GetString(),
-                    tx.GetProperty("state").GetString(), tx.GetProperty("sender").GetString(),
-                    tx.GetProperty("gasPayer").GetString(), tx.GetProperty("gasTarget").GetString());
+                    txHash, txTimestamp,
+                    txPayload, scriptRaw, txResult,
+                    txFee, txExpiration,
+                    txGasPrice, txGasLimit,
+                    txState, txSender,
+                    txGasPayer, txGasTarget);
 
                 if ( tx.TryGetProperty("signatures", out var signaturesProperty) )
                 {
