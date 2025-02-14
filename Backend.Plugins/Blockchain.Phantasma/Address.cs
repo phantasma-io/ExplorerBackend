@@ -77,13 +77,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( account.TryGetProperty("balances", out var balancesProperty) )
                 {
-                    var balancesList = balancesProperty.EnumerateArray().Select(balance =>
-                            new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
-                                balance.GetProperty("symbol").GetString(),
-                                balance.GetProperty("amount").GetString()))
-                        .ToList();
+                    var balancesList0 = balancesProperty.EnumerateArray();
 
-                    await AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
+                    if(balancesList0.Count() > 0)
+                    {
+                        var balancesList = balancesList0.Select(balance =>
+                                new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
+                                    balance.GetProperty("symbol").GetString(),
+                                    balance.GetProperty("amount").GetString()))
+                            .ToList();
+
+                        await AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
+                    }
                 }
 
                 if ( account.TryGetProperty("storage", out var storageProperty) )
