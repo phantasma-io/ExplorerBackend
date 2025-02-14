@@ -11,7 +11,6 @@
     <PackageReference Include="Phantasma.Core" Version="1.1.0" />
     <ProjectReference Include="..\..\Backend.Commons\Backend.Commons.csproj" />
     <ProjectReference Include="..\..\Backend.PluginEngine\Backend.PluginEngine.csproj" />
-    <ProjectReference Include="..\..\Database.ApiCache\Database.ApiCache.csproj" />
     <ProjectReference Include="..\..\Database.Main\Database.Main.csproj" />
     <Compile Include="..\..\Backend.Api.Client\Client.cs">
       <Link>Client.cs</Link>

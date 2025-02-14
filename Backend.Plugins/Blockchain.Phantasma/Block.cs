@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Backend.Api;
 using Backend.Commons;
 using Backend.PluginEngine;
-using Database.ApiCache;
 using Database.Main;
 using Phantasma.Core.Cryptography.Structs;
 using Phantasma.Core.Domain;
@@ -90,13 +89,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private static async Task<(BigInteger, JsonDocument)> GetBlockAsync(string chainName, BigInteger blockHeight)
     {
-        await using ApiCacheDbContext dbApiCacheContext = new();
-        var block = await Database.ApiCache.BlockMethods.GetByHeightAsync(dbApiCacheContext, chainName, blockHeight.ToString());
-        if ( block != default )
-        {
-            return (blockHeight, block.DATA);
-        }
-        
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
         var (response, stringResponse) = await Client.ApiRequestAsync(url, 10);
@@ -105,13 +97,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             throw new Exception(errorProperty.ValueKind == JsonValueKind.String ? errorProperty.GetString() : errorProperty.GetProperty("message").GetString());
         }
-        
-        await Database.ApiCache.BlockMethods.UpsertAsync(dbApiCacheContext, blockHeight.ToString(),
-            response.RootElement.GetProperty("timestamp").GetUInt32(),
-            response,
-            chainName);
-
-        await dbApiCacheContext.SaveChangesAsync();
         
         return (blockHeight, response);
     }

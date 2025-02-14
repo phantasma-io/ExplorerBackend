@@ -14,13 +14,6 @@
         "Username": "postgres",
         "Password": "masterkey"
       },
-    "ApiCache":
-      {
-        "Host": "localhost",
-        "Database": "explorer-backend-api-cache",
-        "Username": "postgres",
-        "Password": "masterkey"
-      },
     "ConnectMaxRetries": 6,
     "ConnectRetryTimeout": 5000
   },

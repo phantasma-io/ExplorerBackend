@@ -16,7 +16,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Backend.PluginEngine\Backend.PluginEngine.csproj" />
     <ProjectReference Include="..\..\Backend.Commons\Backend.Commons.csproj" />
-    <ProjectReference Include="..\..\Database.ApiCache\Database.ApiCache.csproj" />
     <ProjectReference Include="..\..\Database.Main\Database.Main.csproj" />
   </ItemGroup>
 

@@ -22,7 +22,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj" />
-    <ProjectReference Include="..\Database.ApiCache\Database.ApiCache.csproj" />
     <ProjectReference Include="..\Backend.PluginEngine\Backend.PluginEngine.csproj" />
     <ProjectReference Include="..\Backend.PostgreSQLConnector\Backend.PostgreSQLConnector.csproj" />
     <ProjectReference Include="..\Database.Main\Database.Main.csproj" />

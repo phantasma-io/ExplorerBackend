@@ -6,8 +6,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backend.Api.Client", "Backe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Database.Main", "Database.Main\Database.Main.csproj", "{57C1BFE2-9C4B-4712-A155-BE883E9377F0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Database.ApiCache", "Database.ApiCache\Database.ApiCache.csproj", "{BF10A8DB-BA85-4F03-B0A6-B61A925B0EE5}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backend.Service.Api", "Backend.Service.Api\Backend.Service.Api.csproj", "{9D75C28F-8235-4004-B846-081854E6931D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backend.Service.Worker", "Backend.Service.Worker\Backend.Service.Worker.csproj", "{50AA5885-09A8-4FDF-90D1-1B13DCF21DCE}"
