@@ -19,8 +19,8 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
-    <PackageReference Include="Foundatio" Version="11.0.5" />
-    <PackageReference Include="Foundatio.Extensions.Hosting" Version="11.0.5" />
+    <PackageReference Include="Foundatio" Version="11.0.8" />
+    <PackageReference Include="Foundatio.Extensions.Hosting" Version="11.0.8" />
     <PackageReference Include="MediatR" Version="12.4.1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer" Version="5.1.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.2" />
