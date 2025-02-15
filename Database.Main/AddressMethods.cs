@@ -13,6 +13,15 @@ public static class AddressMethods
     // Returns new or existing entry's Id.
     public static Address Upsert(MainDbContext databaseContext, int chainId, string address)
     {
+        if(address == null)
+        {
+            throw new($"Attempt to store null address");
+        }
+        if(address.Length < 47)
+        {
+            throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
+        }
+
         var entry = databaseContext.Addresses
             .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
 
