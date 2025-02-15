@@ -126,6 +126,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         return tasks.Select(task => task.Result).ToList();
     }
+
+    private void AddAddress(ref List<string> addresses, string address)
+    {
+        if(string.IsNullOrEmpty(address))
+        {
+            throw new("Trying to add empty address");
+        }
+
+        addresses.Add(address);
+    }
     
     private async Task<List<string>> ProcessBlock(BigInteger blockHeight, JsonDocument blockData, string chainName)
     {
@@ -147,10 +157,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var blockHash = blockData.RootElement.GetProperty("hash").GetString();
         var blockPreviousHash = blockData.RootElement.GetProperty("previousHash").GetString();
         var chainAddress = blockData.RootElement.GetProperty("chainAddress").GetString();
-        addressesToUpdate.Add(chainAddress);
+        AddAddress(ref addressesToUpdate, chainAddress);
         var protocol = blockData.RootElement.GetProperty("protocol").GetInt32();
         var validatorAddress = blockData.RootElement.GetProperty("validatorAddress").GetString();
-        addressesToUpdate.Add(validatorAddress);
+        AddAddress(ref addressesToUpdate, validatorAddress);
         var reward = blockData.RootElement.GetProperty("reward").GetString();
 
         var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
@@ -257,7 +267,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         var contract = eventNode.GetProperty("contract").GetString();
                         var addressString = eventNode.GetProperty("address").GetString();
-                        addressesToUpdate.Add(addressString);
+                        AddAddress(ref addressesToUpdate, addressString);
                         var addr = Address.FromText(addressString);
                         var data = eventNode.GetProperty("data").GetString().Decode();
 
@@ -635,7 +645,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             case EventKind.ValidatorElect or EventKind.ValidatorPropose:
                             {
                                 var address = evnt.GetContent<Address>().ToString();
-                                addressesToUpdate.Add(address);
+                                AddAddress(ref addressesToUpdate, address);
 
                                 Log.Verbose("[{Name}] Block #{BlockHeight} getting Address for {Kind}, Address {Address}", Name,
                                     blockHeight, kind, address);
@@ -676,7 +686,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var gasEventData = evnt.GetContent<GasEventData>();
 
                                 var address = gasEventData.address.ToString();
-                                addressesToUpdate.Add(address);
+                                AddAddress(ref addressesToUpdate, address);
                                 var price = gasEventData.price.ToString();
                                 var amount = gasEventData.amount.ToString();
 
@@ -709,7 +719,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 var organization = organizationEventData.Organization;
                                 var memberAddress = organizationEventData.MemberAddress.ToString();
-                                addressesToUpdate.Add(memberAddress);
+                                AddAddress(ref addressesToUpdate, memberAddress);
 
                                 Log.Verbose(
                                     "[{Name}] Block #{BlockHeight} getting OrganizationEventData for {Kind}, Organization {Organization}, MemberAddress {Address}",
