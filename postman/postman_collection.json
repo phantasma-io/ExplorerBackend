@@ -5738,7 +5738,7 @@
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "https://api.phantasma.io:8001",
+			"value": "https://api.phantasma.info:8001",
 			"type": "string"
 		}
 	]
