@@ -784,7 +784,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             // At start of the backend we reprocess balances of ALL known addresses
             // It's a hackish way to fix explorer's old processing issues
             // TODO remove later everything related to firstBlockSinceLaunch flag
-            addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Distinct().ToList();
+            // TODO "NULL" is a hack because of incorrect db design, fix/remove later
+            addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
         }
 
         Log.Verbose("[{Name}] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, blockHeight,
