@@ -84,6 +84,15 @@ public static class AddressMethods
 
         foreach ( var address in addresses )
         {
+            if(address == null)
+            {
+                throw new($"Attempt to store null address");
+            }
+            if(address.Length < 47)
+            {
+                throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
+            }
+
             var entry = databaseContext.Addresses.FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
             if ( entry == null )
             {
@@ -107,6 +116,15 @@ public static class AddressMethods
 
     public static async Task<Address> UpsertAsync(MainDbContext databaseContext, Chain chain, string address)
     {
+        if(address == null)
+        {
+            throw new($"Attempt to store null address");
+        }
+        if(address.Length < 47)
+        {
+            throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
+        }
+
         var entry = await databaseContext.Addresses
             .FirstOrDefaultAsync(x => x.Chain == chain && x.ADDRESS == address);
 
