@@ -17,7 +17,8 @@ public static class AddressMethods
         {
             throw new($"Attempt to store null address");
         }
-        if(address.Length < 47)
+        // TODO we should get rid of this NULL address and fix db schema
+        if(address.Length < 47 && address.ToUpperInvariant() != "NULL")
         {
             throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
         }
@@ -88,7 +89,8 @@ public static class AddressMethods
             {
                 throw new($"Attempt to store null address");
             }
-            if(address.Length < 47)
+            // TODO we should get rid of this NULL address and fix db schema
+            if(address.Length < 47 && address.ToUpperInvariant() != "NULL")
             {
                 throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
             }
@@ -120,7 +122,8 @@ public static class AddressMethods
         {
             throw new($"Attempt to store null address");
         }
-        if(address.Length < 47)
+        // TODO we should get rid of this NULL address and fix db schema
+        if(address.Length < 47 && address.ToUpperInvariant() != "NULL")
         {
             throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
         }
