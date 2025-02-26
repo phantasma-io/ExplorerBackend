@@ -346,6 +346,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var response = httpClient.GetAsync(url).Result;
         using var content = response.Content;
         var reply = content.ReadAsStringAsync().Result;
+        Log.Information("[Blocks] Get heigt result: {Result}, url: {Url}", reply, url);
         return BigInteger.Parse(reply.Replace("\"", ""));
     }
 
