@@ -31,6 +31,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
+        Log.Information("[Blocks] Fetching blocks ({From}-{To}) for chain {Chain}...",
+                fromHeight,
+                toHeight,
+                chainName);
+
         BigInteger i;
         await using ( MainDbContext databaseContext = new() )
         {
@@ -42,6 +47,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         while ( i <= toHeight )
         {
             var fetchPerIteration = BigInteger.Min(FetchBlocksPerIterationMax, toHeight - i + 1);
+            Log.Information("[Blocks] Fetching batch of {Count} blocks starting from {StartHeight} for chain {Chain}...",
+                fetchPerIteration,
+                i,
+                chainName);
 
             var startTime = DateTime.Now;
             var blocks = await GetBlockRange(chainName, i, fetchPerIteration);
@@ -57,7 +66,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
             var processTime = DateTime.Now - startTime;
             
-            Log.Information("{Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec. Sync speed: {BlocksPerSecond} blocks per second",
+            Log.Information("[Blocks] {Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec. Sync speed: {BlocksPerSecond} blocks per second",
                 blocks.Count,
                 i,
                 i + blocks.Count - 1,
@@ -76,7 +85,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 await databaseContext.SaveChangesAsync();
             }
             processTime = DateTime.Now - startTime;
-            Log.Information("{Count} addresses updated for blocks ({From}-{To}) in {ProcessTime} sec. Sync speed: {AddressesPerSecond} addresses per second",
+            Log.Information("[Blocks] {Count} addresses updated for blocks ({From}-{To}) in {ProcessTime} sec. Sync speed: {AddressesPerSecond} addresses per second",
                 addressesToUpdate.Count,
                 i,
                 i + blocks.Count - 1,
