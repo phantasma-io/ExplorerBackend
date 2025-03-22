@@ -1,39 +1,11 @@
 using System;
-using System.IO;
-using System.Text.Json;
 using Serilog;
-using Serilog.Core;
 using Serilog.Events;
 
 namespace Backend.Commons;
 
 public static class LogEx
 {
-    public static void Init(string fileName, LogEventLevel minimumLevel, bool overwriteOldContent = false)
-    {
-        var filePath = Path.Combine(Path.GetFullPath("."), fileName);
-
-        var levelSwitch = new LoggingLevelSwitch {MinimumLevel = minimumLevel};
-
-        if ( overwriteOldContent ) File.Delete(filePath);
-
-        var logConfig = new LoggerConfiguration()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-            .MinimumLevel.ControlledBy(levelSwitch)
-            .Enrich.WithThreadId()
-            .Destructure.ByTransforming<JsonDocument>(node => JsonSerializer.Serialize(node))
-            .WriteTo.Console(
-                outputTemplate:
-                "{Timestamp:u} {Timestamp:ffff} [{Level:u3}] <{ThreadId}> {Message:lj}{NewLine}{Exception}")
-            .WriteTo.File(filePath, rollingInterval: RollingInterval.Day, outputTemplate:
-                "{Timestamp:u} {Timestamp:ffff} [{Level:u3}] <{ThreadId}> {Message:lj}{NewLine}{Exception}");
-
-
-        Log.Logger = logConfig.CreateLogger();
-    }
-
-
     public static string Exception(string module, Exception ex, string rpc = null, bool warningMode = false)
     {
         string logMessage;
