@@ -63,6 +63,7 @@ public class MainDbContext : DbContext
     public DbSet<TokenLogo> TokenLogos { get; set; }
     public DbSet<TokenLogoType> TokenLogoTypes { get; set; }
     public DbSet<TransactionState> TransactionStates { get; set; }
+    public DbSet<GlobalVariable> GlobalVariables { get; set; }
 
     private static string DetectConfigFilePath()
     {
@@ -1105,6 +1106,17 @@ public class MainDbContext : DbContext
         // Indexes
         modelBuilder.Entity<TransactionState>()
             .HasIndex(x => x.NAME);
+        
+
+        //////////////////////
+        // GlobalVariable
+        //////////////////////
+
+        // Indexes
+
+        modelBuilder.Entity<GlobalVariable>()
+            .HasIndex(x => x.NAME)
+            .IsUnique();
     }
 }
 
@@ -1794,4 +1806,12 @@ public class TransactionState
     public int ID { get; set; }
     public string NAME { get; set; }
     public virtual List<Transaction> Transactions { get; set; }
+}
+
+public class GlobalVariable
+{
+    public int ID { get; set; }
+    public string NAME { get; set; }
+    public long LONG_VALUE { get; set; }
+    public string STRING_VALUE { get; set; }
 }

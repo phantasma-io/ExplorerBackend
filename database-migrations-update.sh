@@ -1,3 +1,3 @@
 #!/bin/bash
 
-dotnet ef migrations add Update11 --project Database.Main/Database.Main.csproj
+dotnet ef migrations add Update12 --project Database.Main/Database.Main.csproj

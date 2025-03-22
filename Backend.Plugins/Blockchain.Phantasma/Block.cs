@@ -27,7 +27,8 @@ namespace Backend.Blockchain;
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private const int FetchBlocksPerIterationMax = 100;
-    private bool firstBlockSinceLaunch = true;
+    private long _balanceRefetchDate = 0;
+    private string _balanceRefetchTimestampKey = "BALANCE_REFETCH_TIMESTAMP";
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
@@ -82,6 +83,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
                 await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesToUpdate,
                     100);
+                
+                if(_balanceRefetchDate == 0)
+                {
+                    // We just finished refetching all balances, saving timestamp
+                    // to the database which will tell us when this process was done.
+                    await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now());
+                }
+
                 await databaseContext.SaveChangesAsync();
             }
             processTime = DateTime.Now - startTime;
@@ -787,13 +796,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
-        
-        if ( firstBlockSinceLaunch )
+        _balanceRefetchDate = await GlobalVariableMethods.GetLongAsync(databaseContext, _balanceRefetchTimestampKey);
+        if(_balanceRefetchDate == 0)
         {
-            // At start of the backend we reprocess balances of ALL known addresses
-            // It's a hackish way to fix explorer's old processing issues
-            // TODO remove later everything related to firstBlockSinceLaunch flag
-            // TODO "NULL" is a hack because of incorrect db design, fix/remove later
+            // Reprocess balances of ALL known addresses
+            // to fix issues
             addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
         }
 
@@ -817,7 +824,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 eventsAddedCount, nftsInThisBlock.Count);
         }
         
-        firstBlockSinceLaunch = false;
         return addressesToUpdate.Distinct().ToList();
     }
 }
