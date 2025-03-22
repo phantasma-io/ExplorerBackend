@@ -171,11 +171,12 @@ public class Fetch
         for ( var i = 0; i < ids.Count; i += NftLoadPageSize )
         {
             var idsPage = ids.GetRange(i, Math.Min(NftLoadPageSize, ids.Count - i));
+            var request = "{\"ids\":[" + "\"" + string.Join("\", \"", idsPage) + "\"" + "]}";
             var response = Client.ApiRequest<JsonNode>(url, out var stringResponse, null, 0,
-                "{\"ids\":[" + "\"" + string.Join("\", \"", idsPage) + "\"" + "]}", Client.RequestType.Post);
+                request, Client.RequestType.Post);
             if ( response == null )
             {
-                Log.Error("TTRS error: Parsed response is null, raw response: '{Response}'", stringResponse);
+                Log.Error("TTRS error: Parsed response is null, raw response: '{Response}', request: {Request}", stringResponse, request);
                 return;
             }
 

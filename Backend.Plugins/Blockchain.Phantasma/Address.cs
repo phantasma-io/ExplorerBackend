@@ -34,7 +34,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var split = splitAddresses.ElementAt(i).Select(x => x.ADDRESS).ToList();
             var addressesComaSeparated = string.Join(",", split);
             var url = $"{Settings.Default.GetRest()}/api/v1/getAccounts?accountText={addressesComaSeparated}&extended=false";
-            Log.Information("[{Name}] Address query url: {Url}", Name, url);
+
             try
             {
                 var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 1000);
@@ -83,7 +83,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         if(balancesList0.Count() > 0)
                         {
-                            Log.Information("Processing address: " + address.ADDRESS);
                             var balancesList = balancesList0.Select(balance =>
                                     new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
                                         balance.GetProperty("symbol").GetString(),
@@ -118,7 +117,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
             catch
             {
-                Log.Error("Crashed while querying url: " + url);
+                Log.Error("[{Name}] Crashed while querying url: {url}", Name, url);
                 throw;
             }
         }
