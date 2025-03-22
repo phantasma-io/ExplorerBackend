@@ -1,34 +1,34 @@
 using System;
-using System.Globalization;
 using Microsoft.Extensions.Configuration;
 
-namespace Backend;
+namespace Backend.Price;
 
 internal class Settings
 {
-    private Settings(IConfigurationSection section)
-    {
-        Enabled = section.GetSection("enabled").Get<bool>();
-        StartDelay = section.GetValue<int>("startDelay");
-        RunInterval = section.GetSection("runInterval").Get<uint>();
-        EnableCoingeckoPaidFeatures = section.GetSection("enableCoingeckoPaidFeatures").Get<bool>();
-        StartDate = DateTime.SpecifyKind(
-            DateTime.ParseExact(section.GetSection("startDate").Get<string>(), "dd.MM.yyyy",
-                CultureInfo.InvariantCulture), DateTimeKind.Utc);
-    }
+    // Whether the plugin is enabled
+    public bool Enabled { get; set; }
 
+    // Delay before the plugin starts (in seconds)
+    public int StartDelay { get; set; }
 
-    public bool Enabled { get; }
-    public int StartDelay { get; }
-    public uint RunInterval { get; }
-    public bool EnableCoingeckoPaidFeatures { get; } = false;
-    public DateTime StartDate { get; }
+    // Interval between plugin runs (in seconds)
+    public uint RunInterval { get; set; }
 
+    // Plugin start date (parsed automatically from config)
+    public DateTime StartDate { get; set; }
+
+    // Whether to enable paid Coingecko features
+    public bool EnableCoingeckoPaidFeatures { get; set; } = false;
+
+    // A list of coin IDs that should be treated as inactive
+    public string[] InactiveCoins { get; set; } = Array.Empty<string>();
+
+    // Loaded instance of the settings
     public static Settings Default { get; private set; }
 
-
-    public static void Load(IConfigurationSection section)
+    // Loads the settings from the "PluginConfiguration" section
+    public static void Load(IConfiguration configuration)
     {
-        Default = new Settings(section);
+        Default = configuration.GetSection("PluginConfiguration").Get<Settings>();
     }
 }

@@ -154,6 +154,11 @@ public abstract class Plugin : IDisposable
         return new ConfigurationBuilder().AddJsonFile(ConfigFile, true).Build().GetSection("PluginConfiguration");
     }
 
+    protected IConfigurationRoot GetConfigurationRoot()
+    {
+        return new ConfigurationBuilder().AddJsonFile(ConfigFile, true).Build();
+    }
+
 
     private static void LoadPlugin(Assembly assembly)
     {
