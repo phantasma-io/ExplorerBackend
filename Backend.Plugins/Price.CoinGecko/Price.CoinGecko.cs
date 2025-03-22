@@ -205,6 +205,16 @@ public class CoinGecko : Plugin, IDBAccessPlugin
             var lastLoadedDate = databaseContext.TokenDailyPrices.OrderByDescending(x => x.DATE_UNIX_SECONDS)
                 .Select(x => x.DATE_UNIX_SECONDS).FirstOrDefault();
 
+            var oneYearBeforeDate = UnixSeconds.AddDays(UnixSeconds.Now(), -365);
+            if(lastLoadedDate < oneYearBeforeDate && !Settings.Default.EnableCoingeckoPaidFeatures)
+            {
+                Log.Warning("[{Name}] We had to skip dates from {from} to {to}",
+                    Name,
+                    UnixSeconds.ToDateTime(lastLoadedDate).ToString("dd-MM-yyyy"),
+                    UnixSeconds.ToDateTime(oneYearBeforeDate).ToString("dd-MM-yyyy"));
+                lastLoadedDate = oneYearBeforeDate;
+            }
+
             lastLoadedDate = lastLoadedDate == 0
                 ? UnixSeconds.FromDateTime(Settings.Default.StartDate)
                 : databaseContext.TokenDailyPrices.Count(x => x.DATE_UNIX_SECONDS == lastLoadedDate) < cryptoSymbols.Count ? lastLoadedDate : UnixSeconds.AddDays(lastLoadedDate, 1);

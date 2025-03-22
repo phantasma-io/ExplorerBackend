@@ -3,6 +3,7 @@
     "enabled": true,
     "startDelay": 60,
     "runInterval": 60,
+    "enableCoingeckoPaidFeatures": false,
     "startDate": "26.12.2022"
   }
 }

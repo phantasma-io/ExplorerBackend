@@ -74,7 +74,7 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
 
         if (!Directory.Exists(directory))
         {
-            Log.Error("[{Name}] Folder '{Directory}' doesn not exist", Name, directory);
+            Log.Error("[{Name}] Folder '{Directory}' does not exist", Name, directory);
             return;
         }
 

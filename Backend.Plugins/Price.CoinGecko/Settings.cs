@@ -11,6 +11,7 @@ internal class Settings
         Enabled = section.GetSection("enabled").Get<bool>();
         StartDelay = section.GetValue<int>("startDelay");
         RunInterval = section.GetSection("runInterval").Get<uint>();
+        EnableCoingeckoPaidFeatures = section.GetSection("enableCoingeckoPaidFeatures").Get<bool>();
         StartDate = DateTime.SpecifyKind(
             DateTime.ParseExact(section.GetSection("startDate").Get<string>(), "dd.MM.yyyy",
                 CultureInfo.InvariantCulture), DateTimeKind.Utc);
@@ -20,6 +21,7 @@ internal class Settings
     public bool Enabled { get; }
     public int StartDelay { get; }
     public uint RunInterval { get; }
+    public bool EnableCoingeckoPaidFeatures { get; } = false;
     public DateTime StartDate { get; }
 
     public static Settings Default { get; private set; }
