@@ -71,7 +71,12 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
     private void CheckDirectory()
     {
         var directory = Combine(PluginsDirectory, "../..", Settings.Default.Folder);
-        Log.Information("[{Name}] should check directory {Directory}", Name, directory);
+
+        if (!Directory.Exists(directory))
+        {
+            Log.Error("[{Name}] Folder '{Directory}' doesn not exist", Name, directory);
+            return;
+        }
 
         var directoryInfo = new DirectoryInfo(directory);
         var files = directoryInfo.GetFiles("*." + Settings.Default.FileEnding);
