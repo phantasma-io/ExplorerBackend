@@ -67,9 +67,12 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
         }
 
         var processTime = DateTime.Now - startTime;
-        Log.Information(
-            "{Name} plugin: Processed events USD prices: {PricesProcessed} processed in {ProcessTime} sec", Name,
-            pricesProcessed, Math.Round(processTime.TotalSeconds, 3));
+        if(processTime.TotalSeconds > 1 || pricesProcessed > 0)
+        {
+            Log.Information(
+                "{Name} plugin: Processed events USD prices: {PricesProcessed} processed in {ProcessTime} sec", Name,
+                pricesProcessed, Math.Round(processTime.TotalSeconds, 3));
+        }
     }
 
 

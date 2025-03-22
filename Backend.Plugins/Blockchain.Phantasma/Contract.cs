@@ -83,7 +83,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Log.Verbose("[{Name}] Processed Commit in {Time} sec", Name, Math.Round(transactionEnd.TotalSeconds, 3));
 
         var updateTime = DateTime.Now - startTime;
-        Log.Information("[{Name}] Contract sync took {Time} sec, {Updated} names updated", Name,
-            Math.Round(updateTime.TotalSeconds, 3), contractUpdatedCount);
+        if(updateTime.TotalSeconds > 1 || contractUpdatedCount > 0)
+        {
+            Log.Information("[{Name}] Contract sync took {Time} sec, {Updated} names updated", Name,
+                Math.Round(updateTime.TotalSeconds, 3), contractUpdatedCount);
+        }
     }
 }

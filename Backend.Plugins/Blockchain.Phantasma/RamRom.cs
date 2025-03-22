@@ -246,9 +246,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
         
         var updateTime = DateTime.Now - startTime;
-        Log.Information(
-            "[{Name}] RAM/ROM update took {UpdateTime} sec, {UpdatedNftCount} NFTs updated",
-            Name, Math.Round(updateTime.TotalSeconds, 3), updatedNftCount);
+        if(updateTime.TotalSeconds > 1 || updatedNftCount > 0)
+        {
+            Log.Information(
+                "[{Name}] RAM/ROM update took {UpdateTime} sec, {UpdatedNftCount} NFTs updated",
+                Name, Math.Round(updateTime.TotalSeconds, 3), updatedNftCount);
+        }
         
         return updatedNftCount;
     }

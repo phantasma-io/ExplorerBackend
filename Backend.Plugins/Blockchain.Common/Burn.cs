@@ -86,8 +86,11 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
         }
 
         var processTime = DateTime.Now - startTime;
-        Log.Information(
-            "{Name} plugin: Burned token events processing took {ProcessTime} sec, {MarkedEventCount} events marked, {MarkedNftCount} NFTs marked",
-            Name, Math.Round(processTime.TotalSeconds, 3), markedEventCount, markedNftCount);
+        if(processTime.TotalSeconds > 1 || markedEventCount > 0 || markedNftCount > 0)
+        {
+            Log.Information(
+                "{Name} plugin: Burned token events processing took {ProcessTime} sec, {MarkedEventCount} events marked, {MarkedNftCount} NFTs marked",
+                Name, Math.Round(processTime.TotalSeconds, 3), markedEventCount, markedNftCount);
+        }
     }
 }
