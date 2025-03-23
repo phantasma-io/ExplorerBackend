@@ -152,6 +152,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void StartupRomRamSync(Chain chain)
     {
+        if(!Settings.Default.RomRamProcessingEnabled)
+        {
+            Log.Warning("[{Name}][RAM/ROM update] Disabled", Name);
+            return;
+        }
+
         Thread romRamSyncThread = new(() =>
         {
             while ( _running )
