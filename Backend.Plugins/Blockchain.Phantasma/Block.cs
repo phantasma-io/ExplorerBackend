@@ -67,7 +67,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
             var processTime = DateTime.Now - startTime;
             
-            Log.Information("[Blocks] {Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec. Sync speed: {BlocksPerSecond} blocks per second",
+            Log.Information("[Blocks] {Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec, {BlocksPerSecond} bps",
                 blocks.Count,
                 i,
                 i + blocks.Count - 1,
@@ -105,11 +105,28 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
     }
 
+    private static double _megabyte = 1024.0 * 1024.0;
+    private static string ToMegabytesString(long byteCount)
+    {
+        double mb = byteCount / _megabyte;
+        return $"{mb:F2} MB";
+    }
     private static async Task<(BigInteger, JsonDocument)> GetBlockAsync(string chainName, BigInteger blockHeight)
     {
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
-        var response = await Client.ApiRequestAsync(url, 10);
+        var startTime = DateTime.Now;
+        var (response, blockLength) = await Client.ApiRequestAsync(url, 10);
+
+        var requestTime = (DateTime.Now - startTime).TotalMilliseconds;
+        if(blockLength > _megabyte)
+        {
+            Log.Warning("[Blocks] Large block #{index} | {size} received in {time} ms", blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
+        }
+        else if(requestTime > 200) // TODO Set through config
+        {
+            Log.Information("[Blocks] Block #{index} | {size} received in {time} ms", blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
+        }
 
         if (response.RootElement.TryGetProperty("error", out var errorProperty))
         {

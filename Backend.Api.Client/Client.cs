@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -153,7 +154,7 @@ public static class Client
     }
 
     private static int _maxAttempts = 5;
-    public static async Task<JsonDocument> ApiRequestAsync(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
+    public static async Task<(JsonDocument, int)> ApiRequestAsync(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
     {
         Log.Debug("[API request]: url: " + url);
 
@@ -203,7 +204,7 @@ public static class Client
                 if (string.IsNullOrEmpty(stringResponse))
                     return default;
 
-                return JsonDocument.Parse(stringResponse);
+                return (JsonDocument.Parse(stringResponse), stringResponse.Length);
             }
             catch (Exception e)
             {
