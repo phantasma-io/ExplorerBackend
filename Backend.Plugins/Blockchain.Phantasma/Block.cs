@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Backend.Api;
+using Backend.Blockchain.Responses;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
@@ -115,12 +116,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         double mb = byteCount / _megabyte;
         return $"{mb:F2} MB";
     }
-    private async Task<(BigInteger, JsonDocument)> GetBlockAsync(string chainName, BigInteger blockHeight)
+    private async Task<(BigInteger, BlockResult)> GetBlockAsync(string chainName, BigInteger blockHeight)
     {
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
         var startTime = DateTime.Now;
-        var (response, blockLength) = await Client.ApiRequestAsync(url, 10);
+        var (response, blockLength) = await Client.ApiRequestAsync<BlockResult>(url, 10);
 
         var requestTime = (DateTime.Now - startTime).TotalMilliseconds;
         if(blockLength > _megabyte)
@@ -132,20 +133,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Log.Information("[{Name}][Blocks] Block #{index} | {size} received in {time} ms", Name, blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
         }
 
-        if (response.RootElement.TryGetProperty("error", out var errorProperty))
+        if (!string.IsNullOrEmpty(response.error))
         {
-            throw new Exception(errorProperty.ValueKind == JsonValueKind.String ? errorProperty.GetString() : errorProperty.GetProperty("message").GetString());
+            throw new Exception(response.error);
         }
         
         return (blockHeight, response);
     }
 
 
-    private async Task<List<(BigInteger, JsonDocument)>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
+    private async Task<List<(BigInteger, BlockResult)>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
     {
         // Log.Information("FETCHING RANGE " + fromHeight + " - " + (fromHeight + blockCount - 1));
-        var tasks = new List<Task<(BigInteger, JsonDocument)>>();
-        var smallTasks = new List<Task<(BigInteger, JsonDocument)>>();
+        var tasks = new List<Task<(BigInteger, BlockResult)>>();
+        var smallTasks = new List<Task<(BigInteger, BlockResult)>>();
         for (var i = fromHeight; i < fromHeight + blockCount; i++)
         {
             var task = GetBlockAsync(chainName, i);
@@ -155,7 +156,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             if (smallTasks.Count == 50)
             {
                 await Task.WhenAll(smallTasks.ToArray());
-                smallTasks = new List<Task<(BigInteger, JsonDocument)>>();
+                smallTasks = new List<Task<(BigInteger, BlockResult)>>();
                 await Task.Delay(1000);
             }
         }
@@ -176,7 +177,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         addresses.Add(address);
     }
     
-    private async Task<List<string>> ProcessBlock(BigInteger blockHeight, JsonDocument blockData, string chainName)
+    private async Task<List<string>> ProcessBlock(BigInteger blockHeight, BlockResult block, string chainName)
     {
         var startTime = DateTime.Now;
 
@@ -192,91 +193,53 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         await using MainDbContext databaseContext = new();
 
-        var timestampUnixSeconds = blockData.RootElement.GetProperty("timestamp").GetUInt32();
-        var blockHash = blockData.RootElement.GetProperty("hash").GetString();
-        var blockPreviousHash = blockData.RootElement.GetProperty("previousHash").GetString();
-        var chainAddress = blockData.RootElement.GetProperty("chainAddress").GetString();
-        AddAddress(ref addressesToUpdate, chainAddress);
-        var protocol = blockData.RootElement.GetProperty("protocol").GetInt32();
-        var validatorAddress = blockData.RootElement.GetProperty("validatorAddress").GetString();
-        AddAddress(ref addressesToUpdate, validatorAddress);
-        var reward = blockData.RootElement.GetProperty("reward").GetString();
+        AddAddress(ref addressesToUpdate, block.chainAddress);
+        AddAddress(ref addressesToUpdate, block.validatorAddress);
 
         var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
 
         // Block in main database
-        var block = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, blockHeight,
-            timestampUnixSeconds, blockHash, blockPreviousHash, protocol, chainAddress, validatorAddress, reward);
+        var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, blockHeight,
+            block.timestamp, block.hash, block.previousHash, block.protocol, block.chainAddress, block.validatorAddress, block.reward);
 
         DateTime transactionStart;
         TimeSpan transactionEnd;
-        if ( blockData.RootElement.TryGetProperty("oracles", out var oracleProperty) )
+        if (block.oracles?.Length > 0)
         {
             transactionStart = DateTime.Now;
-            var oracles = oracleProperty.EnumerateArray().Select(oracle =>
-                new Tuple<string, string>(oracle.GetProperty("url").GetString(),
-                    oracle.GetProperty("content").GetString())).ToList();
-            BlockOracleMethods.InsertIfNotExists(databaseContext, oracles, block);
+            var oracles = block.oracles.Select(oracle =>
+                new Tuple<string, string>(oracle.url,
+                    oracle.content)).ToList();
+            BlockOracleMethods.InsertIfNotExists(databaseContext, oracles, blockEntity);
 
             transactionEnd = DateTime.Now - transactionStart;
             Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Processed {Count} Oracles in {Time} sec", Name, blockHeight,
                 oracles.Count, Math.Round(transactionEnd.TotalSeconds, 3));
         }
 
-
-        if ( blockData.RootElement.TryGetProperty("txs", out var txsProperty) )
+        if (block.txs?.Length > 0)
         {
-            var txs = txsProperty.EnumerateArray();
-            
             Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} txes in the block", Name, blockHeight,
-                txs.Count());
+                block.txs.Length);
             
-            for ( var txIndex = 0; txIndex < txs.Count(); txIndex++ )
+            for (var txIndex = 0; txIndex < block.txs.Length; txIndex++)
             {
-                var tx = txs.ElementAt(txIndex);
+                var tx = block.txs[txIndex];
 
-                JsonElement.ArrayEnumerator events = new();
-                if ( tx.TryGetProperty("events", out var eventsProperty) )
-                {
-                    events = eventsProperty.EnumerateArray();
-                    Log.Debug(
-                        "[{Name}][Blocks] Block #{BlockHeight} got {Count} Events for tx #{TxIndex} in block #{BlockHeight}: {@EventsProperty}",
-                        Name, blockHeight, events.Count(), txIndex, blockHeight, eventsProperty);
-                }
-                else
-                    Log.Debug("[{Name}][Blocks] Block #{BlockHeight} No events for tx #{TxIndex} in block #{BlockHeight}", Name, blockHeight, txIndex);
+                var transaction = await TransactionMethods.UpsertAsync(databaseContext, blockEntity, txIndex,
+                    tx.hash, tx.timestamp,
+                    tx.payload, tx.script, tx.result,
+                    tx.fee, tx.expiration,
+                    tx.gasPrice, tx.gasLimit,
+                    tx.state, tx.sender,
+                    tx.gasPayer, tx.gasTarget);
 
-                // Current transaction
-                var scriptRaw = tx.GetProperty("script").GetString();
-
-                // TODO parse whole tx, not field after field
-                var txHash = tx.GetProperty("hash").GetString();
-                var txTimestamp = tx.GetProperty("timestamp").GetUInt32();
-                var txPayload = tx.GetProperty("payload").GetString();
-                var txResult = tx.GetProperty("result").GetString();
-                var txFee = tx.GetProperty("fee").GetString();
-                var txExpiration = tx.GetProperty("expiration").GetUInt32();
-                var txGasPrice = tx.GetProperty("gasPrice").GetString();
-                var txGasLimit =  tx.GetProperty("gasLimit").GetString();
-                var txState = tx.GetProperty("state").GetString();
-                var txSender = tx.GetProperty("sender").GetString();
-                var txGasPayer = tx.GetProperty("gasPayer").GetString();
-                var txGasTarget = tx.GetProperty("gasTarget").GetString();
-
-                var transaction = await TransactionMethods.UpsertAsync(databaseContext, block, txIndex,
-                    txHash, txTimestamp,
-                    txPayload, scriptRaw, txResult,
-                    txFee, txExpiration,
-                    txGasPrice, txGasLimit,
-                    txState, txSender,
-                    txGasPayer, txGasTarget);
-
-                if ( tx.TryGetProperty("signatures", out var signaturesProperty) )
+                if (tx.signatures?.Length > 0)
                 {
                     transactionStart = DateTime.Now;
-                    var signatures = signaturesProperty.EnumerateArray().Select(signature =>
-                        new Tuple<string, string>(signature.GetProperty("kind").GetString(),
-                            signature.GetProperty("data").GetString())).ToList();
+                    var signatures = tx.signatures
+                        .Select(signature => new Tuple<string, string>(signature.kind, signature.data))
+                        .ToList();
 
                     SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction, false);
 
@@ -285,13 +248,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         blockHeight, signatures.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                 }
 
-                for ( var eventIndex = 0; eventIndex < events.Count(); eventIndex++ )
+                if (tx.events == null || tx.events.Length == 0)
                 {
-                    var eventNode = events.ElementAt(eventIndex);
+                    continue;
+                }
+
+                for ( var eventIndex = 0; eventIndex < tx.events.Length; eventIndex++ )
+                {
+                    var eventNode = tx.events[eventIndex];
 
                     try
                     {
-                        var kindSerialized = eventNode.GetProperty("kind").GetString();
+                        var kindSerialized = eventNode.kind;
                         var kind = Enum.Parse<EventKind>(kindSerialized);
 
                         transactionStart = DateTime.Now;
@@ -304,11 +272,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Processing EventKind {Kind} Index {Index}", Name, blockHeight,
                             kind, eventIndex + 1);
 
-                        var contract = eventNode.GetProperty("contract").GetString();
-                        var addressString = eventNode.GetProperty("address").GetString();
+                        var contract = eventNode.contract;
+                        var addressString = eventNode.address;
                         AddAddress(ref addressesToUpdate, addressString);
                         var addr = Address.FromText(addressString);
-                        var data = eventNode.GetProperty("data").GetString().Decode();
+                        var data = eventNode.data.Decode();
 
                         Event evnt = new(kind, addr, contract, data);
 
@@ -333,7 +301,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         transactionStart = DateTime.Now;
                         var eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
-                            timestampUnixSeconds, eventIndex + 1, chainEntry, transaction, contractEntry,
+                            block.timestamp, eventIndex + 1, chainEntry, transaction, contractEntry,
                             eventKindEntry, addressEntry);
                         transactionEnd = DateTime.Now - transactionStart;
                         Log.Verbose(
@@ -439,7 +407,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     var ntfStartTime = DateTime.Now;
                                     Log.Debug(
                                         "[{Name}][Blocks] Block #{BlockHeight} New event on {TimestampUnixSeconds}: kind: {Kind} symbol: {Symbol} value: {Value} address: {AddressString} contract: {Contract}",
-                                        Name, blockHeight, UnixSeconds.Log(timestampUnixSeconds), kind, tokenEventData.Symbol,
+                                        Name, blockHeight, UnixSeconds.Log(block.timestamp), kind, tokenEventData.Symbol,
                                         tokenEventData.Value, addressString, contract);
 
                                     if ( nftsInThisBlock.ContainsKey(tokenValue) )
@@ -458,7 +426,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     // because nft can be created by auction thread without mint date,
                                     // so we can't update dates only for just created NFTs using newNftCreated flag.
                                     if ( kind == EventKind.TokenMint )
-                                        nft.MINT_DATE_UNIX_SECONDS = timestampUnixSeconds;
+                                        nft.MINT_DATE_UNIX_SECONDS = block.timestamp;
 
                                     var nftUpdateTime = DateTime.Now - ntfStartTime;
                                     Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} NTF processed in {Time} sec",
@@ -476,7 +444,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 if ( nft != null )
                                     // Update NFTs owner address on new event.
                                     NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
-                                        timestampUnixSeconds, addressEntry, false);
+                                        block.timestamp, addressEntry, false);
 
                                 await TokenEventMethods.UpsertAsync(databaseContext, tokenEventData.Symbol,
                                     tokenEventData.ChainName, tokenValue, chainEntry, eventEntry);
@@ -502,7 +470,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 Log.Debug(
                                     "[{Name}][Blocks] Block #{BlockHeight} New event on {TimestampUnixSeconds}: kind: {Kind} baseSymbol: {BaseSymbol} quoteSymbol: {QuoteSymbol} price: {Price} endPrice: {EndPrice} id: {ID} address: {AddressString} contract: {Contract} type: {Type}",
-                                    Name, blockHeight, UnixSeconds.Log(timestampUnixSeconds), kind, marketEventData.BaseSymbol,
+                                    Name, blockHeight, UnixSeconds.Log(block.timestamp), kind, marketEventData.BaseSymbol,
                                     marketEventData.QuoteSymbol, marketEventData.Price, marketEventData.EndPrice,
                                     marketEventData.ID, addressString, contract, marketEventData.Type);
 
@@ -535,7 +503,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     if ( kind == EventKind.OrderFilled )
                                         // Update NFTs owner address on new sale event.
                                         NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
-                                            timestampUnixSeconds, addressEntry, false);
+                                            block.timestamp, addressEntry, false);
                                     var nftUpdateTime = DateTime.Now - ntfStartTime;
                                     Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} NTF processed in {Time} sec",
                                         Name, blockHeight, Math.Round(nftUpdateTime.TotalSeconds, 3));
@@ -574,7 +542,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     case EventKind.ContractUpgrade:
                                     {
                                         var queueTuple = new Tuple<string, string, long>(stringData, chainName,
-                                            timestampUnixSeconds);
+                                            block.timestamp);
                                         if ( !_methodQueue.Contains(queueTuple) )
                                         {
                                             Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} got {Kind} adding Contract {Contract} to Queue",
@@ -791,7 +759,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     catch ( Exception e )
                     {
                         Log.Error(e, "[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} event processing", Name, blockHeight,
-                            UnixSeconds.Log(timestampUnixSeconds));
+                            UnixSeconds.Log(block.timestamp));
 
                         try
                         {
@@ -805,7 +773,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         try
                         {
                             Log.Information("[{Name}][Blocks] eventNode data on exception: {Exception}", Name,
-                                eventNode.GetProperty("data").GetString().Decode());
+                                eventNode.data.Decode());
                         }
                         catch ( Exception e2 )
                         {
