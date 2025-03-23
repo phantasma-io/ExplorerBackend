@@ -5,7 +5,6 @@ using System.Threading;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Blockchain.Img;
-using Castle.Core.Internal;
 using Database.Main;
 using Serilog;
 using static System.IO.Path;
@@ -122,7 +121,10 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
             }
         }
 
-        if ( tokenUrlCount > 0 ) databaseContext.SaveChanges();
-        Log.Information("[{Name}] plugin: {Count} Token for Urls processed", Name, tokenUrlCount);
+        if ( tokenUrlCount > 0 )
+        {
+            databaseContext.SaveChanges();
+            Log.Information("[{Name}] plugin: {Count} Token for Urls processed", Name, tokenUrlCount);
+        }
     }
 }
