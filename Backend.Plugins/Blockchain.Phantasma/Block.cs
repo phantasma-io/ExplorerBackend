@@ -32,7 +32,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
-        Log.Information("[Blocks] Fetching blocks ({From}-{To}) for chain {Chain}...",
+        Log.Information("[{Name}][Blocks] Fetching blocks ({From}-{To}) for chain {Chain}...",
+                Name,
                 fromHeight,
                 toHeight,
                 chainName);
@@ -48,7 +49,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         while ( i <= toHeight )
         {
             var fetchPerIteration = BigInteger.Min(FetchBlocksPerIterationMax, toHeight - i + 1);
-            Log.Information("[Blocks] Fetching batch of {Count} blocks starting from {StartHeight} for chain {Chain}...",
+            Log.Information("[{Name}][Blocks] Fetching batch of {Count} blocks starting from {StartHeight} for chain {Chain}...",
+                Name,
                 fetchPerIteration,
                 i,
                 chainName);
@@ -67,7 +69,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
             var processTime = DateTime.Now - startTime;
             
-            Log.Information("[Blocks] {Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec, {BlocksPerSecond} bps",
+            Log.Information("[{Name}][Blocks] {Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec, {BlocksPerSecond} bps",
+                Name,
                 blocks.Count,
                 i,
                 i + blocks.Count - 1,
@@ -94,7 +97,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 await databaseContext.SaveChangesAsync();
             }
             processTime = DateTime.Now - startTime;
-            Log.Information("[Blocks] {Count} addresses updated for blocks ({From}-{To}) in {ProcessTime} sec. Sync speed: {AddressesPerSecond} addresses per second",
+            Log.Information("[{Name}][Blocks] {Count} addresses updated for blocks ({From}-{To}) in {ProcessTime} sec. Sync speed: {AddressesPerSecond} addresses per second",
+                Name,
                 addressesToUpdate.Count,
                 i,
                 i + blocks.Count - 1,
@@ -111,7 +115,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         double mb = byteCount / _megabyte;
         return $"{mb:F2} MB";
     }
-    private static async Task<(BigInteger, JsonDocument)> GetBlockAsync(string chainName, BigInteger blockHeight)
+    private async Task<(BigInteger, JsonDocument)> GetBlockAsync(string chainName, BigInteger blockHeight)
     {
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
@@ -121,11 +125,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var requestTime = (DateTime.Now - startTime).TotalMilliseconds;
         if(blockLength > _megabyte)
         {
-            Log.Warning("[Blocks] Large block #{index} | {size} received in {time} ms", blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
+            Log.Warning("[{Name}][Blocks] Large block #{index} | {size} received in {time} ms", Name, blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
         }
         else if(requestTime > 200) // TODO Set through config
         {
-            Log.Information("[Blocks] Block #{index} | {size} received in {time} ms", blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
+            Log.Information("[{Name}][Blocks] Block #{index} | {size} received in {time} ms", Name, blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
         }
 
         if (response.RootElement.TryGetProperty("error", out var errorProperty))
@@ -137,7 +141,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
 
-    private static async Task<List<(BigInteger, JsonDocument)>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
+    private async Task<List<(BigInteger, JsonDocument)>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
     {
         // Log.Information("FETCHING RANGE " + fromHeight + " - " + (fromHeight + blockCount - 1));
         var tasks = new List<Task<(BigInteger, JsonDocument)>>();
@@ -215,7 +219,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             BlockOracleMethods.InsertIfNotExists(databaseContext, oracles, block);
 
             transactionEnd = DateTime.Now - transactionStart;
-            Log.Verbose("[{Name}] Block #{BlockHeight} Processed {Count} Oracles in {Time} sec", Name, blockHeight,
+            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Processed {Count} Oracles in {Time} sec", Name, blockHeight,
                 oracles.Count, Math.Round(transactionEnd.TotalSeconds, 3));
         }
 
@@ -224,7 +228,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             var txs = txsProperty.EnumerateArray();
             
-            Log.Verbose("[{Name}] Block #{BlockHeight} Found {Count} txes in the block", Name, blockHeight,
+            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} txes in the block", Name, blockHeight,
                 txs.Count());
             
             for ( var txIndex = 0; txIndex < txs.Count(); txIndex++ )
@@ -236,11 +240,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     events = eventsProperty.EnumerateArray();
                     Log.Debug(
-                        "[{Name}] Block #{BlockHeight} got {Count} Events for tx #{TxIndex} in block #{BlockHeight}: {@EventsProperty}",
+                        "[{Name}][Blocks] Block #{BlockHeight} got {Count} Events for tx #{TxIndex} in block #{BlockHeight}: {@EventsProperty}",
                         Name, blockHeight, events.Count(), txIndex, blockHeight, eventsProperty);
                 }
                 else
-                    Log.Debug("[{Name}] Block #{BlockHeight} No events for tx #{TxIndex} in block #{BlockHeight}", Name, blockHeight, txIndex);
+                    Log.Debug("[{Name}][Blocks] Block #{BlockHeight} No events for tx #{TxIndex} in block #{BlockHeight}", Name, blockHeight, txIndex);
 
                 // Current transaction
                 var scriptRaw = tx.GetProperty("script").GetString();
@@ -277,7 +281,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction, false);
 
                     transactionEnd = DateTime.Now - transactionStart;
-                    Log.Verbose("[{Name}] Block #{BlockHeight} Processed {Count} Signatures in {Time} sec", Name,
+                    Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Processed {Count} Signatures in {Time} sec", Name,
                         blockHeight, signatures.Count, Math.Round(transactionEnd.TotalSeconds, 3));
                 }
 
@@ -294,10 +298,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var eventKindEntry = await EventKindMethods.UpsertAsync(databaseContext, chainEntry, kind.ToString());
 
                         transactionEnd = DateTime.Now - transactionStart;
-                        Log.Verbose("[{Name}] Block #{BlockHeight} Added/Got EventKindEntry {Kind} in {Time} sec",
+                        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Added/Got EventKindEntry {Kind} in {Time} sec",
                             Name, blockHeight, kind, Math.Round(transactionEnd.TotalSeconds, 3));
 
-                        Log.Verbose("[{Name}] Block #{BlockHeight} Processing EventKind {Kind} Index {Index}", Name, blockHeight,
+                        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Processing EventKind {Kind} Index {Index}", Name, blockHeight,
                             kind, eventIndex + 1);
 
                         var contract = eventNode.GetProperty("contract").GetString();
@@ -317,14 +321,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             contractEntry = await ContractMethods.UpsertAsync(databaseContext, contract, chainEntry,
                                 evnt.Contract, null);
                             transactionEnd = DateTime.Now - transactionStart;
-                            Log.Verbose("[{Name}] Block #{BlockHeight} Added Contract {Contract} in {Time} sec",
+                            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Added Contract {Contract} in {Time} sec",
                                 Name, blockHeight, contract, Math.Round(transactionEnd.TotalSeconds, 3));
                         }
 
                         transactionStart = DateTime.Now;
                         var addressEntry = await AddressMethods.UpsertAsync(databaseContext, chainEntry, addressString);
                         transactionEnd = DateTime.Now - transactionStart;
-                        Log.Verbose("[{Name}] Block #{BlockHeight} Added Address {Address} in {Time} sec",
+                        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Added Address {Address} in {Time} sec",
                             Name, blockHeight, addressString, Math.Round(transactionEnd.TotalSeconds, 3));
 
                         transactionStart = DateTime.Now;
@@ -333,7 +337,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             eventKindEntry, addressEntry);
                         transactionEnd = DateTime.Now - transactionStart;
                         Log.Verbose(
-                            "[{Name}] Block #{BlockHeight} Added Base Event {Kind} Index {Index} in {Time} sec, going on with Processing EventData",
+                            "[{Name}][Blocks] Block #{BlockHeight} Added Base Event {Kind} Index {Index} in {Time} sec, going on with Processing EventData",
                             Name, blockHeight, kind, eventIndex + 1, Math.Round(transactionEnd.TotalSeconds, 3));
 
                         if ( eventAdded ) eventsAddedCount++;
@@ -343,12 +347,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         {
                             case EventKind.Infusion:
                             {
-                                Log.Verbose("[{Name}] Block #{BlockHeight} getting InfusionEventData for {Kind}", Name, blockHeight, kind);
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting InfusionEventData for {Kind}", Name, blockHeight, kind);
 
                                 var infusionEventData = evnt.GetContent<InfusionEventData>();
 
                                 Log.Debug(
-                                    "[{Name}] Block #{BlockHeight} New infusion into NFT {TokenID} {BaseSymbol}, infused {InfusedValue} {InfusedSymbol}, address: {AddressString} contract: {Contract}",
+                                    "[{Name}][Blocks] Block #{BlockHeight} New infusion into NFT {TokenID} {BaseSymbol}, infused {InfusedValue} {InfusedSymbol}, address: {AddressString} contract: {Contract}",
                                     Name, blockHeight, infusionEventData.TokenID, infusionEventData.BaseSymbol,
                                     infusionEventData.InfusedValue, infusionEventData.InfusedSymbol, addressString,
                                     contract);
@@ -382,13 +386,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
                                             tokenId, null, contractEntry);
                                         Log.Verbose(
-                                            "[{Name}] Block #{BlockHeight} using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
+                                            "[{Name}][Blocks] Block #{BlockHeight} using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
                                             Name, blockHeight, nft.ID, nft.TOKEN_ID, newNftCreated);
                                         if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                     }
 
                                     var nftUpdateTime = DateTime.Now - ntfStartTime;
-                                    Log.Verbose("[{Name}] Block #{BlockHeight} NTF processed in {Time} sec", Name, blockHeight,
+                                    Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} NTF processed in {Time} sec", Name, blockHeight,
                                         Math.Round(nftUpdateTime.TotalSeconds, 3));
                                 }
 
@@ -397,7 +401,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenId, chainEntry, eventKindEntry, contractEntry);
 
-                                Log.Verbose("[{Name}] Block #{BlockHeight} Updated event {Kind} with {Updated}", Name, blockHeight, kind,
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Updated event {Kind} with {Updated}", Name, blockHeight, kind,
                                     eventUpdated);
 
                                 await InfusionEventMethods.InsertAsync(databaseContext, infusionEventData.TokenID.ToString(),
@@ -411,7 +415,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             {
                                 var tokenEventData = evnt.GetContent<TokenEventData>();
 
-                                Log.Verbose("[{Name}] Block #{BlockHeight} getting TokenEventData for {Kind}, Chain {Chain}", Name,
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting TokenEventData for {Kind}, Chain {Chain}", Name,
                                     blockHeight, kind, tokenEventData.ChainName);
 
                                 bool fungible;
@@ -434,7 +438,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 {
                                     var ntfStartTime = DateTime.Now;
                                     Log.Debug(
-                                        "[{Name}] Block #{BlockHeight} New event on {TimestampUnixSeconds}: kind: {Kind} symbol: {Symbol} value: {Value} address: {AddressString} contract: {Contract}",
+                                        "[{Name}][Blocks] Block #{BlockHeight} New event on {TimestampUnixSeconds}: kind: {Kind} symbol: {Symbol} value: {Value} address: {AddressString} contract: {Contract}",
                                         Name, blockHeight, UnixSeconds.Log(timestampUnixSeconds), kind, tokenEventData.Symbol,
                                         tokenEventData.Value, addressString, contract);
 
@@ -445,7 +449,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
                                             tokenValue, null, contractEntry);
                                         Log.Verbose(
-                                            "[{Name}] Block #{BlockHeight} using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
+                                            "[{Name}][Blocks] Block #{BlockHeight} using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
                                             Name, blockHeight, nft.ID, nft.TOKEN_ID, newNftCreated);
                                         if ( newNftCreated ) nftsInThisBlock.Add(tokenValue, nft);
                                     }
@@ -457,7 +461,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         nft.MINT_DATE_UNIX_SECONDS = timestampUnixSeconds;
 
                                     var nftUpdateTime = DateTime.Now - ntfStartTime;
-                                    Log.Verbose("[{Name}] Block #{BlockHeight} NTF processed in {Time} sec",
+                                    Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} NTF processed in {Time} sec",
                                         Name, blockHeight, Math.Round(nftUpdateTime.TotalSeconds, 3));
                                 }
 
@@ -465,7 +469,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenValue, chainEntry, eventKindEntry, contractEntry);
 
-                                Log.Verbose("[{Name}] Block #{BlockHeight} Updated event {Kind} with {Updated}", Name, blockHeight, kind,
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Updated event {Kind} with {Updated}", Name, blockHeight, kind,
                                     eventUpdated);
 
                                 //update ntf related things if it is not null
@@ -482,7 +486,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             case EventKind.OrderCancelled or EventKind.OrderClosed or EventKind.OrderCreated
                                 or EventKind.OrderFilled or EventKind.OrderBid:
                             {
-                                Log.Verbose("[{Name}] Block #{BlockHeight} getting MarketEventData for {Kind}", Name, blockHeight, kind);
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting MarketEventData for {Kind}", Name, blockHeight, kind);
 
                                 var marketEventData = evnt.GetContent<MarketEventData>();
 
@@ -497,7 +501,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
 
                                 Log.Debug(
-                                    "[{Name}] Block #{BlockHeight} New event on {TimestampUnixSeconds}: kind: {Kind} baseSymbol: {BaseSymbol} quoteSymbol: {QuoteSymbol} price: {Price} endPrice: {EndPrice} id: {ID} address: {AddressString} contract: {Contract} type: {Type}",
+                                    "[{Name}][Blocks] Block #{BlockHeight} New event on {TimestampUnixSeconds}: kind: {Kind} baseSymbol: {BaseSymbol} quoteSymbol: {QuoteSymbol} price: {Price} endPrice: {EndPrice} id: {ID} address: {AddressString} contract: {Contract} type: {Type}",
                                     Name, blockHeight, UnixSeconds.Log(timestampUnixSeconds), kind, marketEventData.BaseSymbol,
                                     marketEventData.QuoteSymbol, marketEventData.Price, marketEventData.EndPrice,
                                     marketEventData.ID, addressString, contract, marketEventData.Type);
@@ -523,7 +527,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
                                             tokenId, null, contractEntry);
                                         Log.Verbose(
-                                            "[{Name}] Block #{BlockHeight} using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
+                                            "[{Name}][Blocks] Block #{BlockHeight} using NFT with internal Id {Id}, Token {Token}, newNFT {New}",
                                             Name, blockHeight, nft.ID, nft.TOKEN_ID, newNftCreated);
                                         if ( newNftCreated ) nftsInThisBlock.Add(tokenId, nft);
                                     }
@@ -533,7 +537,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
                                             timestampUnixSeconds, addressEntry, false);
                                     var nftUpdateTime = DateTime.Now - ntfStartTime;
-                                    Log.Verbose("[{Name}] Block #{BlockHeight} NTF processed in {Time} sec",
+                                    Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} NTF processed in {Time} sec",
                                         Name, blockHeight, Math.Round(nftUpdateTime.TotalSeconds, 3));
                                 }
 
@@ -541,7 +545,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenId, chainEntry, eventKindEntry, contractEntry);
 
-                                Log.Verbose("[{Name}] Block #{BlockHeight} Updated event {Kind} with {Updated}", Name, blockHeight, kind,
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Updated event {Kind} with {Updated}", Name, blockHeight, kind,
                                     eventUpdated);
 
                                 await MarketEventMethods.InsertAsync(databaseContext, marketEventData.Type.ToString(),
@@ -558,7 +562,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             {
                                 var stringData = evnt.GetContent<string>();
 
-                                Log.Verbose("[{Name}] Block #{BlockHeight} getting string for {Kind}, string {String}", Name, blockHeight, kind,
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting string for {Kind}, string {String}", Name, blockHeight, kind,
                                     stringData);
 
                                 //databaseEvent we need it here, so check it
@@ -573,7 +577,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             timestampUnixSeconds);
                                         if ( !_methodQueue.Contains(queueTuple) )
                                         {
-                                            Log.Verbose("[{Name}] Block #{BlockHeight} got {Kind} adding Contract {Contract} to Queue",
+                                            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} got {Kind} adding Contract {Contract} to Queue",
                                                 Name, blockHeight, kind, stringData);
                                             _methodQueue.Enqueue(queueTuple);
                                         }
@@ -585,7 +589,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         var token = await TokenMethods.GetAsync(databaseContext, chainEntry, stringData);
                                         if ( token != null )
                                         {
-                                            Log.Verbose("[{Name}] Block #{BlockHeight} Linking Event to Token {Token}", Name,
+                                            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Linking Event to Token {Token}", Name,
                                                 blockHeight, token.SYMBOL);
                                             token.CreateEvent = eventEntry;
                                         }
@@ -597,7 +601,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         var platform = PlatformMethods.Get(databaseContext, stringData);
                                         if ( platform != null )
                                         {
-                                            Log.Verbose("[{Name}] Block #{BlockHeight} Linking Event to Platform {Platform}", Name,
+                                            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Linking Event to Platform {Platform}", Name,
                                                 blockHeight, platform.NAME);
                                             platform.CreateEvent = eventEntry;
                                         }
@@ -613,7 +617,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         //we do it like this, to be sure it is only set here
                                         contractItem.CreateEvent = eventEntry;
 
-                                        Log.Verbose("[{Name}] Block #{BlockHeight} Linked Event to Contract {Contract}", Name,
+                                        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Linked Event to Contract {Contract}", Name,
                                             blockHeight, contractItem.NAME);
 
                                         break;
@@ -623,7 +627,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         var organization = OrganizationMethods.Get(databaseContext, stringData);
                                         if ( organization != null )
                                         {
-                                            Log.Verbose("[{Name}] Block #{BlockHeight} Linking Event to Organization {Organization}",
+                                            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Linking Event to Organization {Organization}",
                                                 Name, blockHeight, organization.NAME);
                                             organization.CreateEvent = eventEntry;
                                         }
@@ -647,7 +651,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var saleKind = saleEventData.kind.ToString(); //handle sale kinds 
 
                                 Log.Verbose(
-                                    "[{Name}] Block #{BlockHeight} getting SaleEventData for {Kind}, hash {Hash}, saleKind {SaleKind}",
+                                    "[{Name}][Blocks] Block #{BlockHeight} getting SaleEventData for {Kind}, hash {Hash}, saleKind {SaleKind}",
                                     Name, blockHeight, kind, hash, saleKind);
 
                                 //databaseEvent we need it here, so check it
@@ -667,7 +671,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var chain = transactionSettleEventData.Chain;
 
                                 Log.Verbose(
-                                    "[{Name}] Block #{BlockHeight} getting TransactionSettleEventData for {Kind}, hash {Hash}, platform {Platform}, chain {Chain}",
+                                    "[{Name}][Blocks] Block #{BlockHeight} getting TransactionSettleEventData for {Kind}, hash {Hash}, platform {Platform}, chain {Chain}",
                                     Name, blockHeight, kind, hash, platform, chain);
 
                                 //databaseEvent we need it here, so check it
@@ -682,7 +686,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var address = evnt.GetContent<Address>().ToString();
                                 AddAddress(ref addressesToUpdate, address);
 
-                                Log.Verbose("[{Name}] Block #{BlockHeight} getting Address for {Kind}, Address {Address}", Name,
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting Address for {Kind}, Address {Address}", Name,
                                     blockHeight, kind, address);
 
                                 //databaseEvent we need it here, so check it
@@ -694,7 +698,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             //TODO
                             case EventKind.ValidatorSwitch:
                             {
-                                Log.Verbose("[{Name}] Block #{BlockHeight} getting nothing for {Kind}", Name, blockHeight, kind);
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting nothing for {Kind}", Name, blockHeight, kind);
 
                                 break;
                             }
@@ -706,7 +710,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var value = chainValueEventData.Value.ToString();
 
                                 Log.Verbose(
-                                    "[{Name}] Block #{BlockHeight} getting ChainValueEventData for {Kind}, Name {ValueEventName}, Value {Value}",
+                                    "[{Name}][Blocks] Block #{BlockHeight} getting ChainValueEventData for {Kind}, Name {ValueEventName}, Value {Value}",
                                     Name, blockHeight, kind, valueEventName, value);
 
                                 //databaseEvent we need it here, so check it
@@ -726,7 +730,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var amount = gasEventData.amount.ToString();
 
                                 Log.Verbose(
-                                    "[{Name}] Block #{BlockHeight} getting GasEventData for {Kind}, Address {Address}, price {Price}, amount {Amount}",
+                                    "[{Name}][Blocks] Block #{BlockHeight} getting GasEventData for {Kind}, Address {Address}, price {Price}, amount {Amount}",
                                     Name, blockHeight, kind, address, price, amount);
 
                                 //databaseEvent we need it here, so check it
@@ -740,7 +744,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             {
                                 var hash = evnt.GetContent<Hash>().ToString();
 
-                                Log.Verbose("[{Name}] Block #{BlockHeight} getting Hash for {Kind}, Hash {Hash}", Name, blockHeight, kind, hash);
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting Hash for {Kind}, Hash {Hash}", Name, blockHeight, kind, hash);
 
                                 //databaseEvent we need it here, so check it
                                 if ( eventEntry != null )
@@ -757,7 +761,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 AddAddress(ref addressesToUpdate, memberAddress);
 
                                 Log.Verbose(
-                                    "[{Name}] Block #{BlockHeight} getting OrganizationEventData for {Kind}, Organization {Organization}, MemberAddress {Address}",
+                                    "[{Name}][Blocks] Block #{BlockHeight} getting OrganizationEventData for {Kind}, Organization {Organization}, MemberAddress {Address}",
                                     Name, blockHeight, kind, organization, memberAddress);
 
                                 //databaseEvent we need it here, so check it
@@ -770,42 +774,42 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             //TODO
                             case EventKind.LeaderboardCreate or EventKind.Custom:
                             {
-                                Log.Verbose("[{Name}] Block #{BlockHeight} Currently not processing EventKind {Kind} in Block #{Block}",
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Currently not processing EventKind {Kind} in Block #{Block}",
                                     Name, blockHeight, kind, blockHeight);
                                 break;
                             }
                             default:
-                                Log.Warning("[{Name}] Block #{BlockHeight} Currently not processing EventKind {Kind} in Block #{Block}",
+                                Log.Warning("[{Name}][Blocks] Block #{BlockHeight} Currently not processing EventKind {Kind} in Block #{Block}",
                                     Name, blockHeight, kind, blockHeight);
                                 break;
                         }
 
                         transactionEnd = DateTime.Now - transactionStart;
-                        Log.Verbose("[{Name}] Block #{BlockHeight} Processed Event {Kind} Index {Index} in {Time} sec", Name, blockHeight, kind,
+                        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Processed Event {Kind} Index {Index} in {Time} sec", Name, blockHeight, kind,
                             eventIndex + 1, Math.Round(transactionEnd.TotalSeconds, 3));
                     }
                     catch ( Exception e )
                     {
-                        Log.Error(e, "[{Name}] Block #{BlockHeight} {UnixSeconds} event processing", Name, blockHeight,
+                        Log.Error(e, "[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} event processing", Name, blockHeight,
                             UnixSeconds.Log(timestampUnixSeconds));
 
                         try
                         {
-                            Log.Information("[{Name}] eventNode on exception: {@EventNode}", Name, eventNode);
+                            Log.Information("[{Name}][Blocks] eventNode on exception: {@EventNode}", Name, eventNode);
                         }
                         catch ( Exception e2 )
                         {
-                            Log.Information("[{Name}] Cannot print eventNode: {Exception}", Name, e2.Message);
+                            Log.Information("[{Name}][Blocks] Cannot print eventNode: {Exception}", Name, e2.Message);
                         }
 
                         try
                         {
-                            Log.Information("[{Name}] eventNode data on exception: {Exception}", Name,
+                            Log.Information("[{Name}][Blocks] eventNode data on exception: {Exception}", Name,
                                 eventNode.GetProperty("data").GetString().Decode());
                         }
                         catch ( Exception e2 )
                         {
-                            Log.Information("[{Name}] Cannot print eventNode data: {Exception}", Name,
+                            Log.Information("[{Name}][Blocks] Cannot print eventNode data: {Exception}", Name,
                                 e2.Message);
                         }
                     }
@@ -821,7 +825,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
         }
 
-        Log.Verbose("[{Name}] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, blockHeight,
+        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, blockHeight,
             addressesToUpdate.Count);
 
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, blockHeight, false);
@@ -829,14 +833,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         transactionStart = DateTime.Now;
         await databaseContext.SaveChangesAsync();
         transactionEnd = DateTime.Now - transactionStart;
-        Log.Verbose("[{Name}] Block #{BlockHeight} Commit took {Time} sec, after Process of Block {Height}", Name,
+        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Commit took {Time} sec, after Process of Block {Height}", Name,
             blockHeight, Math.Round(transactionEnd.TotalSeconds, 3), blockHeight);
 
         var processingTime = DateTime.Now - startTime;
         if ( processingTime.TotalSeconds > 1 ) // Log only if processing of the block took > 1 second
         {
             Log.Information(
-                "[{Name}] Block #{BlockHeight} processed in {ProcessingTime} sec, {EventsAddedCount} events, {NftsInThisBlock} NFTs",
+                "[{Name}][Blocks] Block #{BlockHeight} processed in {ProcessingTime} sec, {EventsAddedCount} events, {NftsInThisBlock} NFTs",
                 Name, blockHeight, Math.Round(processingTime.TotalSeconds, 3),
                 eventsAddedCount, nftsInThisBlock.Count);
         }
