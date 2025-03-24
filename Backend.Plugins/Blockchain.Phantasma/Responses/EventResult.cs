@@ -109,6 +109,11 @@ public class EventResult
         }
     }
 
+    public T GetParsedData<T>()
+    {
+        return (T)DataParsed;
+    }
+
     public List<string> GetContracts()
     {
         List<string> result = [Contract];
