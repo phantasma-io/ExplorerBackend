@@ -50,7 +50,7 @@ public static class EventMethods
         int index,
         Chain chain,
         Transaction transaction,
-        Contract contract,
+        int contractId,
         EventKind eventKind,
         Address address)
     {
@@ -64,7 +64,7 @@ public static class EventMethods
             INDEX = index,
             Chain = chain,
             Transaction = transaction,
-            Contract = contract,
+            ContractId = contractId,
             EventKind = eventKind,
             Address = address
         };
@@ -80,14 +80,14 @@ public static class EventMethods
 
 
     public static async Task<bool> UpdateValuesAsync(MainDbContext databaseContext, Event eventItem, Nft nft,
-        string tokenId, Chain chain, EventKind eventKind, Contract contract)
+        string tokenId, Chain chain, EventKind eventKind, int contractId)
     {
         var eventUpdated = false;
 
         if ( eventItem == null ) return eventUpdated;
 
         eventItem.Chain = chain;
-        eventItem.Contract = contract;
+        eventItem.ContractId = contractId;
         eventItem.EventKind = eventKind;
         eventItem.TOKEN_ID = tokenId;
         eventItem.Nft = nft;

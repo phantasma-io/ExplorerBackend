@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Numerics;
+
 namespace Backend.Blockchain.Responses;
 
 public class BlockResult
@@ -15,4 +18,13 @@ public class BlockResult
     public string reward { get; set; }
     public EventResult[] events { get; set; }
     public OracleResult[] oracles { get; set; }
+
+    public void ParseData()
+    {
+        txs.ParseData(new BigInteger(height));
+    }
+    public List<string> GetContracts()
+    {
+        return txs.GetContracts();
+    }
 }
