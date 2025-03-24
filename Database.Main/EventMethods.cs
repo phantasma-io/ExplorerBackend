@@ -51,7 +51,7 @@ public static class EventMethods
         Chain chain,
         Transaction transaction,
         int contractId,
-        EventKind eventKind,
+        int eventKindId,
         Address address)
     {
         newEventCreated = false;
@@ -65,7 +65,7 @@ public static class EventMethods
             Chain = chain,
             Transaction = transaction,
             ContractId = contractId,
-            EventKind = eventKind,
+            EventKindId = eventKindId,
             Address = address
         };
 
@@ -80,7 +80,7 @@ public static class EventMethods
 
 
     public static async Task<bool> UpdateValuesAsync(MainDbContext databaseContext, Event eventItem, Nft nft,
-        string tokenId, Chain chain, EventKind eventKind, int contractId)
+        string tokenId, Chain chain, Phantasma.Core.Domain.Events.Structs.EventKind eventKind, int eventKindId, int contractId)
     {
         var eventUpdated = false;
 
@@ -88,14 +88,14 @@ public static class EventMethods
 
         eventItem.Chain = chain;
         eventItem.ContractId = contractId;
-        eventItem.EventKind = eventKind;
+        eventItem.EventKindId = eventKindId;
         eventItem.TOKEN_ID = tokenId;
         eventItem.Nft = nft;
 
         eventUpdated = true;
 
-        var burnEvent = await EventKindMethods.GetByNameAsync(databaseContext, chain, "TokenBurn");
-        if ( burnEvent == null || eventKind != burnEvent || nft == null ) return eventUpdated;
+        if ( eventKind != Phantasma.Core.Domain.Events.Structs.EventKind.TokenBurn || nft == null )
+            return eventUpdated;
 
         //TODO check if always needed
         // For burns we must release all infused nfts.

@@ -260,7 +260,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var kindSerialized = eventNode.Kind;
                         var kind = Enum.Parse<EventKind>(kindSerialized);
 
-                        var eventKindEntry = await EventKindMethods.UpsertAsync(databaseContext, chainEntry, kind.ToString());
+                        var eventKindId = _eventKinds.GetId(chainId, kind);
 
                         var contract = eventNode.Contract;
                         var addressString = eventNode.Address;
@@ -273,7 +273,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         var eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
                             block.timestamp, eventIndex + 1, chainEntry, transaction, contractId,
-                            eventKindEntry, addressEntry);
+                            eventKindId, addressEntry);
 
                         if ( eventAdded ) eventsAddedCount++;
 
@@ -315,7 +315,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 //parse also a new contract, just in case
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
-                                    eventEntry, nft, tokenId, chainEntry, eventKindEntry, contracts.GetId(chainId, infusionEventData.BaseSymbol));
+                                    eventEntry, nft, tokenId, chainEntry, kind, eventKindId, contracts.GetId(chainId, infusionEventData.BaseSymbol));
 
                                 await InfusionEventMethods.InsertAsync(databaseContext, infusionEventData.TokenID.ToString(),
                                     infusionEventData.BaseSymbol, infusionEventData.InfusedSymbol,
@@ -362,7 +362,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 //parse also a new contract, just in case
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
-                                    eventEntry, nft, tokenValue, chainEntry, eventKindEntry, contracts.GetId(chainId, tokenEventData.Symbol));
+                                    eventEntry, nft, tokenValue, chainEntry, kind, eventKindId, contracts.GetId(chainId, tokenEventData.Symbol));
 
                                 //update ntf related things if it is not null
                                 if ( nft != null )
@@ -418,7 +418,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 //parse also a new contract, just in case
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
-                                    eventEntry, nft, tokenId, chainEntry, eventKindEntry, contracts.GetId(chainId, marketEventData.BaseSymbol));
+                                    eventEntry, nft, tokenId, chainEntry, kind, eventKindId, contracts.GetId(chainId, marketEventData.BaseSymbol));
 
                                 await MarketEventMethods.InsertAsync(databaseContext, marketEventData.Type.ToString(),
                                     marketEventData.BaseSymbol, marketEventData.QuoteSymbol,
