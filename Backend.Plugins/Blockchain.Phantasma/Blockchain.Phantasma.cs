@@ -134,7 +134,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     height = GetCurrentBlockHeight(chain.NAME);
                     Log.Information("[Blocks] Chain height: {Height}", height);
 
-                    FetchBlocksRange(chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height).Wait();
+                    if(chain.CURRENT_HEIGHT != null && BigInteger.Parse(chain.CURRENT_HEIGHT) > height)
+                    {
+                        Log.Warning("[Blocks] RPC is out of sync, RPC: {Height}, explorer: {explorerHeight}", height, chain.CURRENT_HEIGHT);
+                    }
+                    else
+                    {
+                        FetchBlocksRange(chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height).Wait();
+                    }
 
                     Thread.Sleep(Settings.Default.BlocksProcessingInterval *
                                  1000); // We sync blocks every BlocksProcessingInterval seconds
