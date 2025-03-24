@@ -12,7 +12,7 @@ public static class EventKindMethods
     {
         foreach (var kind in Enum.GetValues<Phantasma.Core.Domain.Events.Structs.EventKind>())
         {
-            if (!dbContext.EventKinds.Any(e => e.NAME == kind.ToString()))
+            if (!dbContext.EventKinds.Any(e => e.Chain.ID == chain.ID && e.NAME == kind.ToString()))
             {
                 dbContext.EventKinds.Add(new EventKind {Chain = chain, NAME = kind.ToString()});
             }
