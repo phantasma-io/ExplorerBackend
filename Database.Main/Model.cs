@@ -169,6 +169,9 @@ public class MainDbContext : DbContext
 
         // Indexes
 
+        modelBuilder.Entity<Contract>()
+            .HasIndex(x => new {x.ChainId, x.HASH})
+            .IsUnique();
 
         //////////////////////
         // Block
