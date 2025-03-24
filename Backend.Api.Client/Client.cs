@@ -153,6 +153,10 @@ public static class Client
         return default;
     }
 
+    private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions
+    {
+        PropertyNameCaseInsensitive = true
+    };
     private static int _maxAttempts = 5;
     public static async Task<(T, int)> ApiRequestAsync<T>(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
     {
@@ -204,7 +208,7 @@ public static class Client
                 if (string.IsNullOrEmpty(stringResponse))
                     return default;
 
-                return (JsonSerializer.Deserialize<T>(stringResponse), stringResponse.Length);
+                return (JsonSerializer.Deserialize<T>(stringResponse, jsonSerializerOptions), stringResponse.Length);
             }
             catch (Exception e)
             {
