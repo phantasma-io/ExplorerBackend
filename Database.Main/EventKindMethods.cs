@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace Database.Main;
 
@@ -22,11 +23,22 @@ public static class EventKindMethods
     public readonly record struct ChainEventKindKey(int ChainId, Phantasma.Core.Domain.Events.Structs.EventKind Kind);
     public static async Task<Dictionary<ChainEventKindKey, int>> GetAllAsync(MainDbContext dbContext)
     {
-        return await dbContext.EventKinds
-            .ToDictionaryAsync(
-                e => new ChainEventKindKey(e.ChainId, Enum.Parse<Phantasma.Core.Domain.Events.Structs.EventKind>(e.NAME)),
-                e => e.ID
-            );
+        var result = new Dictionary<ChainEventKindKey, int>();
+
+        var items = await dbContext.EventKinds.ToListAsync();
+
+        foreach (var e in items)
+        {
+            var key = new ChainEventKindKey(e.ChainId, Enum.Parse<Phantasma.Core.Domain.Events.Structs.EventKind>(e.NAME));
+            Log.Information("Loading EventKind {chain}/{name}", key.ChainId, key.Kind.ToString());
+
+            if (!result.ContainsKey(key))
+            {
+                result[key] = e.ID;
+            }
+        }
+
+        return result;
     }
 }
 
