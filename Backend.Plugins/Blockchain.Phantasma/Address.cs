@@ -58,7 +58,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     if ( address == null ) continue;
 
                     var name = account.GetProperty("name").GetString();
-                    if ( name == "anonymous" )
+                    if ( name.ToLowerInvariant() == "anonymous" )
                     {
                         name = null;
                     }
