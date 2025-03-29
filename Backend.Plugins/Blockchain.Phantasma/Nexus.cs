@@ -235,9 +235,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
 
         var updateTime = DateTime.Now - startTime;
-        Log.Information(
-            "[{Name}] Token update took {UpdateTime} sec, {UpdatedTokensCount} tokens updated, {PlatformsUpdated} platforms updated, {OrganizationUpdated} Organizations updated",
-            Name, Math.Round(updateTime.TotalSeconds, 3), updatedTokensCount, updatedPlatformsCount,
-            updatedOrganizationsCount);
+
+        if(updateTime.TotalSeconds > 1 || updatedTokensCount + updatedPlatformsCount + updatedOrganizationsCount > 0)
+        {
+            Log.Information(
+                "[{Name}] Token update took {UpdateTime} sec, {UpdatedTokensCount} tokens updated, {PlatformsUpdated} platforms updated, {OrganizationUpdated} Organizations updated",
+                Name, Math.Round(updateTime.TotalSeconds, 3), updatedTokensCount, updatedPlatformsCount,
+                updatedOrganizationsCount);
+        }
     }
 }

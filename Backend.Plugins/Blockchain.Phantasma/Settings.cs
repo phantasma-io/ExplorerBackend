@@ -30,6 +30,7 @@ internal class Settings
         TokensProcessingInterval = section.GetValue<int>("tokensProcessingInterval");
         BlocksProcessingInterval = section.GetValue<int>("blocksProcessingInterval");
         EventsProcessingInterval = section.GetValue<int>("eventsProcessingInterval");
+        RomRamProcessingEnabled = section.GetValue<bool>("romRamProcessingEnabled");
         RomRamProcessingInterval = section.GetValue<int>("romRamProcessingInterval");
         SeriesProcessingInterval = section.GetValue<int>("seriesProcessingInterval");
         InfusionsProcessingInterval = section.GetValue<int>("infusionsProcessingInterval");
@@ -52,6 +53,7 @@ internal class Settings
     public int TokensProcessingInterval { get; }
     public int BlocksProcessingInterval { get; }
     public int EventsProcessingInterval { get; }
+    public bool RomRamProcessingEnabled { get; }
     public int RomRamProcessingInterval { get; }
     public int SeriesProcessingInterval { get; }
     public int InfusionsProcessingInterval { get; }

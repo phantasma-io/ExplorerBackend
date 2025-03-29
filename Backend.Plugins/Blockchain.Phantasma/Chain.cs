@@ -3,11 +3,9 @@ using System.Linq;
 using System.Text.Json;
 using Backend.Api;
 using Backend.PluginEngine;
-using Database.ApiCache;
 using Database.Main;
 using Serilog;
 using ChainMethods = Database.Main.ChainMethods;
-using ContractMethods = Database.ApiCache.ContractMethods;
 
 namespace Backend.Blockchain;
 
@@ -18,7 +16,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var startTime = DateTime.Now;
 
         using MainDbContext databaseContext = new();
-        using ApiCacheDbContext apiCacheDbContext = new();
 
         var updatedChainsCount = 0;
 
@@ -40,8 +37,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 var chain = ChainMethods.Upsert(databaseContext, chainName);
 
-                var apiChain = Database.ApiCache.ChainMethods.Upsert(apiCacheDbContext, chainName);
-
                 Log.Verbose("[{Name}] chain {ChainName} with Database Id {Id} processed, go on with Contracts",
                     Name, chainName, chain.ID);
 
@@ -53,7 +48,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         new Tuple<string, string>(contract.ToString(), contract.ToString())).ToList();
                     var hashList = contractList.Select(tuple => tuple.Item1).ToList();
 
-                    ContractMethods.InsertIfNotExists(apiCacheDbContext, hashList, apiChain);
                     Database.Main.ContractMethods.InsertIfNotExistList(databaseContext, contractList, chain, null);
 
                     var transactionEnd = DateTime.Now - transactionStart;
@@ -67,7 +61,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         if ( updatedChainsCount > 0 )
         {
-            apiCacheDbContext.SaveChanges();
             databaseContext.SaveChanges();
         }
 

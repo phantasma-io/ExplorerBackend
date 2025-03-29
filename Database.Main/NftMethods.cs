@@ -33,12 +33,12 @@ public static class NftMethods
 
 
     public static async Task<(Nft, bool)> UpsertAsync(MainDbContext databaseContext, Chain chain, string tokenId,
-        string tokenUri, Contract contract)
+        string tokenUri, int contractId)
     {
         var entry = await databaseContext.Nfts.FirstOrDefaultAsync(x =>
-            x.Chain == chain && x.Contract == contract && x.TOKEN_ID == tokenId) ?? DbHelper
+            x.Chain == chain && x.ContractId == contractId && x.TOKEN_ID == tokenId) ?? DbHelper
             .GetTracked<Nft>(databaseContext).FirstOrDefault(x =>
-                x.Chain == chain && x.Contract == contract && x.TOKEN_ID == tokenId);
+                x.Chain == chain && x.ContractId == contractId && x.TOKEN_ID == tokenId);
 
         if ( entry != null )
         {
@@ -51,7 +51,7 @@ public static class NftMethods
             Chain = chain,
             TOKEN_ID = tokenId,
             TOKEN_URI = tokenUri,
-            Contract = contract,
+            ContractId = contractId,
             DM_UNIX_SECONDS = UnixSeconds.Now()
         };
 

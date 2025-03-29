@@ -5,7 +5,7 @@
     "startDelay": 30,
     "folder": "img",
     "fileEnding": "png",
-    "hostName": "https://api.phantasma.io:8001/",
+    "hostName": "https://api.phantasma.info:8001/",
     "defaultImage": "default"
   }
 }

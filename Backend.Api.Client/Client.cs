@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -152,56 +153,62 @@ public static class Client
         return default;
     }
 
-    public static async Task<(JsonDocument, string)> ApiRequestAsync(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
+    private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions
+    {
+        PropertyNameCaseInsensitive = true
+    };
+    private static int _maxAttempts = 5;
+    public static async Task<(T, int)> ApiRequestAsync<T>(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
     {
         Log.Debug("[API request]: url: " + url);
 
-        const int max = 5;
-        for (var i = 1; i <= max; i++)
+        using var httpClient = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan
+        };
+
+        for (var i = 1; i <= _maxAttempts; i++)
         {
             try
             {
                 string stringResponse;
-                using (var httpClient = new HttpClient())
+
+                using var cts = new CancellationTokenSource();
+                cts.CancelAfter(TimeSpan.FromSeconds(timeoutInSeconds > 0 ? timeoutInSeconds : 100));
+
+                DateTime startTime = DateTime.Now;
+                switch (requestType)
                 {
-                    httpClient.Timeout = Timeout.InfiniteTimeSpan;
-                    using var cts = new CancellationTokenSource();
-                    cts.CancelAfter(TimeSpan.FromSeconds(timeoutInSeconds > 0 ? timeoutInSeconds : 100));
-
-                    DateTime startTime = DateTime.Now;
-                    switch (requestType)
-                    {
-                        case RequestType.Get:
-                            httpClient.DefaultRequestHeaders.Add("User-Agent", "Other");
-                            var response = await httpClient.GetAsync(url, cts.Token);
-                            Log.Debug($"[API request]: header code: {response.StatusCode}");
-                            using (var content = response.Content)
-                            {
-                                stringResponse = await content.ReadAsStringAsync(cts.Token);
-                                Log.Debug($"[API request]: response: {stringResponse}");
-                            }
+                    case RequestType.Get:
+                        httpClient.DefaultRequestHeaders.Add("User-Agent", "Other");
+                        var response = await httpClient.GetAsync(url, cts.Token);
+                        Log.Debug($"[API request]: header code: {response.StatusCode}");
+                        using (var content = response.Content)
+                        {
+                            stringResponse = await content.ReadAsStringAsync(cts.Token);
+                            Log.Debug($"[API request]: response: {stringResponse}");
+                        }
+                        break;
+                    case RequestType.Post:
+                        {
+                            if(string.IsNullOrEmpty(postString)) throw new Exception("Empty POST body");
+                            var content = new StringContent(postString, Encoding.UTF8, "application/json");
+                            var responsePost = await httpClient.PostAsync(url, content, cts.Token);
+                            var responseContent = responsePost.Content;
+                            stringResponse = await responseContent.ReadAsStringAsync(cts.Token);
                             break;
-                        case RequestType.Post:
-                            {
-                                if(string.IsNullOrEmpty(postString)) throw new Exception("Empty POST body");
-                                var content = new StringContent(postString, Encoding.UTF8, "application/json");
-                                var responsePost = await httpClient.PostAsync(url, content, cts.Token);
-                                var responseContent = responsePost.Content;
-                                stringResponse = await responseContent.ReadAsStringAsync(cts.Token);
-                                break;
-                            }
-                        default:
-                            throw new Exception("Unknown RequestType");
-                    }
-                    var responseTime = DateTime.Now - startTime;
-
-                    Log.Debug($"API response\nurl: {url}\nResponse time: {Math.Round(responseTime.TotalSeconds, 3)} sec.{(string.IsNullOrEmpty(stringResponse) ? " Empty response" : "")}");
+                        }
+                    default:
+                        throw new Exception("Unknown RequestType");
                 }
+                var responseTime = DateTime.Now - startTime;
+
+                Log.Debug($"API response\nurl: {url}\nResponse time: {Math.Round(responseTime.TotalSeconds, 3)} sec.{(string.IsNullOrEmpty(stringResponse) ? " Empty response" : "")}");
 
                 if (string.IsNullOrEmpty(stringResponse))
-                    return (default, stringResponse);
+                    return default;
 
-                return (JsonDocument.Parse(stringResponse), stringResponse);
+                return (JsonSerializer.Deserialize<T>(stringResponse, jsonSerializerOptions), stringResponse.Length);
             }
             catch (Exception e)
             {
@@ -236,7 +243,7 @@ public static class Client
                     Log.Debug(logMessage);
                 }
 
-                if (i < max)
+                if (i < _maxAttempts)
                 {
                     Thread.Sleep(1000 * i);
                     Log.Debug($"API request for {url}:\nTrying again...");

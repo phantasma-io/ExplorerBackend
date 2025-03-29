@@ -18,6 +18,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
     public override string Name => "Price.CoinGecko";
 
+    private bool _inactiveCoinsWarningPrinted = false;
 
     public void Startup()
     {
@@ -30,7 +31,6 @@ public class CoinGecko : Plugin, IDBAccessPlugin
         }
 
         // Starting thread
-
         Thread mainThread = new(() =>
         {
             Thread.Sleep(Settings.Default.StartDelay * 1000);
@@ -48,10 +48,12 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                         cryptoSymbols = TokenMethods.GetSupportedTokens(databaseContext);
                     }
 
+                    // TODO Move this to db
                     // Set tokens API IDs that are compatible with CoinGecko.
                     // CoinGecko's id for SOUL, for example, is "phantasma".
                     // Also we skip those symbols that are unavailable on CoinGecko.
                     foreach ( var t in cryptoSymbols )
+                    {
                         switch ( t.NativeSymbol.ToUpper() )
                         {
                             case "SOUL":
@@ -88,6 +90,33 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                                 t.ApiSymbol = null;
                                 break;
                         }
+                    }
+
+                    if(!Settings.Default.EnableCoingeckoPaidFeatures)
+                    {
+                        if(!_inactiveCoinsWarningPrinted)
+                        {
+                            var inactiveCryptoSymbols = cryptoSymbols
+                                .Where(x => Settings.Default.InactiveCoins.Contains(x.ApiSymbol))
+                                .Select(x => x.ApiSymbol)
+                                .ToList();
+
+                            if(inactiveCryptoSymbols.Any())
+                            {
+                                Log.Warning("{Name} plugin: These inactive coins will not be updated: {inactiveCoins}", Name, string.Join(",", inactiveCryptoSymbols));
+                            }
+
+                            _inactiveCoinsWarningPrinted = true;
+                        }
+
+                        cryptoSymbols = cryptoSymbols
+                            .Where(x => !Settings.Default.InactiveCoins.Contains(x.ApiSymbol))
+                            .ToList();
+                    }
+
+                    cryptoSymbols = cryptoSymbols
+                        .Where(x => !string.IsNullOrEmpty(x.ApiSymbol))
+                        .ToList();
 
                     // Load prices for a given list of CoinGecko's ids.
                     LoadPrices(cryptoSymbols);
@@ -120,7 +149,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
     protected override void Configure()
     {
-        Settings.Load(GetConfiguration());
+        Settings.Load(GetConfigurationRoot());
     }
 
 
@@ -141,7 +170,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
         var url = "https://api.coingecko.com/api/v3/simple/price?ids=" +
                   string.Join(separator,
-                      cryptoSymbols.Where(x => !string.IsNullOrEmpty(x.ApiSymbol)).Select(x => x.ApiSymbol)
+                      cryptoSymbols.Select(x => x.ApiSymbol)
                           .Distinct()
                           .ToList()) + "&vs_currencies=" + string.Join(separator, fiatSymbols);
 
@@ -205,6 +234,16 @@ public class CoinGecko : Plugin, IDBAccessPlugin
             var lastLoadedDate = databaseContext.TokenDailyPrices.OrderByDescending(x => x.DATE_UNIX_SECONDS)
                 .Select(x => x.DATE_UNIX_SECONDS).FirstOrDefault();
 
+            var oneYearBeforeDate = UnixSeconds.AddDays(UnixSeconds.GetDate(UnixSeconds.Now()), -365);
+            if(lastLoadedDate < oneYearBeforeDate && !Settings.Default.EnableCoingeckoPaidFeatures)
+            {
+                Log.Warning("[{Name}] We had to skip dates from {from} to {to}",
+                    Name,
+                    UnixSeconds.ToDateTime(lastLoadedDate).ToString("dd-MM-yyyy"),
+                    UnixSeconds.ToDateTime(oneYearBeforeDate).ToString("dd-MM-yyyy"));
+                lastLoadedDate = oneYearBeforeDate;
+            }
+
             lastLoadedDate = lastLoadedDate == 0
                 ? UnixSeconds.FromDateTime(Settings.Default.StartDate)
                 : databaseContext.TokenDailyPrices.Count(x => x.DATE_UNIX_SECONDS == lastLoadedDate) < cryptoSymbols.Count ? lastLoadedDate : UnixSeconds.AddDays(lastLoadedDate, 1);
@@ -213,8 +252,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
             while ( lastLoadedDate <= UnixSeconds.Now() )
             {
-                foreach ( var cryptoSymbol in cryptoSymbols.Where(
-                             x => !string.IsNullOrEmpty(x.ApiSymbol)) )
+                foreach (var cryptoSymbol in cryptoSymbols)
                 {
                     Log.Verbose("[{Name}] Symbol {Symbol}, Date {Date}", Name, cryptoSymbol.ApiSymbol,
                         lastLoadedDateString);

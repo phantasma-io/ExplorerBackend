@@ -34,78 +34,91 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var split = splitAddresses.ElementAt(i).Select(x => x.ADDRESS).ToList();
             var addressesComaSeparated = string.Join(",", split);
             var url = $"{Settings.Default.GetRest()}/api/v1/getAccounts?accountText={addressesComaSeparated}&extended=false";
-            Log.Information("[{Name}] Address query url: {Url}", Name, url);
-            var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 1000);
 
-            if ( response == null )
+            try
             {
-                Log.Error("[{Name}] Balance sync: null result", Name);
-                if ( updateChunkSize > 1 )
+                var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 1000);
+
+                if ( response == null )
                 {
-                    // Temp solution for situation when batch of addresses crash API
-                    await UpdateAddressesBalancesAsync(databaseContext, chain, split, 1);
+                    Log.Error("[{Name}] Balance sync: null result", Name);
+                    if ( updateChunkSize > 1 )
+                    {
+                        // Temp solution for situation when batch of addresses crash API
+                        await UpdateAddressesBalancesAsync(databaseContext, chain, split, 1);
+                    }
+                    continue;
                 }
-                continue;
+
+                var accounts = response.RootElement.EnumerateArray().ToList();
+                foreach ( var account in accounts )
+                {
+                    var address =
+                        addressesToUpdate.FirstOrDefault(x => x.ADDRESS == account.GetProperty("address").GetString());
+                    if ( address == null ) continue;
+
+                    var name = account.GetProperty("name").GetString();
+                    if ( name.ToLowerInvariant() == "anonymous" )
+                    {
+                        name = null;
+                    }
+                    address.ADDRESS_NAME = name;                    
+                    address.NAME_LAST_UPDATED_UNIX_SECONDS = UnixSeconds.Now();
+
+                    if ( account.TryGetProperty("stakes", out var stakesProperty) )
+                    {
+                        var amount = stakesProperty.GetProperty("amount").GetString();
+                        var unclaimed = stakesProperty.GetProperty("unclaimed").GetString();
+
+                        address.STAKE_TIMESTAMP = stakesProperty.GetProperty("time").GetInt32();
+                        address.STAKED_AMOUNT = Commons.Utils.ToDecimal(amount, soulDecimals);
+                        address.STAKED_AMOUNT_RAW = amount;
+                        address.UNCLAIMED_AMOUNT = Commons.Utils.ToDecimal(unclaimed, kcalDecimals);
+                        address.UNCLAIMED_AMOUNT_RAW = unclaimed;
+                    }
+
+                    if ( account.TryGetProperty("balances", out var balancesProperty) )
+                    {
+                        var balancesList0 = balancesProperty.EnumerateArray();
+
+                        if(balancesList0.Count() > 0)
+                        {
+                            var balancesList = balancesList0.Select(balance =>
+                                    new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
+                                        balance.GetProperty("symbol").GetString(),
+                                        balance.GetProperty("amount").GetString()))
+                                .ToList();
+
+                            await AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
+                        }
+                    }
+
+                    if ( account.TryGetProperty("storage", out var storageProperty) )
+                    {
+                        address.STORAGE_AVAILABLE = storageProperty.GetProperty("available").GetUInt32();
+                        address.STORAGE_USED = storageProperty.GetProperty("used").GetUInt32();
+                        address.AVATAR = storageProperty.GetProperty("avatar").GetString();
+                    }
+
+                    var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
+                        account.GetProperty("validator").GetString());
+                    address.AddressValidatorKind = validatorKind;
+
+                    // TODO some bs to fix later
+                    //just to keep things up2date
+                    address.Organization = null;
+                    //var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
+                    //if ( organization != null ) address.Organization = organization;
+                    //var organizations = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
+                    //if ( organizations.Any() ) address.Organizations = organizations.ToList();
+
+                    processed++;
+                }
             }
-
-            var accounts = response.RootElement.EnumerateArray().ToList();
-            foreach ( var account in accounts )
+            catch
             {
-                var address =
-                    addressesToUpdate.FirstOrDefault(x => x.ADDRESS == account.GetProperty("address").GetString());
-                if ( address == null ) continue;
-
-                var name = account.GetProperty("name").GetString();
-                if ( name == "anonymous" )
-                {
-                    name = null;
-                }
-                address.ADDRESS_NAME = name;                    
-                address.NAME_LAST_UPDATED_UNIX_SECONDS = UnixSeconds.Now();
-
-                if ( account.TryGetProperty("stakes", out var stakesProperty) )
-                {
-                    var amount = stakesProperty.GetProperty("amount").GetString();
-                    var unclaimed = stakesProperty.GetProperty("unclaimed").GetString();
-
-                    address.STAKE_TIMESTAMP = stakesProperty.GetProperty("time").GetInt32();
-                    address.STAKED_AMOUNT = Commons.Utils.ToDecimal(amount, soulDecimals);
-                    address.STAKED_AMOUNT_RAW = amount;
-                    address.UNCLAIMED_AMOUNT = Commons.Utils.ToDecimal(unclaimed, kcalDecimals);
-                    address.UNCLAIMED_AMOUNT_RAW = unclaimed;
-                }
-
-                if ( account.TryGetProperty("balances", out var balancesProperty) )
-                {
-                    var balancesList = balancesProperty.EnumerateArray().Select(balance =>
-                            new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
-                                balance.GetProperty("symbol").GetString(),
-                                balance.GetProperty("amount").GetString()))
-                        .ToList();
-
-                    await AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
-                }
-
-                if ( account.TryGetProperty("storage", out var storageProperty) )
-                {
-                    address.STORAGE_AVAILABLE = storageProperty.GetProperty("available").GetUInt32();
-                    address.STORAGE_USED = storageProperty.GetProperty("used").GetUInt32();
-                    address.AVATAR = storageProperty.GetProperty("avatar").GetString();
-                }
-
-                var validatorKind = AddressValidatorKindMethods.Upsert(databaseContext,
-                    account.GetProperty("validator").GetString());
-                address.AddressValidatorKind = validatorKind;
-
-                // TODO some bs to fix later
-                //just to keep things up2date
-                address.Organization = null;
-                //var organization = OrganizationMethods.Get(databaseContext, address.ADDRESS_NAME);
-                //if ( organization != null ) address.Organization = organization;
-                //var organizations = OrganizationAddressMethods.GetOrganizationsByAddress(databaseContext, address.ADDRESS);
-                //if ( organizations.Any() ) address.Organizations = organizations.ToList();
-
-                processed++;
+                Log.Error("[{Name}] Crashed while querying url: {url}", Name, url);
+                throw;
             }
         }
 

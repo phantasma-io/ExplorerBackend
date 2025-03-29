@@ -5,7 +5,6 @@ using System.Threading;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Blockchain.Img;
-using Castle.Core.Internal;
 using Database.Main;
 using Serilog;
 using static System.IO.Path;
@@ -71,7 +70,12 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
     private void CheckDirectory()
     {
         var directory = Combine(PluginsDirectory, "../..", Settings.Default.Folder);
-        Log.Information("[{Name}] should check directory {Directory}", Name, directory);
+
+        if (!Directory.Exists(directory))
+        {
+            Log.Error("[{Name}] Folder '{Directory}' does not exist", Name, directory);
+            return;
+        }
 
         var directoryInfo = new DirectoryInfo(directory);
         var files = directoryInfo.GetFiles("*." + Settings.Default.FileEnding);
@@ -117,7 +121,10 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
             }
         }
 
-        if ( tokenUrlCount > 0 ) databaseContext.SaveChanges();
-        Log.Information("[{Name}] plugin: {Count} Token for Urls processed", Name, tokenUrlCount);
+        if ( tokenUrlCount > 0 )
+        {
+            databaseContext.SaveChanges();
+            Log.Information("[{Name}] plugin: {Count} Token for Urls processed", Name, tokenUrlCount);
+        }
     }
 }

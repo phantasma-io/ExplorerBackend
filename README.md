@@ -93,7 +93,7 @@ Copy content of ExplorerBackend/Backend.Service.Api/Docker folder into /home/pha
 
 Copy content of ExplorerBackend/Backend.Service.Worker/Docker folder into /home/pha/docker/explorer-backend/worker.
 
-Copy backend's configuration file ExplorerBackend/explorer-backend-config.json to 'api/config' and 'worker/config' folders, ensuring that DatabaseConfiguration->Main and DatabaseConfiguration->ApiCache sections of config contain correct settings, specifically database user name and password.
+Copy backend's configuration file ExplorerBackend/explorer-backend-config.json to 'api/config' and 'worker/config' folders, ensuring that DatabaseConfiguration->Main section of config contains correct settings, specifically database user name and password.
 
 Create link to config for database-migration folder using command:
 ```

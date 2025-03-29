@@ -47,7 +47,7 @@ public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
             Title = "Phansatma Explorer API",
             Version = description.ApiVersion.ToString(),
             Description = "Explorer for Phansatma blockchain",
-            Contact = new OpenApiContact { Name = "Phantasma", Url = new Uri("https://phantasma.io") }
+            Contact = new OpenApiContact { Name = "Phantasma", Url = new Uri("https://phantasma.info") }
         };
 
         if (internalDoc)

@@ -8,7 +8,6 @@ using System.Text.Json;
 using Backend.Api;
 using Backend.Commons;
 using Backend.PluginEngine;
-using Database.ApiCache;
 using Database.Main;
 using Phantasma.Core.Cryptography;
 using Phantasma.Core.Domain.VM;
@@ -17,7 +16,6 @@ using Phantasma.Core.Numerics;
 using Serilog;
 using Address = Phantasma.Core.Cryptography.Structs.Address;
 using Nft = Database.Main.Nft;
-using NftMethods = Database.ApiCache.NftMethods;
 
 namespace Backend.Blockchain;
 
@@ -115,21 +113,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             // if NFT is burned,
             // so that burned NFT has maximum info available.
 
-            JsonDocument responseSaved = null;
             if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
             {
                 var error = errorProperty.GetString();
 
-                using ( ApiCacheDbContext databaseApiCacheContext = new() )
-                {
-                    responseSaved = NftMethods.GetChainApiResponse(databaseApiCacheContext,
-                        chainName, nft.Contract.HASH, nft.TOKEN_ID);
-                }
-
-                if ( responseSaved != null )
-                    // Use saved api response if available
-                    response = responseSaved;
-                else
                 {
                     if ( error.ToLower().Contains("invalid cast: expected") )
                     {
@@ -158,15 +145,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             // Saving getNFT results for future use.
             nft.CHAIN_API_RESPONSE = response;
-
-            if ( responseSaved == null )
-                // We loaded it for the first time, we should save it.
-            {
-                using ApiCacheDbContext dbApiCacheContext = new();
-                NftMethods.SetApiResponses(dbApiCacheContext, chainName,
-                    nft.Contract.HASH, nft.TOKEN_ID, null, nft.CHAIN_API_RESPONSE);
-                dbApiCacheContext.SaveChanges();
-            }
 
             // Reading properties
             List<TokenProperty> properties = new();
@@ -268,9 +246,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
         
         var updateTime = DateTime.Now - startTime;
-        Log.Information(
-            "[{Name}] RAM/ROM update took {UpdateTime} sec, {UpdatedNftCount} NFTs updated",
-            Name, Math.Round(updateTime.TotalSeconds, 3), updatedNftCount);
+        if(updateTime.TotalSeconds > 1 || updatedNftCount > 0)
+        {
+            Log.Information(
+                "[{Name}] RAM/ROM update took {UpdateTime} sec, {UpdatedNftCount} NFTs updated",
+                Name, Math.Round(updateTime.TotalSeconds, 3), updatedNftCount);
+        }
         
         return updatedNftCount;
     }
@@ -335,162 +316,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             //would make json invalid, should be fixed on the node 
             Utils.ReplaceCharacter(ref stringResponse, ref response, @"\u000X", Name);
         }
-    }
-
-
-    private void HandleResponse(JsonDocument response, string stringResponse, string symbol, string nftIDs)
-    {
-        // Following code should be called before leaving
-        // if NFT is burned,
-        // so that burned NFT has maximum info available.
-
-        /*JsonDocument responseSaved = null;
-        if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
-        {
-            var error = errorProperty.GetString();
-
-            using ( ApiCacheDbContext databaseApiCacheContext = new() )
-            {
-                responseSaved = NftMethods.GetChainApiResponse(databaseApiCacheContext,
-                    chainName, nft.Contract.HASH, nft.TOKEN_ID);
-            }
-
-            if ( responseSaved != null )
-                // Use saved api response if available
-                response = responseSaved;
-            else
-            {
-                if ( error.Contains("nft does not exists") ||
-                     ( error.Contains("nft") && error.Contains("does not exist") ) )
-                {
-                    // NFT was burned, marking it.
-                    nft.BURNED = true;
-                    nft.DM_UNIX_SECONDS = UnixSeconds.Now();
-                    Log.Warning("[{Name}] NFT {ID} is apparently burned", Name, nft.TOKEN_ID);
-                }
-                else
-                    Log.Error("[{Name}] Request error: {Error}", Name, error);
-
-            }
-        }
-
-        nft.DM_UNIX_SECONDS = UnixSeconds.Now();
-
-        // Saving getNFT results for future use.
-        nft.CHAIN_API_RESPONSE = response;
-
-        if ( responseSaved == null )
-            // We loaded it for the first time, we should save it.
-        {
-            using ApiCacheDbContext databaseUsersContext = new();
-            NftMethods.SetApiResponses(databaseUsersContext, chainName,
-                nft.Contract.HASH, nft.TOKEN_ID, null, nft.CHAIN_API_RESPONSE, true);
-        }
-
-        // Reading properties
-        List<TokenProperty> properties = new();
-        if ( response.RootElement.TryGetProperty("properties", out var propertiesNode) )
-            foreach ( var entry in propertiesNode.EnumerateArray() )
-            {
-                TokenProperty property = new()
-                {
-                    Key = entry.GetProperty("Key").GetString()
-                };
-                if ( entry.TryGetProperty("Value", out var valueProperty) )
-                    property.Value = valueProperty.GetString();
-
-                properties.Add(property);
-            }
-
-        nft.CreatorAddress = AddressMethods.Upsert(databaseContext, chainId,
-            response.RootElement.GetProperty("creatorAddress").GetString(), false);
-        var series = response.RootElement.GetProperty("series").GetString();
-        // TODO remove later after changing SERIES_ID type to string
-        // Hack for long series numbers (21 or 24 digits) inside GAME NFT descriptions
-        if ( !string.IsNullOrEmpty(series) && series.Length < 21 )
-            nft.Series = SeriesMethods.Upsert(databaseContext, nft.ContractId, series);
-
-        nft.MINT_NUMBER = int.Parse(response.RootElement.GetProperty("mint").GetString());
-        nft.ROM = response.RootElement.GetProperty("rom").GetString();
-        nft.RAM = response.RootElement.GetProperty("ram").GetString();
-
-        // Pasring ROM
-        var romBytes = nft.ROM.Decode();
-        IRom parsedRom = nft.Contract.SYMBOL switch
-        {
-            "CROWN" => new CrownRom(romBytes),
-            "TTRS" => new DummyRom(romBytes),
-            _ => new CustomRom(romBytes)
-        };
-
-        // Putting all fields from ROM to - ? TODO.
-
-        // For cases when NFT was created not from mint event,
-        // try to get date from ROM.
-        if ( nft.MINT_DATE_UNIX_SECONDS == 0 )
-        {
-            var date = parsedRom.GetDate();
-            nft.MINT_DATE_UNIX_SECONDS = date;
-        }
-
-        nft.NAME = GetPropertyValue(properties, "name");
-        nft.DESCRIPTION = GetPropertyValue(properties, "description");
-        nft.IMAGE = GetPropertyValue(properties, "imageURL");
-        nft.INFO_URL = GetPropertyValue(properties, "infoURL");
-
-        // Feeling Series with available information, if needed.
-        if ( nft.Series != null && nft.Series.SERIES_ID != null )
-        {
-            nft.Series.CreatorAddressId = nft.CreatorAddressId;
-            nft.Series.NAME = nft.NAME;
-            nft.Series.DESCRIPTION = nft.DESCRIPTION;
-            nft.Series.IMAGE = nft.IMAGE;
-            nft.Series.ROYALTIES =
-                decimal.TryParse(GetPropertyValue(properties, "royalties"), out var royalties)
-                    ? royalties
-                    : 0;
-
-            nft.Series.TYPE = ( int ) parsedRom.GetNftType();
-
-            nft.Series.ATTR_TYPE_1 = GetPropertyValue(properties, "attrT1");
-            nft.Series.ATTR_VALUE_1 = GetPropertyValue(properties, "attrV1");
-            nft.Series.ATTR_TYPE_2 = GetPropertyValue(properties, "attrT2");
-            nft.Series.ATTR_VALUE_2 = GetPropertyValue(properties, "attrV2");
-            nft.Series.ATTR_TYPE_3 = GetPropertyValue(properties, "attrT3");
-            nft.Series.ATTR_VALUE_3 = GetPropertyValue(properties, "attrV3");
-            nft.Series.HAS_LOCKED = parsedRom.GetHasLocked();
-
-            nft.Series.DM_UNIX_SECONDS = UnixSeconds.Now();
-        }
-
-        updatedNftCount++;
-
-        if ( updatedNftCount == MaxRomRamUpdatesForOneSession ) break;
-        
-
-        try
-        {
-            if ( updatedNftCount > 0 ) databaseContext.SaveChanges();
-        }
-        catch ( Exception ex )
-        {
-            if ( ex.Message.Contains(
-                    "Database operation expected to affect 1 row(s) but actually affected 0 row(s).") )
-            {
-                var attemptTime = DateTime.Now - startTime;
-                Log.Warning(
-                    "[{Name}] RAM/ROM update failed because some NFTs were deleted in another thread, attempt took {AttemptTime} sec",
-                    Name, Math.Round(attemptTime.TotalSeconds, 3));
-            }
-            else
-                // Unknown exception, throwing futher.
-                ExceptionDispatchInfo.Capture(ex).Throw();
-        }
-        
-        var updateTime = DateTime.Now - startTime;
-        Log.Information(
-            "[{Name}] RAM/ROM update took {UpdateTime} sec, {UpdatedNftCount} NFTs updated",
-            Name, Math.Round(updateTime.TotalSeconds, 3), updatedNftCount);*/
     }
     
     private void HandleMultipleNFTs(int chainId, string chainName, MainDbContext databaseContext, DateTime startTime, ref int updatedNftCount)

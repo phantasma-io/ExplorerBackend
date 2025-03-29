@@ -2,7 +2,7 @@
 
 OUT_FOLDER=./publish
 OUT_BIN_FOLDER=$OUT_FOLDER/bin
-NET_SUBFOLDER=net8.0
+NET_SUBFOLDER=net9.0
 
 rm -r --force $OUT_FOLDER
 mkdir --parents $OUT_BIN_FOLDER
@@ -10,6 +10,15 @@ mkdir --parents $OUT_BIN_FOLDER
 cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
 cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
 cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
+
+if [ -f "Backend.Service.Worker/bin/$NET_SUBFOLDER/Backend.Service.Worker" ]; then
+    cp -a Backend.Service.Worker/bin/$NET_SUBFOLDER/Backend.Service.Worker $OUT_BIN_FOLDER
+elif [ -f "Backend.Service.Worker/bin/$NET_SUBFOLDER/Backend.Service.Worker.exe" ]; then
+    cp -a Backend.Service.Worker/bin/$NET_SUBFOLDER/Backend.Service.Worker.exe $OUT_BIN_FOLDER
+else
+    echo "No service binary found"
+    exit 1
+fi
 
 cp -a Backend.Service.Worker/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
 cp -a Backend.Service.Worker/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER

@@ -66,8 +66,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
 
         var updateTime = DateTime.Now - startTime;
-        Log.Information(
-            "[{Name}] Infusions update took {UpdateTime} sec, {UpdatedInfusionsCount} infusions updated",
-            Name, Math.Round(updateTime.TotalSeconds, 3), updatedInfusionsCount);
+        if(updateTime.TotalSeconds > 1 || updatedInfusionsCount > 0)
+        {
+            Log.Information(
+                "[{Name}] Infusions update took {UpdateTime} sec, {UpdatedInfusionsCount} infusions updated",
+                Name, Math.Round(updateTime.TotalSeconds, 3), updatedInfusionsCount);
+        }
     }
 }

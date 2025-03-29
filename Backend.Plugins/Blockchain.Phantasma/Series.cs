@@ -24,7 +24,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var seriesList = databaseContext.Serieses.Where(x =>
                 x.Contract.ChainId == chainId && ( x.SeriesMode == null || x.Nfts.Count > x.CURRENT_SUPPLY ) &&
                 x.SERIES_ID != null).ToList();
-            Log.Information("[{Name}] Series that needs to be updated: {Series}", Name, seriesList.Count);
+            Log.Debug("[{Name}] Series that needs to be updated: {Series}", Name, seriesList.Count);
 
             var tokenCache = new Dictionary<string, JsonDocument>();
 
@@ -76,7 +76,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
 
         var updateTime = DateTime.Now - startTime;
-        Log.Information("[{Name}] Series update took {UpdateTime} sec, {UpdatedSeriesCount} series updated", Name,
-            Math.Round(updateTime.TotalSeconds, 3), updatedSeriesCount);
+        if(updateTime.TotalSeconds > 1 || updatedSeriesCount > 0)
+        {
+            Log.Information("[{Name}] Series update took {UpdateTime} sec, {UpdatedSeriesCount} series updated", Name,
+                Math.Round(updateTime.TotalSeconds, 3), updatedSeriesCount);
+        }
     }
 }

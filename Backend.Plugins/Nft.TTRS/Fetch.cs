@@ -40,7 +40,6 @@ using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Backend.Api;
-using Database.ApiCache;
 using Database.Main;
 using Serilog;
 using ChainMethods = Database.Main.ChainMethods;
@@ -114,15 +113,6 @@ public class Fetch
                         }
                         else
                         {
-                            // For TTRS we only save API responses for backup purposes,
-                            // we don't use them on database resync.
-
-                            using ApiCacheDbContext databaseApiCacheContext = new();
-                            Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, ChainName, NtfHash,
-                                nft.TOKEN_ID, JsonDocument.Parse(item.ToJsonString()), null);
-                            databaseApiCacheContext.SaveChanges();
-
-
                             if ( itemInfo != null )
                                 NftMetadataMethods.Set(databaseContext,
                                     nft,
@@ -181,11 +171,12 @@ public class Fetch
         for ( var i = 0; i < ids.Count; i += NftLoadPageSize )
         {
             var idsPage = ids.GetRange(i, Math.Min(NftLoadPageSize, ids.Count - i));
+            var request = "{\"ids\":[" + "\"" + string.Join("\", \"", idsPage) + "\"" + "]}";
             var response = Client.ApiRequest<JsonNode>(url, out var stringResponse, null, 0,
-                "{\"ids\":[" + "\"" + string.Join("\", \"", idsPage) + "\"" + "]}", Client.RequestType.Post);
+                request, Client.RequestType.Post);
             if ( response == null )
             {
-                Log.Error("TTRS error: Parsed response is null, raw response: '{Response}'", stringResponse);
+                Log.Error("TTRS error: Parsed response is null, raw response: '{Response}', request: {Request}", stringResponse, request);
                 return;
             }
 
@@ -235,13 +226,6 @@ public class Fetch
             var metadataKey = ( string ) response["nfts"][0]["parsed_rom"]["metadata"];
 
             var metaJsonDocument = JsonDocument.Parse(meta[metadataKey].ToJsonString());
-
-            using ( ApiCacheDbContext databaseApiCacheContext = new() )
-            {
-                Database.ApiCache.NftMethods.SetApiResponses(databaseApiCacheContext, ChainName, GameHash, id,
-                    metaJsonDocument, null);
-                databaseApiCacheContext.SaveChanges();
-            }
 
             using ( MainDbContext databaseContext = new() )
             {

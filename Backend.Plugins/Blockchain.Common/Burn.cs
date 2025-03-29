@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Runtime.ExceptionServices;
 using Backend.PluginEngine;
 using Database.Main;
 using Serilog;
@@ -20,20 +19,33 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
         {
             int[] chainIds = {ChainMethods.GetId(databaseContext, "main")};
 
-            var burnEventIds = databaseContext.EventKinds
-                .Where(x => chainIds.Contains(x.ChainId) && x.NAME == "TokenBurn").Select(x => x.ID).ToArray();
+            var burnEventId = databaseContext.EventKinds
+                .Where(x => chainIds.Contains(x.ChainId) && x.NAME == "TokenBurn").Select(x => x.ID).First();
 
-            foreach ( var burnEventId in burnEventIds )
+            while(true)
             {
+                // TODO instead of checking for "KCAL"
+                // we must add fungible flag to "Contracts" table.
                 var burnedTokens = databaseContext.Events
                     .Where(x => x.EventKindId == burnEventId &&
-                                x.BURNED != true)
-                    .Select(x => new {x.ContractId, x.TOKEN_ID}).ToList();
+                                x.BURNED != true &&
+                                x.Contract.SYMBOL != "KCAL")
+                    .Select(x => new {x.ContractId, x.TOKEN_ID})
+                    .Distinct()
+                    .Take(100)
+                    .ToList();
+
+                if(burnedTokens.Count() == 0)
+                {
+                    break;
+                }
 
                 foreach ( var burnedToken in burnedTokens )
                 {
-                    var tokenEvents = databaseContext.Events.Where(x =>
-                        x.ContractId == burnedToken.ContractId && x.TOKEN_ID == burnedToken.TOKEN_ID).ToList();
+                    var tokenEvents = databaseContext.Events
+                        .Where(x => x.ContractId == burnedToken.ContractId && x.TOKEN_ID == burnedToken.TOKEN_ID)
+                        .ToList();
+
                     foreach ( var tokenEvent in tokenEvents )
                     {
                         tokenEvent.BURNED = true;
@@ -47,34 +59,38 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                     nft.BURNED = true;
                     markedNftCount++;
                 }
-            }
 
-            if ( markedEventCount > 0 || markedNftCount > 0 )
-                try
+                if ( markedEventCount > 0 || markedNftCount > 0 )
                 {
-                    databaseContext.SaveChanges();
-                }
-                catch ( Exception ex )
-                {
-                    //TODO fix, cause it seems the exception text has changed
-                    if ( ex.Message.Contains("Database operation expected to affect ") ||
-                         ex.Message.Contains("database operation was expected to affect ") )
+                    try
                     {
-                        var attemptTime = DateTime.Now - startTime;
-                        Log.Warning(
-                            "{Name} plugin: Burned token events processing failed because some NFTs or events were deleted in another thread, attempt took {AttemptTime} sec",
-                            Name, Math.Round(attemptTime.TotalSeconds, 3));
-                        return;
+                        databaseContext.SaveChanges();
                     }
+                    catch ( Exception ex )
+                    {
+                        //TODO fix, cause it seems the exception text has changed
+                        if ( ex.Message.Contains("Database operation expected to affect ") ||
+                            ex.Message.Contains("database operation was expected to affect ") )
+                        {
+                            var attemptTime = DateTime.Now - startTime;
+                            Log.Warning(
+                                "{Name} plugin: Burned token events processing failed because some NFTs or events were deleted in another thread, attempt took {AttemptTime} sec",
+                                Name, Math.Round(attemptTime.TotalSeconds, 3));
+                            return;
+                        }
 
-                    // Unknown exception, throwing futher.
-                    ExceptionDispatchInfo.Capture(ex).Throw();
+                        throw;
+                    }
                 }
+            }
         }
 
         var processTime = DateTime.Now - startTime;
-        Log.Information(
-            "{Name} plugin: Burned token events processing took {ProcessTime} sec, {MarkedEventCount} events marked, {MarkedNftCount} NFTs marked",
-            Name, Math.Round(processTime.TotalSeconds, 3), markedEventCount, markedNftCount);
+        if(processTime.TotalSeconds > 1 || markedEventCount > 0 || markedNftCount > 0)
+        {
+            Log.Information(
+                "{Name} plugin: Burned token events processing took {ProcessTime} sec, {MarkedEventCount} events marked, {MarkedNftCount} NFTs marked",
+                Name, Math.Round(processTime.TotalSeconds, 3), markedEventCount, markedNftCount);
+        }
     }
 }

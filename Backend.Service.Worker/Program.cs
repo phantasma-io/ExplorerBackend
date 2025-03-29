@@ -6,7 +6,6 @@ using Backend.PluginEngine;
 using Database.Main;
 using Microsoft.Extensions.Configuration;
 using Serilog;
-using Serilog.Events;
 
 // ReSharper disable LoopVariableIsNeverChangedInsideLoop
 
@@ -21,29 +20,17 @@ public static class Worker
 
     private static string ConfigFile => Path.Combine(configDirectory, "explorer-backend-config.json");
 
+	public static IConfiguration Configuration { get; private set; } = new ConfigurationBuilder()
+		.AddJsonFile(ConfigFile)
+        .Build();
 
     private static void Main()
     {
-        LoggingSettings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
-            .GetSection("Logging"));
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(Configuration)
+            .CreateLogger();
 
-        //load cfg now, process loglevel then rest
-        var loggingData = LoggingSettings.Default;
-        if ( !Enum.TryParse(loggingData.Level, true, out LogEventLevel logLevel) ) logLevel = LogEventLevel.Verbose;
-
-        var logPath = "../logs";
-        if ( !string.IsNullOrEmpty(loggingData.LogDirectoryPath) ) logPath = loggingData.LogDirectoryPath;
-
-        Directory.CreateDirectory(logPath);
-        LogEx.Init(Path.Combine(logPath, "worker-service-.log"), logLevel, loggingData.LogOverwrite);
-
-        Log.Information("\n\n*********************************************************\n" +
-                        "************** Worker Service Started *************\n" +
-                        "*********************************************************\n" +
-                        "Log level: {Level}, LogOverwrite: {Overwrite}, Path: {Path}, Config: {Config}", logLevel,
-            loggingData.LogOverwrite, logPath, ConfigFile);
-
-        Log.Information("Initializing Worker Service...");
+        Log.Information("Initializing worker service... Configuration file: {ConfigFile}", ConfigFile);
 
         Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
             .GetSection("FetcherServiceConfiguration"));

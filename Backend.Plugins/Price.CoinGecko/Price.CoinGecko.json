@@ -3,6 +3,8 @@
     "enabled": true,
     "startDelay": 60,
     "runInterval": 60,
-    "startDate": "26.12.2022"
+    "enableCoingeckoPaidFeatures": false,
+    "startDate": "2022-12-26",
+    "inactiveCoins": ["phantasma-energy"]
   }
 }

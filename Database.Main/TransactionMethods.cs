@@ -11,7 +11,7 @@ public static class TransactionMethods
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
     public static async Task<Transaction> UpsertAsync(MainDbContext databaseContext, Block block, int txIndex, string hash,
-        long timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, long expiration,
+        ulong timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, ulong expiration,
         string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget)
     {
         var entry = await databaseContext.Transactions
@@ -32,13 +32,13 @@ public static class TransactionMethods
             Block = block,
             INDEX = txIndex,
             HASH = hash,
-            TIMESTAMP_UNIX_SECONDS = timestampUnixSeconds,
+            TIMESTAMP_UNIX_SECONDS = (long)timestampUnixSeconds,
             PAYLOAD = payload,
             SCRIPT_RAW = scriptRaw,
             RESULT = result,
             FEE = Utils.ToDecimal(fee, kcalDecimals),
             FEE_RAW = fee,
-            EXPIRATION = expiration,
+            EXPIRATION = (long)expiration,
             GAS_PRICE = Utils.ToDecimal(gasPrice, kcalDecimals),
             GAS_PRICE_RAW = gasPrice,
             GAS_LIMIT = Utils.ToDecimal(gasLimit, kcalDecimals),

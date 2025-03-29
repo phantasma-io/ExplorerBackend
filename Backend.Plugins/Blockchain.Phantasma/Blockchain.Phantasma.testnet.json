@@ -13,6 +13,7 @@
     "tokensProcessingInterval": 30,
     "blocksProcessingInterval": 10,
     "eventsProcessingInterval": 30,
+    "romRamProcessingEnabled": true,
     "romRamProcessingInterval": 30,
     "seriesProcessingInterval": 30,
     "infusionsProcessingInterval": 30,

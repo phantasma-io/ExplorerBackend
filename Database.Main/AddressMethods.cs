@@ -13,6 +13,16 @@ public static class AddressMethods
     // Returns new or existing entry's Id.
     public static Address Upsert(MainDbContext databaseContext, int chainId, string address)
     {
+        if(address == null)
+        {
+            throw new($"Attempt to store null address");
+        }
+        // TODO we should get rid of this NULL address and fix db schema
+        if(address.Length < 47 && address.ToUpperInvariant() != "NULL")
+        {
+            throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
+        }
+
         var entry = databaseContext.Addresses
             .FirstOrDefault(x => x.ChainId == chainId && x.ADDRESS == address);
 
@@ -75,6 +85,16 @@ public static class AddressMethods
 
         foreach ( var address in addresses )
         {
+            if(address == null)
+            {
+                throw new($"Attempt to store null address");
+            }
+            // TODO we should get rid of this NULL address and fix db schema
+            if(address.Length < 47 && address.ToUpperInvariant() != "NULL")
+            {
+                throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
+            }
+
             var entry = databaseContext.Addresses.FirstOrDefault(x => x.Chain == chain && x.ADDRESS == address);
             if ( entry == null )
             {
@@ -98,6 +118,16 @@ public static class AddressMethods
 
     public static async Task<Address> UpsertAsync(MainDbContext databaseContext, Chain chain, string address)
     {
+        if(address == null)
+        {
+            throw new($"Attempt to store null address");
+        }
+        // TODO we should get rid of this NULL address and fix db schema
+        if(address.Length < 47 && address.ToUpperInvariant() != "NULL")
+        {
+            throw new($"Attempt to store address with invalid length {address.Length} '{address}'");
+        }
+
         var entry = await databaseContext.Addresses
             .FirstOrDefaultAsync(x => x.Chain == chain && x.ADDRESS == address);
 
