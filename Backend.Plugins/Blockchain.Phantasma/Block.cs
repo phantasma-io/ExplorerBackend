@@ -156,23 +156,50 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         // Log.Information("FETCHING RANGE " + fromHeight + " - " + (fromHeight + blockCount - 1));
         var tasks = new List<Task<BlockResult>>();
-        var smallTasks = new List<Task<BlockResult>>();
+        var taskGroup = new List<Task<BlockResult>>();
         for (var i = fromHeight; i < fromHeight + blockCount; i++)
         {
             var task = GetBlockAsync(chainName, i);
             tasks.Add(task);
-            smallTasks.Add(task);
+            taskGroup.Add(task);
 
-            if (smallTasks.Count == 50)
+            if (taskGroup.Count == 50)
             {
-                await Task.WhenAll(smallTasks.ToArray());
-                smallTasks = new List<Task<BlockResult>>();
-                await Task.Delay(1000);
+                await Task.WhenAll(taskGroup.ToArray());
+
+                foreach (var t in taskGroup)
+                {
+                    if (t.IsFaulted)
+                    {
+                        throw new($"Task failed: {t.Exception?.Flatten().Message}");
+                    }
+                    if (t.Result == default)
+                    {
+                        throw new($"Task failed, no result");
+                    }
+                }
+
+                taskGroup.Clear();
+                await Task.Delay(100);
             }
         }
 
-        if (smallTasks.Count > 0)
-            await Task.WhenAll(smallTasks.ToArray());
+        if (taskGroup.Count > 0)
+        {
+            await Task.WhenAll(taskGroup.ToArray());
+
+            foreach (var t in taskGroup)
+            {
+                if (t.IsFaulted)
+                {
+                    throw new($"Task failed: {t.Exception?.Flatten().Message}");
+                }
+                if (t.Result == default)
+                {
+                    throw new($"Task failed, no result");
+                }
+            }
+        }
 
         return tasks.Select(task => task.Result).OrderBy(b => b.height).ToList();
     }
