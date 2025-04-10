@@ -202,6 +202,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var chainId = chainEntry.ID;
 
         // Block in main database
+        Log.Information("[{Name}][Blocks] Storing block #{BlockHeight} / {Hash}", Name, blockHeight, block.hash);
+
+        if((uint)blockHeight != block.height)
+        {
+            throw new ($"Critical error: Expected height {block.height}, got {blockHeight} for hash {block.hash}");
+        }
+
         var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, blockHeight,
             block.timestamp, block.hash, block.previousHash, block.protocol, block.chainAddress, block.validatorAddress, block.reward);
 
