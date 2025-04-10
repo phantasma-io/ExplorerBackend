@@ -5,8 +5,7 @@ namespace Database.Main;
 
 public static class SignatureKindMethods
 {
-    public static Dictionary<string, SignatureKind> InsertIfNotExists(MainDbContext databaseContext, List<string> names,
-        bool saveChanges = true)
+    public static Dictionary<string, SignatureKind> InsertIfNotExists(MainDbContext databaseContext, List<string> names)
     {
         if ( !names.Any() ) return null;
 
@@ -28,7 +27,6 @@ public static class SignatureKindMethods
         }
 
         databaseContext.SignatureKinds.AddRange(kindListToInsert);
-        if ( !saveChanges ) databaseContext.SaveChanges();
 
         return kindMap;
     }
