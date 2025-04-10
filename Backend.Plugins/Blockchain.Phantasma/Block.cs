@@ -108,27 +108,39 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
     }
 
-    private static double _megabyte = 1024.0 * 1024.0;
-    private static string ToMegabytesString(long byteCount)
+    private static double _kilobyte = 1024.0;
+    private static double _megabyte = _kilobyte * 1024.0;
+    private static string BytesToSizeString(long byteCount)
     {
         double mb = byteCount / _megabyte;
-        return $"{mb:F2} MB";
+        if(mb >= 0.01)
+        {
+            return $"{mb:F2} MB";
+        }
+
+        double kb = byteCount / _kilobyte;
+        return $"{kb:F2} kb";
     }
+
     private async Task<BlockResult> GetBlockAsync(string chainName, BigInteger blockHeight)
     {
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
         var startTime = DateTime.Now;
         var (response, blockLength) = await Client.ApiRequestAsync<BlockResult>(url, 10);
+        if (response == default)
+        {
+            throw new Exception($"getBlockByHeight call failed: {url}");
+        }
 
         var requestTime = (DateTime.Now - startTime).TotalMilliseconds;
         if(blockLength > _megabyte)
         {
-            Log.Warning("[{Name}][Blocks] Large block #{index} | {size} received in {time} ms", Name, blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
+            Log.Warning("[{Name}][Blocks] Large block #{index} | {size} received in {time} ms", Name, blockHeight, BytesToSizeString(blockLength), Math.Round(requestTime, 2));
         }
         else if(requestTime > 200) // TODO Set through config
         {
-            Log.Information("[{Name}][Blocks] Block #{index} | {size} received in {time} ms", Name, blockHeight, ToMegabytesString(blockLength), Math.Round(requestTime, 2));
+            Log.Information("[{Name}][Blocks] Block #{index} | {size} received in {time} ms", Name, blockHeight, BytesToSizeString(blockLength), Math.Round(requestTime, 2));
         }
 
         if (!string.IsNullOrEmpty(response.error))
