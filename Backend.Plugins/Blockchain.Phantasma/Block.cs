@@ -243,7 +243,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         .Select(signature => new Tuple<string, string>(signature.kind, signature.data))
                         .ToList();
 
-                    SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction, false);
+                    SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction);
                 }
 
                 if (tx.events == null || tx.events.Length == 0)

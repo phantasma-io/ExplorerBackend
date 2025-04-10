@@ -7,13 +7,13 @@ namespace Database.Main;
 public static class SignatureMethods
 {
     public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> signatures,
-        Transaction transaction, bool saveChanges = true)
+        Transaction transaction)
     {
         if ( !signatures.Any() || transaction == null ) return;
 
         //item1 == kind
         var kindList = signatures.Select(tuple => tuple.Item1).ToList();
-        var kindMap = SignatureKindMethods.InsertIfNotExists(databaseContext, kindList, saveChanges);
+        var kindMap = SignatureKindMethods.InsertIfNotExists(databaseContext, kindList);
 
         var signatureList = new List<Signature>();
 
@@ -29,6 +29,5 @@ public static class SignatureMethods
         }
 
         databaseContext.Signatures.AddRange(signatureList);
-        if ( !saveChanges ) databaseContext.SaveChanges();
     }
 }
