@@ -61,10 +61,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             List<string> addressesToUpdate = new();
             
             startTime = DateTime.Now;
-            foreach ( var (blockHeight, block) in blocks )
+            foreach ( var block in blocks )
             {
                 // Log.Information("PROCESSING HEIGHT " + blockHeight);
-                addressesToUpdate.AddRange(await ProcessBlock(blockHeight, block, chainName));
+                addressesToUpdate.AddRange(await ProcessBlock(block, chainName));
             }
             var processTime = DateTime.Now - startTime;
             
@@ -114,7 +114,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         double mb = byteCount / _megabyte;
         return $"{mb:F2} MB";
     }
-    private async Task<(BigInteger, BlockResult)> GetBlockAsync(string chainName, BigInteger blockHeight)
+    private async Task<BlockResult> GetBlockAsync(string chainName, BigInteger blockHeight)
     {
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
@@ -136,15 +136,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             throw new Exception(response.error);
         }
         
-        return (blockHeight, response);
+        return response;
     }
 
 
-    private async Task<List<(BigInteger, BlockResult)>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
+    private async Task<List<BlockResult>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
     {
         // Log.Information("FETCHING RANGE " + fromHeight + " - " + (fromHeight + blockCount - 1));
-        var tasks = new List<Task<(BigInteger, BlockResult)>>();
-        var smallTasks = new List<Task<(BigInteger, BlockResult)>>();
+        var tasks = new List<Task<BlockResult>>();
+        var smallTasks = new List<Task<BlockResult>>();
         for (var i = fromHeight; i < fromHeight + blockCount; i++)
         {
             var task = GetBlockAsync(chainName, i);
@@ -154,7 +154,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             if (smallTasks.Count == 50)
             {
                 await Task.WhenAll(smallTasks.ToArray());
-                smallTasks = new List<Task<(BigInteger, BlockResult)>>();
+                smallTasks = new List<Task<BlockResult>>();
                 await Task.Delay(1000);
             }
         }
@@ -162,7 +162,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         if (smallTasks.Count > 0)
             await Task.WhenAll(smallTasks.ToArray());
 
-        return tasks.Select(task => task.Result).ToList();
+        return tasks.Select(task => task.Result).OrderBy(b => b.height).ToList();
     }
 
     private void AddAddress(ref List<string> addresses, string address)
@@ -175,7 +175,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         addresses.Add(address);
     }
     
-    private async Task<List<string>> ProcessBlock(BigInteger blockHeight, BlockResult block, string chainName)
+    private async Task<List<string>> ProcessBlock(BlockResult block, string chainName)
     {
         var startTime = DateTime.Now;
 
@@ -202,14 +202,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var chainId = chainEntry.ID;
 
         // Block in main database
-        Log.Information("[{Name}][Blocks] Storing block #{BlockHeight} / {Hash}", Name, blockHeight, block.hash);
+        Log.Information("[{Name}][Blocks] Storing block #{BlockHeight} / {Hash}", Name, block.height, block.hash);
 
-        if((uint)blockHeight != block.height)
-        {
-            throw new ($"Critical error: Expected height {block.height}, got {blockHeight} for hash {block.hash}");
-        }
-
-        var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, blockHeight,
+        var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, block.height,
             block.timestamp, block.hash, block.previousHash, block.protocol, block.chainAddress, block.validatorAddress, block.reward);
 
         if (block.oracles?.Length > 0)
@@ -222,7 +217,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         if (block.txs?.Length > 0)
         {
-            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} txes in the block", Name, blockHeight,
+            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} txes in the block", Name, block.height,
                 block.txs.Length);
             
             block.ParseData();
@@ -552,7 +547,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             //TODO
                             case EventKind.ValidatorSwitch:
                             {
-                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting nothing for {Kind}", Name, blockHeight, kind);
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting nothing for {Kind}", Name, block.height, kind);
 
                                 break;
                             }
@@ -615,18 +610,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             case EventKind.LeaderboardCreate or EventKind.Custom:
                             {
                                 Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Currently not processing EventKind {Kind} in Block #{Block}",
-                                    Name, blockHeight, kind, blockHeight);
+                                    Name, block.height, kind, block.height);
                                 break;
                             }
                             default:
                                 Log.Warning("[{Name}][Blocks] Block #{BlockHeight} Currently not processing EventKind {Kind} in Block #{Block}",
-                                    Name, blockHeight, kind, blockHeight);
+                                    Name, block.height, kind, block.height);
                                 break;
                         }
                     }
                     catch ( Exception e )
                     {
-                        Log.Error(e, "[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} event processing", Name, blockHeight,
+                        Log.Error(e, "[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} event processing", Name, block.height,
                             UnixSeconds.Log(block.timestamp));
 
                         try
@@ -661,10 +656,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
         }
 
-        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, blockHeight,
+        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, block.height,
             addressesToUpdate.Count);
 
-        ChainMethods.SetLastProcessedBlock(databaseContext, chainName, blockHeight, false);
+        ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.height, false);
 
         await databaseContext.SaveChangesAsync();
 
@@ -673,7 +668,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             Log.Information(
                 "[{Name}][Blocks] Block #{BlockHeight} processed in {ProcessingTime} sec, {EventsAddedCount} events, {NftsInThisBlock} NFTs",
-                Name, blockHeight, Math.Round(processingTime.TotalSeconds, 3),
+                Name, block.height, Math.Round(processingTime.TotalSeconds, 3),
                 eventsAddedCount, nftsInThisBlock.Count);
         }
         
