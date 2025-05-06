@@ -104,6 +104,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Math.Round(processTime.TotalSeconds, 3),
                 Math.Round(addressesToUpdate.Count / processTime.TotalSeconds, 2));
 
+            // Updating SM count and stakers count
+            startTime = DateTime.Now;
+            await using ( MainDbContext databaseContext = new() )
+            {
+                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
+                OrganizationMethods.UpdateStakeCounts(databaseContext, chainEntry);
+
+                await databaseContext.SaveChangesAsync();
+            }
+            processTime = DateTime.Now - startTime;
+            Log.Information("[{Name}][Blocks] Updated SM and stakers counts in {ProcessTime} sec",
+                Name,
+                Math.Round(processTime.TotalSeconds, 3));
+
             i += fetchPerIteration;
         }
     }
