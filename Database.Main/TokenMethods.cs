@@ -49,12 +49,6 @@ public static class TokenMethods
             entry.MINTABLE = mintable;
             entry.Address = addressEntry;
             entry.Owner = ownerEntry;
-            entry.CURRENT_SUPPLY = Utils.ToDecimal(currentSupply, decimals);
-            entry.CURRENT_SUPPLY_RAW = currentSupply;
-            entry.MAX_SUPPLY = Utils.ToDecimal(maxSupply, decimals);
-            entry.MAX_SUPPLY_RAW = maxSupply;
-            entry.BURNED_SUPPLY = Utils.ToDecimal(burnedSupply, decimals);
-            entry.BURNED_SUPPLY_RAW = burnedSupply;
             entry.SCRIPT_RAW = scriptRaw;
         }
         else
@@ -78,18 +72,32 @@ public static class TokenMethods
                 MINTABLE = mintable,
                 Address = addressEntry,
                 Owner = ownerEntry,
-                CURRENT_SUPPLY = Utils.ToDecimal(currentSupply, decimals),
-                CURRENT_SUPPLY_RAW = currentSupply,
-                MAX_SUPPLY = Utils.ToDecimal(maxSupply, decimals),
-                MAX_SUPPLY_RAW = maxSupply,
-                BURNED_SUPPLY = Utils.ToDecimal(burnedSupply, decimals),
-                BURNED_SUPPLY_RAW = burnedSupply,
                 SCRIPT_RAW = scriptRaw
             };
             await databaseContext.Tokens.AddAsync(entry);
         }
 
+        SetSupplies(entry, currentSupply, maxSupply, burnedSupply);
+
         return entry;
+    }
+
+    public static void SetSupplies(Token token,
+        string currentSupply,
+        string maxSupply,
+        string burnedSupply)
+    {
+        if ( token == null )
+        {
+            return;
+        }
+
+        token.CURRENT_SUPPLY = Utils.ToDecimal(currentSupply, token.DECIMALS);
+        token.CURRENT_SUPPLY_RAW = currentSupply;
+        token.MAX_SUPPLY = Utils.ToDecimal(maxSupply, token.DECIMALS);
+        token.MAX_SUPPLY_RAW = maxSupply;
+        token.BURNED_SUPPLY = Utils.ToDecimal(burnedSupply, token.DECIMALS);
+        token.BURNED_SUPPLY_RAW = burnedSupply;
     }
 
     public static Token Get(MainDbContext databaseContext, int chainId, string symbol)
