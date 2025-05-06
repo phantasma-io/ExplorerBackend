@@ -100,12 +100,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     /// </summary>
     private void StartupNexusSync(Chain chain)
     {
-        Thread nexusDataInitThread = new(() =>
+        Thread nexusDataInitThread = new(async () =>
         {
             while ( _running )
                 try
                 {
                     InitNexusData(chain.ID);
+                    await UpdateTokens(chain.ID);
 
                     Thread.Sleep(Settings.Default.TokensProcessingInterval *
                                  1000); // We process tokens every TokensProcessingInterval seconds

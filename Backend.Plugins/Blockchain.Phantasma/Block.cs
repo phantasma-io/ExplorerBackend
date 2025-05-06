@@ -104,6 +104,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Math.Round(processTime.TotalSeconds, 3),
                 Math.Round(addressesToUpdate.Count / processTime.TotalSeconds, 2));
 
+            // Updating SM count and stakers count
+            startTime = DateTime.Now;
+            await using ( MainDbContext databaseContext = new() )
+            {
+                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
+                OrganizationMethods.UpdateStakeCounts(databaseContext, chainEntry);
+
+                await databaseContext.SaveChangesAsync();
+            }
+            processTime = DateTime.Now - startTime;
+            Log.Information("[{Name}][Blocks] Updated SM and stakers counts in {ProcessTime} sec",
+                Name,
+                Math.Round(processTime.TotalSeconds, 3));
+
             i += fetchPerIteration;
         }
     }
@@ -161,14 +175,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         // Log.Information("FETCHING RANGE " + fromHeight + " - " + (fromHeight + blockCount - 1));
         var tasks = new List<Task<BlockResult>>();
-        //var taskGroup = new List<Task<BlockResult>>();
+        var taskGroup = new List<Task<BlockResult>>();
         for (var i = fromHeight; i < fromHeight + blockCount; i++)
         {
             var task = GetBlockAsync(chainName, i);
             tasks.Add(task);
-            //taskGroup.Add(task);
+            taskGroup.Add(task);
 
-            /*if (taskGroup.Count == 50)
+            if (taskGroup.Count == 50)
             {
                 await Task.WhenAll(taskGroup.ToArray());
 
@@ -186,10 +200,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 taskGroup.Clear();
                 await Task.Delay(100);
-            }*/
+            }
         }
 
-        /*if (taskGroup.Count > 0)
+        if (taskGroup.Count > 0)
         {
             await Task.WhenAll(taskGroup.ToArray());
 
@@ -204,7 +218,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     throw new($"Task failed, no result");
                 }
             }
-        }*/
+        }
 
         await Task.WhenAll(tasks.ToArray());
 
