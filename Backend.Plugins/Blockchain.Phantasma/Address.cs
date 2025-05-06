@@ -39,9 +39,27 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 1000);
 
-                if ( response == null )
+                if ( response == null)
                 {
                     Log.Error("[{Name}] Balance sync: null result", Name);
+                    if ( updateChunkSize > 1 )
+                    {
+                        // Temp solution for situation when batch of addresses crash API
+                        await UpdateAddressesBalancesAsync(databaseContext, chain, split, 1);
+                    }
+                    continue;
+                }
+
+                if (response.RootElement.ValueKind == JsonValueKind.Object && response.RootElement.TryGetProperty("Error", out var errorProperty))
+                {
+                    if(updateChunkSize == 1)
+                    {
+                        Log.Error("[{Name}] Balance sync [{Address}]: Error: {errorProperty}", Name, split.First(), errorProperty);
+                    }
+                    else
+                    {
+                        Log.Error("[{Name}] Balance sync: Error: {errorProperty}", Name, errorProperty);
+                    }
                     if ( updateChunkSize > 1 )
                     {
                         // Temp solution for situation when batch of addresses crash API
