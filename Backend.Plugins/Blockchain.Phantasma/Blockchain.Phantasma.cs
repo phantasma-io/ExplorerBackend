@@ -144,9 +144,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     {
                         Log.Warning("[Blocks] RPC is out of sync, RPC: {Height}, explorer: {explorerHeight}", height, currentHeight);
                     }
-                    else if (Settings.Default.HeightLimit != 0 && height > Settings.Default.HeightLimit)
+                    else if (Settings.Default.HeightLimit != 0 && currentHeight >= Settings.Default.HeightLimit)
                     {
-                        Log.Warning("[Blocks] Height limit is reached {Height} > {HeightLimit}", height, Settings.Default.HeightLimit);
+                        Log.Warning("[Blocks] Height limit is reached {Height} >= {HeightLimit}", currentHeight, Settings.Default.HeightLimit);
                     }
                     else
                     {
