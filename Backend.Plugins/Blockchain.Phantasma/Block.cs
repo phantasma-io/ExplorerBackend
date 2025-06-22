@@ -31,6 +31,39 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
+        await using ( MainDbContext databaseContext = new() )
+        {
+            List<string> addressesForInitialUpdate = [];
+            _balanceRefetchDate = await GlobalVariableMethods.GetLongAsync(databaseContext, _balanceRefetchTimestampKey);
+            if (_balanceRefetchDate == 0)
+            {
+                // Reprocess balances of ALL known addresses
+                // to fix issues
+                addressesForInitialUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
+            }
+
+            if (addressesForInitialUpdate.Count() > 0)
+            {
+                Log.Information("[{Name}][Blocks] Starting {Count} INITIAL addresses update",
+                    Name, addressesForInitialUpdate.Count());
+
+                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
+                await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesForInitialUpdate,
+                    100);
+
+                if (_balanceRefetchDate == 0)
+                {
+                    // We just finished refetching all balances, saving timestamp
+                    // to the database which will tell us when this process was done.
+                    await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now());
+                }
+
+                await databaseContext.SaveChangesAsync();
+
+                Log.Information("[{Name}][Blocks] Finished INITIAL addresses update", Name);
+            }
+        }
+
         Log.Information("[{Name}][Blocks] Fetching blocks ({From}-{To}) for chain {Chain}...",
                 Name,
                 fromHeight,
@@ -82,16 +115,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressesToUpdate = addressesToUpdate.Distinct().ToList();
             await using ( MainDbContext databaseContext = new() )
             {
+                Log.Information("[{Name}][Blocks] Starting {Count} addresses update",
+                    Name, addressesToUpdate.Count());
+
                 var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
                 await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesToUpdate,
                     100);
-                
-                if(_balanceRefetchDate == 0)
-                {
-                    // We just finished refetching all balances, saving timestamp
-                    // to the database which will tell us when this process was done.
-                    await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now());
-                }
 
                 await databaseContext.SaveChangesAsync();
             }
@@ -722,14 +751,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     }
                 }
             }
-        }
-
-        _balanceRefetchDate = await GlobalVariableMethods.GetLongAsync(databaseContext, _balanceRefetchTimestampKey);
-        if(_balanceRefetchDate == 0)
-        {
-            // Reprocess balances of ALL known addresses
-            // to fix issues
-            addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
         }
 
         Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, block.height,
