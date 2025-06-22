@@ -75,7 +75,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     chain.ID);
 
                 StartupNexusSync(chain);
-                StartupBlockSync(chain);
+                StartupBlockSync(chain.NAME);
                 StartupRomRamSync(chain);
                 StartupSeriesSync(chain);
                 StartupInfusionSync(chain);
@@ -124,23 +124,37 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     /// <summary>
     /// 
     /// </summary>
-    private void StartupBlockSync(Chain chain)
+    private void StartupBlockSync(string chainName)
     {
-        Thread blocksSyncThread = new(() =>
+        Thread blocksSyncThread = new(async () =>
         {
             while ( _running )
                 try
                 {
-                    height = GetCurrentBlockHeight(chain.NAME);
-                    Log.Information("[Blocks] Chain height: {Height}", height);
-
-                    if(chain.CURRENT_HEIGHT != null && BigInteger.Parse(chain.CURRENT_HEIGHT) > height)
+                    BigInteger currentHeight;
+                    using (MainDbContext databaseContext = new())
                     {
-                        Log.Warning("[Blocks] RPC is out of sync, RPC: {Height}, explorer: {explorerHeight}", height, chain.CURRENT_HEIGHT);
+                        currentHeight = ChainMethods.GetLastProcessedBlock(databaseContext, chainName);
+                    }
+
+                    height = GetCurrentBlockHeight(chainName);
+                    Log.Information("[Blocks] Chain height: {Height}, explorer's height {explorerHeight}", height, currentHeight);
+
+                    if (currentHeight > height)
+                    {
+                        Log.Warning("[Blocks] RPC is out of sync, RPC: {Height}, explorer: {explorerHeight}", height, currentHeight);
+                    }
+                    else if (Settings.Default.HeightLimit != 0 && height > Settings.Default.HeightLimit)
+                    {
+                        Log.Warning("[Blocks] Height limit is reached {Height} > {HeightLimit}", height, Settings.Default.HeightLimit);
                     }
                     else
                     {
-                        FetchBlocksRange(chain.NAME, BigInteger.Parse(chain.CURRENT_HEIGHT), height).Wait();
+                        if (Settings.Default.HeightLimit != 0 && height >= Settings.Default.HeightLimit)
+                        {
+                            height = Settings.Default.HeightLimit;
+                        }
+                        FetchBlocksRange(chainName, currentHeight, height).Wait();
                     }
 
                     Thread.Sleep(Settings.Default.BlocksProcessingInterval *
