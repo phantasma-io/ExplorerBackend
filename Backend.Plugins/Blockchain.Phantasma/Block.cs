@@ -332,7 +332,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     try
                     {
                         var kindSerialized = eventNode.Kind;
-                        var kind = Enum.Parse<EventKind>(kindSerialized);
+                        if (!Enum.TryParse<EventKind>(kindSerialized, out var kind))
+                        {
+                            Log.Error($"Unsupported event kind {kindSerialized}");
+                            continue;
+                        }
 
                         var eventKindId = _eventKinds.GetId(chainId, kind);
 

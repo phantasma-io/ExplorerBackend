@@ -25,7 +25,12 @@ public class EventResult
 
     public void ParseData(BigInteger blockHeight)
     {
-        KindParsed = Enum.Parse<EventKind>(Kind);
+        if (!Enum.TryParse<EventKind>(Kind, out KindParsed))
+        {
+            Log.Error($"Unsupported event kind {Kind}");
+            return;
+        }
+
         try
         {
             switch (KindParsed)
