@@ -113,7 +113,7 @@ public static class GetTransactions
             if ( !string.IsNullOrEmpty(address) )
             {
                 var addressId = 0;
-                if ( Phantasma.Core.Cryptography.Structs.Address.IsValidAddress(address) )
+                if ( PhantasmaPhoenix.Cryptography.Address.IsValidAddress(address) )
                 {
                     addressId = await databaseContext.Addresses.Where(x => x.ADDRESS == address).Select(x => x.ID).FirstOrDefaultAsync();
                 }

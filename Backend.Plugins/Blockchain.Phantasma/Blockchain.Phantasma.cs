@@ -10,11 +10,11 @@ using Backend.Api;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
-using Phantasma.Core.Cryptography;
-using Phantasma.Core.Numerics;
-using Phantasma.Core.Utils;
+using PhantasmaPhoenix.Core;
+using PhantasmaPhoenix.Cryptography;
+using PhantasmaPhoenix.Cryptography.Extensions;
 using Serilog;
-using Address = Phantasma.Core.Cryptography.Structs.Address;
+using Address = PhantasmaPhoenix.Cryptography.Address;
 
 namespace Backend.Blockchain;
 
@@ -333,7 +333,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         // We use owner address that we calculated ourselves.
         publicKey = owner;
 
-        var pubKey = Address.FromText(publicKey);
+        var pubKey = Address.Parse(publicKey);
 
         var msg = !string.IsNullOrEmpty(messagePrefixBase16)
             ? ByteArrayUtils.ConcatBytes(messagePrefixBase16.Decode(), messageBase16.Decode())
@@ -350,7 +350,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         string messagePrefixBase16,
         string signatureBase16, out string address, out string error)
     {
-        var pubKey = Address.FromText(publicKey);
+        var pubKey = Address.Parse(publicKey);
 
         var msg = !string.IsNullOrEmpty(messagePrefixBase16)
             ? ByteArrayUtils.ConcatBytes(messagePrefixBase16.Decode(), messageBase16.Decode())

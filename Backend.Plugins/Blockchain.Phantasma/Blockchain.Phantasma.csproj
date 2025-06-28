@@ -7,14 +7,14 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.2" />
-    <PackageReference Include="Phantasma.Business" Version="1.1.0" />
-    <PackageReference Include="Phantasma.Core" Version="1.1.0" />
     <ProjectReference Include="..\..\Backend.Commons\Backend.Commons.csproj" />
     <ProjectReference Include="..\..\Backend.PluginEngine\Backend.PluginEngine.csproj" />
     <ProjectReference Include="..\..\Database.Main\Database.Main.csproj" />
     <Compile Include="..\..\Backend.Api.Client\Client.cs">
       <Link>Client.cs</Link>
     </Compile>
+    <PackageReference Include="PhantasmaPhoenix.Protocol" Version="0.1.0" />
+    <PackageReference Include="PhantasmaPhoenix.VM" Version="0.1.0" />
   </ItemGroup>
 
   <PropertyGroup>

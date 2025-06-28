@@ -8,7 +8,7 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
-using Phantasma.Core;
+using PhantasmaPhoenix.Core.Extensions;
 using Serilog;
 
 namespace Backend.Blockchain;

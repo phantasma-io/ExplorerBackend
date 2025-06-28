@@ -11,7 +11,7 @@ public static class EventKindMethods
 {
     public static async Task UpsertAllAsync(MainDbContext dbContext, Chain chain)
     {
-        foreach (var kind in Enum.GetValues<Phantasma.Core.Domain.Events.Structs.EventKind>())
+        foreach (var kind in Enum.GetValues<PhantasmaPhoenix.Protocol.EventKind>())
         {
             if (!dbContext.EventKinds.Any(e => e.Chain.ID == chain.ID && e.NAME == kind.ToString()))
             {
@@ -20,7 +20,7 @@ public static class EventKindMethods
         }
     }
 
-    public readonly record struct ChainEventKindKey(int ChainId, Phantasma.Core.Domain.Events.Structs.EventKind Kind);
+    public readonly record struct ChainEventKindKey(int ChainId, PhantasmaPhoenix.Protocol.EventKind Kind);
     public static async Task<Dictionary<ChainEventKindKey, int>> GetAllAsync(MainDbContext dbContext)
     {
         var result = new Dictionary<ChainEventKindKey, int>();
@@ -29,7 +29,7 @@ public static class EventKindMethods
 
         foreach (var e in items)
         {
-            var key = new ChainEventKindKey(e.ChainId, Enum.Parse<Phantasma.Core.Domain.Events.Structs.EventKind>(e.NAME));
+            var key = new ChainEventKindKey(e.ChainId, Enum.Parse<PhantasmaPhoenix.Protocol.EventKind>(e.NAME));
             Log.Information("Loading EventKind {chain}/{name}", key.ChainId, key.Kind.ToString());
 
             if (!result.ContainsKey(key))
@@ -44,7 +44,7 @@ public static class EventKindMethods
 
 public static class EventKindMethodsExtensions
 {
-    public static int GetId(this Dictionary<EventKindMethods.ChainEventKindKey, int> eventKinds, int chainId, Phantasma.Core.Domain.Events.Structs.EventKind kind)
+    public static int GetId(this Dictionary<EventKindMethods.ChainEventKindKey, int> eventKinds, int chainId, PhantasmaPhoenix.Protocol.EventKind kind)
     {
         return eventKinds.Where(x => x.Key.ChainId == chainId && x.Key.Kind == kind).Select(x => x.Value).First();
     }

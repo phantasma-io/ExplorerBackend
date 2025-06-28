@@ -3,8 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using Phantasma.Business.VM;
-using Phantasma.Core.Numerics;
+using PhantasmaPhoenix.Cryptography;
+using PhantasmaPhoenix.VM;
 
 namespace Backend.Service.Api;
 

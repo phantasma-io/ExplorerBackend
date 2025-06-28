@@ -1,14 +1,11 @@
 using System.Collections.Generic;
-using Phantasma.Core.Domain.Events.Structs;
-
-using Phantasma.Core.Cryptography.Structs;
-using Phantasma.Core.Domain.Contract.Sale.Structs;
-using Phantasma.Core.Numerics;
-using Phantasma.Core.Domain.Serializer;
 using System;
 using Serilog;
 using System.Numerics;
 using System.Linq;
+using PhantasmaPhoenix.Protocol;
+using PhantasmaPhoenix.Core;
+using PhantasmaPhoenix.Cryptography;
 
 namespace Backend.Blockchain.Responses;
 
