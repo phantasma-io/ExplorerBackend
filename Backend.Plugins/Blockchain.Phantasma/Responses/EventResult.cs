@@ -6,6 +6,8 @@ using System.Linq;
 using PhantasmaPhoenix.Protocol;
 using PhantasmaPhoenix.Core;
 using PhantasmaPhoenix.Cryptography;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace Backend.Blockchain.Responses;
 
@@ -91,6 +93,18 @@ public class EventResult
                 case EventKind.OrganizationAdd or EventKind.OrganizationRemove:
                     {
                         DataParsed = Serialization.Unserialize<OrganizationEventData>(Base16.Decode(Data));
+                        break;
+                    }
+                case EventKind.GovernanceSetGasEvent:
+                    {
+                        DataParsed = Serialization.Unserialize<GasConfig>(Base16.Decode(Data));
+                        // TODO add proper event support later
+                        if (DataParsed != null)
+                        {
+                            // Best we can do without refactoring.
+                            // Just saving in db as one-line json.
+                            DataParsed = JToken.Parse(DataParsed.ToString()).ToString(Formatting.None);
+                        }
                         break;
                     }
                 //TODO

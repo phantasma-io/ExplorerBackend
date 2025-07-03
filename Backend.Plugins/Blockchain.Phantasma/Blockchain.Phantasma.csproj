@@ -13,7 +13,7 @@
     <Compile Include="..\..\Backend.Api.Client\Client.cs">
       <Link>Client.cs</Link>
     </Compile>
-    <PackageReference Include="PhantasmaPhoenix.Protocol" Version="0.1.0" />
+    <PackageReference Include="PhantasmaPhoenix.Protocol" Version="0.1.2" />
     <PackageReference Include="PhantasmaPhoenix.VM" Version="0.1.0" />
   </ItemGroup>
 
