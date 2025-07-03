@@ -1,0 +1,101 @@
+dbdumpdir := ""
+
+[private]
+just:
+    just -l
+
+set dotenv-load
+API_TMUX_SESSION_NAME := env("API_TMUX_SESSION_NAME")
+WORKER_TMUX_SESSION_NAME := env("WORKER_TMUX_SESSION_NAME")
+API_BIN_DIR := env("API_BIN_DIR")
+WORKER_BIN_DIR := env("WORKER_BIN_DIR")
+RELEASE_MODE := env("RELEASE_MODE")
+
+DB_USER := env("DB_USER")
+DB_PWD := env("DB_PWD")
+DB_NAME := env("DB_NAME")
+PG_CONTAINER := env("PG_CONTAINER")
+DB_STATE_ZERO_BACKUP := env("DB_STATE_ZERO_BACKUP")
+
+TIMESTAMP := `date "+%Y%m%d%H%M"`
+
+# Builds ALL
+[group('build')]
+b:
+    dotnet build ExplorerBackend.sln
+
+[group('build')]
+c:
+    sh clean.sh
+
+[group('publish')]
+p:
+    just pa
+    just pw
+
+[group('publish')]
+pa:
+    dotnet publish ./Backend.Service.Api/Backend.Service.Api.csproj \
+        --configuration "$RELEASE_MODE" \
+        --output "$API_BIN_DIR" \
+        -p:UseAppHost=true #-v:diag > publish.log
+
+[group('publish')]
+pw:
+    dotnet publish ./Backend.Service.Worker/Backend.Service.Worker.csproj \
+        --configuration "$RELEASE_MODE" \
+        --output "$WORKER_BIN_DIR" \
+        -p:UseAppHost=true #-v:diag > publish.log
+    dotnet publish ./Backend.Plugins/Blockchain.Common/Blockchain.Common.csproj --output "$WORKER_BIN_DIR/Plugins" --configuration "$RELEASE_MODE" -p:UseAppHost=true #-v:diag > publish.log
+    dotnet publish ./Backend.Plugins/Blockchain.Img/Blockchain.Img.csproj --output "$WORKER_BIN_DIR/Plugins" --configuration "$RELEASE_MODE" -p:UseAppHost=true #-v:diag > publish.log
+    dotnet publish ./Backend.Plugins/Blockchain.Phantasma/Blockchain.Phantasma.csproj --output "$WORKER_BIN_DIR/Plugins" --configuration "$RELEASE_MODE" -p:UseAppHost=true #-v:diag > publish.log
+    dotnet publish ./Backend.Plugins/Nft.TTRS/Nft.TTRS.csproj --output "$WORKER_BIN_DIR/Plugins" --configuration "$RELEASE_MODE" -p:UseAppHost=true #-v:diag > publish.log
+    dotnet publish ./Backend.Plugins/Price.CoinGecko/Price.CoinGecko.csproj --output "$WORKER_BIN_DIR/Plugins" --configuration "$RELEASE_MODE" -p:UseAppHost=true #-v:diag > publish.log
+    dotnet publish ./Backend.Plugins/Price.ExchangeRatesApiIo/Price.ExchangeRatesApiIo.csproj --output "$WORKER_BIN_DIR/Plugins" --configuration "$RELEASE_MODE" -p:UseAppHost=true #-v:diag > publish.log
+
+[group('run')]
+ra0:
+    just pa
+    cd {{API_BIN_DIR}} && ./Backend.Service.Api
+
+[group('run')]
+ra:
+    sh ./scripts/run_api_in_tmux.sh
+
+[group('run')]
+rw0:
+    just pw
+    cd {{WORKER_BIN_DIR}} && ./Backend.Service.Worker
+
+[group('run')]
+rw:
+    sh ./scripts/run_worker_in_tmux.sh
+
+# Stops API running in tmux
+[group('run')]
+stop-api:
+    sh -u -c 'tmux has-session -t {{API_TMUX_SESSION_NAME}} 2>/dev/null || exit 0; pid=$(tmux list-panes -t {{API_TMUX_SESSION_NAME}} -F "#{pane_pid}"); [ -n "$pid" ] && kill -s INT "$pid" && tmux kill-session -t {{API_TMUX_SESSION_NAME}}'
+
+# Stops Worker running in tmux
+[group('run')]
+stop-worker:
+    sh -u -c 'tmux has-session -t {{WORKER_TMUX_SESSION_NAME}} 2>/dev/null || exit 0; pid=$(tmux list-panes -t {{WORKER_TMUX_SESSION_NAME}} -F "#{pane_pid}"); [ -n "$pid" ] && kill -s INT "$pid" && tmux kill-session -t {{WORKER_TMUX_SESSION_NAME}}'
+
+# Stops ALL services running in tmux
+[group('run')]
+stop:
+    just stop-api
+    just stop-worker
+
+# Danger! Resets db to backed up initial one!
+[group('configure')]
+db-reset:
+    @sh -eu -c 'printf "This will RESER Explorers STORAGE. Enter password to continue: "; stty -echo; read PASSWORD; stty echo; echo; [ "$PASSWORD" = "iddqd" ] || { echo "❌ Access denied."; exit 1; }; echo "✅ Proceeding..."'
+    echo "🔪 Killing active connections to DB..."
+    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_NAME}}';"
+    echo "🧹 Dropping DB..."
+    docker exec -i {{PG_CONTAINER}} dropdb --username={{DB_USER}} {{DB_NAME}} >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    echo "📦 Creating DB..."
+    docker exec -i {{PG_CONTAINER}} createdb --username={{DB_USER}} {{DB_NAME}} >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    echo "♻️  Restoring DB from {{DB_STATE_ZERO_BACKUP}}..."
+    cat {{DB_STATE_ZERO_BACKUP}} | docker exec -i {{PG_CONTAINER}} pg_restore -U {{DB_USER}} -d {{DB_NAME}} -Fc >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
