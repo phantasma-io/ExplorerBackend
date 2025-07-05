@@ -9,6 +9,7 @@ API_BIN_DIR := env("API_BIN_DIR")
 WORKER_BIN_DIR := env("WORKER_BIN_DIR")
 RELEASE_MODE := env("RELEASE_MODE")
 
+DB_PORT := env("DB_PORT")
 DB_USER := env("DB_USER")
 DB_PWD := env("DB_PWD")
 DB_NAME := env("DB_NAME")
@@ -94,13 +95,13 @@ db-reset:
     @sh -eu -c 'printf "This will RESET Explorers STORAGE. Enter password to continue: "; stty -echo; read PASSWORD; stty echo; echo; [ "$PASSWORD" = "iddqd" ] || { echo "❌ Access denied."; exit 1; }; echo "✅ Proceeding..."'
     @date "+🕓 Started at %Y-%m-%d %H:%M:%S"
     echo "🔪 Killing active connections to DB..."
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_NAME}}';"
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_NAME}}';"
     echo "🧹 Dropping DB..."
-    docker exec -i {{PG_CONTAINER}} dropdb --username={{DB_USER}} {{DB_NAME}} >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} dropdb --username={{DB_USER}} {{DB_NAME}} >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
     echo "📦 Creating DB..."
-    docker exec -i {{PG_CONTAINER}} createdb --username={{DB_USER}} {{DB_NAME}} >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} createdb --username={{DB_USER}} {{DB_NAME}} >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
     echo "♻️  Restoring DB from {{DB_STATE_ZERO_BACKUP}}..."
-    cat {{DB_STATE_ZERO_BACKUP}} | docker exec -i {{PG_CONTAINER}} pg_restore -U {{DB_USER}} -d {{DB_NAME}} -Fc >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} cat {{DB_STATE_ZERO_BACKUP}} | docker exec -i {{PG_CONTAINER}} pg_restore -U {{DB_USER}} -d {{DB_NAME}} -Fc >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
     @date "+✅ Done at %Y-%m-%d %H:%M:%S"
 
 # Clones db
@@ -109,12 +110,12 @@ db-clone:
     @sh -eu -c 'printf "This will DESTROY current db clone and close all connections to db. Enter password to continue: "; stty -echo; read PASSWORD; stty echo; echo; [ "$PASSWORD" = "iddqd" ] || { echo "❌ Access denied."; exit 1; }; echo "✅ Proceeding..."'
     @date "+🕓 Started at %Y-%m-%d %H:%M:%S"
     echo "🔪 Killing active connections to DB..."
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_CLONE_NAME}}';" >> {{DB_CLONE_NAME}}.{{TIMESTAMP}}.log 2>&1
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_NAME}}';" >> {{DB_CLONE_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_CLONE_NAME}}';" >> {{DB_CLONE_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_NAME}}';" >> {{DB_CLONE_NAME}}.{{TIMESTAMP}}.log 2>&1
     echo "🧹 Dropping DB clone..."
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "DROP DATABASE IF EXISTS \"{{DB_CLONE_NAME}}\";" >> {{DB_CLONE_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "DROP DATABASE IF EXISTS \"{{DB_CLONE_NAME}}\";" >> {{DB_CLONE_NAME}}.{{TIMESTAMP}}.log 2>&1
     echo "📦 Creating DB..."
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "CREATE DATABASE \"{{DB_CLONE_NAME}}\" TEMPLATE \"{{DB_NAME}}\";" >> {{DB_CLONE_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "CREATE DATABASE \"{{DB_CLONE_NAME}}\" TEMPLATE \"{{DB_NAME}}\";" >> {{DB_CLONE_NAME}}.{{TIMESTAMP}}.log 2>&1
     @date "+✅ Done at %Y-%m-%d %H:%M:%S"
 
 # Clones db
@@ -123,23 +124,23 @@ db-restore-from-clone:
     @sh -eu -c 'printf "This will RESET Explorers STORAGE. Enter password to continue: "; stty -echo; read PASSWORD; stty echo; echo; [ "$PASSWORD" = "iddqd" ] || { echo "❌ Access denied."; exit 1; }; echo "✅ Proceeding..."'
     @date "+🕓 Started at %Y-%m-%d %H:%M:%S"
     echo "🔪 Killing active connections to DBs..."
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_CLONE_NAME}}';" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_NAME}}';" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_CLONE_NAME}}';" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{DB_NAME}}';" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
     echo "🧹 Dropping DB..."
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "DROP DATABASE IF EXISTS \"{{DB_NAME}}\";" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "DROP DATABASE IF EXISTS \"{{DB_NAME}}\";" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
     echo "📦 Creating DB..."
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "CREATE DATABASE \"{{DB_NAME}}\" TEMPLATE \"{{DB_CLONE_NAME}}\";" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "CREATE DATABASE \"{{DB_NAME}}\" TEMPLATE \"{{DB_CLONE_NAME}}\";" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
     @date "+✅ Done at %Y-%m-%d %H:%M:%S"
 
 # Exports all known addresses
 [group('manage')]
 db-export-addresses-all:
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -d {{DB_CLONE_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" != 'NULL' ORDER BY \"ADDRESS\") TO STDOUT WITH CSV" > address.csv
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -d {{DB_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" != 'NULL' ORDER BY \"ADDRESS\") TO STDOUT WITH CSV" > addresses.csv
 
 # Exports all known users addresses
 [group('manage')]
 db-export-addresses-users:
-    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -d {{DB_CLONE_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" like 'P%' ORDER BY \"ADDRESS\") TO STDOUT WITH CSV" > address.csv
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -p {{DB_PORT}} -d {{DB_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" like 'P%' ORDER BY \"ADDRESS\") TO STDOUT WITH CSV" > addresses.csv
 
 [group('manage')]
 db-check-missing:
