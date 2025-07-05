@@ -16,6 +16,8 @@ DB_CLONE_NAME := env("DB_CLONE_NAME")
 PG_CONTAINER := env("PG_CONTAINER")
 DB_STATE_ZERO_BACKUP := env("DB_STATE_ZERO_BACKUP")
 
+FUNGIBLE_BALANCES_V1_EXPORT := env("FUNGIBLE_BALANCES_V1_EXPORT")
+
 TIMESTAMP := `date "+%Y%m%d%H%M"`
 
 # Builds ALL
@@ -87,7 +89,7 @@ stop:
     just stop-worker
 
 # Danger! Resets db to backed up initial one!
-[group('configure')]
+[group('manage')]
 db-reset:
     @sh -eu -c 'printf "This will RESET Explorers STORAGE. Enter password to continue: "; stty -echo; read PASSWORD; stty echo; echo; [ "$PASSWORD" = "iddqd" ] || { echo "❌ Access denied."; exit 1; }; echo "✅ Proceeding..."'
     @date "+🕓 Started at %Y-%m-%d %H:%M:%S"
@@ -102,7 +104,7 @@ db-reset:
     @date "+✅ Done at %Y-%m-%d %H:%M:%S"
 
 # Clones db
-[group('configure')]
+[group('manage')]
 db-clone:
     @sh -eu -c 'printf "This will DESTROY current db clone and close all connections to db. Enter password to continue: "; stty -echo; read PASSWORD; stty echo; echo; [ "$PASSWORD" = "iddqd" ] || { echo "❌ Access denied."; exit 1; }; echo "✅ Proceeding..."'
     @date "+🕓 Started at %Y-%m-%d %H:%M:%S"
@@ -116,7 +118,7 @@ db-clone:
     @date "+✅ Done at %Y-%m-%d %H:%M:%S"
 
 # Clones db
-[group('configure')]
+[group('manage')]
 db-restore-from-clone:
     @sh -eu -c 'printf "This will RESET Explorers STORAGE. Enter password to continue: "; stty -echo; read PASSWORD; stty echo; echo; [ "$PASSWORD" = "iddqd" ] || { echo "❌ Access denied."; exit 1; }; echo "✅ Proceeding..."'
     @date "+🕓 Started at %Y-%m-%d %H:%M:%S"
@@ -128,4 +130,17 @@ db-restore-from-clone:
     echo "📦 Creating DB..."
     docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "CREATE DATABASE \"{{DB_NAME}}\" TEMPLATE \"{{DB_CLONE_NAME}}\";" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
     @date "+✅ Done at %Y-%m-%d %H:%M:%S"
-    
+
+# Exports all known addresses
+[group('manage')]
+db-export-addresses-all:
+    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -d {{DB_CLONE_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" != 'NULL' ORDER BY \"ADDRESS\") TO STDOUT WITH CSV" > address.csv
+
+# Exports all known users addresses
+[group('manage')]
+db-export-addresses-users:
+    docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -d {{DB_CLONE_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" like 'P%' ORDER BY \"ADDRESS\") TO STDOUT WITH CSV" > address.csv
+
+[group('manage')]
+db-check-missing:
+    sh scripts/find_extra_v1_addresses.sh {{FUNGIBLE_BALANCES_V1_EXPORT}}
