@@ -3,6 +3,7 @@
     "enabled": true,
     "startDelay": 3,
     "first.block": 1,
+    "heightLimit": "0",
     "phantasma.nexus": "mainnet",
     "phantasma.rpc.nodes": [
       "https://pharpc1.phantasma.info/rpc",

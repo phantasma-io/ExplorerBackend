@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Microsoft.Extensions.Configuration;
 
 namespace Backend.Blockchain;
@@ -14,6 +15,9 @@ internal class Settings
         StartDelay = section.GetValue<int>("startDelay");
 
         FirstBlock = section.GetValue<int>("first.block");
+
+        var heightLimitStr = section.GetValue<string>("heightLimit");
+        HeightLimit = string.IsNullOrWhiteSpace(heightLimitStr) ? BigInteger.Zero : BigInteger.Parse(heightLimitStr);
 
         PhaNexus = section.GetValue<string>("phantasma.nexus");
 
@@ -44,6 +48,7 @@ internal class Settings
     public bool Enabled { get; }
     public int StartDelay { get; }
     public int FirstBlock { get; }
+    public BigInteger HeightLimit { get; }
     public string PhaNexus { get; }
     public List<string> PhaRestNodes { get; }
     public string SelectedPhaRestNodes { get; private set; }

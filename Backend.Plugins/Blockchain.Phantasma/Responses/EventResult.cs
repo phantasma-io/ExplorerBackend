@@ -1,14 +1,13 @@
 using System.Collections.Generic;
-using Phantasma.Core.Domain.Events.Structs;
-
-using Phantasma.Core.Cryptography.Structs;
-using Phantasma.Core.Domain.Contract.Sale.Structs;
-using Phantasma.Core.Numerics;
-using Phantasma.Core.Domain.Serializer;
 using System;
 using Serilog;
 using System.Numerics;
 using System.Linq;
+using PhantasmaPhoenix.Protocol;
+using PhantasmaPhoenix.Core;
+using PhantasmaPhoenix.Cryptography;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace Backend.Blockchain.Responses;
 
@@ -25,7 +24,12 @@ public class EventResult
 
     public void ParseData(BigInteger blockHeight)
     {
-        KindParsed = Enum.Parse<EventKind>(Kind);
+        if (!Enum.TryParse<EventKind>(Kind, out KindParsed))
+        {
+            Log.Error($"Unsupported event kind {Kind}");
+            return;
+        }
+
         try
         {
             switch (KindParsed)
@@ -89,6 +93,18 @@ public class EventResult
                 case EventKind.OrganizationAdd or EventKind.OrganizationRemove:
                     {
                         DataParsed = Serialization.Unserialize<OrganizationEventData>(Base16.Decode(Data));
+                        break;
+                    }
+                case EventKind.GovernanceSetGasEvent:
+                    {
+                        DataParsed = Serialization.Unserialize<GasConfig>(Base16.Decode(Data));
+                        // TODO add proper event support later
+                        if (DataParsed != null)
+                        {
+                            // Best we can do without refactoring.
+                            // Just saving in db as one-line json.
+                            DataParsed = JToken.Parse(DataParsed.ToString()).ToString(Formatting.None);
+                        }
                         break;
                     }
                 //TODO

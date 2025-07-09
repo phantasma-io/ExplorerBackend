@@ -8,7 +8,7 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
-using Phantasma.Core;
+using PhantasmaPhoenix.Core.Extensions;
 using Serilog;
 
 namespace Backend.Blockchain;
@@ -33,7 +33,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             var split = splitAddresses.ElementAt(i).Select(x => x.ADDRESS).ToList();
             var addressesComaSeparated = string.Join(",", split);
-            var url = $"{Settings.Default.GetRest()}/api/v1/getAccounts?accountText={addressesComaSeparated}&extended=false";
+            var url = $"{Settings.Default.GetRest()}/api/v1/getAccounts?accountText={addressesComaSeparated}&extended=false&checkAddressReservedByte=false";
 
             try
             {
@@ -54,7 +54,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     if(updateChunkSize == 1)
                     {
-                        Log.Error("[{Name}] Balance sync [{Address}]: Error: {errorProperty}", Name, split.First(), errorProperty);
+                        Log.Error("[{Name}] Balance sync [{Address}]: Error: {errorProperty} [{apiCallUrl}]", Name, split.First(), errorProperty, url);
                     }
                     else
                     {
@@ -174,7 +174,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 addressEntry.ADDRESS_NAME = addressName;
             else
             {
-                url = $"{Settings.Default.GetRest()}/api/v1/getAccount?account={address}&extended=false";
+                url = $"{Settings.Default.GetRest()}/api/v1/getAccount?account={address}&extended=false&checkAddressReservedByte=false";
                 response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
                 if ( response == null )
                 {

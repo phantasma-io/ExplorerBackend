@@ -80,7 +80,7 @@ public static class EventMethods
 
 
     public static async Task<bool> UpdateValuesAsync(MainDbContext databaseContext, Event eventItem, Nft nft,
-        string tokenId, Chain chain, Phantasma.Core.Domain.Events.Structs.EventKind eventKind, int eventKindId, int contractId)
+        string tokenId, Chain chain, PhantasmaPhoenix.Protocol.EventKind eventKind, int eventKindId, int contractId)
     {
         var eventUpdated = false;
 
@@ -94,7 +94,7 @@ public static class EventMethods
 
         eventUpdated = true;
 
-        if ( eventKind != Phantasma.Core.Domain.Events.Structs.EventKind.TokenBurn || nft == null )
+        if ( eventKind != PhantasmaPhoenix.Protocol.EventKind.TokenBurn || nft == null )
             return eventUpdated;
 
         //TODO check if always needed

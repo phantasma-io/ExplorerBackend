@@ -88,7 +88,7 @@ public static class GetAddresses
 
             bool isValidAddress = false;
             if ( !string.IsNullOrEmpty(address) )
-                isValidAddress = Phantasma.Core.Cryptography.Structs.Address.IsValidAddress(address);
+                isValidAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(address);
             
             if ( !string.IsNullOrEmpty(address) && isValidAddress) query = query.Where(x => x.ADDRESS == address);
 

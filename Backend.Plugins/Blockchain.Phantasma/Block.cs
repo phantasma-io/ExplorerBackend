@@ -9,15 +9,13 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Npgsql;
-using Phantasma.Core.Cryptography.Structs;
-using Phantasma.Core.Domain.Contract.Sale.Structs;
-using Phantasma.Core.Domain.Events.Structs;
-using Phantasma.Core.Numerics;
+using PhantasmaPhoenix.Cryptography;
+using PhantasmaPhoenix.Protocol;
 using Serilog;
-using Address = Phantasma.Core.Cryptography.Structs.Address;
+using Address = PhantasmaPhoenix.Cryptography.Address;
 using ChainMethods = Database.Main.ChainMethods;
 using ContractMethods = Database.Main.ContractMethods;
-using EventKind = Phantasma.Core.Domain.Events.Structs.EventKind;
+using EventKind = PhantasmaPhoenix.Protocol.EventKind;
 using Nft = Database.Main.Nft;
 using NftMethods = Database.Main.NftMethods;
 
@@ -31,6 +29,39 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
+        await using ( MainDbContext databaseContext = new() )
+        {
+            List<string> addressesForInitialUpdate = [];
+            _balanceRefetchDate = await GlobalVariableMethods.GetLongAsync(databaseContext, _balanceRefetchTimestampKey);
+            if (_balanceRefetchDate == 0)
+            {
+                // Reprocess balances of ALL known addresses
+                // to fix issues
+                addressesForInitialUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
+            }
+
+            if (addressesForInitialUpdate.Count() > 0)
+            {
+                Log.Information("[{Name}][Blocks] Starting {Count} INITIAL addresses update",
+                    Name, addressesForInitialUpdate.Count());
+
+                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
+                await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesForInitialUpdate,
+                    100);
+
+                if (_balanceRefetchDate == 0)
+                {
+                    // We just finished refetching all balances, saving timestamp
+                    // to the database which will tell us when this process was done.
+                    await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now());
+                }
+
+                await databaseContext.SaveChangesAsync();
+
+                Log.Information("[{Name}][Blocks] Finished INITIAL addresses update", Name);
+            }
+        }
+
         Log.Information("[{Name}][Blocks] Fetching blocks ({From}-{To}) for chain {Chain}...",
                 Name,
                 fromHeight,
@@ -82,16 +113,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressesToUpdate = addressesToUpdate.Distinct().ToList();
             await using ( MainDbContext databaseContext = new() )
             {
+                Log.Information("[{Name}][Blocks] Starting {Count} addresses update",
+                    Name, addressesToUpdate.Count());
+
                 var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
                 await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesToUpdate,
                     100);
-                
-                if(_balanceRefetchDate == 0)
-                {
-                    // We just finished refetching all balances, saving timestamp
-                    // to the database which will tell us when this process was done.
-                    await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now());
-                }
 
                 await databaseContext.SaveChangesAsync();
             }
@@ -332,7 +359,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     try
                     {
                         var kindSerialized = eventNode.Kind;
-                        var kind = Enum.Parse<EventKind>(kindSerialized);
+                        if (!Enum.TryParse<EventKind>(kindSerialized, out var kind))
+                        {
+                            Log.Error($"Unsupported event kind {kindSerialized}");
+                            continue;
+                        }
 
                         var eventKindId = _eventKinds.GetId(chainId, kind);
 
@@ -503,7 +534,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             }
                             case EventKind.ChainCreate or EventKind.TokenCreate or EventKind.ContractUpgrade
                                 or EventKind.AddressRegister or EventKind.ContractDeploy or EventKind.PlatformCreate
-                                or EventKind.OrganizationCreate or EventKind.Log or EventKind.AddressUnregister:
+                                or EventKind.OrganizationCreate or EventKind.Log or EventKind.AddressUnregister
+                                or EventKind.GovernanceSetGasEvent:
                                 //or EventKind.Error:
                             {
                                 var stringData = eventNode.GetParsedData<string>();
@@ -718,14 +750,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     }
                 }
             }
-        }
-
-        _balanceRefetchDate = await GlobalVariableMethods.GetLongAsync(databaseContext, _balanceRefetchTimestampKey);
-        if(_balanceRefetchDate == 0)
-        {
-            // Reprocess balances of ALL known addresses
-            // to fix issues
-            addressesToUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
         }
 
         Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, block.height,

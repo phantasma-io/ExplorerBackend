@@ -3,6 +3,7 @@
     "enabled": true,
     "startDelay": 3,
     "first.block": 1,
+    "heightLimit": "0",
     "phantasma.nexus": "testnet",
     "phantasma.rpc.nodes": [
       "https://testnet.phantasma.info/rpc"

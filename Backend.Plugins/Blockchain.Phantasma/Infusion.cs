@@ -4,7 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Backend.PluginEngine;
 using Database.Main;
-using Phantasma.Core.Numerics;
+using PhantasmaPhoenix.Core;
 using Serilog;
 
 namespace Backend.Blockchain;

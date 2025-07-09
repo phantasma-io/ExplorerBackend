@@ -9,12 +9,11 @@ using Backend.Api;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
-using Phantasma.Core.Cryptography;
-using Phantasma.Core.Domain.VM;
-using Phantasma.Core.Domain.VM.Enums;
-using Phantasma.Core.Numerics;
+using PhantasmaPhoenix.Cryptography;
+using PhantasmaPhoenix.Cryptography.Extensions;
+using PhantasmaPhoenix.VM;
 using Serilog;
-using Address = Phantasma.Core.Cryptography.Structs.Address;
+using Address = PhantasmaPhoenix.Cryptography.Address;
 using Nft = Database.Main.Nft;
 
 namespace Backend.Blockchain;
