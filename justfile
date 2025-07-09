@@ -16,6 +16,7 @@ DB_NAME := env("DB_NAME")
 DB_CLONE_NAME := env("DB_CLONE_NAME")
 PG_CONTAINER := env("PG_CONTAINER")
 DB_STATE_ZERO_BACKUP := env("DB_STATE_ZERO_BACKUP")
+DB_BACKUP_DIR := env("DB_BACKUP_DIR")
 
 FUNGIBLE_BALANCES_V1_EXPORT := env("FUNGIBLE_BALANCES_V1_EXPORT")
 
@@ -131,6 +132,11 @@ db-restore-from-clone:
     echo "📦 Creating DB..."
     PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -c "CREATE DATABASE \"{{DB_NAME}}\" TEMPLATE \"{{DB_CLONE_NAME}}\";" >> {{DB_NAME}}.{{TIMESTAMP}}.log 2>&1
     @date "+✅ Done at %Y-%m-%d %H:%M:%S"
+
+# Backs up db
+[group('manage')]
+db-backup:
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} pg_dump -Z 9 -Fc -U {{DB_USER}} -d {{DB_NAME}} > {{DB_BACKUP_DIR}}/{{DB_NAME}}.{{TIMESTAMP}}.bak 2> {{DB_BACKUP_DIR}}/{{DB_NAME}}.{{TIMESTAMP}}.error-log.log
 
 # Exports all known addresses
 [group('manage')]
