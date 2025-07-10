@@ -1,11 +1,19 @@
 #!/bin/sh
 set -eu
 
-SESSION_NAME="explorer_api_session"
-DIR="."
-CMD="just ra0"
-CRASH_DIR="$HOME/crashes"
+# Usage: ./run_in_tmux.sh SESSION_NAME "COMMAND" [--detached]
 
+if [ $# -lt 2 ]; then
+  echo "Usage: $0 <session_name> <command> [--detached]"
+  exit 1
+fi
+
+SESSION_NAME="$1"
+CMD="$2"
+DETACHED="${3:-}"
+
+DIR="."
+CRASH_DIR="$HOME/crashes"
 mkdir -p "$CRASH_DIR"
 
 if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
@@ -48,4 +56,6 @@ else
   echo "ℹ️  Reusing existing tmux session: $SESSION_NAME"
 fi
 
-exec tmux attach -t "$SESSION_NAME"
+if [ "$DETACHED" != "--detached" ]; then
+  exec tmux attach -t "$SESSION_NAME"
+fi
