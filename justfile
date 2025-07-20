@@ -63,7 +63,11 @@ ra0:
 
 [group('run')]
 ra:
-    sh ./scripts/run_api_in_tmux.sh
+    sh ./scripts/run_in_tmux.sh {{API_TMUX_SESSION_NAME}} "just ra0"
+
+[group('run')]
+rad:
+    sh ./scripts/run_in_tmux.sh {{API_TMUX_SESSION_NAME}} "just ra0" --detached
 
 [group('run')]
 rw0:
@@ -72,17 +76,26 @@ rw0:
 
 [group('run')]
 rw:
-    sh ./scripts/run_worker_in_tmux.sh
+    sh ./scripts/run_in_tmux.sh {{WORKER_TMUX_SESSION_NAME}} "just rw0"
+
+[group('run')]
+rwd:
+    sh ./scripts/run_in_tmux.sh {{WORKER_TMUX_SESSION_NAME}} "just rw0" --detached
+
+[group('run')]
+rd:
+    just rad
+    just rwd
 
 # Stops API running in tmux
 [group('run')]
 stop-api:
-    sh -u -c 'tmux has-session -t {{API_TMUX_SESSION_NAME}} 2>/dev/null || exit 0; pid=$(tmux list-panes -t {{API_TMUX_SESSION_NAME}} -F "#{pane_pid}"); [ -n "$pid" ] && kill -s INT "$pid" && tmux kill-session -t {{API_TMUX_SESSION_NAME}}'
+    sh ./scripts/stop_tmux_process.sh {{API_TMUX_SESSION_NAME}} Backend.Service.Api
 
 # Stops Worker running in tmux
 [group('run')]
 stop-worker:
-    sh -u -c 'tmux has-session -t {{WORKER_TMUX_SESSION_NAME}} 2>/dev/null || exit 0; pid=$(tmux list-panes -t {{WORKER_TMUX_SESSION_NAME}} -F "#{pane_pid}"); [ -n "$pid" ] && kill -s INT "$pid" && tmux kill-session -t {{WORKER_TMUX_SESSION_NAME}}'
+    sh ./scripts/stop_tmux_process.sh {{WORKER_TMUX_SESSION_NAME}} Backend.Service.Worker
 
 # Stops ALL services running in tmux
 [group('run')]
