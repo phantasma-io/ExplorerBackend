@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Numerics;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
@@ -25,6 +26,7 @@ public static class GetAddresses
         string address = "",
         string address_name = "",
         string address_partial = "",
+        string symbol = "",
         string organization_name = "",
         string validator_kind = "",
         int with_storage = 0,
@@ -116,7 +118,7 @@ public static class GetAddresses
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
                 totalResults = await query.CountAsync();
-
+Log.Warning($"order_by: {order_by} symbol: {symbol}");
             //in case we add more to sort
             if ( order_direction == "asc" )
                 query = order_by switch
@@ -124,6 +126,10 @@ public static class GetAddresses
                     "id" => query.OrderBy(x => x.ID),
                     "address" => query.OrderBy(x => x.ADDRESS),
                     "address_name" => query.OrderBy(x => x.ADDRESS_NAME),
+                    "balance" when symbol.Equals("SOUL", StringComparison.InvariantCultureIgnoreCase) => query.OrderBy(x => x.TOTAL_SOUL_AMOUNT),
+                    "balance" => query.OrderBy(x =>
+                        !x.AddressBalances.Any(y => y.Token.SYMBOL == symbol))
+                        .ThenBy(x => x.AddressBalances.Where(y => y.Token.SYMBOL == symbol).Select(y => y.AMOUNT_RAW).FirstOrDefault()),
                     _ => query
                 };
             else
@@ -132,6 +138,10 @@ public static class GetAddresses
                     "id" => query.OrderByDescending(x => x.ID),
                     "address" => query.OrderByDescending(x => x.ADDRESS),
                     "address_name" => query.OrderByDescending(x => x.ADDRESS_NAME),
+                    "balance" when symbol.Equals("SOUL", StringComparison.InvariantCultureIgnoreCase) => query.OrderByDescending(x => x.TOTAL_SOUL_AMOUNT),
+                    "balance" => query.OrderBy(x =>
+                        !x.AddressBalances.Any(y => y.Token.SYMBOL == symbol))
+                        .ThenByDescending(x => x.AddressBalances.Where(y => y.Token.SYMBOL == symbol).Select(y => y.AMOUNT_RAW).FirstOrDefault()),
                     _ => query
                 };
 

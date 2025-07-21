@@ -20,6 +20,7 @@ public class AssetController : BaseControllerV1
     /// <param name="address">hash of an address</param>
     /// <param name="address_name">Name of an Address, if is has one</param>
     /// <param name="address_partial">partial hash of an address</param>
+    /// <param name="symbol">Token symbol to use when ordering by balance</param>
     /// <param name="organization_name">Filter for an Organization Name"</param>
     /// <param name="validator_kind" example="Primary">Filter for a Validator Kind</param>
     /// <param name="with_storage" example="0">returns data with <a href='#model-Backend.Service.Api.AddressStorage'>AddressStorage</a></param>
@@ -41,6 +42,7 @@ public class AssetController : BaseControllerV1
         [FromQuery] string address = "",
         [FromQuery] string address_name = "",
         [FromQuery] string address_partial = "",
+        [FromQuery] string symbol = "",
         [FromQuery] string organization_name = "",
         [FromQuery] string validator_kind = "",
         [FromQuery] int with_storage = 0,
@@ -59,6 +61,7 @@ public class AssetController : BaseControllerV1
             address,
             address_name,
             address_partial,
+            symbol,
             organization_name,
             validator_kind,
             with_storage,
