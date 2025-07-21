@@ -202,7 +202,7 @@ Log.Warning($"order_by: {order_by} symbol: {symbol}");
                                     chain_name = b.Address.Chain.NAME
                                 },
                             amount = b.AMOUNT,
-                            amount_raw = b.AMOUNT_RAW
+                            amount_raw = b.AMOUNT_RAW.ToString()
                         }
                     ).ToArray()
                     : null

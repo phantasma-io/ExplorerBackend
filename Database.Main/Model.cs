@@ -1769,7 +1769,7 @@ public class AddressBalance
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }
-    public string AMOUNT_RAW { get; set; }
+    public BigInteger AMOUNT_RAW { get; set; }
 }
 
 public class AddressValidatorKind
