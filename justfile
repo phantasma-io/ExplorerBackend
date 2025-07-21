@@ -161,6 +161,16 @@ db-export-addresses-all:
 db-export-addresses-users:
     PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -p {{DB_PORT}} -d {{DB_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" like 'P%' ORDER BY \"ADDRESS\" COLLATE \"C\") TO STDOUT WITH CSV" > addresses.csv
 
+# Import addresses from a CSV file into the Addresses table, avoiding duplicates
+[group('manage')]
+import-addresses FILE:
+    sh ./scripts/import_addresses.sh {{FILE}}
+
+# Apply migrations to main db
+[group('manage')]
+db-migrations-apply:
+    dotnet ef database update -v --project Database.Main/Database.Main.csproj
+
 [group('manage')]
 find-extra-v1-addresses:
     sh scripts/find_extra_v1_addresses.sh {{FUNGIBLE_BALANCES_V1_EXPORT}}
