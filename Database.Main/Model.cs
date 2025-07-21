@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Text.Json;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
@@ -1241,6 +1242,7 @@ public class Address
     public string STAKED_AMOUNT_RAW { get; set; }
     public string UNCLAIMED_AMOUNT { get; set; }
     public string UNCLAIMED_AMOUNT_RAW { get; set; }
+    public BigInteger TOTAL_SOUL_AMOUNT { get; set; }
     public long STORAGE_AVAILABLE { get; set; }
     public long STORAGE_USED { get; set; }
     public string AVATAR { get; set; }
