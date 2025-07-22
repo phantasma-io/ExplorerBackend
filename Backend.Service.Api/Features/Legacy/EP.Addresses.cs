@@ -118,7 +118,7 @@ public static class GetAddresses
             // Count total number of results before adding order and limit parts of query.
             if ( with_total == 1 )
                 totalResults = await query.CountAsync();
-Log.Warning($"order_by: {order_by} symbol: {symbol}");
+
             //in case we add more to sort
             if ( order_direction == "asc" )
                 query = order_by switch
