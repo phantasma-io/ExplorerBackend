@@ -4,6 +4,7 @@ using System.Text.Json;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Database.Main.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    partial class MainDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250721201353_Update14")]
+    partial class Update14
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -122,8 +125,8 @@ namespace Database.Main.Migrations
                     b.Property<string>("AMOUNT")
                         .HasColumnType("text");
 
-                    b.Property<BigInteger>("AMOUNT_RAW")
-                        .HasColumnType("numeric");
+                    b.Property<string>("AMOUNT_RAW")
+                        .HasColumnType("text");
 
                     b.Property<int>("AddressId")
                         .HasColumnType("integer");

@@ -9,7 +9,7 @@ API_BIN_DIR := env("API_BIN_DIR")
 WORKER_BIN_DIR := env("WORKER_BIN_DIR")
 RELEASE_MODE := env("RELEASE_MODE")
 
-DB_PORT := env("DB_PORT")
+DB_HOST_PORT := env("DB_HOST_PORT")
 DB_USER := env("DB_USER")
 DB_PWD := env("DB_PWD")
 DB_NAME := env("DB_NAME")
@@ -159,7 +159,22 @@ db-export-addresses-all:
 # Exports all known users addresses
 [group('manage')]
 db-export-addresses-users:
-    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -p {{DB_PORT}} -d {{DB_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" like 'P%' ORDER BY \"ADDRESS\" COLLATE \"C\") TO STDOUT WITH CSV" > addresses.csv
+    PGPASSWORD={{DB_PWD}} docker exec -i {{PG_CONTAINER}} psql -U {{DB_USER}} -d {{DB_NAME}} -c "\COPY (SELECT \"ADDRESS\" FROM \"Addresses\" WHERE \"ADDRESS\" like 'P%' ORDER BY \"ADDRESS\" COLLATE \"C\") TO STDOUT WITH CSV" > addresses.csv
+
+# Import addresses from a CSV file into the Addresses table, avoiding duplicates
+[group('manage')]
+import-addresses FILE:
+    sh ./scripts/import_addresses.sh {{FILE}}
+
+# Apply migrations to main db
+[group('manage')]
+db-migrations-apply:
+    PHA_EXPLORER_DB_HOST=localhost \
+    PHA_EXPLORER_DB_PORT={{DB_HOST_PORT}} \
+    PHA_EXPLORER_DB_NAME={{DB_NAME}} \
+    PHA_EXPLORER_DB_USER={{DB_USER}} \
+    PHA_EXPLORER_DB_PWD={{DB_PWD}} \
+    dotnet ef database update -v --project Database.Main/Database.Main.csproj
 
 [group('manage')]
 find-extra-v1-addresses:

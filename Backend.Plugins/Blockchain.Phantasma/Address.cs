@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Backend.Api;
@@ -95,11 +96,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         address.UNCLAIMED_AMOUNT_RAW = unclaimed;
                     }
 
-                    if ( account.TryGetProperty("balances", out var balancesProperty) )
+                    BigInteger soulStakedBalance = BigInteger.TryParse(address.STAKED_AMOUNT_RAW, out var result) ? result : BigInteger.Zero;
+                    BigInteger soulBalance = BigInteger.Zero;
+
+                    if (account.TryGetProperty("balances", out var balancesProperty))
                     {
                         var balancesList0 = balancesProperty.EnumerateArray();
 
-                        if(balancesList0.Count() > 0)
+                        if (balancesList0.Count() > 0)
                         {
                             var balancesList = balancesList0.Select(balance =>
                                     new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
@@ -107,11 +111,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         balance.GetProperty("amount").GetString()))
                                 .ToList();
 
+                            soulBalance = balancesList.Where(x => x.Item2 == "SOUL").Select(x => BigInteger.Parse(x.Item3)).FirstOrDefault();
+
                             await AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
                         }
                     }
 
-                    if ( account.TryGetProperty("storage", out var storageProperty) )
+                    address.TOTAL_SOUL_AMOUNT = soulBalance + soulStakedBalance;
+
+                    if (account.TryGetProperty("storage", out var storageProperty))
                     {
                         address.STORAGE_AVAILABLE = storageProperty.GetProperty("available").GetUInt32();
                         address.STORAGE_USED = storageProperty.GetProperty("used").GetUInt32();

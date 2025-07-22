@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Text.Json;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Serilog;
 
 // Here we have all tables, fields and their relations for backend database.
 // Also public method GetConnectionString() available, allowing to get database connection string,
@@ -93,6 +95,23 @@ public class MainDbContext : DbContext
 
         Settings.Load(new ConfigurationBuilder().AddJsonFile(DetectConfigFilePath(), false).Build()
             .GetSection("DatabaseConfiguration"));
+
+        // Check environment override first
+        var host = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_HOST");
+        var port = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_PORT") ?? "5432";
+        var db   = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_NAME");
+        var user = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_USER");
+        var pass = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_PWD");
+
+        if (!string.IsNullOrEmpty(host) &&
+            !string.IsNullOrEmpty(db) &&
+            !string.IsNullOrEmpty(user) &&
+            !string.IsNullOrEmpty(pass))
+        {
+            Settings.Default!.ConnectionString = $"Host={host};Port={port};Database={db};Username={user};Password={pass}";
+            Log.Warning("Overriding db connection string using env variables: ", Settings.Default!.ConnectionString);
+        }
+
         return Settings.Default!.ConnectionString;
     }
 
@@ -1241,6 +1260,7 @@ public class Address
     public string STAKED_AMOUNT_RAW { get; set; }
     public string UNCLAIMED_AMOUNT { get; set; }
     public string UNCLAIMED_AMOUNT_RAW { get; set; }
+    public BigInteger TOTAL_SOUL_AMOUNT { get; set; }
     public long STORAGE_AVAILABLE { get; set; }
     public long STORAGE_USED { get; set; }
     public string AVATAR { get; set; }
@@ -1767,7 +1787,7 @@ public class AddressBalance
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public string AMOUNT { get; set; }
-    public string AMOUNT_RAW { get; set; }
+    public BigInteger AMOUNT_RAW { get; set; }
 }
 
 public class AddressValidatorKind

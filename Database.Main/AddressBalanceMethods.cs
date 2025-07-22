@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public static class AddressBalanceMethods
             if ( entry != null )
             {
                 entry.AMOUNT = amountConverted;
-                entry.AMOUNT_RAW = amount;
+                entry.AMOUNT_RAW = BigInteger.TryParse(amount, out var result) ? result : BigInteger.Zero;
             }
             else
             {
@@ -37,7 +38,7 @@ public static class AddressBalanceMethods
                     Token = token,
                     Address = address,
                     AMOUNT = amountConverted,
-                    AMOUNT_RAW = amount
+                    AMOUNT_RAW = BigInteger.TryParse(amount, out var result) ? result : BigInteger.Zero
                 };
                 balanceListToAdd.Add(entry);
             }
