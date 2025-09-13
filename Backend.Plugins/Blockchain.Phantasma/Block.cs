@@ -535,7 +535,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             case EventKind.ChainCreate or EventKind.TokenCreate or EventKind.ContractUpgrade
                                 or EventKind.AddressRegister or EventKind.ContractDeploy or EventKind.PlatformCreate
                                 or EventKind.OrganizationCreate or EventKind.Log or EventKind.AddressUnregister
-                                or EventKind.GovernanceSetGasEvent:
+                                or EventKind.GovernanceSetGasConfig
+                                or EventKind.GovernanceSetChainConfig:
                                 //or EventKind.Error:
                             {
                                 var stringData = eventNode.GetParsedData<string>();

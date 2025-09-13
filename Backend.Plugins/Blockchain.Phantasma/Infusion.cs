@@ -51,7 +51,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     // It's a fungible token. We should apply decimals.
                     var decimals = token.DECIMALS;
                     if ( decimals != 0 && BigInteger.TryParse(value, out var result ))
-                        value = UnitConversion.ToDecimal(result, decimals)
+                        value = UnitConversion.ToDecimal(result, (uint)decimals)
                             .ToString(CultureInfo.InvariantCulture);
                 }
 

@@ -8,6 +8,8 @@ using PhantasmaPhoenix.Core;
 using PhantasmaPhoenix.Cryptography;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using PhantasmaPhoenix.Protocol.Carbon.Blockchain;
+using PhantasmaPhoenix.Protocol.Carbon;
 
 namespace Backend.Blockchain.Responses;
 
@@ -95,15 +97,27 @@ public class EventResult
                         DataParsed = Serialization.Unserialize<OrganizationEventData>(Base16.Decode(Data));
                         break;
                     }
-                case EventKind.GovernanceSetGasEvent:
+                case EventKind.GovernanceSetGasConfig:
                     {
-                        DataParsed = Serialization.Unserialize<GasConfig>(Base16.Decode(Data));
+                        DataParsed = CarbonBlob.New<GasConfig>(Base16.Decode(Data));
                         // TODO add proper event support later
                         if (DataParsed != null)
                         {
                             // Best we can do without refactoring.
                             // Just saving in db as one-line json.
-                            DataParsed = JToken.Parse(DataParsed.ToString()).ToString(Formatting.None);
+                            DataParsed = JsonConvert.SerializeObject(DataParsed, Formatting.None);
+                        }
+                        break;
+                    }
+                case EventKind.GovernanceSetChainConfig:
+                    {
+                        DataParsed = CarbonBlob.New<ChainConfig>(Base16.Decode(Data));
+                        // TODO add proper event support later
+                        if (DataParsed != null)
+                        {
+                            // Best we can do without refactoring.
+                            // Just saving in db as one-line json.
+                            DataParsed = JsonConvert.SerializeObject(DataParsed, Formatting.None);
                         }
                         break;
                     }
