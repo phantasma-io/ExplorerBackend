@@ -75,6 +75,7 @@ public class Startup
                 options.JsonSerializerOptions.IncludeFields = true;
                 options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
                 options.JsonSerializerOptions.Converters.Add(new EnumerableJsonConverterFactory());
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
         
         services.AddFluentValidationAutoValidation();
