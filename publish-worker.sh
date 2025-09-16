@@ -32,7 +32,7 @@ cd Backend.Plugins/Blockchain.Phantasma
 dotnet publish
 cd -
 cp -a Backend.Plugins/Blockchain.Phantasma/bin/$NET_SUBFOLDER/Blockchain.Phantasma.* $OUT_BIN_FOLDER/Plugins
-cp -a Backend.Plugins/Blockchain.Phantasma/bin/$NET_SUBFOLDER/publish/Phantasma.* $OUT_BIN_FOLDER
+cp -a Backend.Plugins/Blockchain.Phantasma/bin/$NET_SUBFOLDER/publish/PhantasmaPhoenix.* $OUT_BIN_FOLDER
 cp -a Backend.Plugins/Blockchain.Phantasma/*.json $OUT_FOLDER
 cp -a Backend.Plugins/Nft.TTRS/bin/$NET_SUBFOLDER/Nft.TTRS.* $OUT_BIN_FOLDER/Plugins
 cp -a Backend.Plugins/Nft.TTRS/*.json $OUT_FOLDER
