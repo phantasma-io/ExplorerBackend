@@ -14,9 +14,9 @@
     <Compile Remove="Publish\**" />
     <EmbeddedResource Remove="Publish\**" />
     <None Remove="Publish\**" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
-    <PackageReference Include="Npgsql" Version="9.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.10" />
+    <PackageReference Include="Npgsql" Version="9.0.4" />
     <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj" />
   </ItemGroup>
 </Project>
