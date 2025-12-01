@@ -361,3 +361,5 @@ overwrite/*
 
 # Macos
 .DS_Store
+
+.codex
