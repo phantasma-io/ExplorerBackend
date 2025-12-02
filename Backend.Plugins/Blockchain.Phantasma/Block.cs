@@ -12,6 +12,8 @@ using Npgsql;
 using PhantasmaPhoenix.Cryptography;
 using PhantasmaPhoenix.Protocol;
 using Serilog;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Address = PhantasmaPhoenix.Cryptography.Address;
 using ChainMethods = Database.Main.ChainMethods;
 using ContractMethods = Database.Main.ContractMethods;
@@ -26,6 +28,47 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private const int FetchBlocksPerIterationMax = 50;
     private long _balanceRefetchDate = 0;
     private string _balanceRefetchTimestampKey = "BALANCE_REFETCH_TIMESTAMP";
+    private static readonly JsonSerializerOptions _payloadJsonOptions = new()
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = null
+    };
+
+    private static Dictionary<string, object?> InitPayload(string eventKind, string chainName, string contractHash, string address)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["event_kind"] = eventKind,
+            ["chain"] = chainName,
+            ["contract"] = contractHash,
+            ["address"] = address
+        };
+    }
+
+    private static void FinalizePayload(Database.Main.Event eventEntry, Dictionary<string, object?> payload, string rawData)
+    {
+        if (eventEntry == null || payload == null)
+        {
+            return;
+        }
+
+        if (!payload.ContainsKey("token_id") && !string.IsNullOrEmpty(eventEntry.TOKEN_ID))
+        {
+            payload["token_id"] = eventEntry.TOKEN_ID;
+        }
+
+        if (eventEntry.TargetAddress != null && !payload.ContainsKey("address_event"))
+        {
+            payload["address_event"] = new Dictionary<string, object?>
+            {
+                ["address"] = eventEntry.TargetAddress.ADDRESS
+            };
+        }
+
+        eventEntry.PAYLOAD_JSON = JsonSerializer.Serialize(payload, _payloadJsonOptions);
+        eventEntry.PAYLOAD_FORMAT = "live.v1";
+        eventEntry.RAW_DATA = rawData;
+    }
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
@@ -355,6 +398,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 for ( var eventIndex = 0; eventIndex < tx.events.Length; eventIndex++ )
                 {
                     var eventNode = tx.events[eventIndex];
+                    Database.Main.Event eventEntry = null;
+                    Dictionary<string, object?> payload = null;
 
                     try
                     {
@@ -370,13 +415,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var contract = eventNode.Contract;
                         var addressString = eventNode.Address;
                         AddAddress(ref addressesToUpdate, addressString);
+                        payload = InitPayload(kind.ToString(), chainEntry.NAME, contract, addressString);
 
                         //create here the event, and below update the data if needed
                         var contractId = contracts.GetId(chainId, contract);
 
                         var addressEntry = await AddressMethods.UpsertAsync(databaseContext, chainEntry, addressString);
 
-                        var eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
+                        eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
                             block.timestamp, eventIndex + 1, chainEntry, transaction, contractId,
                             eventKindId, addressEntry);
 
@@ -425,6 +471,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 await InfusionEventMethods.InsertAsync(databaseContext, infusionEventData.TokenID.ToString(),
                                     infusionEventData.BaseSymbol, infusionEventData.InfusedSymbol,
                                     infusionEventData.InfusedValue.ToString(), chainEntry, eventEntry);
+                                payload["token_id"] = tokenId;
+                                payload["infusion_event"] = new Dictionary<string, object?>
+                                {
+                                    ["token_id"] = tokenId,
+                                    ["base_token"] = infusionEventData.BaseSymbol,
+                                    ["infused_token"] = infusionEventData.InfusedSymbol,
+                                    ["infused_value"] = infusionEventData.InfusedValue.ToString()
+                                };
                                 break;
                             }
                             case EventKind.TokenMint or EventKind.TokenClaim or EventKind.TokenBurn
@@ -477,6 +531,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 await TokenEventMethods.UpsertAsync(databaseContext, tokenEventData.Symbol,
                                     tokenEventData.ChainName, tokenValue, chainEntry, eventEntry);
+                                payload["token_id"] = tokenValue;
+                                payload["token_event"] = new Dictionary<string, object?>
+                                {
+                                    ["token"] = tokenEventData.Symbol,
+                                    ["value"] = tokenValue,
+                                    ["value_raw"] = tokenEventData.Value.ToString(),
+                                    ["chain_name"] = tokenEventData.ChainName
+                                };
 
                                 break;
                             }
@@ -529,6 +591,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     marketEventData.BaseSymbol, marketEventData.QuoteSymbol,
                                     marketEventData.Price.ToString(), marketEventData.EndPrice.ToString(),
                                     marketEventData.ID.ToString(), chainEntry, eventEntry);
+                                payload["token_id"] = tokenId;
+                                payload["market_event"] = new Dictionary<string, object?>
+                                {
+                                    ["base_token"] = marketEventData.BaseSymbol,
+                                    ["quote_token"] = marketEventData.QuoteSymbol,
+                                    ["market_event_kind"] = marketEventData.Type.ToString(),
+                                    ["market_id"] = marketEventData.ID.ToString(),
+                                    ["price"] = marketEventData.Price.ToString(),
+                                    ["end_price"] = marketEventData.EndPrice.ToString()
+                                };
 
                                 break;
                             }
@@ -605,7 +677,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         break;
                                     }
                                 }
-
+                                payload["string_event"] = new Dictionary<string, object?>
+                                {
+                                    ["string_value"] = stringData
+                                };
                                 break;
                             }
                             case EventKind.Crowdsale:
@@ -619,6 +694,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 if ( eventEntry != null )
                                     SaleEventMethods.Upsert(databaseContext, saleKind, hash, chainEntry, eventEntry,
                                         false);
+                                payload["sale_event"] = new Dictionary<string, object?>
+                                {
+                                    ["hash"] = hash,
+                                    ["sale_event_kind"] = saleKind
+                                };
 
                                 break;
                             }
@@ -635,6 +715,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 if ( eventEntry != null )
                                     TransactionSettleEventMethods.Upsert(databaseContext, hash, platform, chain,
                                         eventEntry, false);
+                                payload["transaction_settle_event"] = new Dictionary<string, object?>
+                                {
+                                    ["hash"] = hash,
+                                    ["platform"] = platform,
+                                    ["chain"] = chain
+                                };
 
                                 break;
                             }
@@ -646,6 +732,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 //databaseEvent we need it here, so check it
                                 if ( eventEntry != null )
                                     eventEntry.TargetAddress = await AddressMethods.UpsertAsync(databaseContext, chainEntry, address);
+                                payload["address_event"] = new Dictionary<string, object?>
+                                {
+                                    ["address"] = address
+                                };
 
                                 break;
                             }
@@ -667,6 +757,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 if ( eventEntry != null )
                                     ChainEventMethods.Upsert(databaseContext, valueEventName, value, chainEntry,
                                         eventEntry);
+                                payload["chain_event"] = new Dictionary<string, object?>
+                                {
+                                    ["name"] = valueEventName,
+                                    ["value"] = value,
+                                    ["chain"] = chainEntry.NAME
+                                };
 
                                 break;
                             }
@@ -683,6 +779,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 if ( eventEntry != null )
                                     await GasEventMethods.UpsertAsync(databaseContext, address, price, amount, eventEntry,
                                         chainEntry);
+                                payload["gas_event"] = new Dictionary<string, object?>
+                                {
+                                    ["price"] = price,
+                                    ["amount"] = amount,
+                                    ["address"] = address
+                                };
 
                                 break;
                             }
@@ -693,6 +795,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 //databaseEvent we need it here, so check it
                                 if ( eventEntry != null )
                                     HashEventMethods.Upsert(databaseContext, hash, eventEntry);
+                                payload["hash_event"] = new Dictionary<string, object?>
+                                {
+                                    ["hash"] = hash
+                                };
 
                                 break;
                             }
@@ -708,6 +814,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 if ( eventEntry != null )
                                     await OrganizationEventMethods.UpsertAsync(databaseContext, organization, memberAddress,
                                         eventEntry, chainEntry);
+                                payload["organization_event"] = new Dictionary<string, object?>
+                                {
+                                    ["organization"] = organization,
+                                    ["address"] = memberAddress
+                                };
 
                                 break;
                             }
@@ -725,9 +836,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         }
                     }
                     catch ( Exception e )
-                    {
-                        Log.Error(e, "[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} event processing", Name, block.height,
-                            UnixSeconds.Log(block.timestamp));
+                        {
+                            Log.Error(e, "[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} event processing", Name, block.height,
+                                UnixSeconds.Log(block.timestamp));
 
                         try
                         {
@@ -748,6 +859,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             Log.Information("[{Name}][Blocks] Cannot print eventNode data: {Exception}", Name,
                                 e2.Message);
                         }
+                    }
+                    finally
+                    {
+                        FinalizePayload(eventEntry, payload, eventNode.Data);
                     }
                 }
             }

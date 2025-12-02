@@ -405,6 +405,15 @@ namespace Database.Main.Migrations
                     b.Property<bool?>("BURNED")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("PAYLOAD_FORMAT")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PAYLOAD_JSON")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("RAW_DATA")
+                        .HasColumnType("text");
+
                     b.Property<int>("ChainId")
                         .HasColumnType("integer");
 
@@ -1595,6 +1604,12 @@ namespace Database.Main.Migrations
 
                     b.Property<string>("GAS_PRICE_RAW")
                         .HasColumnType("text");
+
+                    b.Property<string>("CARBON_TX_DATA")
+                        .HasColumnType("text");
+
+                    b.Property<byte?>("CARBON_TX_TYPE")
+                        .HasColumnType("smallint");
 
                     b.Property<int>("GasPayerId")
                         .HasColumnType("integer");

@@ -144,7 +144,8 @@ public class MainDbContext : DbContext
             optionsAction =>
             {
                 // optionsAction.EnableRetryOnFailure();
-                optionsAction.CommandTimeout(( int ) TimeSpan.FromMinutes(10).TotalSeconds);
+                // 0 = infinite; needed for long-running migrations/backfills.
+                optionsAction.CommandTimeout(0);
             });
     }
 
@@ -465,6 +466,10 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.BURNED, x.EventKindId});
+
+        modelBuilder.Entity<Event>()
+            .Property(x => x.PAYLOAD_JSON)
+            .HasColumnType("jsonb");
 
         //////////////////////
         // Token
@@ -1228,6 +1233,8 @@ public class Transaction
     public string GAS_PRICE_RAW { get; set; }
     public string GAS_LIMIT { get; set; }
     public string GAS_LIMIT_RAW { get; set; }
+    public byte? CARBON_TX_TYPE { get; set; }
+    public string CARBON_TX_DATA { get; set; }
     public int SenderId { get; set; }
     public virtual Address Sender { get; set; }
     public int GasPayerId { get; set; }
@@ -1307,6 +1314,9 @@ public class Event
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
     public bool BLACKLISTED { get; set; }
+    public string PAYLOAD_FORMAT { get; set; }
+    public string PAYLOAD_JSON { get; set; }
+    public string RAW_DATA { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public int ChainId { get; set; }
