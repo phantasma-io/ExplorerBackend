@@ -46,4 +46,35 @@ internal static class ExtendedEventParser
             return null;
         }
     }
+
+    public static TokenSeriesCreateData? GetTokenSeriesCreateData(EventExResult[] extendedEvents)
+    {
+        if ( extendedEvents == null || extendedEvents.Length == 0 )
+            return null;
+
+        var seriesCreateEvent = extendedEvents.FirstOrDefault(x => x.Kind == EventKind.TokenSeriesCreate);
+
+        if ( seriesCreateEvent == null )
+            return null;
+
+        try
+        {
+            switch ( seriesCreateEvent.Data )
+            {
+                case JsonElement el:
+                    return JsonSerializer.Deserialize<TokenSeriesCreateData>(el.GetRawText(), TokenCreateJsonOptions);
+                case string s when !string.IsNullOrWhiteSpace(s):
+                    return JsonSerializer.Deserialize<TokenSeriesCreateData>(s, TokenCreateJsonOptions);
+                case TokenSeriesCreateData data:
+                    return data;
+                default:
+                    return null;
+            }
+        }
+        catch ( Exception e )
+        {
+            Log.Warning(e, "[ExtendedEventParser] Failed to parse TokenSeriesCreateData from extended event");
+            return null;
+        }
+    }
 }

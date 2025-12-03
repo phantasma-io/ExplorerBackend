@@ -135,6 +135,26 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             burnable, mintable), tokenName);
     }
 
+    private static string ParseSeriesMode(Dictionary<string, string> metadata)
+    {
+        if ( metadata == null )
+            return null;
+
+        if ( metadata.TryGetValue("mode", out var modeValue) )
+        {
+            if ( int.TryParse(modeValue, out var parsedMode) )
+                return parsedMode == 0 ? "Unique" : "Duplicated";
+
+            if ( !string.IsNullOrWhiteSpace(modeValue) )
+                return modeValue;
+        }
+
+        if ( metadata.TryGetValue("seriesMode", out var seriesMode) && !string.IsNullOrWhiteSpace(seriesMode) )
+            return seriesMode;
+
+        return null;
+    }
+
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
     {
         await using ( MainDbContext databaseContext = new() )
@@ -374,6 +394,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             throw new("Trying to add empty address");
         }
 
+        // Skip placeholder address to avoid invalid balance queries later.
+        if ( address.Equals("NULL", StringComparison.OrdinalIgnoreCase) )
+            return;
+
         addresses.Add(address);
     }
     
@@ -450,14 +474,42 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction);
                 }
 
-                if (tx.Events == null || tx.Events.Length == 0)
+                var eventNodes = tx.Events?.ToList() ?? new List<EventResult>();
+
+                // Synthesize TokenSeriesCreate event from extended data (RPC does not emit legacy event).
+                var seriesCreateDataTx = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
+                if ( seriesCreateDataTx != null )
                 {
-                    continue;
+                    if ( string.IsNullOrWhiteSpace(seriesCreateDataTx.Value.Symbol) )
+                    {
+                        Log.Error("[{Name}][Blocks] TokenSeriesCreate extended event missing symbol (tx {TxHash}, block {BlockHeight})",
+                            Name, tx.Hash, block.Height);
+                        throw new Exception("TokenSeriesCreate extended event missing symbol");
+                    }
+
+                    eventNodes.Add(new EventResult
+                    {
+                        Address = seriesCreateDataTx.Value.Owner,
+                        Contract = seriesCreateDataTx.Value.Symbol,
+                        Kind = EventKind.TokenSeriesCreate.ToString(),
+                        Data = ""
+                    });
+
+                    var contractKey = new ContractMethods.ChainHashKey(chainId, seriesCreateDataTx.Value.Symbol);
+                    if ( !contracts.ContainsKey(contractKey) )
+                    {
+                        var contract = await ContractMethods.UpsertAsync(databaseContext, seriesCreateDataTx.Value.Symbol,
+                            chainEntry, seriesCreateDataTx.Value.Symbol, seriesCreateDataTx.Value.Symbol);
+                        contracts[contractKey] = contract.ID;
+                    }
                 }
 
-                for ( var eventIndex = 0; eventIndex < tx.Events.Length; eventIndex++ )
+                if ( eventNodes.Count == 0 )
+                    continue;
+
+                for ( var eventIndex = 0; eventIndex < eventNodes.Count; eventIndex++ )
                 {
-                    var eventNode = tx.Events[eventIndex];
+                    var eventNode = eventNodes[eventIndex];
                     Database.Main.Event eventEntry = null;
                     Dictionary<string, object?> payload = null;
 
@@ -614,6 +666,66 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                 break;
                             }
+                            case EventKind.TokenSeriesCreate:
+                            {
+                                if ( seriesCreateDataTx == null )
+                                {
+                                    Log.Warning("[{Name}][Blocks] TokenSeriesCreate without extended data, skipping", Name);
+                                    break;
+                                }
+
+                                var symbol = seriesCreateDataTx.Value.Symbol;
+
+                                if ( string.IsNullOrWhiteSpace(symbol) )
+                                {
+                                    Log.Warning("[{Name}][Blocks] TokenSeriesCreate payload missing symbol, skipping", Name);
+                                    break;
+                                }
+
+                                string seriesId = seriesCreateDataTx.Value.SeriesId;
+
+                                if ( string.IsNullOrWhiteSpace(seriesId)
+                                     && seriesCreateDataTx.Value.Metadata != null
+                                     && seriesCreateDataTx.Value.Metadata.TryGetValue("seriesId", out var metaSeriesId)
+                                     && !string.IsNullOrWhiteSpace(metaSeriesId) )
+                                {
+                                    seriesId = metaSeriesId;
+                                }
+
+                                if ( string.IsNullOrWhiteSpace(seriesId) && seriesCreateDataTx.Value.CarbonSeriesId > 0 )
+                                    seriesId = seriesCreateDataTx.Value.CarbonSeriesId.ToString();
+
+                                // use pre-created contractId for this event
+                                var contractIdForSeries = contracts.GetId(chainId, symbol);
+
+                                await EventMethods.UpdateValuesAsync(databaseContext,
+                                    eventEntry, null, seriesId, chainEntry, kind, eventKindId, contractIdForSeries);
+
+                                if ( !string.IsNullOrWhiteSpace(seriesId) )
+                                {
+                                    var modeName = ParseSeriesMode(seriesCreateDataTx.Value.Metadata);
+                                    var maxSupply = seriesCreateDataTx.Value.MaxSupply;
+                                    var maxSupplyInt = maxSupply > int.MaxValue ? int.MaxValue : ( int ) maxSupply;
+
+                                    SeriesMethods.Upsert(databaseContext, contractIdForSeries, seriesId,
+                                        addressEntry?.ID, null, maxSupplyInt, modeName);
+                                }
+
+                                payload["token_id"] = seriesId ?? seriesCreateDataTx.Value.CarbonSeriesId.ToString();
+                                payload["token_series_event"] = new Dictionary<string, object?>
+                                {
+                                    ["token"] = symbol,
+                                    ["series_id"] = seriesId ?? seriesCreateDataTx.Value.CarbonSeriesId.ToString(),
+                                    ["max_mint"] = seriesCreateDataTx.Value.MaxMint.ToString(),
+                                    ["max_supply"] = seriesCreateDataTx.Value.MaxSupply.ToString(),
+                                    ["owner"] = seriesCreateDataTx.Value.Owner ?? addressString,
+                                    ["carbon_token_id"] = seriesCreateDataTx.Value.CarbonTokenId.ToString(),
+                                    ["carbon_series_id"] = seriesCreateDataTx.Value.CarbonSeriesId.ToString(),
+                                    ["metadata"] = seriesCreateDataTx.Value.Metadata
+                                };
+
+                                break;
+                            }
                             case EventKind.OrderCancelled or EventKind.OrderClosed or EventKind.OrderCreated
                                 or EventKind.OrderFilled or EventKind.OrderBid:
                             {
@@ -728,7 +840,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 token.CreateEvent = eventEntry;
                                             }
 
-                                            payload["token_create"] = new Dictionary<string, object?>
+                                            var tokenCreatePayload = new Dictionary<string, object?>
                                             {
                                                 ["symbol"] = symbol,
                                                 ["max_supply"] = tokenCreateData.MaxSupply,
@@ -737,6 +849,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 ["carbon_token_id"] = tokenCreateData.CarbonTokenId,
                                                 ["metadata"] = tokenCreateData.Metadata
                                             };
+                                            // keep legacy key and new consistent key for API mapping
+                                            payload["token_create"] = tokenCreatePayload;
+                                            payload["token_create_event"] = tokenCreatePayload;
                                         }
                                         else if ( eventEntry != null )
                                         {

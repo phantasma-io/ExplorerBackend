@@ -106,6 +106,9 @@ internal static class EventPayloadMapper
                 if ( !string.IsNullOrEmpty(payload.TokenEvent?.Token) )
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.TokenEvent.Token));
 
+                if ( !string.IsNullOrEmpty(payload.TokenSeriesEvent?.Token) )
+                    tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.TokenSeriesEvent.Token));
+
                 if ( !string.IsNullOrEmpty(payload.InfusionEvent?.BaseToken) )
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.InfusionEvent.BaseToken));
 
@@ -124,11 +127,17 @@ internal static class EventPayloadMapper
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, "KCAL"));
                 }
 
+                if ( !string.IsNullOrEmpty(payload.TokenSeriesEvent?.Owner) )
+                    addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.TokenSeriesEvent.Owner));
+
                 if ( !string.IsNullOrEmpty(payload.AddressEvent?.Address) )
                     addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.AddressEvent.Address));
 
                 if ( !string.IsNullOrEmpty(payload.OrganizationEvent?.Address) )
                     addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.OrganizationEvent.Address));
+
+                if ( !string.IsNullOrEmpty(payload.TokenCreateEvent?.Symbol) )
+                    tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.TokenCreateEvent.Symbol));
 
                 if ( !string.IsNullOrEmpty(payload.TransactionSettleEvent?.Platform) )
                     platformNames.Add(payload.TransactionSettleEvent.Platform);
@@ -216,6 +225,20 @@ internal static class EventPayloadMapper
 
         [JsonPropertyName("token_event")]
         public TokenEventPayload TokenEvent { get; set; }
+
+        [JsonPropertyName("token_create_event")]
+        public TokenCreateEventPayload TokenCreateEvent { get; set; }
+
+        // Legacy key used in stored payloads.
+        [JsonPropertyName("token_create")]
+        public TokenCreateEventPayload TokenCreateEventLegacy
+        {
+            get => TokenCreateEvent;
+            set => TokenCreateEvent = value;
+        }
+
+        [JsonPropertyName("token_series_event")]
+        public TokenSeriesEventPayload TokenSeriesEvent { get; set; }
 
         [JsonPropertyName("transaction_settle_event")]
         public TransactionSettleEventPayload TransactionSettleEvent { get; set; }
@@ -335,6 +358,54 @@ internal static class EventPayloadMapper
         public string ChainName { get; set; }
     }
 
+    private sealed class TokenCreateEventPayload
+    {
+        [JsonPropertyName("symbol")]
+        public string Symbol { get; set; }
+
+        [JsonPropertyName("max_supply")]
+        public string MaxSupply { get; set; }
+
+        [JsonPropertyName("decimals")]
+        public string Decimals { get; set; }
+
+        [JsonPropertyName("is_non_fungible")]
+        public bool? IsNonFungible { get; set; }
+
+        [JsonPropertyName("carbon_token_id")]
+        public string CarbonTokenId { get; set; }
+
+        [JsonPropertyName("metadata")]
+        public Dictionary<string, string> Metadata { get; set; }
+    }
+
+    private sealed class TokenSeriesEventPayload
+    {
+        [JsonPropertyName("token")]
+        public string Token { get; set; }
+
+        [JsonPropertyName("series_id")]
+        public string SeriesId { get; set; }
+
+        [JsonPropertyName("max_mint")]
+        public string MaxMint { get; set; }
+
+        [JsonPropertyName("max_supply")]
+        public string MaxSupply { get; set; }
+
+        [JsonPropertyName("owner")]
+        public string Owner { get; set; }
+
+        [JsonPropertyName("carbon_token_id")]
+        public string CarbonTokenId { get; set; }
+
+        [JsonPropertyName("carbon_series_id")]
+        public string CarbonSeriesId { get; set; }
+
+        [JsonPropertyName("metadata")]
+        public Dictionary<string, string> Metadata { get; set; }
+    }
+
     private sealed class TransactionSettleEventPayload
     {
         [JsonPropertyName("hash")]
@@ -388,6 +459,8 @@ internal static class EventPayloadMapper
             apiEvent.sale_event = BuildSaleEvent(payload);
             apiEvent.string_event = BuildStringEvent(payload);
             apiEvent.token_event = BuildTokenEvent(payload, context, envelope.Projection.ChainId);
+            apiEvent.token_create_event = BuildTokenCreateEvent(payload, context, envelope.Projection.ChainId);
+            apiEvent.token_series_event = BuildTokenSeriesEvent(payload, context, envelope.Projection.ChainId);
             apiEvent.transaction_settle_event = BuildTransactionSettleEvent(payload, context);
 
             var hasSpecific =
@@ -401,6 +474,8 @@ internal static class EventPayloadMapper
                 apiEvent.sale_event != null ||
                 apiEvent.string_event != null ||
                 apiEvent.token_event != null ||
+                apiEvent.token_create_event != null ||
+                apiEvent.token_series_event != null ||
                 apiEvent.transaction_settle_event != null;
 
             if ( !hasSpecific || string.Equals(eventKind, "ContractDeploy", StringComparison.OrdinalIgnoreCase) )
@@ -619,6 +694,51 @@ internal static class EventPayloadMapper
             value = payload.TokenEvent.Value,
             value_raw = payload.TokenEvent.ValueRaw,
             chain_name = payload.TokenEvent.ChainName
+        };
+    }
+
+    private static TokenCreateEvent BuildTokenCreateEvent(EventPayload payload, EventPayloadContext context,
+        int chainId)
+    {
+        if ( payload.TokenCreateEvent == null ) return null;
+
+        return new TokenCreateEvent
+        {
+            token = MapToken(context.GetToken(chainId, payload.TokenCreateEvent.Symbol),
+                payload.TokenCreateEvent.Symbol),
+            max_supply = payload.TokenCreateEvent.MaxSupply,
+            decimals = payload.TokenCreateEvent.Decimals,
+            is_non_fungible = payload.TokenCreateEvent.IsNonFungible,
+            carbon_token_id = payload.TokenCreateEvent.CarbonTokenId,
+            metadata = payload.TokenCreateEvent.Metadata
+        };
+    }
+
+    private static TokenSeriesEvent BuildTokenSeriesEvent(EventPayload payload, EventPayloadContext context,
+        int chainId)
+    {
+        if ( payload.TokenSeriesEvent == null ) return null;
+
+        var ownerEntry = string.IsNullOrEmpty(payload.TokenSeriesEvent.Owner)
+            ? null
+            : context.GetAddress(chainId, payload.TokenSeriesEvent.Owner);
+
+        return new TokenSeriesEvent
+        {
+            token = MapToken(context.GetToken(chainId, payload.TokenSeriesEvent.Token), payload.TokenSeriesEvent.Token),
+            series_id = payload.TokenSeriesEvent.SeriesId,
+            max_mint = payload.TokenSeriesEvent.MaxMint,
+            max_supply = payload.TokenSeriesEvent.MaxSupply,
+            owner = string.IsNullOrEmpty(payload.TokenSeriesEvent.Owner)
+                ? null
+                : new Address
+                {
+                    address = payload.TokenSeriesEvent.Owner,
+                    address_name = ownerEntry?.ADDRESS_NAME
+                },
+            carbon_token_id = payload.TokenSeriesEvent.CarbonTokenId,
+            carbon_series_id = payload.TokenSeriesEvent.CarbonSeriesId,
+            metadata = payload.TokenSeriesEvent.Metadata
         };
     }
 

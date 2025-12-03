@@ -130,7 +130,20 @@ internal static class RpcParsingExtensions
 
     public static EventKind? GetParsedKind(this EventResult evt)
     {
-        return ParsedEvents.TryGetValue(evt, out var data) ? data.Kind : null;
+        if ( evt == null )
+            return null;
+
+        if ( ParsedEvents.TryGetValue(evt, out var data) )
+            return data.Kind;
+
+        // allow manually created events to resolve their kind without re-parsing the payload
+        if ( Enum.TryParse<EventKind>(evt.Kind, out var kind) )
+        {
+            ParsedEvents.AddOrUpdate(evt, null, kind);
+            return kind;
+        }
+
+        return null;
     }
 
     public static List<string> GetContracts(this ICollection<TransactionResult> transactionResults)

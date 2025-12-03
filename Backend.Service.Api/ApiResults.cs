@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
@@ -438,6 +439,16 @@ public class Event
     ///     EventKinds TokenMint, TokenClaim, TokenBurn, TokenSend, TokenReceive, TokenStake, CrownRewards or Inflation
     /// </summary>
     public TokenEvent? token_event { get; set; }
+
+    /// <summary>
+    ///     EventKind TokenCreate
+    /// </summary>
+    public TokenCreateEvent? token_create_event { get; set; }
+
+    /// <summary>
+    ///     EventKind TokenSeriesCreate
+    /// </summary>
+    public TokenSeriesEvent? token_series_event { get; set; }
 
     /// <summary>
     ///     EventKinds ChainSwap
@@ -1420,6 +1431,88 @@ public class UnknownEvent
     ///     Raw data bytes/string (chain payload).
     /// </summary>
     public string? raw_data { get; set; }
+}
+
+/// <summary>
+///     EventKind TokenCreate
+/// </summary>
+public class TokenCreateEvent
+{
+    /// <summary>
+    ///     Token
+    /// </summary>
+    public Token? token { get; set; }
+
+    /// <summary>
+    ///     Maximum total supply (0 means unlimited)
+    /// </summary>
+    public string? max_supply { get; set; }
+
+    /// <summary>
+    ///     Number of decimals
+    /// </summary>
+    public string? decimals { get; set; }
+
+    /// <summary>
+    ///     Indicates whether the token is non-fungible
+    /// </summary>
+    public bool? is_non_fungible { get; set; }
+
+    /// <summary>
+    ///     Carbon token identifier
+    /// </summary>
+    public string? carbon_token_id { get; set; }
+
+    /// <summary>
+    ///     Token metadata
+    /// </summary>
+    public Dictionary<string, string>? metadata { get; set; }
+}
+
+/// <summary>
+///     EventKind TokenSeriesCreate
+/// </summary>
+public class TokenSeriesEvent
+{
+    /// <summary>
+    ///     Token
+    /// </summary>
+    public Token? token { get; set; }
+
+    /// <summary>
+    ///     Series identifier
+    /// </summary>
+    public string? series_id { get; set; }
+
+    /// <summary>
+    ///     Maximum number of NFTs per mint (if defined)
+    /// </summary>
+    public string? max_mint { get; set; }
+
+    /// <summary>
+    ///     Maximum total supply (0 means unlimited)
+    /// </summary>
+    public string? max_supply { get; set; }
+
+    /// <summary>
+    ///     Carbon token identifier
+    /// </summary>
+    public string? carbon_token_id { get; set; }
+
+    /// <summary>
+    ///     Carbon series identifier
+    /// </summary>
+    public string? carbon_series_id { get; set; }
+
+    /// <summary>
+    ///     Series owner
+    /// </summary>
+    public Address? owner { get; set; }
+
+    /// <summary>
+    ///     Raw metadata values emitted with the series
+    /// </summary>
+    public Dictionary<string, string>? metadata { get; set; }
 }
 
 /// <summary>
