@@ -221,273 +221,76 @@ public static class GetEvents
 
             if ( limit > 0 ) query = query.Skip(offset).Take(limit);
 
-            eventsArray = await query.Select(x => new Event
+            var eventProjections = await query.Select(x => new EventPayloadMapper.EventProjection
                 {
-                    event_id = x.ID,
-                    chain = x.Chain.NAME.ToLower(),
-                    date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
-                    block_hash = x.Transaction.Block.HASH,
-                    transaction_hash = x.Transaction.HASH,
-                    token_id = x.TOKEN_ID,
-                    event_kind = x.EventKind.NAME,
-                    address = x.Address.ADDRESS,
-                    address_name = x.Address.ADDRESS_NAME,
-                    contract = new Contract
+                    ApiEvent = new Event
                     {
-                        name = x.Contract.NAME,
-                        hash = x.Contract.HASH,
-                        symbol = x.Contract.SYMBOL
+                        event_id = x.ID,
+                        chain = x.Chain.NAME.ToLower(),
+                        date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
+                        block_hash = x.Transaction.Block.HASH,
+                        transaction_hash = x.Transaction.HASH,
+                        token_id = x.TOKEN_ID,
+                        payload_json = x.PAYLOAD_JSON,
+                        raw_data = x.RAW_DATA,
+                        event_kind = x.EventKind.NAME,
+                        address = x.Address.ADDRESS,
+                        address_name = x.Address.ADDRESS_NAME,
+                        contract = new Contract
+                        {
+                            name = x.Contract.NAME,
+                            hash = x.Contract.HASH,
+                            symbol = x.Contract.SYMBOL
+                        },
+                        nft_metadata = with_metadata == 1 && x.Nft != null
+                            ? new NftMetadata
+                            {
+                                name = x.Nft.NAME,
+                                description = x.Nft.DESCRIPTION,
+                                image = x.Nft.IMAGE,
+                                video = x.Nft.VIDEO,
+                                rom = x.Nft.ROM,
+                                ram = x.Nft.RAM,
+                                mint_date = x.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
+                                mint_number = x.Nft.MINT_NUMBER.ToString()
+                            }
+                            : null,
+                        series = with_series == 1 && x.Nft != null && x.Nft.Series != null
+                            ? new Series
+                            {
+                                id = x.Nft.Series.ID,
+                                series_id = x.Nft.Series.SERIES_ID,
+                                creator = x.Nft.Series.CreatorAddress != null
+                                    ? x.Nft.Series.CreatorAddress.ADDRESS
+                                    : null,
+                                current_supply = x.Nft.Series.CURRENT_SUPPLY,
+                                max_supply = x.Nft.Series.MAX_SUPPLY,
+                                mode_name = x.Nft.Series.SeriesMode != null ? x.Nft.Series.SeriesMode.MODE_NAME : null,
+                                name = x.Nft.Series.NAME,
+                                description = x.Nft.Series.DESCRIPTION,
+                                image = x.Nft.Series.IMAGE,
+                                royalties = x.Nft.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
+                                type = x.Nft.Series.TYPE,
+                                attr_type_1 = x.Nft.Series.ATTR_TYPE_1,
+                                attr_value_1 = x.Nft.Series.ATTR_VALUE_1,
+                                attr_type_2 = x.Nft.Series.ATTR_TYPE_2,
+                                attr_value_2 = x.Nft.Series.ATTR_VALUE_2,
+                                attr_type_3 = x.Nft.Series.ATTR_TYPE_3,
+                                attr_value_3 = x.Nft.Series.ATTR_VALUE_3
+                            }
+                            : null
                     },
-                    nft_metadata = with_metadata == 1 && x.Nft != null
-                        ? new NftMetadata
-                        {
-                            name = x.Nft.NAME,
-                            description = x.Nft.DESCRIPTION,
-                            image = x.Nft.IMAGE,
-                            video = x.Nft.VIDEO,
-                            rom = x.Nft.ROM,
-                            ram = x.Nft.RAM,
-                            mint_date = x.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
-                            mint_number = x.Nft.MINT_NUMBER.ToString()
-                        }
-                        : null,
-                    series = with_series == 1 && x.Nft != null && x.Nft.Series != null
-                        ? new Series
-                        {
-                            id = x.Nft.Series.ID,
-                            series_id = x.Nft.Series.SERIES_ID,
-                            creator = x.Nft.Series.CreatorAddress != null
-                                ? x.Nft.Series.CreatorAddress.ADDRESS
-                                : null,
-                            current_supply = x.Nft.Series.CURRENT_SUPPLY,
-                            max_supply = x.Nft.Series.MAX_SUPPLY,
-                            mode_name = x.Nft.Series.SeriesMode != null ? x.Nft.Series.SeriesMode.MODE_NAME : null,
-                            name = x.Nft.Series.NAME,
-                            description = x.Nft.Series.DESCRIPTION,
-                            image = x.Nft.Series.IMAGE,
-                            royalties = x.Nft.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
-                            type = x.Nft.Series.TYPE,
-                            attr_type_1 = x.Nft.Series.ATTR_TYPE_1,
-                            attr_value_1 = x.Nft.Series.ATTR_VALUE_1,
-                            attr_type_2 = x.Nft.Series.ATTR_TYPE_2,
-                            attr_value_2 = x.Nft.Series.ATTR_VALUE_2,
-                            attr_type_3 = x.Nft.Series.ATTR_TYPE_3,
-                            attr_value_3 = x.Nft.Series.ATTR_VALUE_3
-                        }
-                        : null,
-                    address_event = with_event_data == 1 && x.TargetAddress != null
-                        ? new AddressEvent
-                        {
-                            address = x.TargetAddress != null
-                                ? new Address
-                                {
-                                    address_name = x.TargetAddress.ADDRESS_NAME,
-                                    address = x.TargetAddress.ADDRESS
-                                }
-                                : null
-                        }
-                        : null,
-                    chain_event = with_event_data == 1 && x.ChainEvent != null
-                        ? new ChainEvent
-                        {
-                            name = x.ChainEvent.NAME,
-                            value = x.ChainEvent.VALUE,
-                            chain = x.ChainEvent.Chain != null
-                                ? new Chain
-                                {
-                                    chain_name = x.ChainEvent.Chain.NAME
-                                }
-                                : null
-                        }
-                        : null,
-                    gas_event = with_event_data == 1 && x.GasEvent != null
-                        ? new GasEvent
-                        {
-                            price = x.GasEvent.PRICE,
-                            amount = x.GasEvent.AMOUNT,
-                            fee = x.GasEvent.FEE,
-                            address = x.GasEvent.Address != null
-                                ? new Address
-                                {
-                                    address = x.GasEvent.Address.ADDRESS,
-                                    address_name = x.GasEvent.Address.ADDRESS_NAME
-                                }
-                                : null
-                        }
-                        : null,
-                    hash_event = with_event_data == 1 && x.HashEvent != null
-                        ? new HashEvent
-                        {
-                            hash = x.HashEvent.HASH
-                        }
-                        : null,
-                    infusion_event = with_event_data == 1 && x.InfusionEvent != null
-                        ? new InfusionEvent
-                        {
-                            token_id = x.InfusionEvent.TOKEN_ID,
-                            infused_value = x.InfusionEvent.INFUSED_VALUE,
-                            infused_value_raw = x.InfusionEvent.INFUSED_VALUE_RAW,
-                            base_token = x.InfusionEvent.BaseToken != null
-                                ? new Token
-                                {
-                                    symbol = x.InfusionEvent.BaseToken.SYMBOL,
-                                    fungible = x.InfusionEvent.BaseToken.FUNGIBLE,
-                                    transferable = x.InfusionEvent.BaseToken.TRANSFERABLE,
-                                    finite = x.InfusionEvent.BaseToken.FINITE,
-                                    divisible = x.InfusionEvent.BaseToken.DIVISIBLE,
-                                    fiat = x.InfusionEvent.BaseToken.FIAT,
-                                    fuel = x.InfusionEvent.BaseToken.FUEL,
-                                    swappable = x.InfusionEvent.BaseToken.SWAPPABLE,
-                                    burnable = x.InfusionEvent.BaseToken.BURNABLE,
-                                    stakable = x.InfusionEvent.BaseToken.STAKABLE,
-                                    decimals = x.InfusionEvent.BaseToken.DECIMALS
-                                }
-                                : null,
-                            infused_token = x.InfusionEvent.InfusedToken != null
-                                ? new Token
-                                {
-                                    symbol = x.InfusionEvent.InfusedToken.SYMBOL,
-                                    fungible = x.InfusionEvent.InfusedToken.FUNGIBLE,
-                                    transferable = x.InfusionEvent.InfusedToken.TRANSFERABLE,
-                                    finite = x.InfusionEvent.InfusedToken.FINITE,
-                                    divisible = x.InfusionEvent.InfusedToken.DIVISIBLE,
-                                    fiat = x.InfusionEvent.InfusedToken.FIAT,
-                                    fuel = x.InfusionEvent.InfusedToken.FUEL,
-                                    swappable = x.InfusionEvent.InfusedToken.SWAPPABLE,
-                                    burnable = x.InfusionEvent.InfusedToken.BURNABLE,
-                                    stakable = x.InfusionEvent.InfusedToken.STAKABLE,
-                                    decimals = x.InfusionEvent.InfusedToken.DECIMALS
-                                }
-                                : null
-                        }
-                        : null,
-                    market_event = with_event_data == 1 && x.MarketEvent != null
-                        ? new MarketEvent
-                        {
-                            base_token = x.MarketEvent.BaseToken != null
-                                ? new Token
-                                {
-                                    symbol = x.MarketEvent.BaseToken.SYMBOL,
-                                    fungible = x.MarketEvent.BaseToken.FUNGIBLE,
-                                    transferable = x.MarketEvent.BaseToken.TRANSFERABLE,
-                                    finite = x.MarketEvent.BaseToken.FINITE,
-                                    divisible = x.MarketEvent.BaseToken.DIVISIBLE,
-                                    fiat = x.MarketEvent.BaseToken.FIAT,
-                                    fuel = x.MarketEvent.BaseToken.FUEL,
-                                    swappable = x.MarketEvent.BaseToken.SWAPPABLE,
-                                    burnable = x.MarketEvent.BaseToken.BURNABLE,
-                                    stakable = x.MarketEvent.BaseToken.STAKABLE,
-                                    decimals = x.MarketEvent.BaseToken.DECIMALS
-                                }
-                                : null,
-                            quote_token = x.MarketEvent.QuoteToken != null
-                                ? new Token
-                                {
-                                    symbol = x.MarketEvent.QuoteToken.SYMBOL,
-                                    fungible = x.MarketEvent.QuoteToken.FUNGIBLE,
-                                    transferable = x.MarketEvent.QuoteToken.TRANSFERABLE,
-                                    finite = x.MarketEvent.QuoteToken.FINITE,
-                                    divisible = x.MarketEvent.QuoteToken.DIVISIBLE,
-                                    fiat = x.MarketEvent.QuoteToken.FIAT,
-                                    fuel = x.MarketEvent.QuoteToken.FUEL,
-                                    swappable = x.MarketEvent.QuoteToken.SWAPPABLE,
-                                    burnable = x.MarketEvent.QuoteToken.BURNABLE,
-                                    stakable = x.MarketEvent.QuoteToken.STAKABLE,
-                                    decimals = x.MarketEvent.QuoteToken.DECIMALS
-                                }
-                                : null,
-                            end_price = x.MarketEvent.END_PRICE,
-                            price = x.MarketEvent.PRICE,
-                            market_event_kind = x.MarketEvent.MarketEventKind.NAME,
-                            market_id = x.MarketEvent.MARKET_ID,
-                            fiat_price = with_fiat == 1
-                                ? new FiatPrice
-                                {
-                                    fiat_currency = x.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
-                                    fiat_price = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
-                                        x.MarketEvent.MarketEventFiatPrice.PRICE_USD,
-                                        x.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
-                                        fiatCurrency).ToString("0.####"),
-                                    fiat_price_end = FiatExchangeRateMethods.Convert(fiatPricesInUsd,
-                                        x.MarketEvent.MarketEventFiatPrice.PRICE_END_USD,
-                                        x.MarketEvent.MarketEventFiatPrice.FIAT_NAME,
-                                        fiatCurrency).ToString("0.####")
-                                }
-                                : null
-                        }
-                        : null,
-                    organization_event = with_event_data == 1 && x.OrganizationEvent != null
-                        ? new OrganizationEvent
-                        {
-                            organization = x.OrganizationEvent.Organization != null
-                                ? new Organization
-                                {
-                                    name = x.OrganizationEvent.Organization.NAME
-                                }
-                                : null,
-                            address = x.OrganizationEvent.Address != null
-                                ? new Address
-                                {
-                                    address = x.OrganizationEvent.Address.ADDRESS,
-                                    address_name = x.OrganizationEvent.Address.ADDRESS_NAME
-                                }
-                                : null
-                        }
-                        : null,
-                    sale_event = with_event_data == 1 && x.SaleEvent != null
-                        ? new SaleEvent
-                        {
-                            hash = x.SaleEvent.HASH,
-                            sale_event_kind = x.SaleEvent.SaleEventKind.NAME
-                        }
-                        : null,
-                    string_event = with_event_data == 1 && x.StringEvent != null
-                        ? new StringEvent
-                        {
-                            string_value = x.StringEvent.STRING_VALUE
-                        }
-                        : null,
-                    token_event = with_event_data == 1 && x.TokenEvent != null
-                        ? new TokenEvent
-                        {
-                            token = x.TokenEvent.Token != null
-                                ? new Token
-                                {
-                                    symbol = x.TokenEvent.Token.SYMBOL,
-                                    fungible = x.TokenEvent.Token.FUNGIBLE,
-                                    transferable = x.TokenEvent.Token.TRANSFERABLE,
-                                    finite = x.TokenEvent.Token.FINITE,
-                                    divisible = x.TokenEvent.Token.DIVISIBLE,
-                                    fiat = x.TokenEvent.Token.FIAT,
-                                    fuel = x.TokenEvent.Token.FUEL,
-                                    swappable = x.TokenEvent.Token.SWAPPABLE,
-                                    burnable = x.TokenEvent.Token.BURNABLE,
-                                    stakable = x.TokenEvent.Token.STAKABLE,
-                                    decimals = x.TokenEvent.Token.DECIMALS
-                                }
-                                : null,
-                            value = x.TokenEvent.VALUE,
-                            value_raw = x.TokenEvent.VALUE_RAW,
-                            chain_name = x.TokenEvent.CHAIN_NAME
-                        }
-                        : null,
-                    transaction_settle_event = with_event_data == 1 && x.TransactionSettleEvent != null
-                        ? new TransactionSettleEvent
-                        {
-                            hash = x.TransactionSettleEvent.HASH,
-                            platform = x.TransactionSettleEvent.Platform != null
-                                ? new Platform
-                                {
-                                    name = x.TransactionSettleEvent.Platform.NAME,
-                                    chain = x.TransactionSettleEvent.Platform.CHAIN,
-                                    fuel = x.TransactionSettleEvent.Platform.FUEL
-                                    //we do not add other information here for now
-                                }
-                                : null
-                        }
-                        : null
+                    ChainId = x.ChainId,
+                    TimestampUnixSeconds = x.TIMESTAMP_UNIX_SECONDS,
+                    PayloadJson = x.PAYLOAD_JSON,
+                    RawData = x.RAW_DATA
                 }
             ).ToArrayAsync();
+
+            await EventPayloadMapper.ApplyAsync(databaseContext, eventProjections, with_event_data == 1,
+                with_fiat == 1, fiatCurrency, fiatPricesInUsd);
+
+            eventsArray = eventProjections.Select(p => p.ApiEvent).ToArray();
 
             #endregion
 

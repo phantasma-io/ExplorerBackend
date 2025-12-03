@@ -9,8 +9,27 @@ namespace Database.Main;
 
 public static class EventKindMethods
 {
+    private static bool _sequenceAligned = false;
+
+    private static void EnsureSequence(MainDbContext dbContext)
+    {
+        if (_sequenceAligned)
+        {
+            return;
+        }
+
+        // Align serial/identity sequence with current max(ID) to avoid duplicate key errors
+        const string sql =
+            "SELECT setval(pg_get_serial_sequence('\"EventKinds\"','ID'), COALESCE(MAX(\"ID\"),0)+1, false) FROM \"EventKinds\";";
+        dbContext.Database.ExecuteSqlRaw(sql);
+
+        _sequenceAligned = true;
+    }
+
     public static async Task UpsertAllAsync(MainDbContext dbContext, Chain chain)
     {
+        EnsureSequence(dbContext);
+
         foreach (var kind in Enum.GetValues<PhantasmaPhoenix.Protocol.EventKind>())
         {
             if (!dbContext.EventKinds.Any(e => e.Chain.ID == chain.ID && e.NAME == kind.ToString()))

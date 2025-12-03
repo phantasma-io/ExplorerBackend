@@ -1,0 +1,49 @@
+using System;
+using System.Linq;
+using System.Text.Json;
+using PhantasmaPhoenix.Protocol;
+using PhantasmaPhoenix.Protocol.ExtendedEvents;
+using PhantasmaPhoenix.RPC.Models;
+using Serilog;
+
+namespace Backend.Blockchain;
+
+internal static class ExtendedEventParser
+{
+    private static readonly JsonSerializerOptions TokenCreateJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        IncludeFields = true
+    };
+
+    public static TokenCreateData? GetTokenCreateData(EventExResult[] extendedEvents)
+    {
+        if ( extendedEvents == null || extendedEvents.Length == 0 )
+            return null;
+
+        var tokenCreateEvent = extendedEvents.FirstOrDefault(x => x.Kind == EventKind.TokenCreate);
+
+        if ( tokenCreateEvent == null )
+            return null;
+
+        try
+        {
+            switch ( tokenCreateEvent.Data )
+            {
+                case JsonElement el:
+                    return JsonSerializer.Deserialize<TokenCreateData>(el.GetRawText(), TokenCreateJsonOptions);
+                case string s when !string.IsNullOrWhiteSpace(s):
+                    return JsonSerializer.Deserialize<TokenCreateData>(s, TokenCreateJsonOptions);
+                case TokenCreateData data:
+                    return data;
+                default:
+                    return null;
+            }
+        }
+        catch ( Exception e )
+        {
+            Log.Warning(e, "[ExtendedEventParser] Failed to parse TokenCreateData from extended event");
+            return null;
+        }
+    }
+}

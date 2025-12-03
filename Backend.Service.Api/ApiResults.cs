@@ -344,6 +344,16 @@ public class Event
     public string? token_id { get; set; }
 
     /// <summary>
+    ///     Raw payload json representation of the event (as stored).
+    /// </summary>
+    public string? payload_json { get; set; }
+
+    /// <summary>
+    ///     Raw data bytes/string of the event (chain payload), may be null.
+    /// </summary>
+    public string? raw_data { get; set; }
+
+    /// <summary>
     ///     Kind of the Event, Valid values at eventkinds
     /// </summary>
     public string? event_kind { get; set; }
@@ -418,6 +428,11 @@ public class Event
     ///     OrganizationCreate, Log or AddressUnregister
     /// </summary>
     public StringEvent? string_event { get; set; }
+
+    /// <summary>
+    ///     Unknown or not-yet-supported event payload (raw passthrough).
+    /// </summary>
+    public UnknownEvent? unknown_event { get; set; }
 
     /// <summary>
     ///     EventKinds TokenMint, TokenClaim, TokenBurn, TokenSend, TokenReceive, TokenStake, CrownRewards or Inflation
@@ -1389,6 +1404,22 @@ public class StringEvent
     ///     String Content of the Event
     /// </summary>
     public string? string_value { get; set; }
+}
+
+/// <summary>
+///     Fallback for unsupported event kinds.
+/// </summary>
+public class UnknownEvent
+{
+    /// <summary>
+    ///     Raw payload json (if available).
+    /// </summary>
+    public string? payload_json { get; set; }
+
+    /// <summary>
+    ///     Raw data bytes/string (chain payload).
+    /// </summary>
+    public string? raw_data { get; set; }
 }
 
 /// <summary>

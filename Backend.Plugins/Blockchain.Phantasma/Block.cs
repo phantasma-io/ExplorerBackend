@@ -4,13 +4,14 @@ using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using Backend.Api;
-using Backend.Blockchain.Responses;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Npgsql;
 using PhantasmaPhoenix.Cryptography;
 using PhantasmaPhoenix.Protocol;
+using PhantasmaPhoenix.Protocol.ExtendedEvents;
+using PhantasmaPhoenix.RPC.Models;
 using Serilog;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -20,6 +21,7 @@ using ContractMethods = Database.Main.ContractMethods;
 using EventKind = PhantasmaPhoenix.Protocol.EventKind;
 using Nft = Database.Main.Nft;
 using NftMethods = Database.Main.NftMethods;
+using RpcBlockResult = PhantasmaPhoenix.RPC.Models.BlockResult;
 
 namespace Backend.Blockchain;
 
@@ -45,6 +47,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         };
     }
 
+    private static string NormalizeAddress(string address)
+    {
+        if ( string.IsNullOrWhiteSpace(address) )
+            return "NULL";
+
+        if ( address.Equals("[Null address]", StringComparison.OrdinalIgnoreCase) )
+            return "NULL";
+
+        return address;
+    }
+
     private static void FinalizePayload(Database.Main.Event eventEntry, Dictionary<string, object?> payload, string rawData)
     {
         if (eventEntry == null || payload == null)
@@ -68,6 +81,58 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         eventEntry.PAYLOAD_JSON = JsonSerializer.Serialize(payload, _payloadJsonOptions);
         eventEntry.PAYLOAD_FORMAT = "live.v1";
         eventEntry.RAW_DATA = rawData;
+    }
+
+    private readonly record struct TokenCreateFlags(
+        bool fungible,
+        bool transferable,
+        bool finite,
+        bool divisible,
+        bool fuel,
+        bool stakable,
+        bool fiat,
+        bool swappable,
+        bool burnable,
+        bool mintable);
+
+    private static (TokenCreateFlags flags, string tokenName) ParseTokenCreateFlags(TokenCreateData tokenCreateData,
+        bool defaultFungible)
+    {
+        var metadata = tokenCreateData.Metadata ?? new Dictionary<string, string>();
+        string tokenName = null;
+
+        tokenName = metadata.FirstOrDefault(kv =>
+                kv.Key.Equals("name", StringComparison.OrdinalIgnoreCase) ||
+                kv.Key.Equals("token_name", StringComparison.OrdinalIgnoreCase))
+            .Value;
+
+        var flagsString = metadata.FirstOrDefault(kv =>
+                kv.Key.Equals("flags", StringComparison.OrdinalIgnoreCase) ||
+                kv.Key.Equals("token_flags", StringComparison.OrdinalIgnoreCase))
+            .Value;
+
+        bool HasFlag(string name)
+        {
+            if ( string.IsNullOrEmpty(flagsString) ) return false;
+            return flagsString.Split(new[] {',', '|', ';', ' '}, StringSplitOptions.RemoveEmptyEntries)
+                .Any(f => f.Equals(name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var hasFlags = !string.IsNullOrEmpty(flagsString);
+
+        var fungible = hasFlags ? HasFlag("Fungible") : defaultFungible;
+        var transferable = hasFlags ? HasFlag("Transferable") : true;
+        var finite = hasFlags ? HasFlag("Finite") : tokenCreateData.MaxSupply != "-1";
+        var divisible = hasFlags ? HasFlag("Divisible") : fungible;
+        var fuel = hasFlags && HasFlag("Fuel");
+        var stakable = hasFlags && HasFlag("Stakable");
+        var fiat = hasFlags && HasFlag("Fiat");
+        var swappable = hasFlags && HasFlag("Swappable");
+        var burnable = hasFlags && HasFlag("Burnable");
+        var mintable = hasFlags ? HasFlag("Mintable") : true;
+
+        return (new TokenCreateFlags(fungible, transferable, finite, divisible, fuel, stakable, fiat, swappable,
+            burnable, mintable), tokenName);
     }
 
     private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
@@ -206,20 +271,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         return $"{kb:F2} kb";
     }
 
-    private async Task<BlockResult> GetBlockAsync(string chainName, BigInteger blockHeight)
+    private async Task<RpcBlockResult> GetBlockAsync(string chainName, BigInteger blockHeight)
     {
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
         var startTime = DateTime.Now;
-        var (response, blockLength) = await Client.ApiRequestAsync<BlockResult>(url, 10);
+        var (response, blockLength) = await Client.ApiRequestAsync<RpcBlockResult>(url, 10);
         if (response == default)
         {
             throw new Exception($"getBlockByHeight call failed: {url}");
         }
 
-        if(response.height != (uint)blockHeight)
+        if(response.Height != (uint)blockHeight)
         {
-            throw new($"Error: Query {url} returned block {response.height} / {response.hash}");
+            throw new($"Error: Query {url} returned block {response.Height} / {response.Hash}");
         }
 
         var requestTime = (DateTime.Now - startTime).TotalMilliseconds;
@@ -232,20 +297,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Log.Information("[{Name}][Blocks] Block #{index} | {size} received in {time} ms", Name, blockHeight, BytesToSizeString(blockLength), Math.Round(requestTime, 2));
         }
 
-        if (!string.IsNullOrEmpty(response.error))
-        {
-            throw new Exception(response.error);
-        }
-        
         return response;
     }
 
 
-    private async Task<List<BlockResult>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
+    private async Task<List<RpcBlockResult>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
     {
         // Log.Information("FETCHING RANGE " + fromHeight + " - " + (fromHeight + blockCount - 1));
-        var tasks = new List<Task<BlockResult>>();
-        var taskGroup = new List<Task<BlockResult>>();
+        var tasks = new List<Task<RpcBlockResult>>();
+        var taskGroup = new List<Task<RpcBlockResult>>();
         for (var i = fromHeight; i < fromHeight + blockCount; i++)
         {
             var task = GetBlockAsync(chainName, i);
@@ -304,7 +364,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
-        return tasks.Select(task => task.Result).OrderBy(b => b.height).ToList();
+        return tasks.Select(task => task.Result).OrderBy(b => b.Height).ToList();
     }
 
     private void AddAddress(ref List<string> addresses, string address)
@@ -317,7 +377,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         addresses.Add(address);
     }
     
-    private async Task<List<string>> ProcessBlock(BlockResult block, string chainName)
+    private async Task<List<string>> ProcessBlock(RpcBlockResult block, string chainName)
     {
         var startTime = DateTime.Now;
 
@@ -337,30 +397,30 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         using var dbConnection = new NpgsqlConnection(connectionString);
         dbConnection.Open();
 
-        AddAddress(ref addressesToUpdate, block.chainAddress);
-        AddAddress(ref addressesToUpdate, block.validatorAddress);
+        AddAddress(ref addressesToUpdate, block.ChainAddress);
+        AddAddress(ref addressesToUpdate, block.ValidatorAddress);
 
         var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
         var chainId = chainEntry.ID;
 
         // Block in main database
-        Log.Information("[{Name}][Blocks] Storing block #{BlockHeight} / {Hash}", Name, block.height, block.hash);
+        Log.Information("[{Name}][Blocks] Storing block #{BlockHeight} / {Hash}", Name, block.Height, block.Hash);
 
-        var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, block.height,
-            block.timestamp, block.hash, block.previousHash, block.protocol, block.chainAddress, block.validatorAddress, block.reward);
+        var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, block.Height,
+            block.Timestamp, block.Hash, block.PreviousHash, block.Protocol, block.ChainAddress, block.ValidatorAddress, block.Reward);
 
-        if (block.oracles?.Length > 0)
+        if (block.Oracles?.Length > 0)
         {
-            var oracles = block.oracles.Select(oracle =>
-                new Tuple<string, string>(oracle.url,
-                    oracle.content)).ToList();
+            var oracles = block.Oracles.Select(oracle =>
+                new Tuple<string, string>(oracle.Url,
+                    oracle.Content)).ToList();
             BlockOracleMethods.InsertIfNotExists(databaseContext, oracles, blockEntity);
         }
 
-        if (block.txs?.Length > 0)
+        if (block.Txs?.Length > 0)
         {
-            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} txes in the block", Name, block.height,
-                block.txs.Length);
+            Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} txes in the block", Name, block.Height,
+                block.Txs.Length);
             
             block.ParseData();
             var contractHashes = block.GetContracts();
@@ -369,51 +429,53 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var contracts = ContractMethods.BatchUpsert(dbConnection,
                 contractHashes.Select(c => (c, chainId, c, c)).ToList());
 
-            for (var txIndex = 0; txIndex < block.txs.Length; txIndex++)
+            for (var txIndex = 0; txIndex < block.Txs.Length; txIndex++)
             {
-                var tx = block.txs[txIndex];
+                var tx = block.Txs[txIndex];
 
                 var transaction = await TransactionMethods.UpsertAsync(databaseContext, blockEntity, txIndex,
-                    tx.hash, tx.timestamp,
-                    tx.payload, tx.script, tx.result,
-                    tx.fee, tx.expiration,
-                    tx.gasPrice, tx.gasLimit,
-                    tx.state, tx.sender,
-                    tx.gasPayer, tx.gasTarget);
+                    tx.Hash, tx.Timestamp,
+                    tx.Payload, tx.Script, tx.Result,
+                    tx.Fee, tx.Expiration,
+                    tx.GasPrice, tx.GasLimit,
+                    tx.State.ToString(), tx.Sender,
+                    tx.GasPayer, tx.GasTarget);
 
-                if (tx.signatures?.Length > 0)
+                if (tx.Signatures?.Length > 0)
                 {
-                    var signatures = tx.signatures
-                        .Select(signature => new Tuple<string, string>(signature.kind, signature.data))
+                    var signatures = tx.Signatures
+                        .Select(signature => new Tuple<string, string>(signature.Kind, signature.Data))
                         .ToList();
 
                     SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction);
                 }
 
-                if (tx.events == null || tx.events.Length == 0)
+                if (tx.Events == null || tx.Events.Length == 0)
                 {
                     continue;
                 }
 
-                for ( var eventIndex = 0; eventIndex < tx.events.Length; eventIndex++ )
+                for ( var eventIndex = 0; eventIndex < tx.Events.Length; eventIndex++ )
                 {
-                    var eventNode = tx.events[eventIndex];
+                    var eventNode = tx.Events[eventIndex];
                     Database.Main.Event eventEntry = null;
                     Dictionary<string, object?> payload = null;
 
                     try
                     {
-                        var kindSerialized = eventNode.Kind;
-                        if (!Enum.TryParse<EventKind>(kindSerialized, out var kind))
+                        var parsedKind = eventNode.GetParsedKind();
+                        if (parsedKind == null)
                         {
-                            Log.Error($"Unsupported event kind {kindSerialized}");
+                            Log.Error($"Unsupported event kind {eventNode.Kind}");
                             continue;
                         }
+
+                        var kind = parsedKind.Value;
 
                         var eventKindId = _eventKinds.GetId(chainId, kind);
 
                         var contract = eventNode.Contract;
-                        var addressString = eventNode.Address;
+                        var addressString = NormalizeAddress(eventNode.Address);
                         AddAddress(ref addressesToUpdate, addressString);
                         payload = InitPayload(kind.ToString(), chainEntry.NAME, contract, addressString);
 
@@ -423,7 +485,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         var addressEntry = await AddressMethods.UpsertAsync(databaseContext, chainEntry, addressString);
 
                         eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
-                            block.timestamp, eventIndex + 1, chainEntry, transaction, contractId,
+                            block.Timestamp, eventIndex + 1, chainEntry, transaction, contractId,
                             eventKindId, addressEntry);
 
                         if ( eventAdded ) eventsAddedCount++;
@@ -439,8 +501,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     fungible = symbolsFungibility.GetValueOrDefault(infusionEventData.BaseSymbol);
                                 else
                                 {
-                                    fungible = (await TokenMethods.GetAsync(databaseContext, chainEntry,
-                                        infusionEventData.BaseSymbol)).FUNGIBLE;
+                                    var baseToken = await TokenMethods.GetAsync(databaseContext, chainEntry,
+                                        infusionEventData.BaseSymbol);
+                                    if ( baseToken == null )
+                                        throw new Exception($"Token {infusionEventData.BaseSymbol} not found on chain {chainEntry.NAME}");
+
+                                    fungible = baseToken.FUNGIBLE;
+
                                     symbolsFungibility.Add(infusionEventData.BaseSymbol, fungible);
                                 }
 
@@ -492,8 +559,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     fungible = symbolsFungibility.GetValueOrDefault(tokenEventData.Symbol);
                                 else
                                 {
-                                    fungible = (await TokenMethods.GetAsync(databaseContext, chainEntry, tokenEventData.Symbol))
-                                        .FUNGIBLE;
+                                    var token = await TokenMethods.GetAsync(databaseContext, chainEntry, tokenEventData.Symbol);
+
+                                    if ( token == null )
+                                        throw new Exception($"Token {tokenEventData.Symbol} not found on chain {chainEntry.NAME}");
+
+                                    fungible = token.FUNGIBLE;
+
                                     symbolsFungibility.Add(tokenEventData.Symbol, fungible);
                                 }
 
@@ -516,7 +588,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     // because nft can be created by auction thread without mint date,
                                     // so we can't update dates only for just created NFTs using newNftCreated flag.
                                     if ( kind == EventKind.TokenMint )
-                                        nft.MINT_DATE_UNIX_SECONDS = block.timestamp;
+                                        nft.MINT_DATE_UNIX_SECONDS = block.Timestamp;
                                 }
 
                                 //parse also a new contract, just in case
@@ -527,7 +599,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 if ( nft != null )
                                     // Update NFTs owner address on new event.
                                     NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
-                                        block.timestamp, addressEntry, false);
+                                        block.Timestamp, addressEntry, false);
 
                                 await TokenEventMethods.UpsertAsync(databaseContext, tokenEventData.Symbol,
                                     tokenEventData.ChainName, tokenValue, chainEntry, eventEntry);
@@ -580,7 +652,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     if ( kind == EventKind.OrderFilled )
                                         // Update NFTs owner address on new sale event.
                                         NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
-                                            block.timestamp, addressEntry, false);
+                                            block.Timestamp, addressEntry, false);
                                 }
 
                                 //parse also a new contract, just in case
@@ -611,18 +683,83 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 or EventKind.GovernanceSetChainConfig:
                                 //or EventKind.Error:
                             {
-                                var stringData = eventNode.GetParsedData<string>();
-
-                                //databaseEvent we need it here, so check it
-                                if ( eventEntry != null )
-                                    StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
-
-                                switch ( kind )
+                                    switch ( kind )
                                 {
+                                    case EventKind.TokenCreate:
+                                    {
+                                        var tokenEventData = eventNode.GetParsedData<TokenEventData>();
+                                        var tokenCreateDataNullable =
+                                            ExtendedEventParser.GetTokenCreateData(tx.ExtendedEvents);
+
+                                        var symbol = !string.IsNullOrWhiteSpace(tokenEventData.Symbol)
+                                            ? tokenEventData.Symbol
+                                            : tokenCreateDataNullable?.Symbol;
+
+                                        if ( string.IsNullOrWhiteSpace(symbol) )
+                                        {
+                                            Log.Warning("[{Name}][Blocks] TokenCreate payload missing symbol, skipping", Name);
+                                            break;
+                                        }
+
+                                        if ( eventEntry != null )
+                                            StringEventMethods.Upsert(databaseContext, symbol, eventEntry, false);
+                                        payload["string_event"] = new Dictionary<string, object?>
+                                        {
+                                            ["string_value"] = symbol
+                                        };
+
+                                        if ( tokenCreateDataNullable != null )
+                                        {
+                                            var tokenCreateData = tokenCreateDataNullable.Value;
+                                            var (flags, tokenNameFromMetadata) =
+                                                ParseTokenCreateFlags(tokenCreateData, !tokenCreateData.IsNonFungible);
+
+                                            var tokenName = tokenNameFromMetadata ?? symbol;
+
+                                            var token = await TokenMethods.UpsertAsync(databaseContext, chainEntry,
+                                                contract, tokenName, symbol, ( int ) tokenCreateData.Decimals,
+                                                flags.fungible, flags.transferable, flags.finite, flags.divisible,
+                                                flags.fuel, flags.stakable, flags.fiat, flags.swappable, flags.burnable,
+                                                flags.mintable, addressString, addressString, "0",
+                                                tokenCreateData.MaxSupply, "0", null);
+
+                                            if ( token != null && eventEntry != null )
+                                            {
+                                                token.CreateEvent = eventEntry;
+                                            }
+
+                                            payload["token_create"] = new Dictionary<string, object?>
+                                            {
+                                                ["symbol"] = symbol,
+                                                ["max_supply"] = tokenCreateData.MaxSupply,
+                                                ["decimals"] = tokenCreateData.Decimals,
+                                                ["is_non_fungible"] = tokenCreateData.IsNonFungible,
+                                                ["carbon_token_id"] = tokenCreateData.CarbonTokenId,
+                                                ["metadata"] = tokenCreateData.Metadata
+                                            };
+                                        }
+                                        else if ( eventEntry != null )
+                                        {
+                                            var token = await TokenMethods.GetAsync(databaseContext, chainEntry, symbol);
+                                            if ( token != null )
+                                                token.CreateEvent = eventEntry;
+                                        }
+
+                                        break;
+                                    }
                                     case EventKind.ContractUpgrade:
                                     {
+                                        var stringData = eventNode.GetParsedData<string>();
+
+                                        if ( eventEntry != null )
+                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
+                                        payload["string_event"] = new Dictionary<string, object?>
+                                        {
+                                            ["string_value"] = stringData
+                                        };
+
                                         var queueTuple = new Tuple<string, string, long>(stringData, chainName,
-                                            block.timestamp);
+                                            block.Timestamp);
                                         if ( !_methodQueue.Contains(queueTuple) )
                                         {
                                             _methodQueue.Enqueue(queueTuple);
@@ -630,18 +767,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                         break;
                                     }
-                                    case EventKind.TokenCreate:
-                                    {
-                                        var token = await TokenMethods.GetAsync(databaseContext, chainEntry, stringData);
-                                        if ( token != null )
-                                        {
-                                            token.CreateEvent = eventEntry;
-                                        }
-
-                                        break;
-                                    }
                                     case EventKind.PlatformCreate:
                                     {
+                                        var stringData = eventNode.GetParsedData<string>();
+
+                                        if ( eventEntry != null )
+                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
+                                        payload["string_event"] = new Dictionary<string, object?>
+                                        {
+                                            ["string_value"] = stringData
+                                        };
+
                                         var platform = PlatformMethods.Get(databaseContext, stringData);
                                         if ( platform != null )
                                         {
@@ -652,6 +788,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     }
                                     case EventKind.ContractDeploy:
                                     {
+                                        var stringData = eventNode.GetParsedData<string>();
+
+                                        if ( eventEntry != null )
+                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
+                                        payload["string_event"] = new Dictionary<string, object?>
+                                        {
+                                            ["string_value"] = stringData
+                                        };
+
                                         //we might have to create the contract here, better be sure
                                         var contractItem = await ContractMethods.UpsertAsync(databaseContext, stringData,
                                             chainEntry, stringData,
@@ -663,6 +808,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     }
                                     case EventKind.OrganizationCreate:
                                     {
+                                        var stringData = eventNode.GetParsedData<string>();
+
+                                        if ( eventEntry != null )
+                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
+                                        payload["string_event"] = new Dictionary<string, object?>
+                                        {
+                                            ["string_value"] = stringData
+                                        };
+
                                         var organization = OrganizationMethods.Get(databaseContext, stringData);
                                         if ( organization != null )
                                         {
@@ -673,14 +827,34 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     }
                                     case EventKind.ChainCreate:
                                     {
+                                        var stringData = eventNode.GetParsedData<string>();
+
+                                        if ( eventEntry != null )
+                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
+                                        payload["string_event"] = new Dictionary<string, object?>
+                                        {
+                                            ["string_value"] = stringData
+                                        };
+
                                         //fill data
                                         break;
                                     }
+                                    default:
+                                    {
+                                        var stringData = eventNode.GetParsedData<string>();
+
+                                        if ( eventEntry != null )
+                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
+                                        payload["string_event"] = new Dictionary<string, object?>
+                                        {
+                                            ["string_value"] = stringData
+                                        };
+
+                                        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} got something (not supported) {Kind}",
+                                            Name, block.Height, UnixSeconds.Log(block.Timestamp), kind);
+                                        break;
+                                    }
                                 }
-                                payload["string_event"] = new Dictionary<string, object?>
-                                {
-                                    ["string_value"] = stringData
-                                };
                                 break;
                             }
                             case EventKind.Crowdsale:
@@ -742,7 +916,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             //TODO
                             case EventKind.ValidatorSwitch:
                             {
-                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting nothing for {Kind}", Name, block.height, kind);
+                                Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} getting nothing for {Kind}", Name, block.Height, kind);
 
                                 break;
                             }
@@ -826,19 +1000,19 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             case EventKind.LeaderboardCreate or EventKind.Custom:
                             {
                                 Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Currently not processing EventKind {Kind} in Block #{Block}",
-                                    Name, block.height, kind, block.height);
+                                    Name, block.Height, kind, block.Height);
                                 break;
                             }
                             default:
                                 Log.Warning("[{Name}][Blocks] Block #{BlockHeight} Currently not processing EventKind {Kind} in Block #{Block}",
-                                    Name, block.height, kind, block.height);
+                                    Name, block.Height, kind, block.Height);
                                 break;
                         }
                     }
                     catch ( Exception e )
                         {
-                            Log.Error(e, "[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} event processing", Name, block.height,
-                                UnixSeconds.Log(block.timestamp));
+                            Log.Error(e, "[{Name}][Blocks] Block #{BlockHeight} {UnixSeconds} event processing", Name, block.Height,
+                                UnixSeconds.Log(block.Timestamp));
 
                         try
                         {
@@ -868,10 +1042,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
-        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, block.height,
+        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, block.Height,
             addressesToUpdate.Count);
 
-        ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.height, false);
+        ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.Height, false);
 
         await databaseContext.SaveChangesAsync();
 
@@ -880,7 +1054,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             Log.Information(
                 "[{Name}][Blocks] Block #{BlockHeight} processed in {ProcessingTime} sec, {EventsAddedCount} events, {NftsInThisBlock} NFTs",
-                Name, block.height, Math.Round(processingTime.TotalSeconds, 3),
+                Name, block.Height, Math.Round(processingTime.TotalSeconds, 3),
                 eventsAddedCount, nftsInThisBlock.Count);
         }
         

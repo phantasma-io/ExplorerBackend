@@ -155,7 +155,8 @@ public static class Client
 
     private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
     private static int _maxAttempts = 5;
     public static async Task<(T, int)> ApiRequestAsync<T>(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
@@ -182,6 +183,22 @@ public static class Client
                     case RequestType.Get:
                         httpClient.DefaultRequestHeaders.Add("User-Agent", "Other");
                         var response = await httpClient.GetAsync(url, cts.Token);
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
+                            Log.Warning("[API request]: {Url} returned {StatusCode}: {Body}", url,
+                                response.StatusCode, errorBody);
+
+                            if (i < _maxAttempts)
+                            {
+                                await Task.Delay(1000 * i, cts.Token);
+                                Log.Debug("API request for {Url}:\nRetrying after non-success status...", url);
+                                continue;
+                            }
+
+                            throw new Exception($"API returned {(int)response.StatusCode} {response.StatusCode}");
+                        }
+
                         Log.Debug($"[API request]: header code: {response.StatusCode}");
                         using (var content = response.Content)
                         {
@@ -194,6 +211,22 @@ public static class Client
                             if(string.IsNullOrEmpty(postString)) throw new Exception("Empty POST body");
                             var content = new StringContent(postString, Encoding.UTF8, "application/json");
                             var responsePost = await httpClient.PostAsync(url, content, cts.Token);
+                            if (!responsePost.IsSuccessStatusCode)
+                            {
+                                var errorBody = await responsePost.Content.ReadAsStringAsync(cts.Token);
+                                Log.Warning("[API request]: {Url} returned {StatusCode}: {Body}", url,
+                                    responsePost.StatusCode, errorBody);
+
+                                if (i < _maxAttempts)
+                                {
+                                    await Task.Delay(1000 * i, cts.Token);
+                                    Log.Debug("API request for {Url}:\nRetrying after non-success status...", url);
+                                    continue;
+                                }
+
+                                throw new Exception($"API returned {(int)responsePost.StatusCode} {responsePost.StatusCode}");
+                            }
+
                             var responseContent = responsePost.Content;
                             stringResponse = await responseContent.ReadAsStringAsync(cts.Token);
                             break;
@@ -212,45 +245,22 @@ public static class Client
             }
             catch (Exception e)
             {
-                string logMessage;
-                if (e.Message.Contains("The operation has timed out.") ||
-                    e.Message.Contains("A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.") ||
-                    e.Message.Contains("Authentication failed because the remote party has closed the transport stream.")
-                    )
+                var logMessage =
+                    $"API request attempt {i}/{_maxAttempts} failed for {url}: {e.GetType().Name} {e.Message}";
+                Log.Error(e, logMessage);
+                if ( i < _maxAttempts )
                 {
-                    logMessage = $"API request timeout for {url}";
-                    Log.Debug(logMessage);
+                    Thread.Sleep(1000 * i);
+                    Log.Debug("API request for {Url}:\nTrying again...", url);
                 }
                 else
                 {
-                    logMessage = $"API request error for {url}:\n{e.Message}";
-
-                    // We don't need stacktrace for known errors like "response ended prematurely".
-                    if (!e.Message.Contains("An error occurred while sending the request. The response ended prematurely.") &&
-                        !e.Message.ToUpper().Contains("TOO MANY REQUESTS"))
-                    {
-                        var inner = e.InnerException;
-                        while (inner != null)
-                        {
-                            logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
-
-                            inner = inner.InnerException;
-                        }
-
-                        logMessage += "\n\n" + e.StackTrace;
-                    }
-
-                    Log.Debug(logMessage);
-                }
-
-                if (i < _maxAttempts)
-                {
-                    Thread.Sleep(1000 * i);
-                    Log.Debug($"API request for {url}:\nTrying again...");
+                    throw;
                 }
             }
+
         }
 
-        return default;
+        throw new Exception($"API request failed after {_maxAttempts} attempts for {url}");
     }
 }
