@@ -205,6 +205,12 @@ internal static class EventPayloadMapper
         [JsonPropertyName("gas_event")]
         public GasEventPayload GasEvent { get; set; }
 
+        [JsonPropertyName("governance_gas_config_event")]
+        public Dictionary<string, JsonElement> GovernanceGasConfigEvent { get; set; }
+
+        [JsonPropertyName("governance_chain_config_event")]
+        public Dictionary<string, JsonElement> GovernanceChainConfigEvent { get; set; }
+
         [JsonPropertyName("hash_event")]
         public HashEventPayload HashEvent { get; set; }
 
@@ -450,6 +456,14 @@ internal static class EventPayloadMapper
             apiEvent.address_event = BuildAddressEvent(payload, context, envelope.Projection.ChainId);
             apiEvent.chain_event = BuildChainEvent(payload);
             apiEvent.gas_event = BuildGasEvent(payload, context, envelope.Projection.ChainId);
+            apiEvent.governance_gas_config_event =
+                string.Equals(eventKind, "GovernanceSetGasConfig", StringComparison.OrdinalIgnoreCase)
+                    ? BuildGovernanceGasConfigEvent(payload)
+                    : null;
+            apiEvent.governance_chain_config_event =
+                string.Equals(eventKind, "GovernanceSetChainConfig", StringComparison.OrdinalIgnoreCase)
+                    ? BuildGovernanceChainConfigEvent(payload)
+                    : null;
             apiEvent.hash_event = BuildHashEvent(payload);
             apiEvent.infusion_event = BuildInfusionEvent(payload, context, envelope.Projection.ChainId);
             apiEvent.market_event = await BuildMarketEventAsync(databaseContext, payload, context,
@@ -467,6 +481,8 @@ internal static class EventPayloadMapper
                 apiEvent.address_event != null ||
                 apiEvent.chain_event != null ||
                 apiEvent.gas_event != null ||
+                apiEvent.governance_gas_config_event != null ||
+                apiEvent.governance_chain_config_event != null ||
                 apiEvent.hash_event != null ||
                 apiEvent.infusion_event != null ||
                 apiEvent.market_event != null ||
@@ -504,6 +520,27 @@ internal static class EventPayloadMapper
         {
             return null;
         }
+    }
+
+    private static string ExtractGovernanceValue(Dictionary<string, JsonElement> payload, params string[] keys)
+    {
+        if ( payload == null )
+        {
+            return null;
+        }
+
+        foreach ( var key in keys )
+        {
+            if ( !payload.TryGetValue(key, out var element) ) continue;
+            if ( element.ValueKind == JsonValueKind.Null || element.ValueKind == JsonValueKind.Undefined )
+                return null;
+            if ( element.ValueKind == JsonValueKind.String )
+                return element.GetString();
+
+            return element.ToString();
+        }
+
+        return null;
     }
 
     private static AddressEvent BuildAddressEvent(EventPayload payload, EventPayloadContext context, int chainId)
@@ -573,6 +610,58 @@ internal static class EventPayloadMapper
 
         var fee = ( parsedPrice * parsedAmount ).ToString();
         return CommonsUtils.ToDecimal(fee, kcal.DECIMALS);
+    }
+
+    private static GovernanceGasConfigEvent BuildGovernanceGasConfigEvent(EventPayload payload)
+    {
+        var configPayload = payload.GovernanceGasConfigEvent;
+        if (configPayload == null)
+        {
+            return null;
+        }
+
+        return new GovernanceGasConfigEvent
+        {
+            version = ExtractGovernanceValue(configPayload, "version"),
+            max_name_length = ExtractGovernanceValue(configPayload, "max_name_length", "maxNameLength"),
+            max_token_symbol_length = ExtractGovernanceValue(configPayload, "max_token_symbol_length", "maxTokenSymbolLength"),
+            fee_shift = ExtractGovernanceValue(configPayload, "fee_shift", "feeShift"),
+            max_structure_size = ExtractGovernanceValue(configPayload, "max_structure_size", "maxStructureSize"),
+            fee_multiplier = ExtractGovernanceValue(configPayload, "fee_multiplier", "feeMultiplier"),
+            gas_token_id = ExtractGovernanceValue(configPayload, "gas_token_id", "gasTokenId"),
+            data_token_id = ExtractGovernanceValue(configPayload, "data_token_id", "dataTokenId"),
+            minimum_gas_offer = ExtractGovernanceValue(configPayload, "minimum_gas_offer", "minimumGasOffer"),
+            data_escrow_per_row = ExtractGovernanceValue(configPayload, "data_escrow_per_row", "dataEscrowPerRow"),
+            gas_fee_transfer = ExtractGovernanceValue(configPayload, "gas_fee_transfer", "gasFeeTransfer"),
+            gas_fee_query = ExtractGovernanceValue(configPayload, "gas_fee_query", "gasFeeQuery"),
+            gas_fee_create_token_base = ExtractGovernanceValue(configPayload, "gas_fee_create_token_base", "gasFeeCreateTokenBase"),
+            gas_fee_create_token_symbol = ExtractGovernanceValue(configPayload, "gas_fee_create_token_symbol", "gasFeeCreateTokenSymbol"),
+            gas_fee_create_token_series = ExtractGovernanceValue(configPayload, "gas_fee_create_token_series", "gasFeeCreateTokenSeries"),
+            gas_fee_per_byte = ExtractGovernanceValue(configPayload, "gas_fee_per_byte", "gasFeePerByte"),
+            gas_fee_register_name = ExtractGovernanceValue(configPayload, "gas_fee_register_name", "gasFeeRegisterName"),
+            gas_burn_ratio_mul = ExtractGovernanceValue(configPayload, "gas_burn_ratio_mul", "gasBurnRatioMul"),
+            gas_burn_ratio_shift = ExtractGovernanceValue(configPayload, "gas_burn_ratio_shift", "gasBurnRatioShift")
+        };
+    }
+
+    private static GovernanceChainConfigEvent BuildGovernanceChainConfigEvent(EventPayload payload)
+    {
+        var configPayload = payload.GovernanceChainConfigEvent;
+        if (configPayload == null)
+        {
+            return null;
+        }
+
+        return new GovernanceChainConfigEvent
+        {
+            version = ExtractGovernanceValue(configPayload, "version"),
+            reserved_1 = ExtractGovernanceValue(configPayload, "reserved_1", "reserved1"),
+            reserved_2 = ExtractGovernanceValue(configPayload, "reserved_2", "reserved2"),
+            reserved_3 = ExtractGovernanceValue(configPayload, "reserved_3", "reserved3"),
+            allowed_tx_types = ExtractGovernanceValue(configPayload, "allowed_tx_types", "allowedTxTypes"),
+            expiry_window = ExtractGovernanceValue(configPayload, "expiry_window", "expiryWindow"),
+            block_rate_target = ExtractGovernanceValue(configPayload, "block_rate_target", "blockRateTarget")
+        };
     }
 
     private static HashEvent BuildHashEvent(EventPayload payload)

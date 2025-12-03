@@ -400,6 +400,16 @@ public class Event
     public GasEvent? gas_event { get; set; }
 
     /// <summary>
+    ///     EventKind GovernanceSetGasConfig
+    /// </summary>
+    public GovernanceGasConfigEvent? governance_gas_config_event { get; set; }
+
+    /// <summary>
+    ///     EventKind GovernanceSetChainConfig
+    /// </summary>
+    public GovernanceChainConfigEvent? governance_chain_config_event { get; set; }
+
+    /// <summary>
     ///     EventKinds FileCreate or FileDelete
     /// </summary>
     public HashEvent? hash_event { get; set; }
@@ -1288,6 +1298,46 @@ public class GasEvent
     ///     address of the gas event data
     /// </summary>
     public Address? address { get; set; }
+}
+
+/// <summary>
+///     EventKind GovernanceSetGasConfig
+/// </summary>
+public class GovernanceGasConfigEvent
+{
+    public string? version { get; set; }
+    public string? max_name_length { get; set; }
+    public string? max_token_symbol_length { get; set; }
+    public string? fee_shift { get; set; }
+    public string? max_structure_size { get; set; }
+    public string? fee_multiplier { get; set; }
+    public string? gas_token_id { get; set; }
+    public string? data_token_id { get; set; }
+    public string? minimum_gas_offer { get; set; }
+    public string? data_escrow_per_row { get; set; }
+    public string? gas_fee_transfer { get; set; }
+    public string? gas_fee_query { get; set; }
+    public string? gas_fee_create_token_base { get; set; }
+    public string? gas_fee_create_token_symbol { get; set; }
+    public string? gas_fee_create_token_series { get; set; }
+    public string? gas_fee_per_byte { get; set; }
+    public string? gas_fee_register_name { get; set; }
+    public string? gas_burn_ratio_mul { get; set; }
+    public string? gas_burn_ratio_shift { get; set; }
+}
+
+/// <summary>
+///     EventKind GovernanceSetChainConfig
+/// </summary>
+public class GovernanceChainConfigEvent
+{
+    public string? version { get; set; }
+    public string? reserved_1 { get; set; }
+    public string? reserved_2 { get; set; }
+    public string? reserved_3 { get; set; }
+    public string? allowed_tx_types { get; set; }
+    public string? expiry_window { get; set; }
+    public string? block_rate_target { get; set; }
 }
 
 /// <summary>

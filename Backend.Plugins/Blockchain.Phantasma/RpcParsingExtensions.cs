@@ -103,8 +103,8 @@ internal static class RpcParsingExtensions
                     => Serialization.Unserialize<Hash>(Base16.Decode(evt.Data)),
                 EventKind.OrganizationAdd or EventKind.OrganizationRemove
                     => Serialization.Unserialize<OrganizationEventData>(Base16.Decode(evt.Data)),
-                EventKind.GovernanceSetGasConfig => SerializeToJson(CarbonBlob.New<GasConfig>(Base16.Decode(evt.Data))),
-                EventKind.GovernanceSetChainConfig => SerializeToJson(CarbonBlob.New<ChainConfig>(Base16.Decode(evt.Data))),
+                EventKind.GovernanceSetGasConfig => CarbonBlob.New<GasConfig>(Base16.Decode(evt.Data)),
+                EventKind.GovernanceSetChainConfig => CarbonBlob.New<ChainConfig>(Base16.Decode(evt.Data)),
                 EventKind.ValidatorSwitch or EventKind.LeaderboardCreate or EventKind.Custom => null,
                 _ => null
             };

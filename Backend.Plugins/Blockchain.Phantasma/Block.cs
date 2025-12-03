@@ -10,6 +10,7 @@ using Database.Main;
 using Npgsql;
 using PhantasmaPhoenix.Cryptography;
 using PhantasmaPhoenix.Protocol;
+using PhantasmaPhoenix.Protocol.Carbon.Blockchain;
 using PhantasmaPhoenix.Protocol.ExtendedEvents;
 using PhantasmaPhoenix.RPC.Models;
 using Serilog;
@@ -81,6 +82,46 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         eventEntry.PAYLOAD_JSON = JsonSerializer.Serialize(payload, _payloadJsonOptions);
         eventEntry.PAYLOAD_FORMAT = "live.v1";
         eventEntry.RAW_DATA = rawData;
+    }
+
+    private static Dictionary<string, object?> BuildGasConfigPayload(GasConfig config)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["version"] = config.version.ToString(),
+            ["max_name_length"] = config.maxNameLength.ToString(),
+            ["max_token_symbol_length"] = config.maxTokenSymbolLength.ToString(),
+            ["fee_shift"] = config.feeShift.ToString(),
+            ["max_structure_size"] = config.maxStructureSize.ToString(),
+            ["fee_multiplier"] = config.feeMultiplier.ToString(),
+            ["gas_token_id"] = config.gasTokenId.ToString(),
+            ["data_token_id"] = config.dataTokenId.ToString(),
+            ["minimum_gas_offer"] = config.minimumGasOffer.ToString(),
+            ["data_escrow_per_row"] = config.dataEscrowPerRow.ToString(),
+            ["gas_fee_transfer"] = config.gasFeeTransfer.ToString(),
+            ["gas_fee_query"] = config.gasFeeQuery.ToString(),
+            ["gas_fee_create_token_base"] = config.gasFeeCreateTokenBase.ToString(),
+            ["gas_fee_create_token_symbol"] = config.gasFeeCreateTokenSymbol.ToString(),
+            ["gas_fee_create_token_series"] = config.gasFeeCreateTokenSeries.ToString(),
+            ["gas_fee_per_byte"] = config.gasFeePerByte.ToString(),
+            ["gas_fee_register_name"] = config.gasFeeRegisterName.ToString(),
+            ["gas_burn_ratio_mul"] = config.gasBurnRatioMul.ToString(),
+            ["gas_burn_ratio_shift"] = config.gasBurnRatioShift.ToString()
+        };
+    }
+
+    private static Dictionary<string, object?> BuildChainConfigPayload(ChainConfig config)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["version"] = config.version.ToString(),
+            ["reserved_1"] = config.reserved1.ToString(),
+            ["reserved_2"] = config.reserved2.ToString(),
+            ["reserved_3"] = config.reserved3.ToString(),
+            ["allowed_tx_types"] = config.allowedTxTypes.ToString(),
+            ["expiry_window"] = config.expiryWindow.ToString(),
+            ["block_rate_target"] = config.blockRateTarget.ToString()
+        };
     }
 
     private readonly record struct TokenCreateFlags(
@@ -790,12 +831,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             }
                             case EventKind.ChainCreate or EventKind.TokenCreate or EventKind.ContractUpgrade
                                 or EventKind.AddressRegister or EventKind.ContractDeploy or EventKind.PlatformCreate
-                                or EventKind.OrganizationCreate or EventKind.Log or EventKind.AddressUnregister
-                                or EventKind.GovernanceSetGasConfig
-                                or EventKind.GovernanceSetChainConfig:
-                                //or EventKind.Error:
+                                or EventKind.OrganizationCreate or EventKind.Log or EventKind.AddressUnregister:
                             {
-                                    switch ( kind )
+                                switch ( kind )
                                 {
                                     case EventKind.TokenCreate:
                                     {
@@ -970,6 +1008,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         break;
                                     }
                                 }
+                                break;
+                            }
+                            case EventKind.GovernanceSetGasConfig:
+                            {
+                                var gasConfig = eventNode.GetParsedData<GasConfig>();
+                                payload["governance_gas_config_event"] = BuildGasConfigPayload(gasConfig);
+                                break;
+                            }
+                            case EventKind.GovernanceSetChainConfig:
+                            {
+                                var chainConfig = eventNode.GetParsedData<ChainConfig>();
+                                payload["governance_chain_config_event"] = BuildChainConfigPayload(chainConfig);
                                 break;
                             }
                             case EventKind.Crowdsale:
