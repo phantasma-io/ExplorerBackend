@@ -926,11 +926,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             break;
                                         }
 
-                                        payload["string_event"] = new Dictionary<string, object?>
-                                        {
-                                            ["string_value"] = symbol
-                                        };
-
                                         if ( tokenCreateDataNullable != null )
                                         {
                                             var tokenCreateData = tokenCreateDataNullable.Value;
@@ -939,12 +934,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                             var tokenName = tokenNameFromMetadata ?? symbol;
 
+                                            var maxSupply = tokenCreateData.MaxSupply.ToString(CultureInfo.InvariantCulture);
+                                            var decimalsString = tokenCreateData.Decimals.ToString(CultureInfo.InvariantCulture);
+                                            var carbonTokenId = tokenCreateData.CarbonTokenId.ToString(CultureInfo.InvariantCulture);
+
                                             var token = await TokenMethods.UpsertAsync(databaseContext, chainEntry,
                                                 contract, tokenName, symbol, ( int ) tokenCreateData.Decimals,
                                                 flags.fungible, flags.transferable, flags.finite, flags.divisible,
                                                 flags.fuel, flags.stakable, flags.fiat, flags.swappable, flags.burnable,
                                                 flags.mintable, addressString, addressString, "0",
-                                                tokenCreateData.MaxSupply, "0", null);
+                                                maxSupply, "0", null);
 
                                             if ( token != null && eventEntry != null )
                                             {
@@ -954,10 +953,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             var tokenCreatePayload = new Dictionary<string, object?>
                                             {
                                                 ["symbol"] = symbol,
-                                                ["max_supply"] = tokenCreateData.MaxSupply,
-                                                ["decimals"] = tokenCreateData.Decimals,
+                                                ["max_supply"] = maxSupply,
+                                                ["decimals"] = decimalsString,
                                                 ["is_non_fungible"] = tokenCreateData.IsNonFungible,
-                                                ["carbon_token_id"] = tokenCreateData.CarbonTokenId,
+                                                ["carbon_token_id"] = carbonTokenId,
                                                 ["metadata"] = tokenCreateData.Metadata
                                             };
                                             // keep legacy key and new consistent key for API mapping
