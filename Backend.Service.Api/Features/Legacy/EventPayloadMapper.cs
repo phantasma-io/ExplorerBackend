@@ -182,6 +182,11 @@ internal static class EventPayloadMapper
         public EventPayload Payload { get; init; }
     }
 
+    internal static StringEvent ParseStringEvent(string payloadJson)
+    {
+        return BuildStringEvent(ParsePayload(payloadJson));
+    }
+
     private sealed class EventPayload
     {
         [JsonPropertyName("event_kind")]

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using Backend.Api;
 using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using PhantasmaPhoenix.Cryptography;
 using PhantasmaPhoenix.Protocol;
@@ -23,6 +25,7 @@ using EventKind = PhantasmaPhoenix.Protocol.EventKind;
 using Nft = Database.Main.Nft;
 using NftMethods = Database.Main.NftMethods;
 using RpcBlockResult = PhantasmaPhoenix.RPC.Models.BlockResult;
+using CommonsUtils = Backend.Commons.Utils;
 
 namespace Backend.Blockchain;
 
@@ -122,6 +125,84 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             ["expiry_window"] = config.expiryWindow.ToString(),
             ["block_rate_target"] = config.blockRateTarget.ToString()
         };
+    }
+
+    private async Task ApplyInfusionAsync(MainDbContext databaseContext, Chain chain, Nft nft,
+        string infusedSymbol, string infusedValueRaw)
+    {
+        if ( nft == null )
+        {
+            Log.Warning("[{Name}][Blocks] Infusion event without target NFT", Name);
+            return;
+        }
+
+        var infusedToken = await TokenMethods.GetAsync(databaseContext, chain, infusedSymbol);
+        if ( infusedToken == null )
+        {
+            Log.Warning("[{Name}][Blocks] Token {Symbol} not found for infusion on chain {Chain}", Name, infusedSymbol,
+                chain.NAME);
+            return;
+        }
+
+        var infusedValue = CommonsUtils.ToDecimal(infusedValueRaw, infusedToken.DECIMALS);
+
+        if ( infusedToken.FUNGIBLE )
+        {
+            if ( !decimal.TryParse(infusedValue, NumberStyles.Any, CultureInfo.InvariantCulture,
+                    out var infusedValueDecimal) )
+            {
+                Log.Warning("[{Name}][Blocks] Cannot parse infused value {Value} for token {Symbol}", Name, infusedValue,
+                    infusedSymbol);
+                return;
+            }
+
+            var infusion = databaseContext.Infusions.FirstOrDefault(x =>
+                x.Nft == nft && x.KEY == infusedToken.SYMBOL) ??
+                           DbHelper.GetTracked<Infusion>(databaseContext)
+                               .FirstOrDefault(x => x.Nft == nft && x.KEY == infusedToken.SYMBOL);
+
+            if ( infusion == null )
+            {
+                infusion = new Infusion {Nft = nft, KEY = infusedToken.SYMBOL, Token = infusedToken, VALUE = "0"};
+                databaseContext.Infusions.Add(infusion);
+            }
+
+            if ( !decimal.TryParse(infusion.VALUE, NumberStyles.Any, CultureInfo.InvariantCulture,
+                    out var currentValue) )
+            {
+                currentValue = 0;
+            }
+
+            infusion.VALUE = (currentValue + infusedValueDecimal).ToString(CultureInfo.InvariantCulture);
+        }
+        else
+        {
+            var infusion = databaseContext.Infusions.FirstOrDefault(x =>
+                x.Nft == nft && x.KEY == infusedToken.SYMBOL && x.VALUE == infusedValueRaw) ??
+                           DbHelper.GetTracked<Infusion>(databaseContext)
+                               .FirstOrDefault(x =>
+                                   x.Nft == nft && x.KEY == infusedToken.SYMBOL && x.VALUE == infusedValueRaw);
+
+            if ( infusion == null )
+            {
+                infusion = new Infusion {Nft = nft, KEY = infusedToken.SYMBOL, VALUE = infusedValueRaw};
+                databaseContext.Infusions.Add(infusion);
+            }
+
+            var infusedNft = await databaseContext.Nfts.FirstOrDefaultAsync(x => x.TOKEN_ID == infusedValueRaw) ??
+                             DbHelper.GetTracked<Nft>(databaseContext)
+                                 .FirstOrDefault(x => x.TOKEN_ID == infusedValueRaw);
+
+            if ( infusedNft == null )
+            {
+                Log.Warning("[{Name}][Blocks] NFT {TokenId} infused into {TargetId} not found", Name, infusedValueRaw,
+                    nft.TOKEN_ID);
+            }
+            else
+            {
+                infusedNft.InfusedInto = nft;
+            }
+        }
     }
 
     private readonly record struct TokenCreateFlags(
@@ -605,6 +686,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 }
 
                                 var tokenId = infusionEventData.TokenID.ToString();
+                                var infusedValueRaw = infusionEventData.InfusedValue.ToString();
 
                                 Nft nft = null;
                                 if ( !fungible )
@@ -628,16 +710,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenId, chainEntry, kind, eventKindId, contracts.GetId(chainId, infusionEventData.BaseSymbol));
 
-                                await InfusionEventMethods.InsertAsync(databaseContext, infusionEventData.TokenID.ToString(),
-                                    infusionEventData.BaseSymbol, infusionEventData.InfusedSymbol,
-                                    infusionEventData.InfusedValue.ToString(), chainEntry, eventEntry);
+                                await ApplyInfusionAsync(databaseContext, chainEntry, nft, infusionEventData.InfusedSymbol,
+                                    infusedValueRaw);
                                 payload["token_id"] = tokenId;
                                 payload["infusion_event"] = new Dictionary<string, object?>
                                 {
                                     ["token_id"] = tokenId,
                                     ["base_token"] = infusionEventData.BaseSymbol,
                                     ["infused_token"] = infusionEventData.InfusedSymbol,
-                                    ["infused_value"] = infusionEventData.InfusedValue.ToString()
+                                    ["infused_value"] = infusedValueRaw
                                 };
                                 break;
                             }
@@ -694,8 +775,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
                                         block.Timestamp, addressEntry, false);
 
-                                await TokenEventMethods.UpsertAsync(databaseContext, tokenEventData.Symbol,
-                                    tokenEventData.ChainName, tokenValue, chainEntry, eventEntry);
                                 payload["token_id"] = tokenValue;
                                 payload["token_event"] = new Dictionary<string, object?>
                                 {
@@ -812,10 +891,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenId, chainEntry, kind, eventKindId, contracts.GetId(chainId, marketEventData.BaseSymbol));
 
-                                await MarketEventMethods.InsertAsync(databaseContext, marketEventData.Type.ToString(),
-                                    marketEventData.BaseSymbol, marketEventData.QuoteSymbol,
-                                    marketEventData.Price.ToString(), marketEventData.EndPrice.ToString(),
-                                    marketEventData.ID.ToString(), chainEntry, eventEntry);
                                 payload["token_id"] = tokenId;
                                 payload["market_event"] = new Dictionary<string, object?>
                                 {
@@ -851,8 +926,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             break;
                                         }
 
-                                        if ( eventEntry != null )
-                                            StringEventMethods.Upsert(databaseContext, symbol, eventEntry, false);
                                         payload["string_event"] = new Dictionary<string, object?>
                                         {
                                             ["string_value"] = symbol
@@ -904,8 +977,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         var stringData = eventNode.GetParsedData<string>();
 
-                                        if ( eventEntry != null )
-                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
                                         payload["string_event"] = new Dictionary<string, object?>
                                         {
                                             ["string_value"] = stringData
@@ -924,8 +995,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         var stringData = eventNode.GetParsedData<string>();
 
-                                        if ( eventEntry != null )
-                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
                                         payload["string_event"] = new Dictionary<string, object?>
                                         {
                                             ["string_value"] = stringData
@@ -943,8 +1012,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         var stringData = eventNode.GetParsedData<string>();
 
-                                        if ( eventEntry != null )
-                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
                                         payload["string_event"] = new Dictionary<string, object?>
                                         {
                                             ["string_value"] = stringData
@@ -963,8 +1030,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         var stringData = eventNode.GetParsedData<string>();
 
-                                        if ( eventEntry != null )
-                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
                                         payload["string_event"] = new Dictionary<string, object?>
                                         {
                                             ["string_value"] = stringData
@@ -982,8 +1047,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         var stringData = eventNode.GetParsedData<string>();
 
-                                        if ( eventEntry != null )
-                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
                                         payload["string_event"] = new Dictionary<string, object?>
                                         {
                                             ["string_value"] = stringData
@@ -996,8 +1059,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         var stringData = eventNode.GetParsedData<string>();
 
-                                        if ( eventEntry != null )
-                                            StringEventMethods.Upsert(databaseContext, stringData, eventEntry, false);
                                         payload["string_event"] = new Dictionary<string, object?>
                                         {
                                             ["string_value"] = stringData
@@ -1030,9 +1091,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var saleKind = saleEventData.kind.ToString(); //handle sale kinds 
 
                                 //databaseEvent we need it here, so check it
-                                if ( eventEntry != null )
-                                    SaleEventMethods.Upsert(databaseContext, saleKind, hash, chainEntry, eventEntry,
-                                        false);
                                 payload["sale_event"] = new Dictionary<string, object?>
                                 {
                                     ["hash"] = hash,
@@ -1050,10 +1108,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var platform = transactionSettleEventData.Platform;
                                 var chain = transactionSettleEventData.Chain;
 
-                                //databaseEvent we need it here, so check it
-                                if ( eventEntry != null )
-                                    TransactionSettleEventMethods.Upsert(databaseContext, hash, platform, chain,
-                                        eventEntry, false);
                                 payload["transaction_settle_event"] = new Dictionary<string, object?>
                                 {
                                     ["hash"] = hash,
@@ -1092,10 +1146,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var valueEventName = chainValueEventData.Name;
                                 var value = chainValueEventData.Value.ToString();
 
-                                //databaseEvent we need it here, so check it
-                                if ( eventEntry != null )
-                                    ChainEventMethods.Upsert(databaseContext, valueEventName, value, chainEntry,
-                                        eventEntry);
                                 payload["chain_event"] = new Dictionary<string, object?>
                                 {
                                     ["name"] = valueEventName,
@@ -1116,10 +1166,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var hasUnlimitedGas = amount == ulong.MaxValue.ToString();
                                 var amountForPayload = hasUnlimitedGas ? null : amount;
 
-                                //databaseEvent we need it here, so check it
-                                if ( eventEntry != null && amountForPayload != null )
-                                    await GasEventMethods.UpsertAsync(databaseContext, address, price, amount, eventEntry,
-                                        chainEntry);
                                 payload["gas_event"] = new Dictionary<string, object?>
                                 {
                                     ["price"] = price,
@@ -1133,9 +1179,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             {
                                 var hash = eventNode.GetParsedData<Hash>().ToString();
 
-                                //databaseEvent we need it here, so check it
-                                if ( eventEntry != null )
-                                    HashEventMethods.Upsert(databaseContext, hash, eventEntry);
                                 payload["hash_event"] = new Dictionary<string, object?>
                                 {
                                     ["hash"] = hash
@@ -1151,10 +1194,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 var memberAddress = organizationEventData.MemberAddress.ToString();
                                 AddAddress(ref addressesToUpdate, memberAddress);
 
-                                //databaseEvent we need it here, so check it
-                                if ( eventEntry != null )
-                                    await OrganizationEventMethods.UpsertAsync(databaseContext, organization, memberAddress,
-                                        eventEntry, chainEntry);
                                 payload["organization_event"] = new Dictionary<string, object?>
                                 {
                                     ["organization"] = organization,

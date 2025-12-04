@@ -17,7 +17,6 @@
     "romRamProcessingEnabled": true,
     "romRamProcessingInterval": 30,
     "seriesProcessingInterval": 30,
-    "infusionsProcessingInterval": 30,
     "namesSyncInterval": 600
   }
 }

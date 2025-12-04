@@ -150,12 +150,7 @@ public static class GetPlatforms
                             hash = x.CreateEvent.Contract.HASH,
                             symbol = x.CreateEvent.Contract.SYMBOL
                         },
-                        string_event = x.CreateEvent.StringEvent != null
-                            ? new StringEvent
-                            {
-                                string_value = x.CreateEvent.StringEvent.STRING_VALUE
-                            }
-                            : null
+                        string_event = EventPayloadMapper.ParseStringEvent(x.CreateEvent.PAYLOAD_JSON)
                     }
                     : null
             }).ToArrayAsync();
