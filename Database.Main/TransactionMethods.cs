@@ -14,6 +14,8 @@ public static class TransactionMethods
         ulong timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, ulong expiration,
         string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget)
     {
+        const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas
+
         var entry = await databaseContext.Transactions
             .FirstOrDefaultAsync(x => x.Block == block && x.HASH == hash) ?? DbHelper
             .GetTracked<Transaction>(databaseContext)
@@ -27,6 +29,12 @@ public static class TransactionMethods
         var gasTargetAddress = await AddressMethods.UpsertAsync(databaseContext, block.Chain, gasTarget);
 
         var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, block.Chain);
+
+        var hasUnlimitedGas = gasLimit == UnlimitedGasRaw;
+        var gasLimitFormatted = hasUnlimitedGas ? null : Utils.ToDecimal(gasLimit, kcalDecimals);
+        var gasPriceFormatted = Utils.ToDecimal(gasPrice, kcalDecimals);
+        var feeFormatted = Utils.ToDecimal(fee, kcalDecimals);
+
         entry = new Transaction
         {
             Block = block,
@@ -36,12 +44,12 @@ public static class TransactionMethods
             PAYLOAD = payload,
             SCRIPT_RAW = scriptRaw,
             RESULT = result,
-            FEE = Utils.ToDecimal(fee, kcalDecimals),
+            FEE = feeFormatted,
             FEE_RAW = fee,
             EXPIRATION = (long)expiration,
-            GAS_PRICE = Utils.ToDecimal(gasPrice, kcalDecimals),
+            GAS_PRICE = gasPriceFormatted,
             GAS_PRICE_RAW = gasPrice,
-            GAS_LIMIT = Utils.ToDecimal(gasLimit, kcalDecimals),
+            GAS_LIMIT = gasLimitFormatted,
             GAS_LIMIT_RAW = gasLimit,
             State = transactionState,
             Sender = senderAddress,

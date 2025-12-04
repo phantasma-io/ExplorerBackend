@@ -1113,15 +1113,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 AddAddress(ref addressesToUpdate, address);
                                 var price = gasEventData.price.ToString();
                                 var amount = gasEventData.amount.ToString();
+                                var hasUnlimitedGas = amount == ulong.MaxValue.ToString();
+                                var amountForPayload = hasUnlimitedGas ? null : amount;
 
                                 //databaseEvent we need it here, so check it
-                                if ( eventEntry != null )
+                                if ( eventEntry != null && amountForPayload != null )
                                     await GasEventMethods.UpsertAsync(databaseContext, address, price, amount, eventEntry,
                                         chainEntry);
                                 payload["gas_event"] = new Dictionary<string, object?>
                                 {
                                     ["price"] = price,
-                                    ["amount"] = amount,
+                                    ["amount"] = amountForPayload,
                                     ["address"] = address
                                 };
 

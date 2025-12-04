@@ -23,6 +23,8 @@ internal static class EventPayloadMapper
         PropertyNameCaseInsensitive = true
     };
 
+    private const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas sentinel
+
     internal sealed class EventProjection
     {
         public Event ApiEvent { get; init; }
@@ -124,8 +126,9 @@ internal static class EventPayloadMapper
                 if ( !string.IsNullOrEmpty(payload.GasEvent?.Address) )
                 {
                     addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.GasEvent.Address));
-                    tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, "KCAL"));
                 }
+                if ( payload.GasEvent != null )
+                    tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, "KCAL"));
 
                 if ( !string.IsNullOrEmpty(payload.TokenSeriesEvent?.Owner) )
                     addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.TokenSeriesEvent.Owner));
@@ -543,6 +546,16 @@ internal static class EventPayloadMapper
         return null;
     }
 
+    private static string ApplyDecimals(string raw, int decimals)
+    {
+        if ( string.IsNullOrWhiteSpace(raw) )
+        {
+            return raw;
+        }
+
+        return CommonsUtils.ToDecimal(raw, decimals);
+    }
+
     private static AddressEvent BuildAddressEvent(EventPayload payload, EventPayloadContext context, int chainId)
     {
         if ( payload.AddressEvent == null || string.IsNullOrEmpty(payload.AddressEvent.Address) )
@@ -582,12 +595,24 @@ internal static class EventPayloadMapper
 
         var fee = CalculateGasFee(payload.GasEvent.Price, payload.GasEvent.Amount, context, chainId);
         var address = context.GetAddress(chainId, payload.GasEvent.Address);
+        var kcal = context.GetToken(chainId, "KCAL");
+        var amountRaw = payload.GasEvent.Amount;
+
+        if ( amountRaw == UnlimitedGasRaw )
+        {
+            amountRaw = null;
+            fee = "0";
+        }
+
+        var amount = kcal != null && !string.IsNullOrEmpty(amountRaw)
+            ? ApplyDecimals(amountRaw, kcal.DECIMALS)
+            : amountRaw;
 
         return new GasEvent
         {
             price = payload.GasEvent.Price,
-            amount = payload.GasEvent.Amount,
-            fee = fee,
+            amount = amount,
+            fee = string.IsNullOrEmpty(fee) ? "0" : fee,
             address = string.IsNullOrEmpty(payload.GasEvent.Address)
                 ? null
                 : new Address
@@ -600,6 +625,9 @@ internal static class EventPayloadMapper
 
     private static string CalculateGasFee(string price, string amount, EventPayloadContext context, int chainId)
     {
+        if ( amount == UnlimitedGasRaw )
+            return null;
+
         if ( string.IsNullOrEmpty(price) || string.IsNullOrEmpty(amount) ) return null;
 
         if ( !BigInteger.TryParse(price, out var parsedPrice) || !BigInteger.TryParse(amount, out var parsedAmount) )
@@ -777,11 +805,17 @@ internal static class EventPayloadMapper
     {
         if ( payload.TokenEvent == null ) return null;
 
+        var tokenEntry = context.GetToken(chainId, payload.TokenEvent.Token);
+        var valueRaw = payload.TokenEvent.ValueRaw ?? payload.TokenEvent.Value;
+        var value = tokenEntry != null && tokenEntry.FUNGIBLE && !string.IsNullOrEmpty(valueRaw)
+            ? ApplyDecimals(valueRaw, tokenEntry.DECIMALS)
+            : payload.TokenEvent.Value ?? valueRaw;
+
         return new TokenEvent
         {
-            token = MapToken(context.GetToken(chainId, payload.TokenEvent.Token), payload.TokenEvent.Token),
-            value = payload.TokenEvent.Value,
-            value_raw = payload.TokenEvent.ValueRaw,
+            token = MapToken(tokenEntry, payload.TokenEvent.Token),
+            value = value,
+            value_raw = valueRaw,
             chain_name = payload.TokenEvent.ChainName
         };
     }

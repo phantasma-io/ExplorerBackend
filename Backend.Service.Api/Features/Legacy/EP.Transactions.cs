@@ -282,8 +282,13 @@ public static class GetTransactions
             await EventPayloadMapper.ApplyAsync(databaseContext, allEventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
 
+            const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas sentinel
+
             foreach ( var projection in transactionProjections )
             {
+                if ( projection.ApiTransaction.gas_limit_raw == UnlimitedGasRaw )
+                    projection.ApiTransaction.gas_limit = null;
+
                 if ( with_events == 1 )
                     projection.ApiTransaction.events = projection.EventProjections.Select(p => p.ApiEvent).ToArray();
             }
