@@ -37,6 +37,8 @@ internal static class EventPayloadMapper
     internal sealed class TransactionProjection
     {
         public Transaction ApiTransaction { get; init; }
+        public int TransactionId { get; init; }
+        public int ChainId { get; init; }
         public EventProjection[] EventProjections { get; init; } = Array.Empty<EventProjection>();
     }
 

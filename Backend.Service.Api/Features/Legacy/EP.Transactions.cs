@@ -35,15 +35,20 @@ public static class GetTransactions
         int with_event_data = 0,
         int with_fiat = 0,
         int with_script = 0,
+        int with_neighbors = 0,
         int with_total = 0
         // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
         Transaction[] transactions = null;
+        string previousHash = null;
+        string nextHash = null;
+        var hashUpper = string.IsNullOrEmpty(hash) ? string.Empty : hash.ToUpper();
+        var hashPartialUpper = string.IsNullOrEmpty(hash_partial) ? string.Empty : hash_partial.ToUpper();
 
         const string fiatCurrency = "USD";
-        var filter = !string.IsNullOrEmpty(hash) || !string.IsNullOrEmpty(hash_partial) ||
+        var filter = !string.IsNullOrEmpty(hashUpper) || !string.IsNullOrEmpty(hashPartialUpper) ||
                      !string.IsNullOrEmpty(address) || !string.IsNullOrEmpty(date_less) ||
                      !string.IsNullOrEmpty(date_greater)
                      || !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height);
@@ -64,10 +69,10 @@ public static class GetTransactions
             if ( !ArgValidation.CheckOffset(offset) )
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash.ToUpper()) )
+            if ( !string.IsNullOrEmpty(hashUpper) && !ArgValidation.CheckHash(hashUpper) )
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial.ToUpper()) )
+            if ( !string.IsNullOrEmpty(hashPartialUpper) && !ArgValidation.CheckHash(hashPartialUpper) )
                 throw new ApiParameterException("Unsupported value for 'hash_partial' parameter.");
 
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
@@ -98,11 +103,11 @@ public static class GetTransactions
 
             #region Filtering
 
-            if ( !string.IsNullOrEmpty(hash) )
-                query = query.Where(x => x.HASH == hash.ToUpper());
+            if ( !string.IsNullOrEmpty(hashUpper) )
+                query = query.Where(x => x.HASH == hashUpper);
 
-            if ( !string.IsNullOrEmpty(hash_partial) )
-                query = query.Where(x => x.HASH.Contains(hash_partial.ToUpper()));
+            if ( !string.IsNullOrEmpty(hashPartialUpper) )
+                query = query.Where(x => x.HASH.Contains(hashPartialUpper));
 
             if ( !string.IsNullOrEmpty(date_less) )
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
@@ -145,6 +150,7 @@ public static class GetTransactions
                 {
                     "id" => query.OrderBy(x => x.ID),
                     "hash" => query.OrderBy(x => x.HASH),
+                    "index" => query.OrderBy(x => x.INDEX),
                     _ => query
                 };
             else
@@ -152,6 +158,7 @@ public static class GetTransactions
                 {
                     "id" => query.OrderByDescending(x => x.ID),
                     "hash" => query.OrderByDescending(x => x.HASH),
+                    "index" => query.OrderByDescending(x => x.INDEX),
                     _ => query
                 };
 
@@ -162,6 +169,8 @@ public static class GetTransactions
 
             var select = query.Select(x => new EventPayloadMapper.TransactionProjection
             {
+                TransactionId = x.ID,
+                ChainId = x.Block.ChainId,
                 ApiTransaction = new Transaction
                 {
                     hash = x.HASH,
@@ -294,6 +303,31 @@ public static class GetTransactions
             }
 
             transactions = transactionProjections.Select(x => x.ApiTransaction).ToArray();
+
+            if ( !string.IsNullOrEmpty(hashUpper) && transactionProjections?.Length == 1 )
+            {
+                var anchor = transactionProjections[0];
+
+                previousHash = await databaseContext.Transactions
+                    .AsNoTracking()
+                    .Where(x => x.Block.ChainId == anchor.ChainId && x.ID < anchor.TransactionId)
+                    .OrderByDescending(x => x.ID)
+                    .Select(x => x.HASH)
+                    .FirstOrDefaultAsync();
+
+                nextHash = await databaseContext.Transactions
+                    .AsNoTracking()
+                    .Where(x => x.Block.ChainId == anchor.ChainId && x.ID > anchor.TransactionId)
+                    .OrderBy(x => x.ID)
+                    .Select(x => x.HASH)
+                    .FirstOrDefaultAsync();
+
+                if ( transactions.Length > 0 )
+                {
+                    transactions[0].previous_hash = previousHash;
+                    transactions[0].next_hash = nextHash;
+                }
+            }
             
             var responseTime = DateTime.Now - startTime;
 

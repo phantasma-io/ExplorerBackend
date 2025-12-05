@@ -32,6 +32,7 @@ public class TransactionsController : BaseControllerV1
     ///     <a href='#model-Backend.Service.Api.MarketEvent'>market_event</a>)
     /// </param>
     /// <param name="with_script" example="0">Return with script data</param>
+    /// <param name="with_neighbors" example="0">Return hashes for previous/next transactions for navigation</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
@@ -57,6 +58,7 @@ public class TransactionsController : BaseControllerV1
         [FromQuery] int with_event_data = 0,
         [FromQuery] int with_fiat = 0,
         [FromQuery] int with_script = 0,
+        [FromQuery] int with_neighbors = 0,
         [FromQuery] int with_total = 0
         // ReSharper enable InconsistentNaming
     )
@@ -79,6 +81,7 @@ public class TransactionsController : BaseControllerV1
             with_event_data,
             with_fiat,
             with_script,
+            with_neighbors,
             with_total);
     }
 }

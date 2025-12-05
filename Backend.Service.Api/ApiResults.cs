@@ -796,6 +796,16 @@ public class Transaction
     public int index { get; set; }
 
     /// <summary>
+    ///     Hash of the previous transaction (navigation helper)
+    /// </summary>
+    public string? previous_hash { get; set; }
+
+    /// <summary>
+    ///     Hash of the next transaction (navigation helper)
+    /// </summary>
+    public string? next_hash { get; set; }
+
+    /// <summary>
     ///     unixseconds timestamp in UTC of the transaction
     /// </summary>
     public string? date { get; set; }
