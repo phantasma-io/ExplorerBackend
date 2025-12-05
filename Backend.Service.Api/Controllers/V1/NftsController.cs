@@ -20,6 +20,7 @@ public class NftsController : BaseControllerV1
     /// <param name="owner">Address of asset owner</param>
     /// <param name="contract_hash" example="SOUL">Token contract hash</param>
     /// <param name="name">Asset name/description filter (partial match)</param>
+    /// <param name="q" example="SOUL">Universal search filter</param>
     /// <param name="chain" example="main">Chain name</param>
     /// <param name="symbol" example="TTRS"></param>
     /// <param name="token_id">Token ID</param>
@@ -41,6 +42,7 @@ public class NftsController : BaseControllerV1
         [FromQuery] string owner = "",
         [FromQuery] string contract_hash = "",
         [FromQuery] string name = "",
+        [FromQuery] string q = "",
         [FromQuery] string chain = "main",
         [FromQuery] string symbol = "",
         [FromQuery] string token_id = "",
@@ -59,6 +61,7 @@ public class NftsController : BaseControllerV1
             owner,
             contract_hash,
             name,
+            q,
             chain,
             symbol,
             token_id,

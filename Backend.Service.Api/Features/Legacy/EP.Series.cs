@@ -26,6 +26,7 @@ public static class GetSeries
         string series_id = "",
         string creator = "",
         string name = "",
+        string q = "",
         string chain = "main",
         string contract = "",
         string symbol = "",
@@ -37,6 +38,7 @@ public static class GetSeries
         // Results of the query
         long totalResults = 0;
         Series[] seriesArray;
+        var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
         {
@@ -63,6 +65,9 @@ public static class GetSeries
             if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
+            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+                throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
@@ -87,6 +92,25 @@ public static class GetSeries
             #region Filtering
 
             query = query.Where(x => x.BLACKLISTED != true);
+
+            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+            var hasParsedId = int.TryParse(qTrimmed, out var qParsedId);
+
+            if ( !string.IsNullOrEmpty(qUpper) )
+            {
+                var isNumber = ArgValidation.CheckNumber(qTrimmed);
+                var isHex = ArgValidation.CheckBase16(qTrimmed);
+                var isFullHash = isHex && qUpper.Length >= 40;
+                var isHexPartial = isHex && !isFullHash;
+
+                query = query.Where(x =>
+                    ( isNumber && ( x.SERIES_ID == qTrimmed || ( hasParsedId && x.ID == qParsedId ) ) ) ||
+                    ( isFullHash && x.Contract.HASH == qUpper ) ||
+                    ( isHexPartial && x.Contract.HASH.Contains(qUpper) ) ||
+                    EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ||
+                    EF.Functions.ILike(x.DESCRIPTION, $"%{qTrimmed}%") ||
+                    EF.Functions.ILike(x.Contract.SYMBOL, $"%{qTrimmed}%"));
+            }
 
             if ( !string.IsNullOrEmpty(id) && int.TryParse(id, out var parsedId) )
                 query = query.Where(x => x.ID == parsedId);

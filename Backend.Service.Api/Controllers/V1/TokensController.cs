@@ -17,6 +17,7 @@ public class TokensController : BaseControllerV1
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="symbol" example="SOUL"></param>
+    /// <param name="q" example="SOUL">Universal search filter</param>
     /// <param name="chain" example="main">Chain name</param>
     /// <param name="with_price" example="0">Return data with <a href='#model-Backend.Service.Api.Price'>Prices</a> </param>
     /// <param name="with_creation_event" example="0">Return data with <a href='#model-Backend.Service.Api.Event'>Event</a> of the creation</param>
@@ -34,6 +35,7 @@ public class TokensController : BaseControllerV1
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string symbol = "",
+        [FromQuery] string q = "",
         [FromQuery] string chain = "main",
         [FromQuery] int with_price = 0,
         [FromQuery] int with_creation_event = 0,
@@ -48,6 +50,7 @@ public class TokensController : BaseControllerV1
             offset,
             limit,
             symbol,
+            q,
             chain,
             with_price,
             with_creation_event,

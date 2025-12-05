@@ -20,6 +20,7 @@ public class SeriesController : BaseControllerV1
     /// <param name="series_id">Series ID</param>
     /// <param name="creator">Creator of series (Address)</param>
     /// <param name="name">Series name/description filter (partial match)</param>
+    /// <param name="q" example="GHOST">Universal search filter</param>
     /// <param name="chain" example="main">Chain name</param>
     /// <param name="contract" example="SOUL">Token contract hash</param>
     /// <param name="symbol" example="SOUL"></param>
@@ -40,6 +41,7 @@ public class SeriesController : BaseControllerV1
         [FromQuery] string series_id = "",
         [FromQuery] string creator = "",
         [FromQuery] string name = "",
+        [FromQuery] string q = "",
         [FromQuery] string chain = "main",
         [FromQuery] string contract = "",
         [FromQuery] string symbol = "",
@@ -57,6 +59,7 @@ public class SeriesController : BaseControllerV1
             series_id,
             creator,
             name,
+            q,
             chain,
             contract,
             symbol,

@@ -23,6 +23,7 @@ public static class GetContracts
         int limit = 50,
         string symbol = "",
         string hash = "",
+        string q = "",
         string chain = "main",
         int with_methods = 0,
         int with_script = 0,
@@ -34,6 +35,7 @@ public static class GetContracts
     {
         long totalResults = 0;
         Contract[] contractArray;
+        var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
         {
@@ -57,6 +59,9 @@ public static class GetContracts
             if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
+            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+                throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
@@ -68,6 +73,21 @@ public static class GetContracts
             var query = databaseContext.Contracts.AsQueryable().AsNoTracking();
 
             #region Filtering
+            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+
+            if ( !string.IsNullOrEmpty(qUpper) )
+            {
+                var isHex = ArgValidation.CheckBase16(qTrimmed);
+                var isFullHash = isHex && qUpper.Length >= 40;
+                var isHexPartial = isHex && !isFullHash;
+                var treatAsName = !isHex;
+
+                query = query.Where(x =>
+                    ( isFullHash && x.HASH == qUpper ) ||
+                    ( isHexPartial && x.HASH.Contains(qUpper) ) ||
+                    ( treatAsName &&
+                      ( EF.Functions.ILike(x.SYMBOL, $"%{qTrimmed}%") || EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ) ));
+            }
 
             if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL.Equals(symbol.ToUpper()));
 

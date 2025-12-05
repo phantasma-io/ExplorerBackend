@@ -26,6 +26,7 @@ public static class GetNfts
         string owner = "",
         string contract_hash = "",
         string name = "",
+        string q = "",
         string chain = "main",
         string symbol = "",
         string token_id = "",
@@ -38,6 +39,7 @@ public static class GetNfts
         // Results of the query
         long totalResults = 0;
         Nft[] nftArray;
+        var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
         {
@@ -70,6 +72,9 @@ public static class GetNfts
             if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
+            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+                throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
@@ -95,6 +100,28 @@ public static class GetNfts
 
             query = query.Where(x =>
                 x.NSFW == false && ( x.BURNED == null || x.BURNED == false ) && x.BLACKLISTED == false);
+
+            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+
+            if ( !string.IsNullOrEmpty(qUpper) )
+            {
+                var isHex = ArgValidation.CheckBase16(qTrimmed);
+                var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
+                var isNumber = ArgValidation.CheckNumber(qTrimmed);
+
+                query = query.Where(x =>
+                    EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ||
+                    EF.Functions.ILike(x.DESCRIPTION, $"%{qTrimmed}%") ||
+                    EF.Functions.ILike(x.TOKEN_ID, $"%{qTrimmed}%") ||
+                    EF.Functions.ILike(x.Contract.SYMBOL, $"%{qTrimmed}%") ||
+                    ( x.Series != null && EF.Functions.ILike(x.Series.SERIES_ID, $"%{qTrimmed}%") ) ||
+                    ( x.Series != null && EF.Functions.ILike(x.Series.NAME, $"%{qTrimmed}%") ) ||
+                    ( isHex && x.Contract.HASH.Contains(qUpper) ) ||
+                    ( isNumber && x.Series != null && x.Series.SERIES_ID == qTrimmed ) ||
+                    ( isAddress && ( x.CreatorAddress.ADDRESS == qTrimmed ||
+                                     ( x.NftOwnerships != null &&
+                                       x.NftOwnerships.Any(o => o.Address.ADDRESS == qTrimmed) ) ) ));
+            }
 
             if ( !string.IsNullOrEmpty(status) )
                 query = status switch
