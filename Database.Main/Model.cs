@@ -7,6 +7,7 @@ using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 // Here we have all tables, fields and their relations for backend database.
 // Also public method GetConnectionString() available, allowing to get database connection string,
@@ -227,6 +228,16 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.HASH)
             .IsUnique();
 
+        modelBuilder.Entity<Block>()
+            .HasIndex(x => x.HASH)
+            .HasDatabaseName("IX_Search_Blocks_Hash_trgm")
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
+
+        modelBuilder.Entity<Block>()
+            .HasIndex(x => x.HEIGHT)
+            .HasDatabaseName("IX_Search_Blocks_Height");
+
         //////////////////////
         // Transaction
         //////////////////////
@@ -267,6 +278,12 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => new {x.HASH});
+
+        modelBuilder.Entity<Transaction>()
+            .HasIndex(x => x.HASH)
+            .HasDatabaseName("IX_Search_Transactions_Hash_trgm")
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
 
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => new {x.TIMESTAMP_UNIX_SECONDS});

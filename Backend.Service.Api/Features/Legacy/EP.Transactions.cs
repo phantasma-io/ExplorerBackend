@@ -25,6 +25,7 @@ public static class GetTransactions
         string hash = "",
         string hash_partial = "",
         string address = "",
+        string q = "",
         string date_less = "",
         string date_greater = "",
         string block_hash = "",
@@ -46,12 +47,15 @@ public static class GetTransactions
         string nextHash = null;
         var hashUpper = string.IsNullOrEmpty(hash) ? string.Empty : hash.ToUpper();
         var hashPartialUpper = string.IsNullOrEmpty(hash_partial) ? string.Empty : hash_partial.ToUpper();
+        var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
+        var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
 
         const string fiatCurrency = "USD";
         var filter = !string.IsNullOrEmpty(hashUpper) || !string.IsNullOrEmpty(hashPartialUpper) ||
                      !string.IsNullOrEmpty(address) || !string.IsNullOrEmpty(date_less) ||
                      !string.IsNullOrEmpty(date_greater)
-                     || !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height);
+                     || !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height)
+                     || !string.IsNullOrEmpty(qTrimmed);
 
         try
         {
@@ -74,6 +78,9 @@ public static class GetTransactions
 
             if ( !string.IsNullOrEmpty(hashPartialUpper) && !ArgValidation.CheckHash(hashPartialUpper) )
                 throw new ApiParameterException("Unsupported value for 'hash_partial' parameter.");
+
+            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+                throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
             if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
@@ -103,11 +110,32 @@ public static class GetTransactions
 
             #region Filtering
 
+            if ( !string.IsNullOrEmpty(qUpper) )
+            {
+                var isNumber = ArgValidation.CheckNumber(qTrimmed);
+                var isHex = ArgValidation.CheckBase16(qTrimmed);
+                var isFullHash = isHex && qUpper.Length >= 64;
+                var isHexPartial = isHex && !isFullHash;
+                var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
+                var treatAsHashPartial = !isNumber && !isAddress && !isFullHash;
+
+                query = query.Where(x =>
+                    ( isFullHash && x.HASH == qUpper ) ||
+                    ( isHexPartial && x.HASH.Contains(qUpper) ) ||
+                    ( isNumber && x.Block.HEIGHT == qTrimmed ) ||
+                    ( isAddress && x.TransactionAddresses.Any(y => y.Address.ADDRESS == qTrimmed) ) ||
+                    ( treatAsHashPartial && x.HASH.Contains(qUpper) ));
+            }
+
             if ( !string.IsNullOrEmpty(hashUpper) )
                 query = query.Where(x => x.HASH == hashUpper);
 
             if ( !string.IsNullOrEmpty(hashPartialUpper) )
-                query = query.Where(x => x.HASH.Contains(hashPartialUpper));
+                query = query.Where(x =>
+                    x.HASH.Contains(hashPartialUpper) ||
+                    x.Block.HASH.Contains(hashPartialUpper) ||
+                    x.Block.HEIGHT == hashPartialUpper ||
+                    x.Block.HEIGHT.Contains(hashPartialUpper));
 
             if ( !string.IsNullOrEmpty(date_less) )
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));

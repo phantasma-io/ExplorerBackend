@@ -224,11 +224,19 @@ namespace Database.Main.Migrations
                     b.HasIndex("HASH")
                         .IsUnique();
 
+                    b.HasIndex("HASH")
+                        .HasDatabaseName("IX_Search_Blocks_Hash_trgm")
+                        .HasMethod("gin")
+                        .HasOperators("gin_trgm_ops");
+
                     b.HasIndex("TIMESTAMP_UNIX_SECONDS");
 
                     b.HasIndex("ValidatorAddressId");
 
                     b.HasIndex("ChainId", "HEIGHT");
+
+                    b.HasIndex("HEIGHT")
+                        .HasDatabaseName("IX_Search_Blocks_Height");
 
                     b.ToTable("Blocks");
                 });
@@ -1648,6 +1656,11 @@ namespace Database.Main.Migrations
                     b.HasIndex("GasTargetId");
 
                     b.HasIndex("HASH");
+
+                    b.HasIndex("HASH")
+                        .HasDatabaseName("IX_Search_Transactions_Hash_trgm")
+                        .HasMethod("gin")
+                        .HasOperators("gin_trgm_ops");
 
                     b.HasIndex("SenderId");
 

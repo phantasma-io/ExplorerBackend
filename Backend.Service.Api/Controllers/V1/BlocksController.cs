@@ -20,6 +20,7 @@ public class BlocksController : BaseControllerV1
     /// <param name="hash">block hash</param>
     /// <param name="hash_partial">hash (partial match)</param>
     /// <param name="height">height of the <a href='#model-Backend.Service.Api.Block'>Block</a></param>
+    /// <param name="q" example="12345">general search: height, hash exact (hex length &gt;=64) or partial</param>
     /// <param name="chain" example="main">Chain name</param>
     /// <param name="date_less">Date (greater than), UTC unixseconds</param>
     /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
@@ -53,6 +54,7 @@ public class BlocksController : BaseControllerV1
         [FromQuery] string hash = "",
         [FromQuery] string hash_partial = "",
         [FromQuery] string height = "",
+        [FromQuery] string q = "",
         [FromQuery] string chain = "main",
         [FromQuery] string date_less = "",
         [FromQuery] string date_greater = "",
@@ -74,6 +76,7 @@ public class BlocksController : BaseControllerV1
             hash,
             hash_partial,
             height,
+            q,
             chain,
             date_less,
             date_greater,

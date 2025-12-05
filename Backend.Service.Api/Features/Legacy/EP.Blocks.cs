@@ -33,6 +33,7 @@ public static class GetBlocks
         string hash = "",
         string hash_partial = "",
         string height = "",
+        string q = "",
         string chain = "main",
         string date_less = "",
         string date_greater = "",
@@ -48,11 +49,12 @@ public static class GetBlocks
         long totalResults = 0;
         Block[] blockArray;
         const string fiatCurrency = "USD";
+        var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         //chain is not considered a filter atm
         var filter = !string.IsNullOrEmpty(id) || !string.IsNullOrEmpty(hash) || !string.IsNullOrEmpty(hash_partial) ||
                      !string.IsNullOrEmpty(height) || !string.IsNullOrEmpty(date_less) ||
-                     !string.IsNullOrEmpty(date_greater);
+                     !string.IsNullOrEmpty(date_greater) || !string.IsNullOrEmpty(qTrimmed);
 
         try
         {
@@ -79,6 +81,9 @@ public static class GetBlocks
             if ( !string.IsNullOrEmpty(height) && !ArgValidation.CheckNumber(height) )
                 throw new ApiParameterException("Unsupported value for 'height' parameter.");
 
+            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+                throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
@@ -99,6 +104,27 @@ public static class GetBlocks
             var query = databaseContext.Blocks.AsQueryable().AsNoTracking();
 
             #region Filtering
+            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+
+            if ( !string.IsNullOrEmpty(qUpper) )
+            {
+                var isNumber = ArgValidation.CheckNumber(qTrimmed);
+                var isHex = ArgValidation.CheckBase16(qTrimmed);
+                var isFullHash = isHex && qUpper.Length >= 64;
+
+                if ( isFullHash )
+                {
+                    query = query.Where(x => x.HASH == qUpper);
+                }
+                else if ( isNumber )
+                {
+                    query = query.Where(x => x.HEIGHT == qTrimmed || x.HASH.Contains(qUpper));
+                }
+                else
+                {
+                    query = query.Where(x => x.HASH.Contains(qUpper));
+                }
+            }
 
             if ( !string.IsNullOrEmpty(id) )
             {

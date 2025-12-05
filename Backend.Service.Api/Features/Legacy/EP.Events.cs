@@ -35,6 +35,7 @@ public static class GetEvents
         string nft_description_partial = "",
         string address = "",
         string address_partial = "",
+        string q = "",
         string block_hash = "",
         string block_height = "",
         string transaction_hash = "",
@@ -53,6 +54,7 @@ public static class GetEvents
         long totalResults = 0;
         Event[] eventsArray;
         const string fiatCurrency = "USD";
+        var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         //chain is not considered a filter atm
         var filter = !string.IsNullOrEmpty(contract) || !string.IsNullOrEmpty(token_id) ||
@@ -61,7 +63,7 @@ public static class GetEvents
                      !string.IsNullOrEmpty(event_kind_partial) || !string.IsNullOrEmpty(nft_name_partial) ||
                      !string.IsNullOrEmpty(nft_description_partial) || !string.IsNullOrEmpty(address_partial) ||
                      !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height) ||
-                     !string.IsNullOrEmpty(transaction_hash);
+                     !string.IsNullOrEmpty(transaction_hash) || !string.IsNullOrEmpty(qTrimmed);
 
         try
         {
@@ -119,6 +121,9 @@ public static class GetEvents
             if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
                 throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
 
+            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+                throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
             if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
                 throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
 
@@ -142,6 +147,25 @@ public static class GetEvents
             var query = databaseContext.Events.AsQueryable().AsNoTracking();
 
             #region Filtering
+            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+
+            if ( !string.IsNullOrEmpty(qUpper) )
+            {
+                var isHex = ArgValidation.CheckBase16(qTrimmed);
+                var isFullHash = isHex && qUpper.Length >= 64;
+                var isNumber = ArgValidation.CheckNumber(qTrimmed);
+                var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
+                var isHexPartial = isHex && !isFullHash;
+                var matchEventKind = qTrimmed.Length >= 3;
+
+                query = query.Where(x =>
+                    ( matchEventKind && EF.Functions.ILike(x.EventKind.NAME, $"%{qTrimmed}%") ) ||
+                    ( isFullHash && ( x.Transaction.HASH == qUpper || x.Transaction.Block.HASH == qUpper ) ) ||
+                    ( isHexPartial && ( x.Transaction.HASH.Contains(qUpper) || x.Transaction.Block.HASH.Contains(qUpper) ) ) ||
+                    ( isNumber && x.Transaction.Block.HEIGHT == qTrimmed ) ||
+                    ( isAddress && ( x.Address.ADDRESS == qTrimmed ||
+                                     ( x.TargetAddress != null && x.TargetAddress.ADDRESS == qTrimmed ) ) ));
+            }
 
             if ( with_nsfw == 0 )
                 query = query.Where(x => x.NSFW != true);

@@ -28,6 +28,7 @@ public class EventsController : BaseControllerV1
     /// <param name="nft_description_partial">Nft description (partial match))</param>
     /// <param name="address">Address (Hash)</param>
     /// <param name="address_partial">Address (partial match) (Hash)</param>
+    /// <param name="q" example="config">general search: event kind partial, tx/block hash exact or partial, block height or address</param>
     /// <param name="block_hash"><a href='#model-Backend.Service.Api.Block'>Block</a> hash</param>
     /// <param name="block_height">height of the <a href='#model-Backend.Service.Api.Block'>Block</a></param>
     /// <param name="transaction_hash"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash</param>
@@ -65,6 +66,7 @@ public class EventsController : BaseControllerV1
         [FromQuery] string nft_description_partial = "",
         [FromQuery] string address = "",
         [FromQuery] string address_partial = "",
+        [FromQuery] string q = "",
         [FromQuery] string block_hash = "",
         [FromQuery] string block_height = "",
         [FromQuery] string transaction_hash = "",
@@ -96,6 +98,7 @@ public class EventsController : BaseControllerV1
             nft_description_partial,
             address,
             address_partial,
+            q,
             block_hash,
             block_height,
             transaction_hash,

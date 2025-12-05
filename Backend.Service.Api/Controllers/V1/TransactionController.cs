@@ -16,6 +16,7 @@ public class TransactionController : BaseControllerV1
     /// <param name="hash"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash</param>
     /// <param name="hash_partial"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash (partial match)</param>
     /// <param name="address">Address (Hash)</param>
+    /// <param name="q" example="12345">general search: block height, tx/block hash exact (hex length >=64), hash partial or address</param>
     /// <param name="date_less">Date (greater than), UTC unixseconds</param>
     /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
     /// <param name="block_hash"><a href='#model-Backend.Service.Api.Block'>Block</a> hash</param>
@@ -52,6 +53,7 @@ public class TransactionController : BaseControllerV1
         [FromQuery] int with_event_data = 0,
         [FromQuery] int with_fiat = 0,
         [FromQuery] int with_script = 0,
+        [FromQuery] string q = "",
         [FromQuery] int with_total = 0
         // ReSharper enable InconsistentNaming
     )
@@ -64,6 +66,7 @@ public class TransactionController : BaseControllerV1
             hash,
             hash_partial,
             address,
+            q,
             date_less,
             date_greater,
             block_hash,
