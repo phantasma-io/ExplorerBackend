@@ -16,6 +16,7 @@ public class ContractsController : BaseControllerV1
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="symbol" example="SOUL"></param>
     /// <param name="hash" example="SOUL"></param>
     /// <param name="q" example="NEO">Universal search filter</param>
@@ -36,6 +37,7 @@ public class ContractsController : BaseControllerV1
         [FromQuery] string order_direction = "asc",
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
+        [FromQuery] string cursor = "",
         [FromQuery] string symbol = "",
         [FromQuery] string hash = "",
         [FromQuery] string q = "",
@@ -53,6 +55,7 @@ public class ContractsController : BaseControllerV1
             order_direction,
             offset,
             limit,
+            cursor,
             symbol,
             hash,
             q,

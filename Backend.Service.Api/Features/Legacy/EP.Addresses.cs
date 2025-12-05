@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Numerics;
@@ -13,6 +15,16 @@ namespace Backend.Service.Api;
 
 public static class GetAddresses
 {
+    private sealed class AddressPageItem
+    {
+        public int Id { get; init; }
+        public string Address { get; init; } = string.Empty;
+        public string AddressName { get; init; } = string.Empty;
+        public int BalanceMissingScore { get; init; }
+        public BigInteger BalanceRaw { get; init; }
+        public Address ApiAddress { get; init; }
+    }
+
     [ProducesResponseType(typeof(AddressResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]
@@ -22,6 +34,7 @@ public static class GetAddresses
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
+        string cursor = "",
         string chain = "main",
         string address = "",
         string address_name = "",
@@ -38,6 +51,8 @@ public static class GetAddresses
     {
         long totalResults = 0;
         Address[] addressArray;
+        string? nextCursor = null;
+        var useCursor = false;
 
         //chain is not considered a filter atm
         var filter = !string.IsNullOrEmpty(address) || !string.IsNullOrEmpty(address_partial) ||
@@ -79,6 +94,58 @@ public static class GetAddresses
 
             #endregion
 
+            var cursorToken = CursorPagination.ParseCursor(cursor);
+            var sortDirection = CursorPagination.ParseSortDirection(order_direction);
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+            var symbolUpper = string.IsNullOrWhiteSpace(symbol) ? string.Empty : symbol.ToUpperInvariant();
+            var balanceUsesSoul = symbolUpper == "SOUL";
+
+            var orderDefinitions =
+                new Dictionary<string, CursorOrderDefinition<AddressPageItem>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {
+                        "id",
+                        new CursorOrderDefinition<AddressPageItem>(
+                            "id",
+                            new CursorOrderSegment<AddressPageItem, int>(
+                                x => x.Id,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "address",
+                        new CursorOrderDefinition<AddressPageItem>(
+                            "address",
+                            new CursorOrderSegment<AddressPageItem, string>(
+                                x => x.Address,
+                                value => value))
+                    },
+                    {
+                        "address_name",
+                        new CursorOrderDefinition<AddressPageItem>(
+                            "address_name",
+                            new CursorOrderSegment<AddressPageItem, string>(
+                                x => x.AddressName ?? string.Empty,
+                                value => value))
+                    },
+                    {
+                        "balance",
+                        new CursorOrderDefinition<AddressPageItem>(
+                            "balance",
+                            new CursorOrderSegment<AddressPageItem, int>(
+                                x => x.BalanceMissingScore,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture),
+                                directionResolver: _ => CursorSortDirection.Asc),
+                            new CursorOrderSegment<AddressPageItem, BigInteger>(
+                                x => x.BalanceRaw,
+                                value => BigInteger.Parse(value, CultureInfo.InvariantCulture)))
+                    }
+                };
+
+            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
+
+            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
+
             var startTime = DateTime.Now;
 
             await using MainDbContext databaseContext = new();
@@ -115,98 +182,99 @@ public static class GetAddresses
 
             #endregion
 
-            // Count total number of results before adding order and limit parts of query.
-            if ( with_total == 1 )
-                totalResults = await query.CountAsync();
-
-            //in case we add more to sort
-            if ( order_direction == "asc" )
-                query = order_by switch
-                {
-                    "id" => query.OrderBy(x => x.ID),
-                    "address" => query.OrderBy(x => x.ADDRESS),
-                    "address_name" => query.OrderBy(x => x.ADDRESS_NAME),
-                    "balance" when symbol.Equals("SOUL", StringComparison.InvariantCultureIgnoreCase) => query.OrderBy(x => x.TOTAL_SOUL_AMOUNT),
-                    "balance" => query.OrderBy(x =>
-                        !x.AddressBalances.Any(y => y.Token.SYMBOL == symbol))
-                        .ThenBy(x => x.AddressBalances.Where(y => y.Token.SYMBOL == symbol).Select(y => y.AMOUNT_RAW).FirstOrDefault()),
-                    _ => query
-                };
-            else
-                query = order_by switch
-                {
-                    "id" => query.OrderByDescending(x => x.ID),
-                    "address" => query.OrderByDescending(x => x.ADDRESS),
-                    "address_name" => query.OrderByDescending(x => x.ADDRESS_NAME),
-                    "balance" when symbol.Equals("SOUL", StringComparison.InvariantCultureIgnoreCase) => query.OrderByDescending(x => x.TOTAL_SOUL_AMOUNT),
-                    "balance" => query.OrderBy(x =>
-                        !x.AddressBalances.Any(y => y.Token.SYMBOL == symbol))
-                        .ThenByDescending(x => x.AddressBalances.Where(y => y.Token.SYMBOL == symbol).Select(y => y.AMOUNT_RAW).FirstOrDefault()),
-                    _ => query
-                };
-
             #region ResultArray
 
-            //limit -1 is just allowed if a filter is set
-            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
+            if ( !useCursor && with_total == 1 )
+                totalResults = await query.CountAsync();
 
-            addressArray = await query.Select(x => new Address
+            var pageQuery = query.Select(x => new AddressPageItem
             {
-                address = x.ADDRESS,
-                address_name = x.ADDRESS_NAME,
-                validator_kind = x.AddressValidatorKind != null ? x.AddressValidatorKind.NAME : null,
-                stake = x.STAKED_AMOUNT,
-                stake_raw = x.STAKED_AMOUNT_RAW,
-                unclaimed = x.UNCLAIMED_AMOUNT,
-                unclaimed_raw = x.UNCLAIMED_AMOUNT_RAW,
-                storage = with_storage == 1 && x.STORAGE_AVAILABLE > 0
-                    ? new AddressStorage
-                    {
-                        available = x.STORAGE_AVAILABLE,
-                        used = x.STORAGE_USED,
-                        avatar = x.AVATAR
-                    }
-                    : null,
-                stakes = with_stakes == 1 && (!string.IsNullOrEmpty(x.STAKED_AMOUNT) || !string.IsNullOrEmpty(x.UNCLAIMED_AMOUNT)) 
-                    ? new AddressStakes
-                    {
-                        amount = x.STAKED_AMOUNT,
-                        amount_raw = x.STAKED_AMOUNT_RAW,
-                        time = x.STAKE_TIMESTAMP,
-                        unclaimed = x.UNCLAIMED_AMOUNT,
-                        unclaimed_raw = x.UNCLAIMED_AMOUNT_RAW
-                    }
-                    : null,
-                balances = with_balance == 1 && x.AddressBalances != null
-                    ? x.AddressBalances.Select(b => new AddressBalance
+                Id = x.ID,
+                Address = x.ADDRESS,
+                AddressName = x.ADDRESS_NAME,
+                BalanceMissingScore = balanceUsesSoul
+                    ? 0
+                    : ( x.AddressBalances.Any(y => y.Token.SYMBOL == symbolUpper) ? 0 : 1 ),
+                BalanceRaw = balanceUsesSoul
+                    ? x.TOTAL_SOUL_AMOUNT
+                    : x.AddressBalances.Where(y => y.Token.SYMBOL == symbolUpper).Select(y => y.AMOUNT_RAW)
+                        .FirstOrDefault(),
+                ApiAddress = new Address
+                {
+                    address = x.ADDRESS,
+                    address_name = x.ADDRESS_NAME,
+                    validator_kind = x.AddressValidatorKind != null ? x.AddressValidatorKind.NAME : null,
+                    stake = x.STAKED_AMOUNT,
+                    stake_raw = x.STAKED_AMOUNT_RAW,
+                    unclaimed = x.UNCLAIMED_AMOUNT,
+                    unclaimed_raw = x.UNCLAIMED_AMOUNT_RAW,
+                    storage = with_storage == 1 && x.STORAGE_AVAILABLE > 0
+                        ? new AddressStorage
                         {
-                            token = b.Token != null
-                                ? new Token
-                                {
-                                    symbol = b.Token.SYMBOL,
-                                    fungible = b.Token.FUNGIBLE,
-                                    transferable = b.Token.TRANSFERABLE,
-                                    finite = b.Token.FINITE,
-                                    divisible = b.Token.DIVISIBLE,
-                                    fiat = b.Token.FIAT,
-                                    fuel = b.Token.FUEL,
-                                    swappable = b.Token.SWAPPABLE,
-                                    burnable = b.Token.BURNABLE,
-                                    stakable = b.Token.STAKABLE,
-                                    decimals = b.Token.DECIMALS
-                                }
-                                : null,
-                            chain = new Chain
-                                {
-                                    // TODO probably useless, check if can be removed
-                                    chain_name = b.Address.Chain.NAME
-                                },
-                            amount = b.AMOUNT,
-                            amount_raw = b.AMOUNT_RAW.ToString()
+                            available = x.STORAGE_AVAILABLE,
+                            used = x.STORAGE_USED,
+                            avatar = x.AVATAR
                         }
-                    ).ToArray()
-                    : null
-            }).ToArrayAsync();
+                        : null,
+                    stakes = with_stakes == 1 && ( !string.IsNullOrEmpty(x.STAKED_AMOUNT) || !string.IsNullOrEmpty(x.UNCLAIMED_AMOUNT) )
+                        ? new AddressStakes
+                        {
+                            amount = x.STAKED_AMOUNT,
+                            amount_raw = x.STAKED_AMOUNT_RAW,
+                            time = x.STAKE_TIMESTAMP,
+                            unclaimed = x.UNCLAIMED_AMOUNT,
+                            unclaimed_raw = x.UNCLAIMED_AMOUNT_RAW
+                        }
+                        : null,
+                    balances = with_balance == 1 && x.AddressBalances != null
+                        ? x.AddressBalances.Select(b => new AddressBalance
+                            {
+                                token = b.Token != null
+                                    ? new Token
+                                    {
+                                        symbol = b.Token.SYMBOL,
+                                        fungible = b.Token.FUNGIBLE,
+                                        transferable = b.Token.TRANSFERABLE,
+                                        finite = b.Token.FINITE,
+                                        divisible = b.Token.DIVISIBLE,
+                                        fiat = b.Token.FIAT,
+                                        fuel = b.Token.FUEL,
+                                        swappable = b.Token.SWAPPABLE,
+                                        burnable = b.Token.BURNABLE,
+                                        stakable = b.Token.STAKABLE,
+                                        decimals = b.Token.DECIMALS
+                                    }
+                                    : null,
+                                chain = new Chain
+                                    {
+                                        // TODO probably useless, check if can be removed
+                                        chain_name = b.Address.Chain.NAME
+                                    },
+                                amount = b.AMOUNT,
+                                amount_raw = b.AMOUNT_RAW.ToString()
+                            }
+                        ).ToArray()
+                        : null
+                }
+            });
+
+            var cursorFiltered = useCursor
+                ? CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken, x => x.Id)
+                : pageQuery;
+            var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+
+            if ( useCursor )
+            {
+                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                    limit);
+                addressArray = page.Items.Select(x => x.ApiAddress).ToArray();
+                nextCursor = page.NextCursor;
+            }
+            else
+            {
+                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
+                addressArray = ( await pageItems.ToArrayAsync() ).Select(x => x.ApiAddress).ToArray();
+            }
 
             #endregion
 
@@ -224,6 +292,11 @@ public static class GetAddresses
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new AddressResult {total_results = with_total == 1 ? totalResults : null, addresses = addressArray};
+        return new AddressResult
+        {
+            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            addresses = addressArray,
+            next_cursor = nextCursor
+        };
     }
 }

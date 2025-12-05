@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -14,6 +15,14 @@ namespace Backend.Service.Api;
 
 public static class GetEvents
 {
+    private sealed class EventPageItem
+    {
+        public int Id { get; init; }
+        public long TimestampUnixSeconds { get; init; }
+        public string TokenId { get; init; } = string.Empty;
+        public EventPayloadMapper.EventProjection Projection { get; init; }
+    }
+
     [ProducesResponseType(typeof(EventsResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10, cacheTag: "events")]
@@ -23,6 +32,7 @@ public static class GetEvents
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
+        string cursor = "",
         string chain = "main",
         string contract = "",
         string token_id = "",
@@ -54,6 +64,8 @@ public static class GetEvents
         long totalResults = 0;
         Event[] eventsArray;
         const string fiatCurrency = "USD";
+        string? nextCursor = null;
+        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         //chain is not considered a filter atm
@@ -138,6 +150,44 @@ public static class GetEvents
 
             #endregion
 
+            var cursorToken = CursorPagination.ParseCursor(cursor);
+            var sortDirection = CursorPagination.ParseSortDirection(order_direction);
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+
+            var orderDefinitions =
+                new Dictionary<string, CursorOrderDefinition<EventPageItem>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {
+                        "id",
+                        new CursorOrderDefinition<EventPageItem>(
+                            "id",
+                            new CursorOrderSegment<EventPageItem, int>(
+                                x => x.Id,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "date",
+                        new CursorOrderDefinition<EventPageItem>(
+                            "date",
+                            new CursorOrderSegment<EventPageItem, long>(
+                                x => x.TimestampUnixSeconds,
+                                value => long.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "token_id",
+                        new CursorOrderDefinition<EventPageItem>(
+                            "token_id",
+                            new CursorOrderSegment<EventPageItem, string>(
+                                x => x.TokenId,
+                                value => value))
+                    }
+                };
+
+            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
+
+            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
+
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
@@ -220,32 +270,17 @@ public static class GetEvents
 
             #endregion
 
-            if ( with_total == 1 )
-                // Count total number of results before adding order and limit parts of query.
+            if ( !useCursor && with_total == 1 )
                 totalResults = await query.CountAsync();
-
-            if ( order_direction == "asc" )
-                query = order_by switch
-                {
-                    "date" => query.OrderBy(x => x.TIMESTAMP_UNIX_SECONDS),
-                    "token_id" => query.OrderBy(x => x.TOKEN_ID),
-                    "id" => query.OrderBy(x => x.ID),
-                    _ => query
-                };
-            else
-                query = order_by switch
-                {
-                    "date" => query.OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS),
-                    "token_id" => query.OrderByDescending(x => x.TOKEN_ID),
-                    "id" => query.OrderByDescending(x => x.ID),
-                    _ => query
-                };
 
             #region ResultArray
 
-            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
-
-            var eventProjections = await query.Select(x => new EventPayloadMapper.EventProjection
+            var pageQuery = query.Select(x => new EventPageItem
+            {
+                Id = x.ID,
+                TimestampUnixSeconds = x.TIMESTAMP_UNIX_SECONDS,
+                TokenId = x.TOKEN_ID ?? string.Empty,
+                Projection = new EventPayloadMapper.EventProjection
                 {
                     ApiEvent = new Event
                     {
@@ -309,7 +344,28 @@ public static class GetEvents
                     PayloadJson = x.PAYLOAD_JSON,
                     RawData = x.RAW_DATA
                 }
-            ).ToArrayAsync();
+            });
+
+            EventPayloadMapper.EventProjection[] eventProjections;
+
+            if ( useCursor )
+            {
+                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                    x => x.Id);
+                var orderedQuery =
+                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                    limit);
+                eventProjections = page.Items.Select(x => x.Projection).ToArray();
+                nextCursor = page.NextCursor;
+            }
+            else
+            {
+                var orderedQuery =
+                    CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
+                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
+                eventProjections = ( await pageItems.ToArrayAsync() ).Select(x => x.Projection).ToArray();
+            }
 
             await EventPayloadMapper.ApplyAsync(databaseContext, eventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
@@ -332,6 +388,11 @@ public static class GetEvents
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new EventsResult {total_results = with_total == 1 ? totalResults : null, events = eventsArray};
+        return new EventsResult
+        {
+            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            events = eventsArray,
+            next_cursor = nextCursor
+        };
     }
 }

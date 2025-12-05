@@ -295,7 +295,7 @@ public class Nft
 /// <summary>
 ///     Result List of NFTs
 /// </summary>
-public class NftsResult
+public class NftsResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found assets
@@ -469,7 +469,7 @@ public class Event
 /// <summary>
 ///     Result Events
 /// </summary>
-public class EventsResult
+public class EventsResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found events
@@ -485,7 +485,7 @@ public class EventsResult
 /// <summary>
 ///     Result Series
 /// </summary>
-public class SeriesResult
+public class SeriesResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found series
@@ -517,7 +517,7 @@ public class Chain
 /// <summary>
 ///     Result Chain
 /// </summary>
-public class ChainResult
+public class ChainResult : PaginatedResult
 {
     /// <summary>
     ///     total number of found chains
@@ -544,7 +544,7 @@ public class EventKind
 /// <summary>
 ///     Event Kind Result
 /// </summary>
-public class EventKindResult
+public class EventKindResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found eventKinds
@@ -616,7 +616,7 @@ public class Address
 /// <summary>
 ///     Address Result
 /// </summary>
-public class AddressResult
+public class AddressResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found addresses
@@ -757,7 +757,7 @@ public class Token
 /// <summary>
 ///     Token Result
 /// </summary>
-public class TokenResult
+public class TokenResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found tokens
@@ -889,7 +889,7 @@ public class Transaction
 /// <summary>
 ///     Transaction Result
 /// </summary>
-public class TransactionResult
+public class TransactionResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found transactions
@@ -954,7 +954,7 @@ public class Contract
 /// <summary>
 ///     Contract Result
 /// </summary>
-public class ContractResult
+public class ContractResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found contracts
@@ -1040,7 +1040,7 @@ public class Organization
 /// <summary>
 ///     Organization Result
 /// </summary>
-public class OrganizationResult
+public class OrganizationResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of organizations
@@ -1099,15 +1099,20 @@ public class Block
     public string? reward { get; set; }
 
     /// <summary>
-    ///     list of transactions
-    /// </summary>
-    public Transaction[]? transactions { get; set; }
+///     list of transactions
+/// </summary>
+public Transaction[]? transactions { get; set; }
+}
+
+public abstract class PaginatedResult
+{
+    public string? next_cursor { get; set; }
 }
 
 /// <summary>
 ///     Block Result
 /// </summary>
-public class BlockResult
+public class BlockResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found Blocks
@@ -1139,7 +1144,7 @@ public class Oracle
 /// <summary>
 ///     Oracle Result
 /// </summary>
-public class OracleResult
+public class OracleResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found Oracles for Block
@@ -1239,7 +1244,7 @@ public class Platform
 /// <summary>
 ///     Platform Result
 /// </summary>
-public class PlatformResult
+public class PlatformResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of platforms
@@ -1681,7 +1686,7 @@ public class HistoryPrice
 /// <summary>
 ///     History Price Result
 /// </summary>
-public class HistoryPriceResult
+public class HistoryPriceResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of history prices
@@ -1786,7 +1791,7 @@ public class ValidatorKind
 /// <summary>
 ///     Validator Kind Result
 /// </summary>
-public class ValidatorKindResult
+public class ValidatorKindResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found validator kinds
@@ -1818,7 +1823,7 @@ public class ContractMethodHistory
 /// <summary>
 ///     Contract Method History Result
 /// </summary>
-public class ContractMethodHistoryResult
+public class ContractMethodHistoryResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found contracts

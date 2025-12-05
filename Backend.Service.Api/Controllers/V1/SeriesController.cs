@@ -16,6 +16,7 @@ public class SeriesController : BaseControllerV1
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="id">Internal ID</param>
     /// <param name="series_id">Series ID</param>
     /// <param name="creator">Creator of series (Address)</param>
@@ -37,6 +38,7 @@ public class SeriesController : BaseControllerV1
         [FromQuery] string order_direction = "asc",
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
+        [FromQuery] string cursor = "",
         [FromQuery] string id = "",
         [FromQuery] string series_id = "",
         [FromQuery] string creator = "",
@@ -55,6 +57,7 @@ public class SeriesController : BaseControllerV1
             order_direction,
             offset,
             limit,
+            cursor,
             id,
             series_id,
             creator,

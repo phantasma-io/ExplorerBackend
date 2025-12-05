@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -12,6 +14,14 @@ namespace Backend.Service.Api;
 
 public static class GetContracts
 {
+    private sealed class ContractPageItem
+    {
+        public int Id { get; init; }
+        public string Symbol { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public Contract ApiContract { get; init; }
+    }
+
     [ProducesResponseType(typeof(ContractResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ContractResult), "Returns the contracts on the backend.", false, 10, cacheTag: "contracts")]
@@ -21,6 +31,7 @@ public static class GetContracts
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
+        string cursor = "",
         string symbol = "",
         string hash = "",
         string q = "",
@@ -35,6 +46,8 @@ public static class GetContracts
     {
         long totalResults = 0;
         Contract[] contractArray;
+        string? nextCursor = null;
+        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -67,6 +80,44 @@ public static class GetContracts
 
             #endregion
 
+            var cursorToken = CursorPagination.ParseCursor(cursor);
+            var sortDirection = CursorPagination.ParseSortDirection(order_direction);
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+
+            var orderDefinitions =
+                new Dictionary<string, CursorOrderDefinition<ContractPageItem>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {
+                        "id",
+                        new CursorOrderDefinition<ContractPageItem>(
+                            "id",
+                            new CursorOrderSegment<ContractPageItem, int>(
+                                x => x.Id,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "symbol",
+                        new CursorOrderDefinition<ContractPageItem>(
+                            "symbol",
+                            new CursorOrderSegment<ContractPageItem, string>(
+                                x => x.Symbol,
+                                value => value))
+                    },
+                    {
+                        "name",
+                        new CursorOrderDefinition<ContractPageItem>(
+                            "name",
+                            new CursorOrderSegment<ContractPageItem, string>(
+                                x => x.Name,
+                                value => value))
+                    }
+                };
+
+            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
+
+            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
+
             var startTime = DateTime.Now;
 
             await using MainDbContext databaseContext = new();
@@ -97,30 +148,15 @@ public static class GetContracts
 
             #endregion
 
-            // Count total number of results before adding order and limit parts of query.
-            if ( with_total == 1 )
+            if ( !useCursor && with_total == 1 )
                 totalResults = await query.CountAsync();
 
-            //in case we add more to sort
-            if ( order_direction == "asc" )
-                query = order_by switch
-                {
-                    "id" => query.OrderBy(x => x.ID),
-                    "symbol" => query.OrderBy(x => x.SYMBOL),
-                    "name" => query.OrderBy(x => x.NAME),
-                    _ => query
-                };
-            else
-                query = order_by switch
-                {
-                    "id" => query.OrderByDescending(x => x.ID),
-                    "symbol" => query.OrderByDescending(x => x.SYMBOL),
-                    "name" => query.OrderByDescending(x => x.NAME),
-                    _ => query
-                };
-
-
-            contractArray = await query.Skip(offset).Take(limit).Select(x => new Contract
+            var pageQuery = query.Select(x => new ContractPageItem
+            {
+                Id = x.ID,
+                Symbol = x.SYMBOL,
+                Name = x.NAME,
+                ApiContract = new Contract
                 {
                     name = x.NAME,
                     hash = x.HASH,
@@ -172,7 +208,25 @@ public static class GetContracts
                         }
                         : null
                 }
-            ).ToArrayAsync();
+            });
+
+            if ( useCursor )
+            {
+                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                    x => x.Id);
+                var orderedQuery =
+                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                    limit);
+                contractArray = page.Items.Select(x => x.ApiContract).ToArray();
+                nextCursor = page.NextCursor;
+            }
+            else
+            {
+                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
+                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
+                contractArray = ( await pageItems.ToArrayAsync() ).Select(x => x.ApiContract).ToArray();
+            }
 
             var responseTime = DateTime.Now - startTime;
 
@@ -188,6 +242,11 @@ public static class GetContracts
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new ContractResult {total_results = with_total == 1 ? totalResults : null, contracts = contractArray};
+        return new ContractResult
+        {
+            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            contracts = contractArray,
+            next_cursor = nextCursor
+        };
     }
 }

@@ -63,6 +63,7 @@ public class TransactionController : BaseControllerV1
             order_direction,
             0,
             1,
+            string.Empty,
             hash,
             hash_partial,
             address,
@@ -77,6 +78,7 @@ public class TransactionController : BaseControllerV1
             with_event_data,
             with_fiat,
             with_script,
+            0,
             with_total);
     }
 }

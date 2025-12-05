@@ -16,6 +16,7 @@ public class NftsController : BaseControllerV1
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIn0">pagination cursor</param>
     /// <param name="creator">Address of asset creator</param>
     /// <param name="owner">Address of asset owner</param>
     /// <param name="contract_hash" example="SOUL">Token contract hash</param>
@@ -38,6 +39,7 @@ public class NftsController : BaseControllerV1
         [FromQuery] string order_direction = "asc",
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
+        [FromQuery] string cursor = "",
         [FromQuery] string creator = "",
         [FromQuery] string owner = "",
         [FromQuery] string contract_hash = "",
@@ -57,6 +59,7 @@ public class NftsController : BaseControllerV1
             order_direction,
             offset,
             limit,
+            cursor,
             creator,
             owner,
             contract_hash,

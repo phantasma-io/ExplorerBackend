@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -13,6 +14,13 @@ namespace Backend.Service.Api;
 
 public static class GetNfts
 {
+    private sealed class NftPageItem
+    {
+        public int Id { get; init; }
+        public long MintDate { get; init; }
+        public Nft ApiNft { get; init; }
+    }
+
     [ProducesResponseType(typeof(NftsResult), ( int ) HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(NftsResult), "Returns NFTs available on Phantasma blockchain.", false, 10, cacheTag: "nfts")]
@@ -22,6 +30,7 @@ public static class GetNfts
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
+        string cursor = "",
         string creator = "",
         string owner = "",
         string contract_hash = "",
@@ -39,6 +48,8 @@ public static class GetNfts
         // Results of the query
         long totalResults = 0;
         Nft[] nftArray;
+        string? nextCursor = null;
+        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -91,6 +102,36 @@ public static class GetNfts
                 throw new ApiParameterException("Unsupported value for 'status' parameter.");
 
             #endregion
+
+            var cursorToken = CursorPagination.ParseCursor(cursor);
+            var sortDirection = CursorPagination.ParseSortDirection(order_direction);
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "mint_date" : order_by;
+
+            var orderDefinitions =
+                new Dictionary<string, CursorOrderDefinition<NftPageItem>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {
+                        "mint_date",
+                        new CursorOrderDefinition<NftPageItem>(
+                            "mint_date",
+                            new CursorOrderSegment<NftPageItem, long>(
+                                x => x.MintDate,
+                                value => long.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "id",
+                        new CursorOrderDefinition<NftPageItem>(
+                            "id",
+                            new CursorOrderSegment<NftPageItem, int>(
+                                x => x.Id,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    }
+                };
+
+            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
+
+            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
 
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
@@ -155,103 +196,111 @@ public static class GetNfts
 
             #endregion
 
-            if ( order_direction == "asc" )
-                query = order_by switch
-                {
-                    "mint_date" => query.OrderBy(x => x.MINT_DATE_UNIX_SECONDS),
-                    "id" => query.OrderBy(x => x.ID),
-                    _ => query
-                };
-            else
-                query = order_by switch
-                {
-                    "mint_date" => query.OrderByDescending(x => x.MINT_DATE_UNIX_SECONDS),
-                    "id" => query.OrderByDescending(x => x.ID),
-                    _ => query
-                };
-
-            if ( with_total == 1 )
+            if ( !useCursor && with_total == 1 )
                 totalResults = await query.CountAsync();
 
             #region ResultArray
 
-            nftArray = await query.Skip(offset).Take(limit).Select(x => new Nft
+            var pageQuery = query.Select(x => new NftPageItem
             {
-                token_id = x.TOKEN_ID,
-                chain = x.Chain.NAME,
-                symbol = x.Contract.SYMBOL,
-                creator_address = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
-                creator_onchain_name = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS_NAME : null,
-                owners = x.NftOwnerships != null
-                    ? x.NftOwnerships.Select(n => new NftOwnershipResult
-                    {
-                        address = n.Address.ADDRESS,
-                        onchain_name = n.Address.ADDRESS_NAME,
-                        offchain_name = n.Address.USER_NAME,
-                        amount = n.AMOUNT
-                    }).ToArray()
-                    : null,
-                contract = new Contract
+                Id = x.ID,
+                MintDate = x.MINT_DATE_UNIX_SECONDS,
+                ApiNft = new Nft
                 {
-                    name = x.Contract.NAME,
-                    hash = x.Contract.HASH,
-                    symbol = x.Contract.SYMBOL
-                },
-                nft_metadata = new NftMetadata
-                {
-                    name = x.NAME,
-                    description = x.DESCRIPTION,
-                    image = x.IMAGE,
-                    video = x.VIDEO,
-                    info_url = x.INFO_URL,
-                    rom = x.ROM,
-                    ram = x.RAM,
-                    mint_date = x.NAME != null ? x.MINT_DATE_UNIX_SECONDS.ToString() : null,
-                    mint_number = x.NAME != null ? x.MINT_NUMBER.ToString() : null
-                },
-                series = x.Series != null
-                    ? new Series
-                    {
-                        id = x.Series.ID,
-                        series_id = x.Series.SERIES_ID,
-                        creator = x.Series.CreatorAddress.ADDRESS,
-                        current_supply = x.Series.CURRENT_SUPPLY,
-                        max_supply = x.Series.MAX_SUPPLY,
-                        mode_name = x.Series.SeriesMode.MODE_NAME,
-                        name = x.Series.NAME,
-                        description = x.Series.DESCRIPTION,
-                        image = x.Series.IMAGE,
-                        royalties = x.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
-                        type = x.Series.TYPE,
-                        attr_type_1 = x.Series.ATTR_TYPE_1,
-                        attr_value_1 = x.Series.ATTR_VALUE_1,
-                        attr_type_2 = x.Series.ATTR_TYPE_2,
-                        attr_value_2 = x.Series.ATTR_VALUE_2,
-                        attr_type_3 = x.Series.ATTR_TYPE_3,
-                        attr_value_3 = x.Series.ATTR_VALUE_3
-                    }
-                    : null,
-                infusion = x.Infusions != null
-                    ? x.Infusions.Select(i => new Infusion
-                    {
-                        key = i.KEY,
-                        value = i.VALUE
-                    }).ToArray()
-                    : null,
-                infused_into = x.InfusedInto != null
-                    ? new InfusedInto
-                    {
-                        token_id = x.InfusedInto.TOKEN_ID,
-                        chain = x.InfusedInto.Chain.NAME,
-                        contract = new Contract
+                    token_id = x.TOKEN_ID,
+                    chain = x.Chain.NAME,
+                    symbol = x.Contract.SYMBOL,
+                    creator_address = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
+                    creator_onchain_name = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS_NAME : null,
+                    owners = x.NftOwnerships != null
+                        ? x.NftOwnerships.Select(n => new NftOwnershipResult
                         {
-                            name = x.InfusedInto.Contract.NAME,
-                            hash = x.InfusedInto.Contract.HASH,
-                            symbol = x.InfusedInto.Contract.SYMBOL
+                            address = n.Address.ADDRESS,
+                            onchain_name = n.Address.ADDRESS_NAME,
+                            offchain_name = n.Address.USER_NAME,
+                            amount = n.AMOUNT
+                        }).ToArray()
+                        : null,
+                    contract = new Contract
+                    {
+                        name = x.Contract.NAME,
+                        hash = x.Contract.HASH,
+                        symbol = x.Contract.SYMBOL
+                    },
+                    nft_metadata = new NftMetadata
+                    {
+                        name = x.NAME,
+                        description = x.DESCRIPTION,
+                        image = x.IMAGE,
+                        video = x.VIDEO,
+                        info_url = x.INFO_URL,
+                        rom = x.ROM,
+                        ram = x.RAM,
+                        mint_date = x.NAME != null ? x.MINT_DATE_UNIX_SECONDS.ToString() : null,
+                        mint_number = x.NAME != null ? x.MINT_NUMBER.ToString() : null
+                    },
+                    series = x.Series != null
+                        ? new Series
+                        {
+                            id = x.Series.ID,
+                            series_id = x.Series.SERIES_ID,
+                            creator = x.Series.CreatorAddress.ADDRESS,
+                            current_supply = x.Series.CURRENT_SUPPLY,
+                            max_supply = x.Series.MAX_SUPPLY,
+                            mode_name = x.Series.SeriesMode.MODE_NAME,
+                            name = x.Series.NAME,
+                            description = x.Series.DESCRIPTION,
+                            image = x.Series.IMAGE,
+                            royalties = x.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
+                            type = x.Series.TYPE,
+                            attr_type_1 = x.Series.ATTR_TYPE_1,
+                            attr_value_1 = x.Series.ATTR_VALUE_1,
+                            attr_type_2 = x.Series.ATTR_TYPE_2,
+                            attr_value_2 = x.Series.ATTR_VALUE_2,
+                            attr_type_3 = x.Series.ATTR_TYPE_3,
+                            attr_value_3 = x.Series.ATTR_VALUE_3
                         }
-                    }
-                    : null
-            }).ToArrayAsync();
+                        : null,
+                    infusion = x.Infusions != null
+                        ? x.Infusions.Select(i => new Infusion
+                        {
+                            key = i.KEY,
+                            value = i.VALUE
+                        }).ToArray()
+                        : null,
+                    infused_into = x.InfusedInto != null
+                        ? new InfusedInto
+                        {
+                            token_id = x.InfusedInto.TOKEN_ID,
+                            chain = x.InfusedInto.Chain.NAME,
+                            contract = new Contract
+                            {
+                                name = x.InfusedInto.Contract.NAME,
+                                hash = x.InfusedInto.Contract.HASH,
+                                symbol = x.InfusedInto.Contract.SYMBOL
+                            }
+                        }
+                        : null
+                }
+            });
+
+            if ( useCursor )
+            {
+                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                    x => x.Id);
+                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                    x => x.Id);
+                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                    limit);
+                nftArray = page.Items.Select(x => x.ApiNft).ToArray();
+                nextCursor = page.NextCursor;
+            }
+            else
+            {
+                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
+                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
+                nftArray = ( await pageItems.ToArrayAsync() ).Select(x => x.ApiNft).ToArray();
+            }
 
             #endregion
 
@@ -269,6 +318,11 @@ public static class GetNfts
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new NftsResult {total_results = with_total == 1 ? totalResults : null, nfts = nftArray};
+        return new NftsResult
+        {
+            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            nfts = nftArray,
+            next_cursor = nextCursor
+        };
     }
 }

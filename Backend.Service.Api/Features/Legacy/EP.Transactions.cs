@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -13,6 +14,14 @@ namespace Backend.Service.Api;
 
 public static class GetTransactions
 {
+    private sealed class TransactionPageItem
+    {
+        public int Id { get; init; }
+        public string Hash { get; init; } = string.Empty;
+        public int Index { get; init; }
+        public EventPayloadMapper.TransactionProjection Projection { get; init; }
+    }
+
     [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
@@ -22,6 +31,7 @@ public static class GetTransactions
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
+        string cursor = "",
         string hash = "",
         string hash_partial = "",
         string address = "",
@@ -45,6 +55,8 @@ public static class GetTransactions
         Transaction[] transactions = null;
         string previousHash = null;
         string nextHash = null;
+        string? nextCursor = null;
+        var useCursor = false;
         var hashUpper = string.IsNullOrEmpty(hash) ? string.Empty : hash.ToUpper();
         var hashPartialUpper = string.IsNullOrEmpty(hash_partial) ? string.Empty : hash_partial.ToUpper();
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
@@ -101,6 +113,45 @@ public static class GetTransactions
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             #endregion
+
+            var cursorToken = CursorPagination.ParseCursor(cursor);
+            var sortDirection = CursorPagination.ParseSortDirection(order_direction);
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+
+            var orderDefinitions =
+                new Dictionary<string, CursorOrderDefinition<TransactionPageItem>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {
+                        "id",
+                        new CursorOrderDefinition<TransactionPageItem>(
+                            "id",
+                            new CursorOrderSegment<TransactionPageItem, int>(
+                                x => x.Id,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "hash",
+                        new CursorOrderDefinition<TransactionPageItem>(
+                            "hash",
+                            new CursorOrderSegment<TransactionPageItem, string>(
+                                x => x.Hash,
+                                value => value))
+                    },
+                    {
+                        "index",
+                        new CursorOrderDefinition<TransactionPageItem>(
+                            "index",
+                            new CursorOrderSegment<TransactionPageItem, int>(
+                                x => x.Index,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    }
+                };
+
+            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
+
+            var useCursorForList = string.IsNullOrEmpty(hashUpper);
+            useCursor = useCursorForList && CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
 
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
@@ -168,152 +219,163 @@ public static class GetTransactions
 
             #endregion
 
-            // Count total number of results before adding order and limit parts of query.
-            if ( with_total == 1 )
+            if ( !useCursor && with_total == 1 )
                 totalResults = await query.CountAsync();
 
-            //in case we add more to sort
-            if ( order_direction == "asc" )
-                query = order_by switch
-                {
-                    "id" => query.OrderBy(x => x.ID),
-                    "hash" => query.OrderBy(x => x.HASH),
-                    "index" => query.OrderBy(x => x.INDEX),
-                    _ => query
-                };
-            else
-                query = order_by switch
-                {
-                    "id" => query.OrderByDescending(x => x.ID),
-                    "hash" => query.OrderByDescending(x => x.HASH),
-                    "index" => query.OrderByDescending(x => x.INDEX),
-                    _ => query
-                };
-
-            if ( !String.IsNullOrEmpty(hash) )
+            var pageQuery = query.Select(x => new TransactionPageItem
             {
-                query = query.Take(1);
-            }else if ( limit > 0 ) query = query.Skip(offset).Take(limit);
-
-            var select = query.Select(x => new EventPayloadMapper.TransactionProjection
-            {
-                TransactionId = x.ID,
-                ChainId = x.Block.ChainId,
-                ApiTransaction = new Transaction
+                Id = x.ID,
+                Hash = x.HASH,
+                Index = x.INDEX,
+                Projection = new EventPayloadMapper.TransactionProjection
                 {
-                    hash = x.HASH,
-                    block_hash = x.Block.HASH,
-                    block_height = x.Block.HEIGHT,
-                    index = x.INDEX,
-                    date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
-                    fee = x.FEE,
-                    fee_raw = x.FEE_RAW,
-                    script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
-                    result = x.RESULT,
-                    payload = x.PAYLOAD,
-                    expiration = x.EXPIRATION.ToString(),
-                    gas_price = x.GAS_PRICE,
-                    gas_price_raw = x.GAS_PRICE_RAW,
-                    gas_limit = x.GAS_LIMIT,
-                    gas_limit_raw = x.GAS_LIMIT_RAW,
-                    state = x.State != null ? x.State.NAME : null,
-                    sender = x.Sender != null
-                        ? new Address
-                        {
-                            address_name = x.Sender.ADDRESS_NAME,
-                            address = x.Sender.ADDRESS
-                        }
-                        : null,
-                    gas_payer = x.GasPayer != null
-                        ? new Address
-                        {
-                            address_name = x.GasPayer.ADDRESS_NAME,
-                            address = x.GasPayer.ADDRESS
-                        }
-                        : null,
-                    gas_target = x.GasTarget != null
-                        ? new Address
-                        {
-                            address_name = x.GasTarget.ADDRESS_NAME,
-                            address = x.GasTarget.ADDRESS
-                        }
-                        : null
-                },
-                EventProjections = with_events == 1
-                    ? x.Events.Select(e => new EventPayloadMapper.EventProjection
-                        {
-                            ApiEvent = new Event
+                    TransactionId = x.ID,
+                    ChainId = x.Block.ChainId,
+                    ApiTransaction = new Transaction
+                    {
+                        hash = x.HASH,
+                        block_hash = x.Block.HASH,
+                        block_height = x.Block.HEIGHT,
+                        index = x.INDEX,
+                        date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
+                        fee = x.FEE,
+                        fee_raw = x.FEE_RAW,
+                        script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
+                        result = x.RESULT,
+                        payload = x.PAYLOAD,
+                        expiration = x.EXPIRATION.ToString(),
+                        gas_price = x.GAS_PRICE,
+                        gas_price_raw = x.GAS_PRICE_RAW,
+                        gas_limit = x.GAS_LIMIT,
+                        gas_limit_raw = x.GAS_LIMIT_RAW,
+                        state = x.State != null ? x.State.NAME : null,
+                        sender = x.Sender != null
+                            ? new Address
                             {
-                                event_id = e.ID,
-                                chain = e.Chain.NAME.ToLower(),
-                                date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
-                                transaction_hash = x.HASH,
-                                token_id = e.TOKEN_ID,
-                                payload_json = e.PAYLOAD_JSON,
-                                raw_data = e.RAW_DATA,
-                                event_kind = e.EventKind.NAME,
-                                address = e.Address.ADDRESS,
-                                address_name = e.Address.ADDRESS_NAME,
-                                contract = e.Contract != null
-                                    ? new Contract
-                                    {
-                                        name = e.Contract.NAME,
-                                        hash = e.Contract.HASH,
-                                        symbol = e.Contract.SYMBOL
-                                    }
-                                    : null,
-                                nft_metadata = with_nft == 1 && e.Nft != null
-                                    ? new NftMetadata
-                                    {
-                                        name = e.Nft.NAME,
-                                        description = e.Nft.DESCRIPTION,
-                                        image = e.Nft.IMAGE,
-                                        video = e.Nft.VIDEO,
-                                        rom = e.Nft.ROM,
-                                        ram = e.Nft.RAM,
-                                        mint_date = e.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
-                                        mint_number = e.Nft.MINT_NUMBER.ToString()
-                                    }
-                                    : null,
-                                series = with_nft == 1 && e.Nft != null && e.Nft.Series != null
-                                    ? new Series
-                                    {
-                                        id = e.Nft.Series.ID,
-                                        series_id = e.Nft.Series.SERIES_ID,
-                                        creator = e.Nft.Series.CreatorAddress != null
-                                            ? e.Nft.Series.CreatorAddress.ADDRESS
-                                            : null,
-                                        current_supply = e.Nft.Series.CURRENT_SUPPLY,
-                                        max_supply = e.Nft.Series.MAX_SUPPLY,
-                                        mode_name = e.Nft.Series.SeriesMode != null
-                                            ? e.Nft.Series.SeriesMode.MODE_NAME
-                                            : null,
-                                        name = e.Nft.Series.NAME,
-                                        description = e.Nft.Series.DESCRIPTION,
-                                        image = e.Nft.Series.IMAGE,
-                                        royalties = e.Nft.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
-                                        type = e.Nft.Series.TYPE,
-                                        attr_type_1 = e.Nft.Series.ATTR_TYPE_1,
-                                        attr_value_1 = e.Nft.Series.ATTR_VALUE_1,
-                                        attr_type_2 = e.Nft.Series.ATTR_TYPE_2,
-                                        attr_value_2 = e.Nft.Series.ATTR_VALUE_2,
-                                        attr_type_3 = e.Nft.Series.ATTR_TYPE_3,
-                                        attr_value_3 = e.Nft.Series.ATTR_VALUE_3
-                                    }
-                                    : null
-                            },
-                            ChainId = e.ChainId,
-                            TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
-                            PayloadJson = e.PAYLOAD_JSON,
-                            RawData = e.RAW_DATA
-                        })
-                        .ToArray()
-                    : Array.Empty<EventPayloadMapper.EventProjection>()
+                                address_name = x.Sender.ADDRESS_NAME,
+                                address = x.Sender.ADDRESS
+                            }
+                            : null,
+                        gas_payer = x.GasPayer != null
+                            ? new Address
+                            {
+                                address_name = x.GasPayer.ADDRESS_NAME,
+                                address = x.GasPayer.ADDRESS
+                            }
+                            : null,
+                        gas_target = x.GasTarget != null
+                            ? new Address
+                            {
+                                address_name = x.GasTarget.ADDRESS_NAME,
+                                address = x.GasTarget.ADDRESS
+                            }
+                            : null
+                    },
+                    EventProjections = with_events == 1
+                        ? x.Events.Select(e => new EventPayloadMapper.EventProjection
+                            {
+                                ApiEvent = new Event
+                                {
+                                    event_id = e.ID,
+                                    chain = e.Chain.NAME.ToLower(),
+                                    date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
+                                    transaction_hash = x.HASH,
+                                    token_id = e.TOKEN_ID,
+                                    payload_json = e.PAYLOAD_JSON,
+                                    raw_data = e.RAW_DATA,
+                                    event_kind = e.EventKind.NAME,
+                                    address = e.Address.ADDRESS,
+                                    address_name = e.Address.ADDRESS_NAME,
+                                    contract = e.Contract != null
+                                        ? new Contract
+                                        {
+                                            name = e.Contract.NAME,
+                                            hash = e.Contract.HASH,
+                                            symbol = e.Contract.SYMBOL
+                                        }
+                                        : null,
+                                    nft_metadata = with_nft == 1 && e.Nft != null
+                                        ? new NftMetadata
+                                        {
+                                            name = e.Nft.NAME,
+                                            description = e.Nft.DESCRIPTION,
+                                            image = e.Nft.IMAGE,
+                                            video = e.Nft.VIDEO,
+                                            rom = e.Nft.ROM,
+                                            ram = e.Nft.RAM,
+                                            mint_date = e.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
+                                            mint_number = e.Nft.MINT_NUMBER.ToString()
+                                        }
+                                        : null,
+                                    series = with_nft == 1 && e.Nft != null && e.Nft.Series != null
+                                        ? new Series
+                                        {
+                                            id = e.Nft.Series.ID,
+                                            series_id = e.Nft.Series.SERIES_ID,
+                                            creator = e.Nft.Series.CreatorAddress != null
+                                                ? e.Nft.Series.CreatorAddress.ADDRESS
+                                                : null,
+                                            current_supply = e.Nft.Series.CURRENT_SUPPLY,
+                                            max_supply = e.Nft.Series.MAX_SUPPLY,
+                                            mode_name = e.Nft.Series.SeriesMode != null
+                                                ? e.Nft.Series.SeriesMode.MODE_NAME
+                                                : null,
+                                            name = e.Nft.Series.NAME,
+                                            description = e.Nft.Series.DESCRIPTION,
+                                            image = e.Nft.Series.IMAGE,
+                                            royalties = e.Nft.Series.ROYALTIES.ToString(CultureInfo.InvariantCulture),
+                                            type = e.Nft.Series.TYPE,
+                                            attr_type_1 = e.Nft.Series.ATTR_TYPE_1,
+                                            attr_value_1 = e.Nft.Series.ATTR_VALUE_1,
+                                            attr_type_2 = e.Nft.Series.ATTR_TYPE_2,
+                                            attr_value_2 = e.Nft.Series.ATTR_VALUE_2,
+                                            attr_type_3 = e.Nft.Series.ATTR_TYPE_3,
+                                            attr_value_3 = e.Nft.Series.ATTR_VALUE_3
+                                        }
+                                        : null
+                                },
+                                ChainId = e.ChainId,
+                                TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
+                                PayloadJson = e.PAYLOAD_JSON,
+                                RawData = e.RAW_DATA
+                            })
+                            .ToArray()
+                        : Array.Empty<EventPayloadMapper.EventProjection>()
+                }
             });
 
-            var queryString = select.ToQueryString();
-                
-            var transactionProjections = await select.ToArrayAsync();
+            EventPayloadMapper.TransactionProjection[] transactionProjections;
+            string queryString;
+
+            if ( useCursor )
+            {
+                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                    x => x.Id);
+                var orderedQuery =
+                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                    limit);
+                transactionProjections = page.Items.Select(x => x.Projection).ToArray();
+                nextCursor = page.NextCursor;
+                var pageSize = Math.Max(1, limit);
+                queryString = orderedQuery.Take(pageSize + 1).ToQueryString();
+            }
+            else
+            {
+                var orderedQuery =
+                    CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
+                IQueryable<TransactionPageItem> pageItems;
+
+                if ( !string.IsNullOrEmpty(hashUpper) )
+                    pageItems = orderedQuery.Take(1);
+                else if ( limit > 0 )
+                    pageItems = orderedQuery.Skip(offset).Take(limit);
+                else
+                    pageItems = orderedQuery;
+
+                queryString = pageItems.ToQueryString();
+                transactionProjections = ( await pageItems.ToArrayAsync() ).Select(x => x.Projection).ToArray();
+            }
 
             var allEventProjections = transactionProjections.SelectMany(x => x.EventProjections).ToArray();
             await EventPayloadMapper.ApplyAsync(databaseContext, allEventProjections, with_event_data == 1,
@@ -377,6 +439,10 @@ public static class GetTransactions
         }
 
         return new TransactionResult
-            { total_results = with_total == 1 ? totalResults : null, transactions = transactions };
+        {
+            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            transactions = transactions,
+            next_cursor = nextCursor
+        };
     }
 }
