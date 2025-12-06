@@ -192,7 +192,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             nft.NAME = GetPropertyValue(properties, "name");
             nft.DESCRIPTION = GetPropertyValue(properties, "description");
-            nft.IMAGE = GetPropertyValue(properties, "imageURL");
+            nft.IMAGE = NormalizeImageUrl(GetPropertyValue(properties, "imageURL"));
             nft.INFO_URL = GetPropertyValue(properties, "infoURL");
 
             // Feeling Series with available information, if needed.
@@ -201,7 +201,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 nft.Series.CreatorAddressId = nft.CreatorAddressId;
                 nft.Series.NAME = nft.NAME;
                 nft.Series.DESCRIPTION = nft.DESCRIPTION;
-                nft.Series.IMAGE = nft.IMAGE;
+                nft.Series.IMAGE = NormalizeImageUrl(nft.IMAGE);
                 nft.Series.ROYALTIES =
                     decimal.TryParse(GetPropertyValue(properties, "royalties"), out var royalties)
                         ? royalties

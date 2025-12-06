@@ -253,6 +253,24 @@ public partial class PhantasmaPlugin
         return Array.Empty<byte>();
     }
 
+    private static string NormalizeImageUrl(string? url)
+    {
+        if ( string.IsNullOrWhiteSpace(url) )
+            return url;
+
+        var trimmed = url.Trim();
+        if ( trimmed.StartsWith("data:", StringComparison.OrdinalIgnoreCase) )
+            return trimmed;
+
+        if ( trimmed.Contains("://", StringComparison.Ordinal) )
+            return trimmed;
+
+        if ( trimmed.StartsWith("//", StringComparison.Ordinal) )
+            return $"https:{trimmed}";
+
+        return $"https://{trimmed}";
+    }
+
     private void CacheCarbonSeries(int chainId, string symbol, uint carbonSeriesId, TokenSchemas schemas,
         VmDynamicStruct? seriesMetadata, byte[] sharedRom)
     {
@@ -354,7 +372,7 @@ public partial class PhantasmaPlugin
     {
         var name = GetStringField(romStruct, "name");
         var description = GetStringField(romStruct, "description");
-        var image = GetStringField(romStruct, "imageURL");
+        var image = NormalizeImageUrl(GetStringField(romStruct, "imageURL"));
         var royalties = GetIntField(romStruct, "royalties");
 
         if ( !string.IsNullOrWhiteSpace(name) ) series.NAME = name;
@@ -372,8 +390,8 @@ public partial class PhantasmaPlugin
         var name = GetStringField(romStruct, "name") ?? (sharedRomStruct.HasValue ? GetStringField(sharedRomStruct.Value, "name") : null);
         var description = GetStringField(romStruct, "description") ??
                           (sharedRomStruct.HasValue ? GetStringField(sharedRomStruct.Value, "description") : null);
-        var image = GetStringField(romStruct, "imageURL") ??
-                    (sharedRomStruct.HasValue ? GetStringField(sharedRomStruct.Value, "imageURL") : null);
+        var image = NormalizeImageUrl(GetStringField(romStruct, "imageURL") ??
+                    (sharedRomStruct.HasValue ? GetStringField(sharedRomStruct.Value, "imageURL") : null));
         var infoUrl = GetStringField(romStruct, "infoURL") ??
                       (sharedRomStruct.HasValue ? GetStringField(sharedRomStruct.Value, "infoURL") : null);
         var royalties = GetIntField(romStruct, "royalties") ??
