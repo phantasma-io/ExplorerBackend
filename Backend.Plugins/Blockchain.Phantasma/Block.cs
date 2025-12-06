@@ -600,25 +600,50 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if ( !string.IsNullOrWhiteSpace(tx.CarbonTxData) )
                 {
+                    var carbonContext = $"type:{tx.CarbonTxType}";
+
                     try
                     {
                         var carbonBytes = Base16.Decode(tx.CarbonTxData);
+                        if ( carbonBytes == null )
+                        {
+                            Log.Warning("[{Name}][Metadata] Failed to decode carbon tx data for {TxHash}: invalid hex payload",
+                                Name, tx.Hash);
+                            continue;
+                        }
+
                         var carbonType = ( TxTypes ) tx.CarbonTxType;
+                        carbonContext = carbonType.ToString();
 
                         switch ( carbonType )
                         {
                             case TxTypes.Call:
                             {
                                 var call = CarbonBlob.New<TxMsgCall>(carbonBytes);
+                                carbonContext = $"Call module:{call.moduleId} method:{call.methodId}";
                                 if ( call.moduleId == ( uint ) ModuleId.Token )
                                 {
                                     if ( call.methodId == ( uint ) TokenContract_Methods.CreateToken )
                                     {
                                         var tokenInfo = CarbonBlob.New<TokenInfo>(call.args);
-                                        carbonTokenSchemasRaw = tokenInfo.tokenSchemas ?? Array.Empty<byte>();
-                                        carbonSchemasForTx = CarbonBlob.New<TokenSchemas>(tokenInfo.tokenSchemas);
-                                        _carbonTokenSchemasCache.TryAdd(BuildTokenCacheKey(chainId, tokenInfo.symbol.data),
-                                            carbonSchemasForTx.Value);
+                                        if ( tokenInfo.tokenSchemas == null || tokenInfo.tokenSchemas.Length == 0 )
+                                        {
+                                            Log.Warning(
+                                                "[{Name}][Metadata] Carbon token create without schemas (tx {TxHash}, symbol {Symbol}, chain {Chain})",
+                                                Name, tx.Hash, tokenInfo.symbol.data, chainEntry.NAME);
+                                        }
+                                        else if ( TryParseCarbonTokenSchemas(tokenInfo.tokenSchemas, tokenInfo.symbol.data,
+                                                     chainEntry.NAME, out var parsedSchemas) )
+                                        {
+                                            carbonTokenSchemasRaw = tokenInfo.tokenSchemas;
+                                            carbonSchemasForTx = parsedSchemas;
+                                            _carbonTokenSchemasCache.TryAdd(
+                                                BuildTokenCacheKey(chainId, tokenInfo.symbol.data), parsedSchemas);
+                                        }
+                                        else
+                                        {
+                                            carbonTokenSchemasRaw = tokenInfo.tokenSchemas;
+                                        }
                                     }
                                     else if ( call.methodId == ( uint ) TokenContract_Methods.CreateTokenSeries )
                                     {
@@ -640,8 +665,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     }
                     catch ( Exception e )
                     {
-                        Log.Warning("[{Name}][Metadata] Failed to decode carbon tx data for {TxHash}: {Message}", Name,
-                            tx.Hash, e.Message);
+                        Log.Warning("[{Name}][Metadata] Failed to decode carbon tx data for {TxHash} ({Context}): {Message}",
+                            Name, tx.Hash, carbonContext, e.Message);
                     }
                 }
 

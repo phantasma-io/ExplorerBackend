@@ -177,7 +177,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 "CROWN" => new CrownRom(romBytes),
                 "TTRS" => new DummyRom(romBytes),
-                _ => new CustomRom(romBytes)
+                _ => new CustomRom(romBytes, $"{nft.Contract.SYMBOL}#{nft.TOKEN_ID}")
             };
 
             // Putting all fields from ROM to - ? TODO.
@@ -410,7 +410,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         private readonly Dictionary<VMObject, VMObject> _fields = new();
 
 
-        public CustomRom(byte[] romBytes)
+        public CustomRom(byte[] romBytes, string context = null)
         {
             try
             {
@@ -418,12 +418,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if ( rom.Type == VMType.Struct )
                     _fields = ( Dictionary<VMObject, VMObject> ) rom.Data;
                 else
-                    Log.Error("[PHA][CustomRom] Cannot parse ROM");
+                    Log.Warning("[PHA][CustomRom] Cannot parse ROM{Context}", BuildContextSuffix(context));
             }
             catch ( Exception e )
             {
-                Log.Error("[PHA][CustomRom] ROM parsing error: {Exception}", e.Message);
+                Log.Warning("[PHA][CustomRom] ROM parsing failed{Context}: {Exception}", BuildContextSuffix(context),
+                    e.Message);
             }
+        }
+
+        private static string BuildContextSuffix(string context)
+        {
+            return string.IsNullOrWhiteSpace(context) ? string.Empty : $" for {context}";
         }
 
 

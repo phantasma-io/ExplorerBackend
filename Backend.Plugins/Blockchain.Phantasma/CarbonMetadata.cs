@@ -173,8 +173,11 @@ public partial class PhantasmaPlugin
         }
         catch ( Exception e )
         {
-            Log.Warning("[{Name}][Metadata] Failed to decode carbon struct for {Context}: {Message}", nameof(PhantasmaPlugin),
-                context, e.Message);
+            var hint = e.Message.IndexOf("BigInt too big", StringComparison.OrdinalIgnoreCase) >= 0
+                ? " Schema expects Int256 first; payload looks like placeholder bytes (for example AA) instead of a VM struct."
+                : string.Empty;
+            Log.Warning("[{Name}][Metadata] Failed to decode carbon struct for {Context}: {Message} (dataLen={Length}){Hint}", nameof(PhantasmaPlugin),
+                context, e.Message, data?.Length ?? 0, hint);
             result = default;
             return false;
         }
@@ -413,7 +416,7 @@ public partial class PhantasmaPlugin
         {
             try
             {
-                var parsedRom = new CustomRom(innerRom);
+                var parsedRom = new CustomRom(innerRom, $"nft:{nft.TOKEN_ID}:innerRom");
                 var mintDate = parsedRom.GetDate();
                 if ( mintDate > 0 )
                     nft.MINT_DATE_UNIX_SECONDS = mintDate;
