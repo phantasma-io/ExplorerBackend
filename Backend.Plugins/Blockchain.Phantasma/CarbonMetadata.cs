@@ -304,6 +304,16 @@ public partial class PhantasmaPlugin
             var modeName = modeValue.HasValue && modeValue.Value != 0 ? "Duplicated" : "Unique";
             series.SeriesMode = SeriesModeMethods.Upsert(databaseContext, modeName, false);
 
+            var metaName = GetStringField(decodedMetadata, "name");
+            var metaDescription = GetStringField(decodedMetadata, "description");
+            var metaImage = NormalizeImageUrl(GetStringField(decodedMetadata, "imageURL"));
+            var metaRoyalties = GetIntField(decodedMetadata, "royalties");
+
+            if ( !string.IsNullOrWhiteSpace(metaName) ) series.NAME = metaName;
+            if ( !string.IsNullOrWhiteSpace(metaDescription) ) series.DESCRIPTION = metaDescription;
+            if ( !string.IsNullOrWhiteSpace(metaImage) ) series.IMAGE = metaImage;
+            if ( metaRoyalties.HasValue ) series.ROYALTIES = metaRoyalties.Value;
+
             sharedRom = GetBytesField(decodedMetadata, "rom");
             if ( sharedRom.Length > 0 &&
                  TryDecodeCarbonStruct(schemas.rom, sharedRom,
@@ -399,6 +409,18 @@ public partial class PhantasmaPlugin
                       (sharedRomStruct.HasValue ? GetStringField(sharedRomStruct.Value, "infoURL") : null);
         var royalties = GetIntField(romStruct, "royalties") ??
                         (sharedRomStruct.HasValue ? GetIntField(sharedRomStruct.Value, "royalties") : null);
+
+        if ( nft.Series != null )
+        {
+            if ( string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(nft.Series.NAME) )
+                name = nft.Series.NAME;
+            if ( string.IsNullOrWhiteSpace(description) && !string.IsNullOrWhiteSpace(nft.Series.DESCRIPTION) )
+                description = nft.Series.DESCRIPTION;
+            if ( string.IsNullOrWhiteSpace(image) && !string.IsNullOrWhiteSpace(nft.Series.IMAGE) )
+                image = nft.Series.IMAGE;
+            if ( royalties == null )
+                royalties = ( int ) nft.Series.ROYALTIES;
+        }
 
         if ( !string.IsNullOrWhiteSpace(name) ) nft.NAME = name;
         if ( !string.IsNullOrWhiteSpace(description) ) nft.DESCRIPTION = description;
