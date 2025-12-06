@@ -658,6 +658,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 // Synthesize TokenSeriesCreate event from extended data (RPC does not emit legacy event).
                 var seriesCreateDataTx = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
+                var tokenMintDataTx = ExtendedEventParser.GetTokenMintData(tx.ExtendedEvents);
                 if ( seriesCreateDataTx != null )
                 {
                     if ( string.IsNullOrWhiteSpace(seriesCreateDataTx.Value.Symbol) )
@@ -826,6 +827,43 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                 //parse also a new contract, just in case
                                 var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
                                     eventEntry, nft, tokenValue, chainEntry, kind, eventKindId, contracts.GetId(chainId, tokenEventData.Symbol));
+
+                                if ( kind == EventKind.TokenMint && !fungible && nft != null &&
+                                     tokenMintDataTx.HasValue )
+                                {
+                                    var mintData = tokenMintDataTx.Value;
+                                    if ( string.Equals(mintData.Symbol, tokenEventData.Symbol, StringComparison.OrdinalIgnoreCase) &&
+                                         string.Equals(mintData.TokenId, tokenValue, StringComparison.OrdinalIgnoreCase) )
+                                    {
+                                        if ( mintData.MintNumber > 0 )
+                                        {
+                                            var mintNumber = mintData.MintNumber > int.MaxValue
+                                                ? int.MaxValue
+                                                : ( int ) mintData.MintNumber;
+                                            nft.MINT_NUMBER = mintNumber;
+                                            nft.DM_UNIX_SECONDS = UnixSeconds.Now();
+                                        }
+
+                                        if ( !string.IsNullOrWhiteSpace(mintData.SeriesId) )
+                                        {
+                                            var seriesEntry = SeriesMethods.Upsert(databaseContext,
+                                                contracts.GetId(chainId, tokenEventData.Symbol), mintData.SeriesId);
+                                            nft.Series = seriesEntry;
+                                            nft.SeriesId = seriesEntry.ID;
+                                        }
+
+                                        payload["token_mint_extended"] = new Dictionary<string, object?>
+                                        {
+                                            ["token_id"] = mintData.TokenId,
+                                            ["series_id"] = mintData.SeriesId,
+                                            ["mint_number"] = mintData.MintNumber.ToString(),
+                                            ["carbon_token_id"] = mintData.CarbonTokenId.ToString(),
+                                            ["carbon_series_id"] = mintData.CarbonSeriesId.ToString(),
+                                            ["carbon_instance_id"] = mintData.CarbonInstanceId.ToString(),
+                                            ["owner"] = mintData.Owner
+                                        };
+                                    }
+                                }
 
                                 //update ntf related things if it is not null
                                 if ( nft != null )

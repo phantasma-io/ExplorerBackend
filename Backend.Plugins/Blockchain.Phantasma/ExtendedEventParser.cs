@@ -77,4 +77,35 @@ internal static class ExtendedEventParser
             return null;
         }
     }
+
+    public static TokenMintData? GetTokenMintData(EventExResult[] extendedEvents)
+    {
+        if ( extendedEvents == null || extendedEvents.Length == 0 )
+            return null;
+
+        var mintEvent = extendedEvents.FirstOrDefault(x => x.Kind == EventKind.TokenMint);
+
+        if ( mintEvent == null )
+            return null;
+
+        try
+        {
+            switch ( mintEvent.Data )
+            {
+                case JsonElement el:
+                    return JsonSerializer.Deserialize<TokenMintData>(el.GetRawText(), TokenCreateJsonOptions);
+                case string s when !string.IsNullOrWhiteSpace(s):
+                    return JsonSerializer.Deserialize<TokenMintData>(s, TokenCreateJsonOptions);
+                case TokenMintData data:
+                    return data;
+                default:
+                    return null;
+            }
+        }
+        catch ( Exception e )
+        {
+            Log.Warning(e, "[ExtendedEventParser] Failed to parse TokenMintData from extended event");
+            return null;
+        }
+    }
 }
