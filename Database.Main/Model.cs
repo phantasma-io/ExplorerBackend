@@ -479,10 +479,17 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.DATE_UNIX_SECONDS);
 
         modelBuilder.Entity<Event>()
+            .HasIndex(x => x.EventKindId);
+
+        modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.ContractId, x.TOKEN_ID});
 
         modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.BURNED, x.EventKindId});
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.EventKindId, x.ChainId, x.TIMESTAMP_UNIX_SECONDS, x.ID})
+            .HasDatabaseName("IX_Events_EventKind_Chain_Timestamp_Id");
 
         modelBuilder.Entity<Event>()
             .Property(x => x.PAYLOAD_JSON)

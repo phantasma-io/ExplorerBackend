@@ -192,14 +192,48 @@ public static class GetEvents
             await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
 
+            int? chainId = null;
+
+            if ( !string.IsNullOrEmpty(chain) )
+            {
+                chainId = await databaseContext.Chains.AsNoTracking()
+                    .Where(x => x.NAME == chain)
+                    .Select(x => ( int? ) x.ID)
+                    .FirstOrDefaultAsync();
+
+                if ( !chainId.HasValue )
+                    throw new ApiParameterException("Unsupported value for 'chain' parameter.");
+            }
+
+            Dictionary<string, int>? eventKindIds = null;
+
+            if ( !string.IsNullOrEmpty(qTrimmed) || !string.IsNullOrEmpty(event_kind) )
+                eventKindIds = await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
 
             // Getting exchange rates in advance.
             var query = databaseContext.Events.AsQueryable().AsNoTracking();
 
             #region Filtering
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+            var detectedEventKind = string.Empty;
+            int? detectedEventKindId = null;
 
-            if ( !string.IsNullOrEmpty(qUpper) )
+            if ( !string.IsNullOrEmpty(qTrimmed) )
+            {
+                eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
+
+                detectedEventKind = eventKindIds.Keys.FirstOrDefault(x =>
+                                          string.Equals(x, qTrimmed, StringComparison.OrdinalIgnoreCase)) ??
+                                      string.Empty;
+
+                if ( !string.IsNullOrEmpty(detectedEventKind) )
+                    detectedEventKindId = eventKindIds[detectedEventKind];
+            }
+
+            if ( detectedEventKindId.HasValue )
+                query = query.Where(x => x.EventKindId == detectedEventKindId.Value);
+
+            if ( string.IsNullOrEmpty(detectedEventKind) && !string.IsNullOrEmpty(qUpper) )
             {
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
                 var isFullHash = isHex && qUpper.Length >= 64;
@@ -223,7 +257,7 @@ public static class GetEvents
             if ( with_blacklisted == 0 )
                 query = query.Where(x => x.BLACKLISTED != true);
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+            if ( chainId.HasValue ) query = query.Where(x => x.ChainId == chainId.Value);
 
             if ( !string.IsNullOrEmpty(token_id) ) query = query.Where(x => x.TOKEN_ID == token_id);
 
@@ -238,7 +272,20 @@ public static class GetEvents
             if ( !string.IsNullOrEmpty(date_greater) )
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
-            if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.EventKind.NAME == event_kind);
+            if ( !string.IsNullOrEmpty(event_kind) )
+            {
+                eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
+
+                if ( eventKindIds.TryGetValue(event_kind, out var eventKindId) )
+                    query = query.Where(x => x.EventKindId == eventKindId);
+                else
+                    return new EventsResult
+                    {
+                        total_results = !useCursor && with_total == 1 ? 0 : null,
+                        events = Array.Empty<Event>(),
+                        next_cursor = null
+                    };
+            }
 
             if ( !string.IsNullOrEmpty(event_kind_partial) )
                 query = query.Where(x => x.EventKind.NAME.Contains(event_kind_partial));

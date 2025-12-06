@@ -26,6 +26,36 @@ public static class EventKindMethods
         _sequenceAligned = true;
     }
 
+    public static Task<List<string>> GetAvailableEventKindNamesAsync(MainDbContext dbContext, string chainName, bool onlyWithEvents = false)
+    {
+        var query = dbContext.EventKinds.AsNoTracking();
+
+        if ( !string.IsNullOrEmpty(chainName) )
+            query = query.Where(x => x.Chain.NAME == chainName);
+
+        if ( onlyWithEvents )
+            query = query.Where(x => x.Events.Any());
+
+        return query.Select(x => x.NAME).Distinct().OrderBy(x => x).ToListAsync();
+    }
+
+    public static async Task<Dictionary<string, int>> GetAvailableEventKindIdsAsync(MainDbContext dbContext,
+        int? chainId,
+        bool onlyWithEvents = false)
+    {
+        var query = dbContext.EventKinds.AsNoTracking();
+
+        if ( chainId.HasValue )
+            query = query.Where(x => x.ChainId == chainId.Value);
+
+        if ( onlyWithEvents )
+            query = query.Where(x => x.Events.Any());
+
+        var eventKinds = await query.Select(x => new {x.NAME, x.ID}).ToListAsync();
+
+        return eventKinds.ToDictionary(x => x.NAME, x => x.ID, StringComparer.OrdinalIgnoreCase);
+    }
+
     public static async Task UpsertAllAsync(MainDbContext dbContext, Chain chain)
     {
         EnsureSequence(dbContext);
