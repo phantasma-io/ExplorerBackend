@@ -12,7 +12,8 @@ public static class TransactionMethods
     // Returns new or existing entry's Id.
     public static async Task<Transaction> UpsertAsync(MainDbContext databaseContext, Block block, int txIndex, string hash,
         ulong timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, ulong expiration,
-        string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget)
+        string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
+        byte? carbonTxType = null, string carbonTxData = null)
     {
         const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas
 
@@ -51,6 +52,8 @@ public static class TransactionMethods
             GAS_PRICE_RAW = gasPrice,
             GAS_LIMIT = gasLimitFormatted,
             GAS_LIMIT_RAW = gasLimit,
+            CARBON_TX_TYPE = carbonTxType,
+            CARBON_TX_DATA = carbonTxData,
             State = transactionState,
             Sender = senderAddress,
             GasPayer = gasPayerAddress,

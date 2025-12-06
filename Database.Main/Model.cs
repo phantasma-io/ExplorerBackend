@@ -1388,6 +1388,7 @@ public class Token
     public string BURNED_SUPPLY { get; set; }
     public string BURNED_SUPPLY_RAW { get; set; }
     public string SCRIPT_RAW { get; set; }
+    public byte[] CARBON_TOKEN_SCHEMAS { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public int OwnerId { get; set; }

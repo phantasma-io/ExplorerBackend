@@ -1448,6 +1448,9 @@ namespace Database.Main.Migrations
                     b.Property<string>("SCRIPT_RAW")
                         .HasColumnType("text");
 
+                    b.Property<byte[]>("CARBON_TOKEN_SCHEMAS")
+                        .HasColumnType("bytea");
+
                     b.Property<bool>("STAKABLE")
                         .HasColumnType("boolean");
 

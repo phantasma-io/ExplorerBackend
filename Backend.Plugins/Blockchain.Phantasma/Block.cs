@@ -1,6 +1,8 @@
 using System;
+#nullable enable
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -12,7 +14,10 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using PhantasmaPhoenix.Cryptography;
 using PhantasmaPhoenix.Protocol;
+using PhantasmaPhoenix.Protocol.Carbon;
 using PhantasmaPhoenix.Protocol.Carbon.Blockchain;
+using PhantasmaPhoenix.Protocol.Carbon.Blockchain.Modules;
+using PhantasmaPhoenix.Protocol.Carbon.Blockchain.Vm;
 using PhantasmaPhoenix.Protocol.ExtendedEvents;
 using PhantasmaPhoenix.RPC.Models;
 using Serilog;
@@ -585,7 +590,60 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     tx.Fee, tx.Expiration,
                     tx.GasPrice, tx.GasLimit,
                     tx.State.ToString(), tx.Sender,
-                    tx.GasPayer, tx.GasTarget);
+                    tx.GasPayer, tx.GasTarget,
+                    tx.CarbonTxType, tx.CarbonTxData);
+
+                TokenSchemas? carbonSchemasForTx = null;
+                SeriesInfo? carbonSeriesInfo = null;
+                TxMsgMintNonFungible? carbonMintTx = null;
+                byte[] carbonTokenSchemasRaw = Array.Empty<byte>();
+
+                if ( !string.IsNullOrWhiteSpace(tx.CarbonTxData) )
+                {
+                    try
+                    {
+                        var carbonBytes = Base16.Decode(tx.CarbonTxData);
+                        var carbonType = ( TxTypes ) tx.CarbonTxType;
+
+                        switch ( carbonType )
+                        {
+                            case TxTypes.Call:
+                            {
+                                var call = CarbonBlob.New<TxMsgCall>(carbonBytes);
+                                if ( call.moduleId == ( uint ) ModuleId.Token )
+                                {
+                                    if ( call.methodId == ( uint ) TokenContract_Methods.CreateToken )
+                                    {
+                                        var tokenInfo = CarbonBlob.New<TokenInfo>(call.args);
+                                        carbonTokenSchemasRaw = tokenInfo.tokenSchemas ?? Array.Empty<byte>();
+                                        carbonSchemasForTx = CarbonBlob.New<TokenSchemas>(tokenInfo.tokenSchemas);
+                                        _carbonTokenSchemasCache.TryAdd(BuildTokenCacheKey(chainId, tokenInfo.symbol.data),
+                                            carbonSchemasForTx.Value);
+                                    }
+                                    else if ( call.methodId == ( uint ) TokenContract_Methods.CreateTokenSeries )
+                                    {
+                                        using var argsStream = new MemoryStream(call.args);
+                                        using var reader = new BinaryReader(argsStream);
+                                        reader.Read8(out ulong _);
+                                        carbonSeriesInfo = CarbonBlob.New<SeriesInfo>(reader);
+                                    }
+                                }
+
+                                break;
+                            }
+                            case TxTypes.MintNonFungible:
+                            {
+                                carbonMintTx = CarbonBlob.New<TxMsgMintNonFungible>(carbonBytes);
+                                break;
+                            }
+                        }
+                    }
+                    catch ( Exception e )
+                    {
+                        Log.Warning("[{Name}][Metadata] Failed to decode carbon tx data for {TxHash}: {Message}", Name,
+                            tx.Hash, e.Message);
+                    }
+                }
 
                 if (tx.Signatures?.Length > 0)
                 {
@@ -784,6 +842,23 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     ["chain_name"] = tokenEventData.ChainName
                                 };
 
+                                if ( kind == EventKind.TokenMint && carbonMintTx.HasValue && nft != null )
+                                {
+                                    if ( carbonSchemasForTx.HasValue )
+                                        _carbonTokenSchemasCache.TryAdd(
+                                            BuildTokenCacheKey(chainId, tokenEventData.Symbol), carbonSchemasForTx.Value);
+
+                                    var tokenSchemas =
+                                        carbonSchemasForTx ??
+                                        await GetCarbonTokenSchemasAsync(databaseContext, chainEntry,
+                                            tokenEventData.Symbol);
+                                    if ( tokenSchemas.HasValue )
+                                    {
+                                        ProcessCarbonMint(nft, tokenEventData.Symbol, chainId, carbonMintTx.Value,
+                                            tokenSchemas.Value);
+                                    }
+                                }
+
                                 break;
                             }
                             case EventKind.TokenSeriesCreate:
@@ -827,8 +902,32 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     var maxSupply = seriesCreateDataTx.Value.MaxSupply;
                                     var maxSupplyInt = maxSupply > int.MaxValue ? int.MaxValue : ( int ) maxSupply;
 
-                                    SeriesMethods.Upsert(databaseContext, contractIdForSeries, seriesId,
+                                    var seriesEntry = SeriesMethods.Upsert(databaseContext, contractIdForSeries, seriesId,
                                         addressEntry?.ID, null, maxSupplyInt, modeName);
+
+                                    var carbonSeriesId = seriesCreateDataTx.Value.CarbonSeriesId > 0
+                                        ? ( uint ) seriesCreateDataTx.Value.CarbonSeriesId
+                                        : ( uint? ) null;
+
+                                    if ( carbonSeriesId.HasValue )
+                                    {
+                                        if ( carbonSchemasForTx.HasValue )
+                                            _carbonTokenSchemasCache.TryAdd(
+                                                BuildTokenCacheKey(chainId, seriesCreateDataTx.Value.Symbol),
+                                                carbonSchemasForTx.Value);
+
+                                        var tokenSchemas =
+                                            carbonSchemasForTx ??
+                                            await GetCarbonTokenSchemasAsync(databaseContext, chainEntry,
+                                                seriesCreateDataTx.Value.Symbol);
+
+                                        if ( tokenSchemas.HasValue && carbonSeriesInfo.HasValue )
+                                        {
+                                            ProcessCarbonSeriesMetadata(databaseContext, seriesEntry, chainId,
+                                                seriesCreateDataTx.Value.Symbol, carbonSeriesId.Value, tokenSchemas.Value,
+                                                carbonSeriesInfo.Value.metadata ?? Array.Empty<byte>());
+                                        }
+                                    }
                                 }
 
                                 payload["token_id"] = seriesId ?? seriesCreateDataTx.Value.CarbonSeriesId.ToString();
@@ -943,7 +1042,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 flags.fungible, flags.transferable, flags.finite, flags.divisible,
                                                 flags.fuel, flags.stakable, flags.fiat, flags.swappable, flags.burnable,
                                                 flags.mintable, addressString, addressString, "0",
-                                                maxSupply, "0", null);
+                                                maxSupply, "0", null, carbonTokenSchemasRaw);
 
                                             if ( token != null && eventEntry != null )
                                             {
