@@ -69,28 +69,24 @@ internal static class MetadataMapper
         NftMetadata nftMetadata, string creatorAddress, string seriesId)
     {
         var metadata = Extract(metadataDocument);
+        metadata.Remove("_i");
+        metadata.Remove("series");
 
         if ( nftMetadata != null )
         {
             AddIfMissing(metadata, "name", nftMetadata.name);
             AddIfMissing(metadata, "description", nftMetadata.description);
-            AddIfMissing(metadata, "image", nftMetadata.image);
-            AddIfMissing(metadata, "video", nftMetadata.video);
-            AddIfMissing(metadata, "info_url", nftMetadata.info_url);
+            AddIfMissing(metadata, "imageURL", nftMetadata.imageURL);
+            AddIfMissing(metadata, "videoURL", nftMetadata.videoURL);
+            AddIfMissing(metadata, "infoURL", nftMetadata.infoURL);
             AddIfMissing(metadata, "rom", nftMetadata.rom);
             AddIfMissing(metadata, "ram", nftMetadata.ram);
-
-            if ( !string.IsNullOrWhiteSpace(nftMetadata.mint_date) )
-                AddIfMissing(metadata, "mint_date", nftMetadata.mint_date);
-
-            if ( !string.IsNullOrWhiteSpace(nftMetadata.mint_number) )
-                AddIfMissing(metadata, "mint_number", nftMetadata.mint_number);
         }
 
         AddIfMissing(metadata, "creator", creatorAddress);
 
         if ( !string.IsNullOrWhiteSpace(seriesId) )
-            AddIfMissing(metadata, "series", seriesId);
+            AddIfMissing(metadata, "seriesId", seriesId);
 
         return Normalize(metadata);
     }
@@ -105,9 +101,9 @@ internal static class MetadataMapper
         {
             name = nft.NAME,
             description = nft.DESCRIPTION,
-            image = nft.IMAGE,
-            video = nft.VIDEO,
-            info_url = nft.INFO_URL,
+            imageURL = nft.IMAGE,
+            videoURL = nft.VIDEO,
+            infoURL = nft.INFO_URL,
             rom = nft.ROM,
             ram = nft.RAM,
             mint_date = nft.MINT_DATE_UNIX_SECONDS > 0 ? nft.MINT_DATE_UNIX_SECONDS.ToString() : null,
@@ -147,23 +143,24 @@ internal static class MetadataMapper
             return null;
 
         var metadata = Extract(series.METADATA);
+        metadata.Remove("_i");
         AddIfMissing(metadata, "name", series.NAME);
         AddIfMissing(metadata, "description", series.DESCRIPTION);
-        AddIfMissing(metadata, "image", series.IMAGE);
+        AddIfMissing(metadata, "imageURL", series.IMAGE);
         AddIfMissing(metadata, "royalties", series.ROYALTIES.ToString(CultureInfo.InvariantCulture));
 
         if ( series.TYPE > 0 )
             AddIfMissing(metadata, "type", series.TYPE.ToString(CultureInfo.InvariantCulture));
 
-        AddIfMissing(metadata, "attr_type_1", series.ATTR_TYPE_1);
-        AddIfMissing(metadata, "attr_value_1", series.ATTR_VALUE_1);
-        AddIfMissing(metadata, "attr_type_2", series.ATTR_TYPE_2);
-        AddIfMissing(metadata, "attr_value_2", series.ATTR_VALUE_2);
-        AddIfMissing(metadata, "attr_type_3", series.ATTR_TYPE_3);
-        AddIfMissing(metadata, "attr_value_3", series.ATTR_VALUE_3);
+        AddIfMissing(metadata, "attrType1", series.ATTR_TYPE_1);
+        AddIfMissing(metadata, "attrValue1", series.ATTR_VALUE_1);
+        AddIfMissing(metadata, "attrType2", series.ATTR_TYPE_2);
+        AddIfMissing(metadata, "attrValue2", series.ATTR_VALUE_2);
+        AddIfMissing(metadata, "attrType3", series.ATTR_TYPE_3);
+        AddIfMissing(metadata, "attrValue3", series.ATTR_VALUE_3);
 
         if ( series.SeriesMode != null )
-            AddIfMissing(metadata, "mode_name", series.SeriesMode.MODE_NAME);
+            AddIfMissing(metadata, "modeName", series.SeriesMode.MODE_NAME);
 
         if ( series.CURRENT_SUPPLY > 0 )
             AddIfMissing(metadata, "current_supply", series.CURRENT_SUPPLY.ToString(CultureInfo.InvariantCulture));
@@ -184,21 +181,22 @@ internal static class MetadataMapper
             return null;
 
         var result = Extract(metadata);
+        result.Remove("_i");
         AddIfMissing(result, "name", apiSeries.name);
         AddIfMissing(result, "description", apiSeries.description);
-        AddIfMissing(result, "image", apiSeries.image);
+        AddIfMissing(result, "imageURL", apiSeries.image);
         AddIfMissing(result, "royalties", apiSeries.royalties);
 
         if ( apiSeries.type != 0 )
             AddIfMissing(result, "type", apiSeries.type.ToString());
 
-        AddIfMissing(result, "attr_type_1", apiSeries.attr_type_1);
-        AddIfMissing(result, "attr_value_1", apiSeries.attr_value_1);
-        AddIfMissing(result, "attr_type_2", apiSeries.attr_type_2);
-        AddIfMissing(result, "attr_value_2", apiSeries.attr_value_2);
-        AddIfMissing(result, "attr_type_3", apiSeries.attr_type_3);
-        AddIfMissing(result, "attr_value_3", apiSeries.attr_value_3);
-        AddIfMissing(result, "mode_name", apiSeries.mode_name);
+        AddIfMissing(result, "attrType1", apiSeries.attr_type_1);
+        AddIfMissing(result, "attrValue1", apiSeries.attr_value_1);
+        AddIfMissing(result, "attrType2", apiSeries.attr_type_2);
+        AddIfMissing(result, "attrValue2", apiSeries.attr_value_2);
+        AddIfMissing(result, "attrType3", apiSeries.attr_type_3);
+        AddIfMissing(result, "attrValue3", apiSeries.attr_value_3);
+        AddIfMissing(result, "modeName", apiSeries.mode_name);
         AddIfMissing(result, "creator", apiSeries.creator);
 
         if ( apiSeries.current_supply != 0 )
@@ -207,6 +205,8 @@ internal static class MetadataMapper
 
         if ( apiSeries.max_supply != 0 )
             AddIfMissing(result, "max_supply", apiSeries.max_supply.ToString(CultureInfo.InvariantCulture));
+
+        AddIfMissing(result, "creator", apiSeries.creator);
 
         return Normalize(result);
     }

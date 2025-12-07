@@ -25,17 +25,17 @@ public class NftMetadata
     /// <summary>
     ///     URL to the Image
     /// </summary>
-    public string? image { get; set; }
+    public string? imageURL { get; set; }
 
     /// <summary>
     ///     URL to the Video
     /// </summary>
-    public string? video { get; set; }
+    public string? videoURL { get; set; }
 
     /// <summary>
     ///     Url to the Information of the Image/Video
     /// </summary>
-    public string? info_url { get; set; }
+    public string? infoURL { get; set; }
 
     /// <summary>
     ///     Data written into ROM

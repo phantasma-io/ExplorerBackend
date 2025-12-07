@@ -353,8 +353,9 @@ public static class GetEvents
                             {
                                 name = x.Nft.NAME,
                                 description = x.Nft.DESCRIPTION,
-                                image = x.Nft.IMAGE,
-                                video = x.Nft.VIDEO,
+                                imageURL = x.Nft.IMAGE,
+                                videoURL = x.Nft.VIDEO,
+                                infoURL = x.Nft.INFO_URL,
                                 rom = x.Nft.ROM,
                                 ram = x.Nft.RAM,
                                 mint_date = x.Nft.MINT_DATE_UNIX_SECONDS.ToString(),

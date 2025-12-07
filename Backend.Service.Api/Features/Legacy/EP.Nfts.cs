@@ -236,9 +236,9 @@ public static class GetNfts
                     {
                         name = x.NAME,
                         description = x.DESCRIPTION,
-                        image = x.IMAGE,
-                        video = x.VIDEO,
-                        info_url = x.INFO_URL,
+                        imageURL = x.IMAGE,
+                        videoURL = x.VIDEO,
+                        infoURL = x.INFO_URL,
                         rom = x.ROM,
                         ram = x.RAM,
                         mint_date = x.NAME != null ? x.MINT_DATE_UNIX_SECONDS.ToString() : null,

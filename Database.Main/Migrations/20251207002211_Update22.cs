@@ -36,9 +36,9 @@ namespace Database.Main.Migrations
                     jsonb_build_object(
                         'name', n.""NAME"",
                         'description', n.""DESCRIPTION"",
-                        'image', n.""IMAGE"",
-                        'video', n.""VIDEO"",
-                        'info_url', n.""INFO_URL"",
+                        'imageURL', n.""IMAGE"",
+                        'videoURL', n.""VIDEO"",
+                        'infoURL', n.""INFO_URL"",
                         'rom', n.""ROM"",
                         'ram', n.""RAM"",
                         'mint_date', nullif(n.""MINT_DATE_UNIX_SECONDS"", 0),
@@ -55,7 +55,7 @@ namespace Database.Main.Migrations
                     jsonb_build_object(
                         'name', s.""NAME"",
                         'description', s.""DESCRIPTION"",
-                        'image', s.""IMAGE"",
+                        'imageURL', s.""IMAGE"",
                         'royalties', s.""ROYALTIES"",
                         'type', nullif(s.""TYPE"", 0),
                         'attr_type_1', s.""ATTR_TYPE_1"",

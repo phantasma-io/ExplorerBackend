@@ -281,8 +281,9 @@ public static class GetBlocks
                                                     {
                                                         name = e.Nft.NAME,
                                                         description = e.Nft.DESCRIPTION,
-                                                        image = e.Nft.IMAGE,
-                                                        video = e.Nft.VIDEO,
+                                                        imageURL = e.Nft.IMAGE,
+                                                        videoURL = e.Nft.VIDEO,
+                                                        infoURL = e.Nft.INFO_URL,
                                                         rom = e.Nft.ROM,
                                                         ram = e.Nft.RAM,
                                                         mint_date = e.Nft.MINT_DATE_UNIX_SECONDS.ToString(),
