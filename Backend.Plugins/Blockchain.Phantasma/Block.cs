@@ -972,6 +972,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         ? ( uint ) seriesCreateDataTx.Value.CarbonSeriesId
                                         : ( uint? ) null;
 
+                                    if ( string.IsNullOrWhiteSpace(seriesEntry.NAME) && carbonSeriesId.HasValue )
+                                        seriesEntry.NAME =
+                                            $"Series #{carbonSeriesId.Value} for {seriesCreateDataTx.Value.Symbol}";
+
                                     if ( carbonSeriesId.HasValue )
                                     {
                                         if ( carbonSchemasForTx.HasValue )
