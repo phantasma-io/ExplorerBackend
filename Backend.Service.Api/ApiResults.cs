@@ -420,6 +420,11 @@ public class Event
     public GovernanceChainConfigEvent? governance_chain_config_event { get; set; }
 
     /// <summary>
+    ///     EventKind SpecialResolution
+    /// </summary>
+    public SpecialResolutionEvent? special_resolution_event { get; set; }
+
+    /// <summary>
     ///     EventKinds FileCreate or FileDelete
     /// </summary>
     public HashEvent? hash_event { get; set; }
@@ -1363,6 +1368,26 @@ public class GovernanceChainConfigEvent
     public string? allowed_tx_types { get; set; }
     public string? expiry_window { get; set; }
     public string? block_rate_target { get; set; }
+}
+
+/// <summary>
+///     EventKind SpecialResolution
+/// </summary>
+public class SpecialResolutionEvent
+{
+    public string? resolution_id { get; set; }
+    public string? description { get; set; }
+    public SpecialResolutionCall[]? calls { get; set; }
+}
+
+public class SpecialResolutionCall
+{
+    public uint module_id { get; set; }
+    public string? module { get; set; }
+    public uint method_id { get; set; }
+    public string? method { get; set; }
+    public Dictionary<string, string>? arguments { get; set; }
+    public SpecialResolutionCall[]? calls { get; set; }
 }
 
 /// <summary>

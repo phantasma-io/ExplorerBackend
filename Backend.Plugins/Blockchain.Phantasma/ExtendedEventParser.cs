@@ -108,4 +108,35 @@ internal static class ExtendedEventParser
             return null;
         }
     }
+
+    public static SpecialResolutionData? GetSpecialResolutionData(EventExResult[] extendedEvents)
+    {
+        if ( extendedEvents == null || extendedEvents.Length == 0 )
+            return null;
+
+        var specialResolutionEvent = extendedEvents.FirstOrDefault(x => x.Kind == EventKind.SpecialResolution);
+
+        if ( specialResolutionEvent == null )
+            return null;
+
+        try
+        {
+            switch ( specialResolutionEvent.Data )
+            {
+                case JsonElement el:
+                    return JsonSerializer.Deserialize<SpecialResolutionData>(el.GetRawText(), TokenCreateJsonOptions);
+                case string s when !string.IsNullOrWhiteSpace(s):
+                    return JsonSerializer.Deserialize<SpecialResolutionData>(s, TokenCreateJsonOptions);
+                case SpecialResolutionData data:
+                    return data;
+                default:
+                    return null;
+            }
+        }
+        catch ( Exception e )
+        {
+            Log.Warning(e, "[ExtendedEventParser] Failed to parse SpecialResolutionData from extended event");
+            return null;
+        }
+    }
 }

@@ -24,6 +24,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="9.0.11" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj" />
-    <PackageReference Include="PhantasmaPhoenix.Protocol" Version="0.2.6" />
+    <PackageReference Include="PhantasmaPhoenix.Protocol" Version="0.2.7" />
   </ItemGroup>
 </Project>

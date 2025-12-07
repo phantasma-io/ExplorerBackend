@@ -224,6 +224,9 @@ internal static class EventPayloadMapper
         [JsonPropertyName("governance_chain_config_event")]
         public Dictionary<string, JsonElement> GovernanceChainConfigEvent { get; set; }
 
+        [JsonPropertyName("special_resolution_event")]
+        public SpecialResolutionEventPayload SpecialResolutionEvent { get; set; }
+
         [JsonPropertyName("hash_event")]
         public HashEventPayload HashEvent { get; set; }
 
@@ -437,6 +440,39 @@ internal static class EventPayloadMapper
         public string Chain { get; set; }
     }
 
+    private sealed class SpecialResolutionCallPayload
+    {
+        [JsonPropertyName("module_id")]
+        public uint ModuleId { get; set; }
+
+        [JsonPropertyName("module")]
+        public string Module { get; set; }
+
+        [JsonPropertyName("method_id")]
+        public uint MethodId { get; set; }
+
+        [JsonPropertyName("method")]
+        public string Method { get; set; }
+
+        [JsonPropertyName("arguments")]
+        public Dictionary<string, string> Arguments { get; set; }
+
+        [JsonPropertyName("calls")]
+        public SpecialResolutionCallPayload[] Calls { get; set; }
+    }
+
+    private sealed class SpecialResolutionEventPayload
+    {
+        [JsonPropertyName("resolution_id")]
+        public string ResolutionId { get; set; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+
+        [JsonPropertyName("calls")]
+        public SpecialResolutionCallPayload[] Calls { get; set; }
+    }
+
     internal static async Task ApplyAsync(MainDbContext databaseContext,
         IReadOnlyCollection<EventProjection> projections,
         bool withEventData,
@@ -477,6 +513,10 @@ internal static class EventPayloadMapper
                 string.Equals(eventKind, "GovernanceSetChainConfig", StringComparison.OrdinalIgnoreCase)
                     ? BuildGovernanceChainConfigEvent(payload)
                     : null;
+            apiEvent.special_resolution_event =
+                string.Equals(eventKind, "SpecialResolution", StringComparison.OrdinalIgnoreCase)
+                    ? BuildSpecialResolutionEvent(payload)
+                    : null;
             apiEvent.hash_event = BuildHashEvent(payload);
             apiEvent.infusion_event = BuildInfusionEvent(payload, context, envelope.Projection.ChainId);
             apiEvent.market_event = await BuildMarketEventAsync(databaseContext, payload, context,
@@ -496,6 +536,7 @@ internal static class EventPayloadMapper
                 apiEvent.gas_event != null ||
                 apiEvent.governance_gas_config_event != null ||
                 apiEvent.governance_chain_config_event != null ||
+                apiEvent.special_resolution_event != null ||
                 apiEvent.hash_event != null ||
                 apiEvent.infusion_event != null ||
                 apiEvent.market_event != null ||
@@ -700,6 +741,36 @@ internal static class EventPayloadMapper
             expiry_window = ExtractGovernanceValue(configPayload, "expiry_window", "expiryWindow"),
             block_rate_target = ExtractGovernanceValue(configPayload, "block_rate_target", "blockRateTarget")
         };
+    }
+
+    private static SpecialResolutionEvent BuildSpecialResolutionEvent(EventPayload payload)
+    {
+        var special = payload.SpecialResolutionEvent;
+        if ( special == null )
+            return null;
+
+        return new SpecialResolutionEvent
+        {
+            resolution_id = special.ResolutionId,
+            description = special.Description,
+            calls = BuildSpecialResolutionCalls(special.Calls)
+        };
+    }
+
+    private static SpecialResolutionCall[] BuildSpecialResolutionCalls(SpecialResolutionCallPayload[] calls)
+    {
+        if ( calls == null || calls.Length == 0 )
+            return Array.Empty<SpecialResolutionCall>();
+
+        return calls.Select(call => new SpecialResolutionCall
+        {
+            module_id = call.ModuleId,
+            module = call.Module,
+            method_id = call.MethodId,
+            method = call.Method,
+            arguments = call.Arguments,
+            calls = BuildSpecialResolutionCalls(call.Calls)
+        }).ToArray();
     }
 
     private static HashEvent BuildHashEvent(EventPayload payload)

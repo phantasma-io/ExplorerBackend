@@ -132,6 +132,32 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         };
     }
 
+    private static Dictionary<string, object?> BuildSpecialResolutionPayload(SpecialResolutionData data)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["resolution_id"] = data.ResolutionId.ToString(CultureInfo.InvariantCulture),
+            ["description"] = data.Description,
+            ["calls"] = BuildSpecialResolutionCallPayloads(data.Calls)
+        };
+    }
+
+    private static object[] BuildSpecialResolutionCallPayloads(SpecialResolutionCall[] calls)
+    {
+        if ( calls == null || calls.Length == 0 )
+            return Array.Empty<object>();
+
+        return calls.Select(call => new Dictionary<string, object?>
+        {
+            ["module"] = call.Module,
+            ["module_id"] = call.ModuleId,
+            ["method"] = call.Method,
+            ["method_id"] = call.MethodId,
+            ["arguments"] = call.Arguments,
+            ["calls"] = BuildSpecialResolutionCallPayloads(call.Calls ?? Array.Empty<SpecialResolutionCall>())
+        }).ToArray();
+    }
+
     private async Task ApplyInfusionAsync(MainDbContext databaseContext, Chain chain, Nft nft,
         string infusedSymbol, string infusedValueRaw)
     {
@@ -684,6 +710,33 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 // Synthesize TokenSeriesCreate event from extended data (RPC does not emit legacy event).
                 var seriesCreateDataTx = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
                 var tokenMintDataTx = ExtendedEventParser.GetTokenMintData(tx.ExtendedEvents);
+                SpecialResolutionData? specialResolutionDataTx = null;
+
+                if ( tx.ExtendedEvents is {Length: > 0} )
+                    specialResolutionDataTx = ExtendedEventParser.GetSpecialResolutionData(tx.ExtendedEvents);
+
+                if ( specialResolutionDataTx != null &&
+                     !eventNodes.Any(e =>
+                         string.Equals(e.Kind, EventKind.SpecialResolution.ToString(), StringComparison.OrdinalIgnoreCase)) )
+                {
+                    var specialResolutionData = specialResolutionDataTx.Value;
+                    eventNodes.Add(new EventResult
+                    {
+                        Address = tx.GasPayer,
+                        Contract = "governance",
+                        Kind = EventKind.SpecialResolution.ToString(),
+                        Data = Convert.ToHexString(BitConverter.GetBytes(specialResolutionData.ResolutionId))
+                    });
+
+                    var governanceKey = new ContractMethods.ChainHashKey(chainId, "governance");
+                    if ( !contracts.ContainsKey(governanceKey) )
+                    {
+                        var contract = await ContractMethods.UpsertAsync(databaseContext, "governance", chainEntry,
+                            "governance", "governance");
+                        contracts[governanceKey] = contract.ID;
+                    }
+                }
+
                 if ( seriesCreateDataTx != null )
                 {
                     if ( string.IsNullOrWhiteSpace(seriesCreateDataTx.Value.Symbol) )
@@ -1250,6 +1303,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             {
                                 var chainConfig = eventNode.GetParsedData<ChainConfig>();
                                 payload["governance_chain_config_event"] = BuildChainConfigPayload(chainConfig);
+                                break;
+                            }
+                            case EventKind.SpecialResolution:
+                            {
+                                if ( specialResolutionDataTx != null )
+                                {
+                                    payload["special_resolution_event"] =
+                                        BuildSpecialResolutionPayload(specialResolutionDataTx.Value);
+                                }
+                                else
+                                {
+                                    Log.Warning("[{Name}][Blocks] SpecialResolution event without data (tx {TxHash})",
+                                        Name, tx.Hash);
+                                }
+
                                 break;
                             }
                             case EventKind.Crowdsale:
