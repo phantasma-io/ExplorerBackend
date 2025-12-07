@@ -320,7 +320,14 @@ public static class GetBlocks
                                             ChainId = e.ChainId,
                                             TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
                                             PayloadJson = e.PAYLOAD_JSON,
-                                            RawData = e.RAW_DATA
+                                            RawData = e.RAW_DATA,
+                                            NftMetadata = e.Nft != null ? e.Nft.METADATA : null,
+                                            SeriesMetadata = e.Nft != null && e.Nft.Series != null
+                                                ? e.Nft.Series.METADATA
+                                                : null,
+                                            NftCreator = e.Nft != null && e.Nft.CreatorAddress != null
+                                                ? e.Nft.CreatorAddress.ADDRESS
+                                                : null
                                         })
                                         .ToArray()
                                     : Array.Empty<EventPayloadMapper.EventProjection>()
@@ -357,6 +364,20 @@ public static class GetBlocks
 
             await EventPayloadMapper.ApplyAsync(databaseContext, allEventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
+
+            foreach ( var projection in allEventProjections )
+            {
+                if ( projection.ApiEvent.nft_metadata != null )
+                    projection.ApiEvent.nft_metadata.metadata = MetadataMapper.FromNft(
+                        projection.NftMetadata,
+                        projection.ApiEvent.nft_metadata,
+                        projection.NftCreator,
+                        projection.ApiEvent.series?.series_id);
+
+                if ( projection.ApiEvent.series != null )
+                    projection.ApiEvent.series.metadata =
+                        MetadataMapper.FromSeries(projection.SeriesMetadata, projection.ApiEvent.series);
+            }
 
             foreach ( var blockProjection in blockProjections )
             {

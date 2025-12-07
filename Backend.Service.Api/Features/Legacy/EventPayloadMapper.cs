@@ -32,6 +32,9 @@ internal static class EventPayloadMapper
         public long TimestampUnixSeconds { get; init; }
         public string PayloadJson { get; init; }
         public string RawData { get; init; }
+        public JsonDocument NftMetadata { get; init; }
+        public JsonDocument SeriesMetadata { get; init; }
+        public string NftCreator { get; init; }
     }
 
     internal sealed class TransactionProjection

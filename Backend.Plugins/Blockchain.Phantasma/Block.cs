@@ -995,6 +995,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 carbonSeriesInfo.Value.metadata ?? Array.Empty<byte>());
                                         }
                                     }
+
+                                    if ( seriesCreateDataTx.Value.Metadata != null )
+                                        UpdateSeriesMetadata(seriesEntry,
+                                            ConvertDictionaryToMetadata(seriesCreateDataTx.Value.Metadata));
                                 }
 
                                 payload["token_id"] = seriesId ?? seriesCreateDataTx.Value.CarbonSeriesId.ToString();

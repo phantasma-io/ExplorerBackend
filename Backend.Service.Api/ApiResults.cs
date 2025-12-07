@@ -56,6 +56,11 @@ public class NftMetadata
     ///     Number of the minted NFT
     /// </summary>
     public string? mint_number { get; set; }
+
+    /// <summary>
+    ///     All metadata fields as received from chain
+    /// </summary>
+    public Dictionary<string, string>? metadata { get; set; }
 }
 
 /// <summary>
@@ -209,6 +214,11 @@ public class Series
     /// </summary>
     /// <example>1920x1080</example>
     public string? attr_value_3 { get; set; }
+
+    /// <summary>
+    ///     All metadata fields as received from chain
+    /// </summary>
+    public Dictionary<string, string>? metadata { get; set; }
 }
 
 /// <summary>

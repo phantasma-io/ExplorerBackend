@@ -389,7 +389,10 @@ public static class GetEvents
                     ChainId = x.ChainId,
                     TimestampUnixSeconds = x.TIMESTAMP_UNIX_SECONDS,
                     PayloadJson = x.PAYLOAD_JSON,
-                    RawData = x.RAW_DATA
+                    RawData = x.RAW_DATA,
+                    NftMetadata = x.Nft != null ? x.Nft.METADATA : null,
+                    SeriesMetadata = x.Nft != null && x.Nft.Series != null ? x.Nft.Series.METADATA : null,
+                    NftCreator = x.Nft != null && x.Nft.CreatorAddress != null ? x.Nft.CreatorAddress.ADDRESS : null
                 }
             });
 
@@ -416,6 +419,20 @@ public static class GetEvents
 
             await EventPayloadMapper.ApplyAsync(databaseContext, eventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
+
+            foreach ( var projection in eventProjections )
+            {
+                if ( projection.ApiEvent.nft_metadata != null )
+                    projection.ApiEvent.nft_metadata.metadata = MetadataMapper.FromNft(
+                        projection.NftMetadata,
+                        projection.ApiEvent.nft_metadata,
+                        projection.NftCreator,
+                        projection.ApiEvent.series?.series_id);
+
+                if ( projection.ApiEvent.series != null )
+                    projection.ApiEvent.series.metadata =
+                        MetadataMapper.FromSeries(projection.SeriesMetadata, projection.ApiEvent.series);
+            }
 
             eventsArray = eventProjections.Select(p => p.ApiEvent).ToArray();
 

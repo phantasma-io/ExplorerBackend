@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
@@ -19,6 +20,8 @@ public static class GetNfts
         public int Id { get; init; }
         public long MintDate { get; init; }
         public Nft ApiNft { get; init; }
+        public JsonDocument NftMetadata { get; init; }
+        public JsonDocument SeriesMetadata { get; init; }
     }
 
     [ProducesResponseType(typeof(NftsResult), ( int ) HttpStatusCode.OK)]
@@ -205,6 +208,8 @@ public static class GetNfts
             {
                 Id = x.ID,
                 MintDate = x.MINT_DATE_UNIX_SECONDS,
+                NftMetadata = x.METADATA,
+                SeriesMetadata = x.Series != null ? x.Series.METADATA : null,
                 ApiNft = new Nft
                 {
                     token_id = x.TOKEN_ID,
@@ -292,6 +297,17 @@ public static class GetNfts
                     x => x.Id);
                 var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
                     limit);
+                foreach ( var item in page.Items )
+                {
+                    if ( item.ApiNft?.nft_metadata != null )
+                        item.ApiNft.nft_metadata.metadata =
+                            MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
+
+                    if ( item.ApiNft?.series != null )
+                        item.ApiNft.series.metadata =
+                            MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
+                }
+
                 nftArray = page.Items.Select(x => x.ApiNft).ToArray();
                 nextCursor = page.NextCursor;
             }
@@ -299,7 +315,20 @@ public static class GetNfts
             {
                 var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
                 var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                nftArray = ( await pageItems.ToArrayAsync() ).Select(x => x.ApiNft).ToArray();
+                var materializedPage = await pageItems.ToArrayAsync();
+
+                foreach ( var item in materializedPage )
+                {
+                    if ( item.ApiNft?.nft_metadata != null )
+                        item.ApiNft.nft_metadata.metadata =
+                            MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
+
+                    if ( item.ApiNft?.series != null )
+                        item.ApiNft.series.metadata =
+                            MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
+                }
+
+                nftArray = materializedPage.Select(x => x.ApiNft).ToArray();
             }
 
             #endregion

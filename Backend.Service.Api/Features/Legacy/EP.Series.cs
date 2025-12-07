@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
@@ -20,6 +21,7 @@ public static class GetSeries
         public string SeriesId { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
         public Series ApiSeries { get; init; }
+        public JsonDocument Metadata { get; init; }
     }
 
     [ProducesResponseType(typeof(SeriesResult), ( int ) HttpStatusCode.OK)]
@@ -225,7 +227,8 @@ public static class GetSeries
                     attr_value_2 = x.ATTR_VALUE_2,
                     attr_type_3 = x.ATTR_TYPE_3,
                     attr_value_3 = x.ATTR_VALUE_3
-                }
+                },
+                Metadata = x.METADATA
             });
 
             if ( useCursor )
@@ -236,6 +239,12 @@ public static class GetSeries
                     CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
                 var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
                     limit);
+                foreach ( var item in page.Items )
+                {
+                    if ( item.ApiSeries != null )
+                        item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
+                }
+
                 seriesArray = page.Items.Select(x => x.ApiSeries).ToArray();
                 nextCursor = page.NextCursor;
             }
@@ -243,7 +252,15 @@ public static class GetSeries
             {
                 var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
                 var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                seriesArray = ( await pageItems.ToArrayAsync() ).Select(x => x.ApiSeries).ToArray();
+                var materializedPage = await pageItems.ToArrayAsync();
+
+                foreach ( var item in materializedPage )
+                {
+                    if ( item.ApiSeries != null )
+                        item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
+                }
+
+                seriesArray = materializedPage.Select(x => x.ApiSeries).ToArray();
             }
 
             #endregion

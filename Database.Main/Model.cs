@@ -1475,6 +1475,7 @@ public class Nft
     public int MINT_NUMBER { get; set; }
     public JsonDocument OFFCHAIN_API_RESPONSE { get; set; }
     public JsonDocument CHAIN_API_RESPONSE { get; set; }
+    public JsonDocument METADATA { get; set; }
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
     public bool BLACKLISTED { get; set; }
@@ -1529,6 +1530,7 @@ public class Series
     public string ATTR_VALUE_2 { get; set; }
     public string ATTR_TYPE_3 { get; set; }
     public string ATTR_VALUE_3 { get; set; }
+    public JsonDocument METADATA { get; set; }
     public bool HAS_LOCKED { get; set; }
     public bool? NSFW { get; set; }
     public bool? BLACKLISTED { get; set; }

@@ -1,6 +1,7 @@
 using System;
 #nullable enable
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Backend.Commons;
@@ -292,6 +293,7 @@ public partial class PhantasmaPlugin
         int chainId, string symbol, uint carbonSeriesId, TokenSchemas schemas, byte[] metadataBytes)
     {
         VmDynamicStruct? metadataStruct = null;
+        VmDynamicStruct? sharedRomStruct = null;
         byte[] sharedRom = Array.Empty<byte>();
 
         if ( metadataBytes is {Length: > 0} &&
@@ -317,11 +319,15 @@ public partial class PhantasmaPlugin
             sharedRom = GetBytesField(decodedMetadata, "rom");
             if ( sharedRom.Length > 0 &&
                  TryDecodeCarbonStruct(schemas.rom, sharedRom,
-                     $"series:{symbol}:{carbonSeriesId}:rom", out var sharedRomStruct) )
+                     $"series:{symbol}:{carbonSeriesId}:rom", out var decodedSharedRom) )
             {
-                ApplyRomMetadataToSeries(series, sharedRomStruct);
+                sharedRomStruct = decodedSharedRom;
+                ApplyRomMetadataToSeries(series, decodedSharedRom);
             }
         }
+
+        UpdateSeriesMetadata(series, ConvertStructToMetadata(metadataStruct),
+            ConvertStructToMetadata(sharedRomStruct), CreateMetadataFromRomRam(sharedRom, Array.Empty<byte>()));
 
         series.DM_UNIX_SECONDS = UnixSeconds.Now();
 
@@ -354,6 +360,13 @@ public partial class PhantasmaPlugin
             if ( sharedRomStruct.HasValue )
                 ApplyRomMetadataToNft(nft, sharedRomStruct.Value, sharedRomBytes,
                     carbonMintTx.ram ?? Array.Empty<byte>(), sharedRomStruct);
+            else
+            {
+                if ( carbonMintTx.ram is {Length: > 0} ) nft.RAM = Base16.Encode(carbonMintTx.ram);
+                UpdateNftMetadata(nft,
+                    CreateMetadataFromRomRam(Array.Empty<byte>(), carbonMintTx.ram ?? Array.Empty<byte>()));
+                nft.DM_UNIX_SECONDS = UnixSeconds.Now();
+            }
 
             return;
         }
@@ -371,6 +384,9 @@ public partial class PhantasmaPlugin
             {
                 if ( carbonMintTx.rom is {Length: > 0} ) nft.ROM = Base16.Encode(carbonMintTx.rom);
                 if ( carbonMintTx.ram is {Length: > 0} ) nft.RAM = Base16.Encode(carbonMintTx.ram);
+                UpdateNftMetadata(nft,
+                    CreateMetadataFromRomRam(carbonMintTx.rom ?? Array.Empty<byte>(),
+                        carbonMintTx.ram ?? Array.Empty<byte>()));
                 nft.DM_UNIX_SECONDS = UnixSeconds.Now();
             }
 
@@ -455,6 +471,11 @@ public partial class PhantasmaPlugin
                     nft.TOKEN_ID, e.Message);
             }
         }
+
+        var romMetadata = ConvertStructToMetadata(romStruct);
+        var sharedMetadata = ConvertStructToMetadata(sharedRomStruct);
+        var romRamMetadata = CreateMetadataFromRomRam(carbonRomBytes, carbonRamBytes);
+        UpdateNftMetadata(nft, romMetadata, sharedMetadata, romRamMetadata);
 
         nft.DM_UNIX_SECONDS = UnixSeconds.Now();
         if ( nft.Series != null ) nft.Series.DM_UNIX_SECONDS = UnixSeconds.Now();

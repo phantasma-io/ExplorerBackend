@@ -220,6 +220,23 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 nft.Series.DM_UNIX_SECONDS = UnixSeconds.Now();
             }
 
+            var metadata = ConvertPropertiesToMetadata(properties);
+            AddIfNotEmpty(metadata, "token_id", nft.TOKEN_ID);
+            AddIfNotEmpty(metadata, "creatorAddress", nft.CreatorAddress?.ADDRESS);
+            AddIfNotEmpty(metadata, "series", series);
+            AddIfNotEmpty(metadata, "rom", nft.ROM);
+            AddIfNotEmpty(metadata, "ram", nft.RAM);
+            AddIfNotEmpty(metadata, "mint", nft.MINT_NUMBER.ToString());
+            AddIfNotEmpty(metadata, "mint_date", nft.MINT_DATE_UNIX_SECONDS > 0
+                ? nft.MINT_DATE_UNIX_SECONDS.ToString()
+                : null);
+            AddIfNotEmpty(metadata, "name", nft.NAME);
+            AddIfNotEmpty(metadata, "description", nft.DESCRIPTION);
+            AddIfNotEmpty(metadata, "imageURL", nft.IMAGE);
+            AddIfNotEmpty(metadata, "infoURL", nft.INFO_URL);
+
+            UpdateNftMetadata(nft, metadata);
+
             updatedNftCount++;
 
             if ( updatedNftCount == MaxRomRamUpdatesForOneSession ) break;
