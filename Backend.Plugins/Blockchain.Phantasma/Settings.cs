@@ -37,7 +37,6 @@ internal class Settings
         RomRamProcessingEnabled = section.GetValue<bool>("romRamProcessingEnabled");
         RomRamProcessingInterval = section.GetValue<int>("romRamProcessingInterval");
         SeriesProcessingInterval = section.GetValue<int>("seriesProcessingInterval");
-        InfusionsProcessingInterval = section.GetValue<int>("infusionsProcessingInterval");
         NamesSyncInterval = section.GetValue<int>("namesSyncInterval");
         ChangeNodesInterval = 30; //30 mins
         LastNodeChange = DateTime.Now;
@@ -61,7 +60,6 @@ internal class Settings
     public bool RomRamProcessingEnabled { get; }
     public int RomRamProcessingInterval { get; }
     public int SeriesProcessingInterval { get; }
-    public int InfusionsProcessingInterval { get; }
     public int NamesSyncInterval { get; }
 
     public static Settings Default { get; private set; }

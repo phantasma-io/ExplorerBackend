@@ -63,7 +63,23 @@ public static class ContractMethods
             DbHelper.GetTracked<Contract>(databaseContext)
                 .FirstOrDefault(x => x.Chain == chain && x.HASH == hash && x.SYMBOL == symbol);
 
-        if ( contract != null ) return contract;
+        // Fallback: existing contract with same hash but different symbol (or null symbol)
+        if ( contract == null )
+        {
+            contract = await databaseContext.Contracts.FirstOrDefaultAsync(x => x.Chain == chain && x.HASH == hash) ??
+                       DbHelper.GetTracked<Contract>(databaseContext)
+                           .FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
+        }
+
+        if ( contract != null )
+        {
+            if ( !string.IsNullOrEmpty(name) )
+                contract.NAME = name;
+            if ( !string.IsNullOrEmpty(symbol) )
+                contract.SYMBOL = symbol;
+
+            return contract;
+        }
 
         contract = new Contract {NAME = name, Chain = chain, HASH = hash, SYMBOL = symbol};
 

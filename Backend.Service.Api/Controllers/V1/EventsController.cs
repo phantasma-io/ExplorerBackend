@@ -16,6 +16,7 @@ public class EventsController : BaseControllerV1
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="chain" example="main">Chain name</param>
     /// <param name="contract" example="SOUL">Token contract hash</param>
     /// <param name="token_id">Token ID</param>
@@ -28,6 +29,7 @@ public class EventsController : BaseControllerV1
     /// <param name="nft_description_partial">Nft description (partial match))</param>
     /// <param name="address">Address (Hash)</param>
     /// <param name="address_partial">Address (partial match) (Hash)</param>
+    /// <param name="q" example="config">general search: event kind partial, tx/block hash exact or partial, block height or address</param>
     /// <param name="block_hash"><a href='#model-Backend.Service.Api.Block'>Block</a> hash</param>
     /// <param name="block_height">height of the <a href='#model-Backend.Service.Api.Block'>Block</a></param>
     /// <param name="transaction_hash"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash</param>
@@ -53,6 +55,7 @@ public class EventsController : BaseControllerV1
         [FromQuery] string order_direction = "asc",
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
+        [FromQuery] string cursor = "",
         [FromQuery] string chain = "main",
         [FromQuery] string contract = "",
         [FromQuery] string token_id = "",
@@ -65,6 +68,7 @@ public class EventsController : BaseControllerV1
         [FromQuery] string nft_description_partial = "",
         [FromQuery] string address = "",
         [FromQuery] string address_partial = "",
+        [FromQuery] string q = "",
         [FromQuery] string block_hash = "",
         [FromQuery] string block_height = "",
         [FromQuery] string transaction_hash = "",
@@ -84,6 +88,7 @@ public class EventsController : BaseControllerV1
             order_direction,
             offset,
             limit,
+            cursor,
             chain,
             contract,
             token_id,
@@ -96,6 +101,7 @@ public class EventsController : BaseControllerV1
             nft_description_partial,
             address,
             address_partial,
+            q,
             block_hash,
             block_height,
             transaction_hash,

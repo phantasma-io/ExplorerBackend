@@ -45,4 +45,28 @@ public class EventKindsController : BaseControllerV1
             chain,
             with_total);
     }
+
+    /// <summary>
+    ///     Returns the Event Kinds which have events stored in database.
+    /// </summary>
+    /// <remarks>
+    ///     <a href='#model-Backend.Service.Api.EventKindResult'>EventKindResult</a>
+    /// </remarks>
+    /// <param name="chain" example="main">Chain name</param>
+    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
+    /// <response code="200">Success</response>
+    /// <response code="400">Bad Request</response>
+    /// <response code="500">Internal Server Error</response>
+    [HttpGet("eventKindsWithEvents")]
+    [ApiInfo(typeof(EventKindResult), "Returns event kinds that have events on the chain", cacheDuration: 30,
+        cacheTag: "eventKindsWithEvents")]
+    public Task<EventKindResult> GetAvailableEventKinds(
+        // ReSharper disable InconsistentNaming
+        [FromQuery] string chain = "main",
+        [FromQuery] int with_total = 0
+        // ReSharper enable InconsistentNaming
+    )
+    {
+        return GetEventKindsWithEvents.Execute(chain, with_total);
+    }
 }

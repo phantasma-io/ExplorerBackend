@@ -302,4 +302,10 @@ public static class ArgValidation
     {
         return Regex.IsMatch(value, @"^[a-zA-Z0-9,_: ]+$");
     }
+
+
+    public static bool CheckGeneralSearch(string value)
+    {
+        return Regex.IsMatch(value, @"^[A-Za-z0-9:_\- ]+$") && value.Length <= 128;
+    }
 }

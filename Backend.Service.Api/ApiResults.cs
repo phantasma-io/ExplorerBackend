@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
@@ -24,17 +25,17 @@ public class NftMetadata
     /// <summary>
     ///     URL to the Image
     /// </summary>
-    public string? image { get; set; }
+    public string? imageURL { get; set; }
 
     /// <summary>
     ///     URL to the Video
     /// </summary>
-    public string? video { get; set; }
+    public string? videoURL { get; set; }
 
     /// <summary>
     ///     Url to the Information of the Image/Video
     /// </summary>
-    public string? info_url { get; set; }
+    public string? infoURL { get; set; }
 
     /// <summary>
     ///     Data written into ROM
@@ -55,6 +56,11 @@ public class NftMetadata
     ///     Number of the minted NFT
     /// </summary>
     public string? mint_number { get; set; }
+
+    /// <summary>
+    ///     All metadata fields as received from chain
+    /// </summary>
+    public Dictionary<string, string>? metadata { get; set; }
 }
 
 /// <summary>
@@ -208,6 +214,11 @@ public class Series
     /// </summary>
     /// <example>1920x1080</example>
     public string? attr_value_3 { get; set; }
+
+    /// <summary>
+    ///     All metadata fields as received from chain
+    /// </summary>
+    public Dictionary<string, string>? metadata { get; set; }
 }
 
 /// <summary>
@@ -294,7 +305,7 @@ public class Nft
 /// <summary>
 ///     Result List of NFTs
 /// </summary>
-public class NftsResult
+public class NftsResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found assets
@@ -344,6 +355,16 @@ public class Event
     public string? token_id { get; set; }
 
     /// <summary>
+    ///     Raw payload json representation of the event (as stored).
+    /// </summary>
+    public string? payload_json { get; set; }
+
+    /// <summary>
+    ///     Raw data bytes/string of the event (chain payload), may be null.
+    /// </summary>
+    public string? raw_data { get; set; }
+
+    /// <summary>
     ///     Kind of the Event, Valid values at eventkinds
     /// </summary>
     public string? event_kind { get; set; }
@@ -389,6 +410,21 @@ public class Event
     public GasEvent? gas_event { get; set; }
 
     /// <summary>
+    ///     EventKind GovernanceSetGasConfig
+    /// </summary>
+    public GovernanceGasConfigEvent? governance_gas_config_event { get; set; }
+
+    /// <summary>
+    ///     EventKind GovernanceSetChainConfig
+    /// </summary>
+    public GovernanceChainConfigEvent? governance_chain_config_event { get; set; }
+
+    /// <summary>
+    ///     EventKind SpecialResolution
+    /// </summary>
+    public SpecialResolutionEvent? special_resolution_event { get; set; }
+
+    /// <summary>
     ///     EventKinds FileCreate or FileDelete
     /// </summary>
     public HashEvent? hash_event { get; set; }
@@ -420,9 +456,24 @@ public class Event
     public StringEvent? string_event { get; set; }
 
     /// <summary>
+    ///     Unknown or not-yet-supported event payload (raw passthrough).
+    /// </summary>
+    public UnknownEvent? unknown_event { get; set; }
+
+    /// <summary>
     ///     EventKinds TokenMint, TokenClaim, TokenBurn, TokenSend, TokenReceive, TokenStake, CrownRewards or Inflation
     /// </summary>
     public TokenEvent? token_event { get; set; }
+
+    /// <summary>
+    ///     EventKind TokenCreate
+    /// </summary>
+    public TokenCreateEvent? token_create_event { get; set; }
+
+    /// <summary>
+    ///     EventKind TokenSeriesCreate
+    /// </summary>
+    public TokenSeriesEvent? token_series_event { get; set; }
 
     /// <summary>
     ///     EventKinds ChainSwap
@@ -433,7 +484,7 @@ public class Event
 /// <summary>
 ///     Result Events
 /// </summary>
-public class EventsResult
+public class EventsResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found events
@@ -449,7 +500,7 @@ public class EventsResult
 /// <summary>
 ///     Result Series
 /// </summary>
-public class SeriesResult
+public class SeriesResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found series
@@ -481,7 +532,7 @@ public class Chain
 /// <summary>
 ///     Result Chain
 /// </summary>
-public class ChainResult
+public class ChainResult : PaginatedResult
 {
     /// <summary>
     ///     total number of found chains
@@ -508,7 +559,7 @@ public class EventKind
 /// <summary>
 ///     Event Kind Result
 /// </summary>
-public class EventKindResult
+public class EventKindResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found eventKinds
@@ -580,7 +631,7 @@ public class Address
 /// <summary>
 ///     Address Result
 /// </summary>
-public class AddressResult
+public class AddressResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found addresses
@@ -721,7 +772,7 @@ public class Token
 /// <summary>
 ///     Token Result
 /// </summary>
-public class TokenResult
+public class TokenResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found tokens
@@ -758,6 +809,16 @@ public class Transaction
     ///     index in the Block from the transaction
     /// </summary>
     public int index { get; set; }
+
+    /// <summary>
+    ///     Hash of the previous transaction (navigation helper)
+    /// </summary>
+    public string? previous_hash { get; set; }
+
+    /// <summary>
+    ///     Hash of the next transaction (navigation helper)
+    /// </summary>
+    public string? next_hash { get; set; }
 
     /// <summary>
     ///     unixseconds timestamp in UTC of the transaction
@@ -843,7 +904,7 @@ public class Transaction
 /// <summary>
 ///     Transaction Result
 /// </summary>
-public class TransactionResult
+public class TransactionResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found transactions
@@ -908,7 +969,7 @@ public class Contract
 /// <summary>
 ///     Contract Result
 /// </summary>
-public class ContractResult
+public class ContractResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found contracts
@@ -994,7 +1055,7 @@ public class Organization
 /// <summary>
 ///     Organization Result
 /// </summary>
-public class OrganizationResult
+public class OrganizationResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of organizations
@@ -1053,15 +1114,20 @@ public class Block
     public string? reward { get; set; }
 
     /// <summary>
-    ///     list of transactions
-    /// </summary>
-    public Transaction[]? transactions { get; set; }
+///     list of transactions
+/// </summary>
+public Transaction[]? transactions { get; set; }
+}
+
+public abstract class PaginatedResult
+{
+    public string? next_cursor { get; set; }
 }
 
 /// <summary>
 ///     Block Result
 /// </summary>
-public class BlockResult
+public class BlockResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found Blocks
@@ -1093,7 +1159,7 @@ public class Oracle
 /// <summary>
 ///     Oracle Result
 /// </summary>
-public class OracleResult
+public class OracleResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found Oracles for Block
@@ -1193,7 +1259,7 @@ public class Platform
 /// <summary>
 ///     Platform Result
 /// </summary>
-public class PlatformResult
+public class PlatformResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of platforms
@@ -1262,6 +1328,66 @@ public class GasEvent
     ///     address of the gas event data
     /// </summary>
     public Address? address { get; set; }
+}
+
+/// <summary>
+///     EventKind GovernanceSetGasConfig
+/// </summary>
+public class GovernanceGasConfigEvent
+{
+    public string? version { get; set; }
+    public string? max_name_length { get; set; }
+    public string? max_token_symbol_length { get; set; }
+    public string? fee_shift { get; set; }
+    public string? max_structure_size { get; set; }
+    public string? fee_multiplier { get; set; }
+    public string? gas_token_id { get; set; }
+    public string? data_token_id { get; set; }
+    public string? minimum_gas_offer { get; set; }
+    public string? data_escrow_per_row { get; set; }
+    public string? gas_fee_transfer { get; set; }
+    public string? gas_fee_query { get; set; }
+    public string? gas_fee_create_token_base { get; set; }
+    public string? gas_fee_create_token_symbol { get; set; }
+    public string? gas_fee_create_token_series { get; set; }
+    public string? gas_fee_per_byte { get; set; }
+    public string? gas_fee_register_name { get; set; }
+    public string? gas_burn_ratio_mul { get; set; }
+    public string? gas_burn_ratio_shift { get; set; }
+}
+
+/// <summary>
+///     EventKind GovernanceSetChainConfig
+/// </summary>
+public class GovernanceChainConfigEvent
+{
+    public string? version { get; set; }
+    public string? reserved_1 { get; set; }
+    public string? reserved_2 { get; set; }
+    public string? reserved_3 { get; set; }
+    public string? allowed_tx_types { get; set; }
+    public string? expiry_window { get; set; }
+    public string? block_rate_target { get; set; }
+}
+
+/// <summary>
+///     EventKind SpecialResolution
+/// </summary>
+public class SpecialResolutionEvent
+{
+    public string? resolution_id { get; set; }
+    public string? description { get; set; }
+    public SpecialResolutionCall[]? calls { get; set; }
+}
+
+public class SpecialResolutionCall
+{
+    public uint module_id { get; set; }
+    public string? module { get; set; }
+    public uint method_id { get; set; }
+    public string? method { get; set; }
+    public Dictionary<string, string>? arguments { get; set; }
+    public SpecialResolutionCall[]? calls { get; set; }
 }
 
 /// <summary>
@@ -1392,6 +1518,104 @@ public class StringEvent
 }
 
 /// <summary>
+///     Fallback for unsupported event kinds.
+/// </summary>
+public class UnknownEvent
+{
+    /// <summary>
+    ///     Raw payload json (if available).
+    /// </summary>
+    public string? payload_json { get; set; }
+
+    /// <summary>
+    ///     Raw data bytes/string (chain payload).
+    /// </summary>
+    public string? raw_data { get; set; }
+}
+
+/// <summary>
+///     EventKind TokenCreate
+/// </summary>
+public class TokenCreateEvent
+{
+    /// <summary>
+    ///     Token
+    /// </summary>
+    public Token? token { get; set; }
+
+    /// <summary>
+    ///     Maximum total supply (0 means unlimited)
+    /// </summary>
+    public string? max_supply { get; set; }
+
+    /// <summary>
+    ///     Number of decimals
+    /// </summary>
+    public string? decimals { get; set; }
+
+    /// <summary>
+    ///     Indicates whether the token is non-fungible
+    /// </summary>
+    public bool? is_non_fungible { get; set; }
+
+    /// <summary>
+    ///     Carbon token identifier
+    /// </summary>
+    public string? carbon_token_id { get; set; }
+
+    /// <summary>
+    ///     Token metadata
+    /// </summary>
+    public Dictionary<string, string>? metadata { get; set; }
+}
+
+/// <summary>
+///     EventKind TokenSeriesCreate
+/// </summary>
+public class TokenSeriesEvent
+{
+    /// <summary>
+    ///     Token
+    /// </summary>
+    public Token? token { get; set; }
+
+    /// <summary>
+    ///     Series identifier
+    /// </summary>
+    public string? series_id { get; set; }
+
+    /// <summary>
+    ///     Maximum number of NFTs per mint (if defined)
+    /// </summary>
+    public string? max_mint { get; set; }
+
+    /// <summary>
+    ///     Maximum total supply (0 means unlimited)
+    /// </summary>
+    public string? max_supply { get; set; }
+
+    /// <summary>
+    ///     Carbon token identifier
+    /// </summary>
+    public string? carbon_token_id { get; set; }
+
+    /// <summary>
+    ///     Carbon series identifier
+    /// </summary>
+    public string? carbon_series_id { get; set; }
+
+    /// <summary>
+    ///     Series owner
+    /// </summary>
+    public Address? owner { get; set; }
+
+    /// <summary>
+    ///     Raw metadata values emitted with the series
+    /// </summary>
+    public Dictionary<string, string>? metadata { get; set; }
+}
+
+/// <summary>
 ///     EventKinds TokenMint, TokenClaim, TokenBurn, TokenSend, TokenReceive, TokenStake, CrownRewards or Inflation
 /// </summary>
 public class TokenEvent
@@ -1497,7 +1721,7 @@ public class HistoryPrice
 /// <summary>
 ///     History Price Result
 /// </summary>
-public class HistoryPriceResult
+public class HistoryPriceResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of history prices
@@ -1602,7 +1826,7 @@ public class ValidatorKind
 /// <summary>
 ///     Validator Kind Result
 /// </summary>
-public class ValidatorKindResult
+public class ValidatorKindResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found validator kinds
@@ -1634,7 +1858,7 @@ public class ContractMethodHistory
 /// <summary>
 ///     Contract Method History Result
 /// </summary>
-public class ContractMethodHistoryResult
+public class ContractMethodHistoryResult : PaginatedResult
 {
     /// <summary>
     ///     Total number of found contracts

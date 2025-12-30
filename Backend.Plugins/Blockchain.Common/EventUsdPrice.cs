@@ -4,6 +4,8 @@ using System.Linq;
 using Backend.PluginEngine;
 using Database.Main;
 using Serilog;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Backend.Blockchain;
 
@@ -11,6 +13,28 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
 {
     // Max events to be processed during one call.
     private const int MaxEventUsdPricesProcessedPerSession = 1000;
+    private static readonly JsonSerializerOptions PayloadJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private sealed class MarketEventPayload
+    {
+        [JsonPropertyName("market_event")]
+        public MarketEventData MarketEvent { get; set; }
+    }
+
+    private sealed class MarketEventData
+    {
+        [JsonPropertyName("quote_token")]
+        public string QuoteToken { get; set; }
+
+        [JsonPropertyName("price")]
+        public string Price { get; set; }
+
+        [JsonPropertyName("end_price")]
+        public string EndPrice { get; set; }
+    }
 
 
     private void EventUsdPricesFill()
@@ -23,45 +47,69 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
         {
             var tokenPrices = TokenMethods.GetPrices(databaseContext, "USD");
 
-            // Fill events with uninitialized USD price.
-            // Here we do not refresh older prices, just fill empty ones.
+            var marketKinds = new[]
+            {
+                "OrderCancelled",
+                "OrderClosed",
+                "OrderCreated",
+                "OrderFilled",
+                "OrderBid"
+            };
 
-            var eventTimeStart = DateTime.Now;
+            var loadStart = DateTime.Now;
 
-            //never processed
-            var eventsFirst = databaseContext.MarketEvents.Where(x =>
-                    !databaseContext.MarketEventFiatPrices.Any(y => y.MarketEventId == x.ID))
-                .OrderBy(x => x.Event.ID).Take(MaxEventUsdPricesProcessedPerSession).ToList();
+            var events = databaseContext.Events
+                .Where(e => marketKinds.Contains(e.EventKind.NAME))
+                .Where(e => e.MarketEvent != null &&
+                            ( e.MarketEvent.MarketEventFiatPrice == null ||
+                              e.MarketEvent.MarketEventFiatPrice.PRICE_USD == 0 ||
+                              e.MarketEvent.MarketEventFiatPrice.PRICE_END_USD == 0 ))
+                .OrderBy(e => e.ID)
+                .Take(MaxEventUsdPricesProcessedPerSession)
+                .Select(e => new
+                {
+                    Event = e,
+                    Chain = e.Chain
+                })
+                .ToList();
 
-            //now get the events we never had
-            //at least processed once
-            var leftToTake = MaxEventUsdPricesProcessedPerSession - eventsFirst.Count;
-            var eventsNoPrice = new List<MarketEvent>();
-            if ( leftToTake > 0 )
-                eventsNoPrice = databaseContext.MarketEvents.Where(x =>
-                        x.MarketEventFiatPrice.PRICE_USD == 0 || x.MarketEventFiatPrice.PRICE_END_USD == 0)
-                    .OrderBy(x => x.Event.ID).Take(leftToTake).ToList();
+            var eventIds = events.Select(x => x.Event.ID).ToList();
+            var marketEventsByEventId = databaseContext.MarketEvents
+                .Where(x => eventIds.Contains(x.EventId))
+                .ToDictionary(x => x.EventId, x => x);
 
-            var events = eventsFirst.Concat(eventsNoPrice).ToList();
-
-            var eventTimeEnd = DateTime.Now - eventTimeStart;
+            var eventTimeEnd = DateTime.Now - loadStart;
             Log.Verbose(
-                "Got {Count} Events loaded, First Timers {First}, Rechecking {Recheck}, processed in {Time} sec",
-                events.Count, eventsFirst.Count, eventsNoPrice.Count, Math.Round(eventTimeEnd.TotalSeconds, 3));
+                "Got {Count} market events for pricing in {Time} sec",
+                events.Count, Math.Round(eventTimeEnd.TotalSeconds, 3));
 
-            foreach ( var marketEvent in events )
+            foreach ( var evt in events )
+            {
+                if ( !marketEventsByEventId.TryGetValue(evt.Event.ID, out var marketEvent) )
+                    continue;
+
+                var marketPayload = ParseMarketPayload(evt.Event.PAYLOAD_JSON);
+                if ( marketPayload == null || string.IsNullOrEmpty(marketPayload.QuoteToken) )
+                    continue;
+
                 try
                 {
-                    MarketEventFiatPriceMethods.Upsert(databaseContext, marketEvent,
-                        GetSymbolPrice(databaseContext, marketEvent, tokenPrices, false),
-                        GetSymbolPrice(databaseContext, marketEvent, tokenPrices, true));
+                    var priceUsd = GetSymbolPrice(databaseContext, evt.Chain, evt.Event.DATE_UNIX_SECONDS,
+                        marketPayload.QuoteToken, marketPayload.Price, tokenPrices);
+                    var endPriceUsd = GetSymbolPrice(databaseContext, evt.Chain, evt.Event.DATE_UNIX_SECONDS,
+                        marketPayload.QuoteToken, marketPayload.EndPrice, tokenPrices);
 
+                    if ( priceUsd == 0 && endPriceUsd == 0 ) continue;
+
+                    MarketEventFiatPriceMethods.Upsert(databaseContext, marketEvent, priceUsd, endPriceUsd);
                     pricesProcessed++;
                 }
                 catch
                 {
-                    Log.Warning("Event USD price can't be calculated using token price '{Price}'", marketEvent.PRICE);
+                    Log.Warning("Event USD price can't be calculated using token price '{Price}'",
+                        marketPayload.Price);
                 }
+            }
 
             if ( pricesProcessed > 0 ) databaseContext.SaveChanges();
         }
@@ -76,17 +124,34 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
     }
 
 
-    private static decimal GetSymbolPrice(MainDbContext databaseContext, MarketEvent marketEvent,
-        IEnumerable<TokenMethods.TokenPrice> tokenPrices, bool endPrice)
+    private static MarketEventData ParseMarketPayload(string payloadJson)
     {
-        var toCalculate = endPrice ? marketEvent.END_PRICE : marketEvent.PRICE;
+        if ( string.IsNullOrWhiteSpace(payloadJson) )
+            return null;
 
-        // TODO async
-        var price = TokenDailyPricesMethods.CalculateAsync(databaseContext, marketEvent.Event.Chain,
-            marketEvent.Event.DATE_UNIX_SECONDS, marketEvent.QuoteToken.SYMBOL, toCalculate).Result;
+        try
+        {
+            return JsonSerializer.Deserialize<MarketEventPayload>(payloadJson, PayloadJsonOptions)?.MarketEvent;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+
+    private static decimal GetSymbolPrice(MainDbContext databaseContext, Chain chain,
+        long dateUnixSeconds, string quoteTokenSymbol, string priceRaw,
+        IEnumerable<TokenMethods.TokenPrice> tokenPrices)
+    {
+        if ( chain == null || string.IsNullOrEmpty(quoteTokenSymbol) || string.IsNullOrEmpty(priceRaw) )
+            return 0;
+
+        var price = TokenDailyPricesMethods.CalculateAsync(databaseContext, chain,
+            dateUnixSeconds, quoteTokenSymbol, priceRaw).Result;
 
         if ( price == 0 )
-            price = ( decimal ) TokenMethods.CalculatePrice(tokenPrices, toCalculate, marketEvent.QuoteToken.SYMBOL);
+            price = ( decimal ) TokenMethods.CalculatePrice(tokenPrices, priceRaw, quoteTokenSymbol);
 
         return price;
     }

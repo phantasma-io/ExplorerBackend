@@ -18,7 +18,7 @@ namespace Database.Main.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.2")
+                .HasAnnotation("ProductVersion", "9.0.11")
                 .HasAnnotation("Proxies:ChangeTracking", false)
                 .HasAnnotation("Proxies:CheckEquality", false)
                 .HasAnnotation("Proxies:LazyLoading", true)
@@ -222,7 +222,14 @@ namespace Database.Main.Migrations
                     b.HasIndex("ChainAddressId");
 
                     b.HasIndex("HASH")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_Search_Blocks_Hash_trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("HASH"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("HASH"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("HEIGHT")
+                        .HasDatabaseName("IX_Search_Blocks_Height");
 
                     b.HasIndex("TIMESTAMP_UNIX_SECONDS");
 
@@ -429,6 +436,15 @@ namespace Database.Main.Migrations
                     b.Property<int?>("NftId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("PAYLOAD_FORMAT")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PAYLOAD_JSON")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("RAW_DATA")
+                        .HasColumnType("text");
+
                     b.Property<long>("TIMESTAMP_UNIX_SECONDS")
                         .HasColumnType("bigint");
 
@@ -462,6 +478,9 @@ namespace Database.Main.Migrations
                     b.HasIndex("BURNED", "EventKindId");
 
                     b.HasIndex("ContractId", "TOKEN_ID");
+
+                    b.HasIndex("EventKindId", "ChainId", "TIMESTAMP_UNIX_SECONDS", "ID")
+                        .HasDatabaseName("IX_Events_EventKind_Chain_Timestamp_Id");
 
                     b.ToTable("Events");
                 });
@@ -831,6 +850,9 @@ namespace Database.Main.Migrations
 
                     b.Property<int?>("InfusedIntoId")
                         .HasColumnType("integer");
+
+                    b.Property<JsonDocument>("METADATA")
+                        .HasColumnType("jsonb");
 
                     b.Property<bool?>("METADATA_UPDATE")
                         .HasColumnType("boolean");
@@ -1219,6 +1241,9 @@ namespace Database.Main.Migrations
                     b.Property<int>("MAX_SUPPLY")
                         .HasColumnType("integer");
 
+                    b.Property<JsonDocument>("METADATA")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("NAME")
                         .HasColumnType("text");
 
@@ -1355,6 +1380,9 @@ namespace Database.Main.Migrations
 
                     b.Property<string>("BURNED_SUPPLY_RAW")
                         .HasColumnType("text");
+
+                    b.Property<byte[]>("CARBON_TOKEN_SCHEMAS")
+                        .HasColumnType("bytea");
 
                     b.Property<string>("CURRENT_SUPPLY")
                         .HasColumnType("text");
@@ -1575,6 +1603,12 @@ namespace Database.Main.Migrations
                     b.Property<int>("BlockId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CARBON_TX_DATA")
+                        .HasColumnType("text");
+
+                    b.Property<byte?>("CARBON_TX_TYPE")
+                        .HasColumnType("smallint");
+
                     b.Property<long>("EXPIRATION")
                         .HasColumnType("bigint");
 
@@ -1632,7 +1666,11 @@ namespace Database.Main.Migrations
 
                     b.HasIndex("GasTargetId");
 
-                    b.HasIndex("HASH");
+                    b.HasIndex("HASH")
+                        .HasDatabaseName("IX_Search_Transactions_Hash_trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("HASH"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("HASH"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("SenderId");
 

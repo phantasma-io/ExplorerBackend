@@ -177,7 +177,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 "CROWN" => new CrownRom(romBytes),
                 "TTRS" => new DummyRom(romBytes),
-                _ => new CustomRom(romBytes)
+                _ => new CustomRom(romBytes, $"{nft.Contract.SYMBOL}#{nft.TOKEN_ID}")
             };
 
             // Putting all fields from ROM to - ? TODO.
@@ -192,7 +192,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             nft.NAME = GetPropertyValue(properties, "name");
             nft.DESCRIPTION = GetPropertyValue(properties, "description");
-            nft.IMAGE = GetPropertyValue(properties, "imageURL");
+            nft.IMAGE = NormalizeImageUrl(GetPropertyValue(properties, "imageURL"));
             nft.INFO_URL = GetPropertyValue(properties, "infoURL");
 
             // Feeling Series with available information, if needed.
@@ -201,7 +201,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 nft.Series.CreatorAddressId = nft.CreatorAddressId;
                 nft.Series.NAME = nft.NAME;
                 nft.Series.DESCRIPTION = nft.DESCRIPTION;
-                nft.Series.IMAGE = nft.IMAGE;
+                nft.Series.IMAGE = NormalizeImageUrl(nft.IMAGE);
                 nft.Series.ROYALTIES =
                     decimal.TryParse(GetPropertyValue(properties, "royalties"), out var royalties)
                         ? royalties
@@ -219,6 +219,23 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 nft.Series.DM_UNIX_SECONDS = UnixSeconds.Now();
             }
+
+            var metadata = ConvertPropertiesToMetadata(properties);
+            AddIfNotEmpty(metadata, "token_id", nft.TOKEN_ID);
+            AddIfNotEmpty(metadata, "creatorAddress", nft.CreatorAddress?.ADDRESS);
+            AddIfNotEmpty(metadata, "series", series);
+            AddIfNotEmpty(metadata, "rom", nft.ROM);
+            AddIfNotEmpty(metadata, "ram", nft.RAM);
+            AddIfNotEmpty(metadata, "mint", nft.MINT_NUMBER.ToString());
+            AddIfNotEmpty(metadata, "mint_date", nft.MINT_DATE_UNIX_SECONDS > 0
+                ? nft.MINT_DATE_UNIX_SECONDS.ToString()
+                : null);
+            AddIfNotEmpty(metadata, "name", nft.NAME);
+            AddIfNotEmpty(metadata, "description", nft.DESCRIPTION);
+            AddIfNotEmpty(metadata, "imageURL", nft.IMAGE);
+            AddIfNotEmpty(metadata, "infoURL", nft.INFO_URL);
+
+            UpdateNftMetadata(nft, metadata);
 
             updatedNftCount++;
 
@@ -410,7 +427,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         private readonly Dictionary<VMObject, VMObject> _fields = new();
 
 
-        public CustomRom(byte[] romBytes)
+        public CustomRom(byte[] romBytes, string context = null)
         {
             try
             {
@@ -418,12 +435,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if ( rom.Type == VMType.Struct )
                     _fields = ( Dictionary<VMObject, VMObject> ) rom.Data;
                 else
-                    Log.Error("[PHA][CustomRom] Cannot parse ROM");
+                    Log.Warning("[PHA][CustomRom] Cannot parse ROM{Context}", BuildContextSuffix(context));
             }
             catch ( Exception e )
             {
-                Log.Error("[PHA][CustomRom] ROM parsing error: {Exception}", e.Message);
+                Log.Warning("[PHA][CustomRom] ROM parsing failed{Context}: {Exception}", BuildContextSuffix(context),
+                    e.Message);
             }
+        }
+
+        private static string BuildContextSuffix(string context)
+        {
+            return string.IsNullOrWhiteSpace(context) ? string.Empty : $" for {context}";
         }
 
 

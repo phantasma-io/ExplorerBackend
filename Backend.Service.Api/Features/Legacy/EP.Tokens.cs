@@ -22,6 +22,7 @@ public static class GetTokens
         int offset = 0,
         int limit = 50,
         string symbol = "",
+        string q = "",
         string chain = "main",
         int with_price = 0,
         int with_creation_event = 0,
@@ -32,6 +33,7 @@ public static class GetTokens
     {
         long totalResults = 0;
         Token[] tokenArray;
+        var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
         {
@@ -50,12 +52,24 @@ public static class GetTokens
             if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
+            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+                throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
             if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Tokens.AsQueryable().AsNoTracking();
+
+            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+
+            if ( !string.IsNullOrEmpty(qUpper) )
+            {
+                query = query.Where(x =>
+                    EF.Functions.ILike(x.SYMBOL, $"%{qTrimmed}%") ||
+                    EF.Functions.ILike(x.NAME, $"%{qTrimmed}%"));
+            }
 
             if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol.ToUpper());
 
@@ -127,12 +141,7 @@ public static class GetTokens
                             hash = x.CreateEvent.Contract.HASH,
                             symbol = x.CreateEvent.Contract.SYMBOL
                         },
-                        string_event = x.CreateEvent.StringEvent != null
-                            ? new StringEvent
-                            {
-                                string_value = x.CreateEvent.StringEvent.STRING_VALUE
-                            }
-                            : null
+                        string_event = EventPayloadMapper.ParseStringEvent(x.CreateEvent.PAYLOAD_JSON)
                     }
                     : null,
                 token_logos = with_logo == 1 && x.TokenLogos != null

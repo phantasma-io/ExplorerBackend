@@ -25,6 +25,7 @@ public static class GetOrganizations
         string organization_id_partial = "",
         string organization_name = "",
         string organization_name_partial = "",
+        string q = "",
         int with_creation_event = 0,
         int with_address = 0,
         int with_total = 0
@@ -33,6 +34,7 @@ public static class GetOrganizations
     {
         long totalResults = 0;
         Organization[] organizationArray;
+        var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
         {
@@ -62,9 +64,21 @@ public static class GetOrganizations
                  !ArgValidation.CheckString(organization_name_partial) )
                 throw new ApiParameterException("Unsupported value for 'organization_name_partial' parameter.");
 
+            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+                throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Organizations.AsQueryable().AsNoTracking();
+
+            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+
+            if ( !string.IsNullOrEmpty(qUpper) )
+                query = query.Where(x =>
+                    EF.Functions.ILike(x.ORGANIZATION_ID, $"%{qTrimmed}%") ||
+                    EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ||
+                    ( x.ADDRESS != null && EF.Functions.ILike(x.ADDRESS, $"%{qTrimmed}%") ) ||
+                    ( x.ADDRESS_NAME != null && EF.Functions.ILike(x.ADDRESS_NAME, $"%{qTrimmed}%") ));
 
             if ( !string.IsNullOrEmpty(organization_id) )
                 query = query.Where(x => x.ORGANIZATION_ID == organization_id);
@@ -121,12 +135,7 @@ public static class GetOrganizations
                             hash = x.CreateEvent.Contract.HASH,
                             symbol = x.CreateEvent.Contract.SYMBOL
                         },
-                        string_event = x.CreateEvent.StringEvent != null
-                            ? new StringEvent
-                            {
-                                string_value = x.CreateEvent.StringEvent.STRING_VALUE
-                            }
-                            : null
+                        string_event = EventPayloadMapper.ParseStringEvent(x.CreateEvent.PAYLOAD_JSON)
                     }
                     : null,
                 address = with_address == 1 && x.ADDRESS != null && x.ADDRESS_NAME != null

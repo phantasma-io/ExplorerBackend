@@ -16,9 +16,11 @@ public class TransactionsController : BaseControllerV1
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="hash"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash</param>
     /// <param name="hash_partial"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash (partial match)</param>
     /// <param name="address">Address (Hash)</param>
+    /// <param name="q" example="12345">general search: block height, tx/block hash exact (hex length &gt;=64), hash partial or address</param>
     /// <param name="date_less">Date (greater than), UTC unixseconds</param>
     /// <param name="date_greater">Date (greater than), UTC unixseconds</param>
     /// <param name="block_hash"><a href='#model-Backend.Service.Api.Block'>Block</a> hash</param>
@@ -32,6 +34,7 @@ public class TransactionsController : BaseControllerV1
     ///     <a href='#model-Backend.Service.Api.MarketEvent'>market_event</a>)
     /// </param>
     /// <param name="with_script" example="0">Return with script data</param>
+    /// <param name="with_neighbors" example="0">Return hashes for previous/next transactions for navigation</param>
     /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
@@ -44,9 +47,11 @@ public class TransactionsController : BaseControllerV1
         [FromQuery] string order_direction = "asc",
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
+        [FromQuery] string cursor = "",
         [FromQuery] string hash = "",
         [FromQuery] string hash_partial = "",
         [FromQuery] string address = "",
+        [FromQuery] string q = "",
         [FromQuery] string date_less = "",
         [FromQuery] string date_greater = "",
         [FromQuery] string block_hash = "",
@@ -57,6 +62,7 @@ public class TransactionsController : BaseControllerV1
         [FromQuery] int with_event_data = 0,
         [FromQuery] int with_fiat = 0,
         [FromQuery] int with_script = 0,
+        [FromQuery] int with_neighbors = 0,
         [FromQuery] int with_total = 0
         // ReSharper enable InconsistentNaming
     )
@@ -66,9 +72,11 @@ public class TransactionsController : BaseControllerV1
             order_direction,
             offset,
             limit,
+            cursor,
             hash,
             hash_partial,
             address,
+            q,
             date_less,
             date_greater,
             block_hash,
@@ -79,6 +87,7 @@ public class TransactionsController : BaseControllerV1
             with_event_data,
             with_fiat,
             with_script,
+            with_neighbors,
             with_total);
     }
 }

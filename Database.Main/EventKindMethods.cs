@@ -9,8 +9,57 @@ namespace Database.Main;
 
 public static class EventKindMethods
 {
+    private static bool _sequenceAligned = false;
+
+    private static void EnsureSequence(MainDbContext dbContext)
+    {
+        if (_sequenceAligned)
+        {
+            return;
+        }
+
+        // Align serial/identity sequence with current max(ID) to avoid duplicate key errors
+        const string sql =
+            "SELECT setval(pg_get_serial_sequence('\"EventKinds\"','ID'), COALESCE(MAX(\"ID\"),0)+1, false) FROM \"EventKinds\";";
+        dbContext.Database.ExecuteSqlRaw(sql);
+
+        _sequenceAligned = true;
+    }
+
+    public static Task<List<string>> GetAvailableEventKindNamesAsync(MainDbContext dbContext, string chainName, bool onlyWithEvents = false)
+    {
+        var query = dbContext.EventKinds.AsNoTracking();
+
+        if ( !string.IsNullOrEmpty(chainName) )
+            query = query.Where(x => x.Chain.NAME == chainName);
+
+        if ( onlyWithEvents )
+            query = query.Where(x => x.Events.Any());
+
+        return query.Select(x => x.NAME).Distinct().OrderBy(x => x).ToListAsync();
+    }
+
+    public static async Task<Dictionary<string, int>> GetAvailableEventKindIdsAsync(MainDbContext dbContext,
+        int? chainId,
+        bool onlyWithEvents = false)
+    {
+        var query = dbContext.EventKinds.AsNoTracking();
+
+        if ( chainId.HasValue )
+            query = query.Where(x => x.ChainId == chainId.Value);
+
+        if ( onlyWithEvents )
+            query = query.Where(x => x.Events.Any());
+
+        var eventKinds = await query.Select(x => new {x.NAME, x.ID}).ToListAsync();
+
+        return eventKinds.ToDictionary(x => x.NAME, x => x.ID, StringComparer.OrdinalIgnoreCase);
+    }
+
     public static async Task UpsertAllAsync(MainDbContext dbContext, Chain chain)
     {
+        EnsureSequence(dbContext);
+
         foreach (var kind in Enum.GetValues<PhantasmaPhoenix.Protocol.EventKind>())
         {
             if (!dbContext.EventKinds.Any(e => e.Chain.ID == chain.ID && e.NAME == kind.ToString()))

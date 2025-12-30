@@ -78,7 +78,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 StartupBlockSync(chain.NAME);
                 StartupRomRamSync(chain);
                 StartupSeriesSync(chain);
-                StartupInfusionSync(chain);
                 StartupContractSync(chain);
                 StartupContractMethodsSync(chain);
             }
@@ -220,29 +219,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
         });
         seriesSyncThread.Start();
-    }
-
-
-    private void StartupInfusionSync(Chain chain)
-    {
-        Thread infusionsSyncThread = new(() =>
-        {
-            while ( _running )
-                try
-                {
-                    ProcessInfusionEvents(chain.ID);
-
-                    Thread.Sleep(Settings.Default.InfusionsProcessingInterval *
-                                 1000); // We process infusion events every InfusionsProcessingInterval seconds
-                }
-                catch ( Exception e )
-                {
-                    LogEx.Exception("Infusions processing", e);
-
-                    Thread.Sleep(Settings.Default.InfusionsProcessingInterval * 1000);
-                }
-        });
-        infusionsSyncThread.Start();
     }
 
     private void StartupContractSync(Chain chain)

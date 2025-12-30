@@ -20,6 +20,7 @@ public class OrganizationsController : BaseControllerV1
     /// <param name="organization_id_partial" example="valid">Organization id (partial)</param>
     /// <param name="organization_name" example="Block Producers">Organization Name</param>
     /// <param name="organization_name_partial" example="Block Pro">Organization Name (partial)</param>
+    /// <param name="q" example="Block">Universal search filter</param>
     /// <param name="with_creation_event" example="0">Return data with <a href='#model-Backend.Service.Api.Event'>Event</a> of the creation</param>
     /// <param name="with_address" example="0">Return data with <a href='#model-Backend.Service.Api.Address'>Event</a> of the creation</param>
     /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
@@ -38,6 +39,7 @@ public class OrganizationsController : BaseControllerV1
         [FromQuery] string organization_id_partial = "",
         [FromQuery] string organization_name = "",
         [FromQuery] string organization_name_partial = "",
+        [FromQuery] string q = "",
         [FromQuery] int with_creation_event = 0,
         [FromQuery] int with_address = 0,
         [FromQuery] int with_total = 0
@@ -53,6 +55,7 @@ public class OrganizationsController : BaseControllerV1
             organization_id_partial,
             organization_name,
             organization_name_partial,
+            q,
             with_creation_event,
             with_address,
             with_total);

@@ -22,7 +22,7 @@ public static class TokenMethods
         int decimals, bool fungible, bool transferable, bool finite, bool divisible, bool fuel, bool stakable,
         bool fiat, bool swappable, bool burnable, bool mintable, string address, string owner, string currentSupply,
         string maxSupply,
-        string burnedSupply, string scriptRaw)
+        string burnedSupply, string scriptRaw, byte[] carbonTokenSchemas = null)
     {
         var contractEntry = await ContractMethods.UpsertAsync(databaseContext, symbol, chain, contractHash, symbol);
 
@@ -50,6 +50,12 @@ public static class TokenMethods
             entry.Address = addressEntry;
             entry.Owner = ownerEntry;
             entry.SCRIPT_RAW = scriptRaw;
+            if ( carbonTokenSchemas is {Length: > 0} &&
+                 ( entry.CARBON_TOKEN_SCHEMAS == null ||
+                   !entry.CARBON_TOKEN_SCHEMAS.SequenceEqual(carbonTokenSchemas) ) )
+            {
+                entry.CARBON_TOKEN_SCHEMAS = carbonTokenSchemas;
+            }
         }
         else
         {
@@ -72,7 +78,8 @@ public static class TokenMethods
                 MINTABLE = mintable,
                 Address = addressEntry,
                 Owner = ownerEntry,
-                SCRIPT_RAW = scriptRaw
+                SCRIPT_RAW = scriptRaw,
+                CARBON_TOKEN_SCHEMAS = carbonTokenSchemas
             };
             await databaseContext.Tokens.AddAsync(entry);
         }
@@ -346,7 +353,6 @@ public static class TokenMethods
         soulToken ??= GetAsync(databaseContext, chain, "SOUL").Result;
         return soulToken.DECIMALS;
     }
-
 
     // Used in methods below as an argument. Stores symbol information.
     public class Symbol

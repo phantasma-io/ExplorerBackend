@@ -7,6 +7,7 @@ using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 // Here we have all tables, fields and their relations for backend database.
 // Also public method GetConnectionString() available, allowing to get database connection string,
@@ -144,7 +145,8 @@ public class MainDbContext : DbContext
             optionsAction =>
             {
                 // optionsAction.EnableRetryOnFailure();
-                optionsAction.CommandTimeout(( int ) TimeSpan.FromMinutes(10).TotalSeconds);
+                // 0 = infinite; needed for long-running migrations/backfills.
+                optionsAction.CommandTimeout(0);
             });
     }
 
@@ -226,6 +228,16 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.HASH)
             .IsUnique();
 
+        modelBuilder.Entity<Block>()
+            .HasIndex(x => x.HASH)
+            .HasDatabaseName("IX_Search_Blocks_Hash_trgm")
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
+
+        modelBuilder.Entity<Block>()
+            .HasIndex(x => x.HEIGHT)
+            .HasDatabaseName("IX_Search_Blocks_Height");
+
         //////////////////////
         // Transaction
         //////////////////////
@@ -266,6 +278,12 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => new {x.HASH});
+
+        modelBuilder.Entity<Transaction>()
+            .HasIndex(x => x.HASH)
+            .HasDatabaseName("IX_Search_Transactions_Hash_trgm")
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
 
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => new {x.TIMESTAMP_UNIX_SECONDS});
@@ -461,10 +479,21 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.DATE_UNIX_SECONDS);
 
         modelBuilder.Entity<Event>()
+            .HasIndex(x => x.EventKindId);
+
+        modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.ContractId, x.TOKEN_ID});
 
         modelBuilder.Entity<Event>()
             .HasIndex(x => new {x.BURNED, x.EventKindId});
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new {x.EventKindId, x.ChainId, x.TIMESTAMP_UNIX_SECONDS, x.ID})
+            .HasDatabaseName("IX_Events_EventKind_Chain_Timestamp_Id");
+
+        modelBuilder.Entity<Event>()
+            .Property(x => x.PAYLOAD_JSON)
+            .HasColumnType("jsonb");
 
         //////////////////////
         // Token
@@ -1228,6 +1257,8 @@ public class Transaction
     public string GAS_PRICE_RAW { get; set; }
     public string GAS_LIMIT { get; set; }
     public string GAS_LIMIT_RAW { get; set; }
+    public byte? CARBON_TX_TYPE { get; set; }
+    public string CARBON_TX_DATA { get; set; }
     public int SenderId { get; set; }
     public virtual Address Sender { get; set; }
     public int GasPayerId { get; set; }
@@ -1307,6 +1338,9 @@ public class Event
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
     public bool BLACKLISTED { get; set; }
+    public string PAYLOAD_FORMAT { get; set; }
+    public string PAYLOAD_JSON { get; set; }
+    public string RAW_DATA { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public int ChainId { get; set; }
@@ -1361,6 +1395,7 @@ public class Token
     public string BURNED_SUPPLY { get; set; }
     public string BURNED_SUPPLY_RAW { get; set; }
     public string SCRIPT_RAW { get; set; }
+    public byte[] CARBON_TOKEN_SCHEMAS { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
     public int OwnerId { get; set; }
@@ -1440,6 +1475,7 @@ public class Nft
     public int MINT_NUMBER { get; set; }
     public JsonDocument OFFCHAIN_API_RESPONSE { get; set; }
     public JsonDocument CHAIN_API_RESPONSE { get; set; }
+    public JsonDocument METADATA { get; set; }
     public bool? BURNED { get; set; }
     public bool NSFW { get; set; }
     public bool BLACKLISTED { get; set; }
@@ -1494,6 +1530,7 @@ public class Series
     public string ATTR_VALUE_2 { get; set; }
     public string ATTR_TYPE_3 { get; set; }
     public string ATTR_VALUE_3 { get; set; }
+    public JsonDocument METADATA { get; set; }
     public bool HAS_LOCKED { get; set; }
     public bool? NSFW { get; set; }
     public bool? BLACKLISTED { get; set; }
