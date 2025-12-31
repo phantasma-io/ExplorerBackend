@@ -76,6 +76,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 StartupNexusSync(chain);
                 StartupBlockSync(chain.NAME);
+                StartupBalanceSync(chain);
                 StartupRomRamSync(chain);
                 StartupSeriesSync(chain);
                 StartupContractSync(chain);
@@ -153,7 +154,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         {
                             height = Settings.Default.HeightLimit;
                         }
-                        FetchBlocksRange(chainName, currentHeight, height).Wait();
+                        var lag = height - currentHeight;
+                        var allowBalanceSync = lag <= BalanceSyncLagThreshold;
+                        FetchBlocksRange(chainName, currentHeight, height, allowBalanceSync).Wait();
                     }
 
                     Thread.Sleep(Settings.Default.BlocksProcessingInterval *

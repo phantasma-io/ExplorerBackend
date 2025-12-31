@@ -348,6 +348,9 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Address>()
             .HasIndex(x => new {x.ADDRESS, x.ADDRESS_NAME});
 
+        modelBuilder.Entity<Address>()
+            .HasIndex(x => new {x.ChainId, x.BALANCE_DIRTY_BLOCK});
+
         //////////////////////
         // Event
         //////////////////////
@@ -1286,6 +1289,7 @@ public class Address
     public string ADDRESS_NAME { get; set; }
     public string USER_NAME { get; set; }
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
+    public long BALANCE_DIRTY_BLOCK { get; set; }
     public long STAKE_TIMESTAMP { get; set; }
     public string STAKED_AMOUNT { get; set; }
     public string STAKED_AMOUNT_RAW { get; set; }

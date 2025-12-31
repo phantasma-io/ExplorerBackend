@@ -38,6 +38,29 @@ public static class OrganizationAddressMethods
 
         databaseContext.OrganizationAddresses.AddRange(organizationAddressesToInsert);
     }
+
+    public static void SetMembership(MainDbContext databaseContext, Organization organization, Address address,
+        bool shouldBeMember)
+    {
+        if ( organization == null || address == null ) return;
+
+        var existing = databaseContext.OrganizationAddresses
+                           .FirstOrDefault(x => x.OrganizationId == organization.ID && x.AddressId == address.ID) ??
+                       DbHelper.GetTracked<OrganizationAddress>(databaseContext)
+                           .FirstOrDefault(x => x.OrganizationId == organization.ID && x.AddressId == address.ID);
+
+        if ( shouldBeMember )
+        {
+            if ( existing == null )
+                databaseContext.OrganizationAddresses.Add(new OrganizationAddress
+                    {Organization = organization, Address = address});
+        }
+        else
+        {
+            if ( existing != null )
+                databaseContext.OrganizationAddresses.Remove(existing);
+        }
+    }
     
     public static IEnumerable<Organization> GetOrganizationsByAddress(MainDbContext databaseContext, string address)
     {

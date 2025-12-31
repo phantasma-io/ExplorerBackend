@@ -16,6 +16,37 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
+    private static void MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
+        long blockHeight)
+    {
+        if ( addresses == null || addresses.Count == 0 )
+            return;
+
+        var distinct = addresses.Distinct().ToList();
+        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, distinct);
+        if ( addressMap == null )
+            return;
+
+        foreach ( var entry in addressMap.Values )
+        {
+            if ( entry == null )
+                continue;
+
+            if ( entry.BALANCE_DIRTY_BLOCK < blockHeight )
+                entry.BALANCE_DIRTY_BLOCK = blockHeight;
+        }
+    }
+
+    private static Task MarkAllBalancesDirtyAsync(MainDbContext databaseContext, int chainId)
+    {
+        return databaseContext.Database.ExecuteSqlRawAsync(@"
+UPDATE ""Addresses"" a
+SET ""BALANCE_DIRTY_BLOCK"" = CAST(c.""CURRENT_HEIGHT"" AS BIGINT)
+FROM ""Chains"" c
+WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
+", chainId);
+    }
+
     private async Task UpdateAddressesBalancesAsync(MainDbContext databaseContext, Chain chain, List<string> addresses, int updateChunkSize)
     {
         var startTime = DateTime.Now;

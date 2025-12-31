@@ -308,38 +308,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         return null;
     }
 
-    private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight)
+    private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight,
+        bool allowBalanceSync)
     {
         await using ( MainDbContext databaseContext = new() )
         {
-            List<string> addressesForInitialUpdate = [];
             _balanceRefetchDate = await GlobalVariableMethods.GetLongAsync(databaseContext, _balanceRefetchTimestampKey);
             if (_balanceRefetchDate == 0)
             {
-                // Reprocess balances of ALL known addresses
-                // to fix issues
-                addressesForInitialUpdate = databaseContext.Addresses.Select(x => x.ADDRESS).Where(x => x.ToUpper() != "NULL").Distinct().ToList();
-            }
-
-            if (addressesForInitialUpdate.Count() > 0)
-            {
-                Log.Information("[{Name}][Blocks] Starting {Count} INITIAL addresses update",
-                    Name, addressesForInitialUpdate.Count());
-
+                Log.Information("[{Name}][Blocks] Marking all addresses for balance refresh", Name);
                 var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
-                await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesForInitialUpdate,
-                    100);
-
-                if (_balanceRefetchDate == 0)
-                {
-                    // We just finished refetching all balances, saving timestamp
-                    // to the database which will tell us when this process was done.
-                    await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now());
-                }
-
+                await MarkAllBalancesDirtyAsync(databaseContext, chainEntry.ID);
+                await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now(),
+                    false);
                 await databaseContext.SaveChangesAsync();
-
-                Log.Information("[{Name}][Blocks] Finished INITIAL addresses update", Name);
+                Log.Information("[{Name}][Blocks] Finished marking addresses for balance refresh", Name);
             }
         }
 
@@ -357,6 +340,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         
         if ( i < fromHeight ) i = fromHeight;
 
+        var processedAny = false;
         while ( i <= toHeight )
         {
             var fetchPerIteration = BigInteger.Min(FetchBlocksPerIterationMax, toHeight - i + 1);
@@ -366,17 +350,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 i,
                 chainName);
 
+            processedAny = true;
             var startTime = DateTime.Now;
             var blocks = await GetBlockRange(chainName, i, fetchPerIteration);
             var fetchTime = DateTime.Now - startTime;
-            
-            List<string> addressesToUpdate = new();
             
             startTime = DateTime.Now;
             foreach ( var block in blocks )
             {
                 // Log.Information("PROCESSING HEIGHT " + blockHeight);
-                addressesToUpdate.AddRange(await ProcessBlock(block, chainName));
+                await ProcessBlock(block, chainName);
             }
             var processTime = DateTime.Now - startTime;
             
@@ -389,44 +372,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Math.Round(processTime.TotalSeconds, 3),
                 Math.Round(blocks.Count / (fetchTime.TotalSeconds + processTime.TotalSeconds), 2));
             
-            // Updating balances for affected addresses
-            startTime = DateTime.Now;
-            addressesToUpdate = addressesToUpdate.Distinct().ToList();
-            await using ( MainDbContext databaseContext = new() )
+            if ( allowBalanceSync )
             {
-                Log.Information("[{Name}][Blocks] Starting {Count} addresses update",
-                    Name, addressesToUpdate.Count());
-
-                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
-                await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressesToUpdate,
-                    100);
-
-                await databaseContext.SaveChangesAsync();
+                RequestBalanceSync(chainName);
             }
-            processTime = DateTime.Now - startTime;
-            Log.Information("[{Name}][Blocks] {Count} addresses updated for blocks ({From}-{To}) in {ProcessTime} sec. Sync speed: {AddressesPerSecond} addresses per second",
-                Name,
-                addressesToUpdate.Count,
-                i,
-                i + blocks.Count - 1,
-                Math.Round(processTime.TotalSeconds, 3),
-                Math.Round(addressesToUpdate.Count / processTime.TotalSeconds, 2));
-
-            // Updating SM count and stakers count
-            startTime = DateTime.Now;
-            await using ( MainDbContext databaseContext = new() )
-            {
-                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
-                OrganizationMethods.UpdateStakeCounts(databaseContext, chainEntry);
-
-                await databaseContext.SaveChangesAsync();
-            }
-            processTime = DateTime.Now - startTime;
-            Log.Information("[{Name}][Blocks] Updated SM and stakers counts in {ProcessTime} sec",
-                Name,
-                Math.Round(processTime.TotalSeconds, 3));
 
             i += fetchPerIteration;
+        }
+
+        if ( allowBalanceSync && !processedAny )
+        {
+            RequestBalanceSync(chainName);
         }
     }
 
@@ -554,7 +510,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         addresses.Add(address);
     }
     
-    private async Task<List<string>> ProcessBlock(RpcBlockResult block, string chainName)
+    private async Task ProcessBlock(RpcBlockResult block, string chainName)
     {
         var startTime = DateTime.Now;
 
@@ -609,6 +565,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             for (var txIndex = 0; txIndex < block.Txs.Length; txIndex++)
             {
                 var tx = block.Txs[txIndex];
+                AddAddress(ref addressesToUpdate, tx.Sender);
+                AddAddress(ref addressesToUpdate, tx.GasPayer);
+                AddAddress(ref addressesToUpdate, tx.GasTarget);
 
                 var transaction = await TransactionMethods.UpsertAsync(databaseContext, blockEntity, txIndex,
                     tx.Hash, tx.Timestamp,
@@ -1485,9 +1444,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
-        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to reload balances", Name, block.Height,
+        Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to mark dirty", Name, block.Height,
             addressesToUpdate.Count);
 
+        MarkAddressesDirty(databaseContext, chainEntry, addressesToUpdate, (long)block.Height);
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.Height, false);
 
         await databaseContext.SaveChangesAsync();
@@ -1501,6 +1461,5 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 eventsAddedCount, nftsInThisBlock.Count);
         }
         
-        return addressesToUpdate.Distinct().ToList();
     }
 }

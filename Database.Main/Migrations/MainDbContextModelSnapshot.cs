@@ -64,6 +64,9 @@ namespace Database.Main.Migrations
                     b.Property<int>("ChainId")
                         .HasColumnType("integer");
 
+                    b.Property<long>("BALANCE_DIRTY_BLOCK")
+                        .HasColumnType("bigint");
+
                     b.Property<long>("NAME_LAST_UPDATED_UNIX_SECONDS")
                         .HasColumnType("bigint");
 
@@ -107,6 +110,8 @@ namespace Database.Main.Migrations
                         .IsUnique();
 
                     b.HasIndex("ChainId", "NAME_LAST_UPDATED_UNIX_SECONDS");
+
+                    b.HasIndex("ChainId", "BALANCE_DIRTY_BLOCK");
 
                     b.ToTable("Addresses");
                 });

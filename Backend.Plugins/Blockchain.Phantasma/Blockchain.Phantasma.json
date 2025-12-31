@@ -23,6 +23,7 @@
     "romRamProcessingEnabled": true,
     "romRamProcessingInterval": 30,
     "seriesProcessingInterval": 30,
-    "namesSyncInterval": 30
+    "namesSyncInterval": 30,
+    "balanceResyncOnStartup": true
   }
 }
