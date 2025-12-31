@@ -12,6 +12,19 @@ namespace Backend.Api;
 
 public static class Client
 {
+    // Shared client to reuse connections and reduce per-request overhead.
+    private static readonly HttpClient SharedClient = CreateHttpClient();
+
+    private static HttpClient CreateHttpClient()
+    {
+        var httpClient = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan
+        };
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Other");
+        return httpClient;
+    }
+
     public enum RequestType
     {
         Get,
@@ -30,39 +43,35 @@ public static class Client
         for ( var i = 1; i <= max; i++ )
             try
             {
-                using ( HttpClient wc = new() )
+                var effectiveTimeout = timeoutInSeconds > 0 ? timeoutInSeconds : 100;
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(effectiveTimeout));
+
+                var startTime = DateTime.Now;
+                switch ( requestType )
                 {
-                    if ( timeoutInSeconds > 0 ) wc.Timeout = TimeSpan.FromSeconds(timeoutInSeconds);
-
-                    var startTime = DateTime.Now;
-                    switch ( requestType )
+                    case RequestType.Get:
                     {
-                        case RequestType.Get:
-                            var response = wc.GetAsync(url).Result;
-                            using ( var content = response.Content )
-                            {
-                                stringResponse = content.ReadAsStringAsync().Result;
-                            }
-
-                            break;
-                        case RequestType.Post:
-                        {
-                            var content = new StringContent(postString, Encoding.UTF8, "application/json");
-                            var responseContent = wc.PostAsync(url, content).Result.Content;
-                            stringResponse = responseContent.ReadAsStringAsync().Result;
-                            break;
-                        }
-                        default:
-                            throw new Exception("Unknown RequestType");
+                        using var response = SharedClient.GetAsync(url, cts.Token).GetAwaiter().GetResult();
+                        stringResponse = response.Content.ReadAsStringAsync(cts.Token).GetAwaiter().GetResult();
+                        break;
                     }
-
-                    var responseTime = DateTime.Now - startTime;
-
-                    Log.Debug(
-                        "API response\nurl: {Url}\nResponse time: {ResponseTime} sec.{Response}",
-                        url, Math.Round(responseTime.TotalSeconds, 3),
-                        string.IsNullOrEmpty(stringResponse) ? " Empty response" : "");
+                    case RequestType.Post:
+                    {
+                        using var content = new StringContent(postString, Encoding.UTF8, "application/json");
+                        using var response = SharedClient.PostAsync(url, content, cts.Token).GetAwaiter().GetResult();
+                        stringResponse = response.Content.ReadAsStringAsync(cts.Token).GetAwaiter().GetResult();
+                        break;
+                    }
+                    default:
+                        throw new Exception("Unknown RequestType");
                 }
+
+                var responseTime = DateTime.Now - startTime;
+
+                Log.Debug(
+                    "API response\nurl: {Url}\nResponse time: {ResponseTime} sec.{Response}",
+                    url, Math.Round(responseTime.TotalSeconds, 3),
+                    string.IsNullOrEmpty(stringResponse) ? " Empty response" : "");
 
                 if ( string.IsNullOrEmpty(stringResponse) ) return default;
 
@@ -163,11 +172,6 @@ public static class Client
     {
         Log.Debug("[API request]: url: " + url);
 
-        using var httpClient = new HttpClient
-        {
-            Timeout = Timeout.InfiniteTimeSpan
-        };
-
         for (var i = 1; i <= _maxAttempts; i++)
         {
             try
@@ -181,8 +185,8 @@ public static class Client
                 switch (requestType)
                 {
                     case RequestType.Get:
-                        httpClient.DefaultRequestHeaders.Add("User-Agent", "Other");
-                        var response = await httpClient.GetAsync(url, cts.Token);
+                    {
+                        using var response = await SharedClient.GetAsync(url, cts.Token);
                         if (!response.IsSuccessStatusCode)
                         {
                             var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
@@ -200,17 +204,15 @@ public static class Client
                         }
 
                         Log.Debug($"[API request]: header code: {response.StatusCode}");
-                        using (var content = response.Content)
-                        {
-                            stringResponse = await content.ReadAsStringAsync(cts.Token);
-                            Log.Debug($"[API request]: response: {stringResponse}");
-                        }
+                        stringResponse = await response.Content.ReadAsStringAsync(cts.Token);
+                        Log.Debug($"[API request]: response: {stringResponse}");
                         break;
+                    }
                     case RequestType.Post:
                         {
                             if(string.IsNullOrEmpty(postString)) throw new Exception("Empty POST body");
                             var content = new StringContent(postString, Encoding.UTF8, "application/json");
-                            var responsePost = await httpClient.PostAsync(url, content, cts.Token);
+                            using var responsePost = await SharedClient.PostAsync(url, content, cts.Token);
                             if (!responsePost.IsSuccessStatusCode)
                             {
                                 var errorBody = await responsePost.Content.ReadAsStringAsync(cts.Token);
@@ -227,8 +229,7 @@ public static class Client
                                 throw new Exception($"API returned {(int)responsePost.StatusCode} {responsePost.StatusCode}");
                             }
 
-                            var responseContent = responsePost.Content;
-                            stringResponse = await responseContent.ReadAsStringAsync(cts.Token);
+                            stringResponse = await responsePost.Content.ReadAsStringAsync(cts.Token);
                             break;
                         }
                     default:
