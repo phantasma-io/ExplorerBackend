@@ -22,7 +22,7 @@ public static class GetContracts
         public Contract ApiContract { get; init; }
     }
 
-    [ProducesResponseType(typeof(ContractResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ContractResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ContractResult), "Returns the contracts on the backend.", false, 10, cacheTag: "contracts")]
     public static async Task<ContractResult> Execute(
@@ -41,7 +41,7 @@ public static class GetContracts
         int with_token = 0,
         int with_creation_event = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -54,28 +54,28 @@ public static class GetContracts
         {
             #region ArgValidation
 
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+            if (!string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
+            if (!string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash))
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             #endregion
@@ -113,7 +113,7 @@ public static class GetContracts
                     }
                 };
 
-            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
@@ -126,7 +126,7 @@ public static class GetContracts
             #region Filtering
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
 
-            if ( !string.IsNullOrEmpty(qUpper) )
+            if (!string.IsNullOrEmpty(qUpper))
             {
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
                 var isFullHash = isHex && qUpper.Length >= 40;
@@ -134,21 +134,21 @@ public static class GetContracts
                 var treatAsName = !isHex;
 
                 query = query.Where(x =>
-                    ( isFullHash && x.HASH == qUpper ) ||
-                    ( isHexPartial && x.HASH.Contains(qUpper) ) ||
-                    ( treatAsName &&
-                      ( EF.Functions.ILike(x.SYMBOL, $"%{qTrimmed}%") || EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ) ));
+                    (isFullHash && x.HASH == qUpper) ||
+                    (isHexPartial && x.HASH.Contains(qUpper)) ||
+                    (treatAsName &&
+                      (EF.Functions.ILike(x.SYMBOL, $"%{qTrimmed}%") || EF.Functions.ILike(x.NAME, $"%{qTrimmed}%"))));
             }
 
-            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL.Equals(symbol.ToUpper()));
+            if (!string.IsNullOrEmpty(symbol)) query = query.Where(x => x.SYMBOL.Equals(symbol.ToUpper()));
 
-            if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.HASH.ToLower().Equals(hash.ToLower()));
+            if (!string.IsNullOrEmpty(hash)) query = query.Where(x => x.HASH.ToLower().Equals(hash.ToLower()));
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
 
             #endregion
 
-            if ( !useCursor && with_total == 1 )
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new ContractPageItem
@@ -210,7 +210,7 @@ public static class GetContracts
                 }
             });
 
-            if ( useCursor )
+            if (useCursor)
             {
                 var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
                     x => x.Id);
@@ -225,18 +225,18 @@ public static class GetContracts
             {
                 var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
                 var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                contractArray = ( await pageItems.ToArrayAsync() ).Select(x => x.ApiContract).ToArray();
+                contractArray = (await pageItems.ToArrayAsync()).Select(x => x.ApiContract).ToArray();
             }
 
             var responseTime = DateTime.Now - startTime;
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Contract()", exception);
             throw new ApiUnexpectedException(logMessage, exception);

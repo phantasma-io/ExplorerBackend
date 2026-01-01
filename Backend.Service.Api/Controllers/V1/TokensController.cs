@@ -41,7 +41,7 @@ public class TokensController : BaseControllerV1
         [FromQuery] int with_creation_event = 0,
         [FromQuery] int with_logo = 0,
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetTokens.Execute(

@@ -10,7 +10,7 @@ public class EnumerableJsonConverterFactory : JsonConverterFactory
 {
     public override bool CanConvert(Type typeToConvert)
     {
-        if ( !typeToConvert.IsGenericType ) return false;
+        if (!typeToConvert.IsGenericType) return false;
 
         var realType = typeToConvert.GetGenericTypeDefinition();
 
@@ -22,9 +22,9 @@ public class EnumerableJsonConverterFactory : JsonConverterFactory
     {
         var valueType = type.GetGenericArguments()[0];
 
-        var converter = ( JsonConverter ) Activator.CreateInstance(
+        var converter = (JsonConverter)Activator.CreateInstance(
             typeof(EnumerableJsonConverter<>).MakeGenericType(valueType), BindingFlags.Instance | BindingFlags.Public,
-            null, new object[] {options}, null);
+            null, new object[] { options }, null);
 
         return converter;
     }

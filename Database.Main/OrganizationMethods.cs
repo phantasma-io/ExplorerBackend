@@ -9,15 +9,15 @@ public static class OrganizationMethods
     {
         var organization =
             databaseContext.Organizations.FirstOrDefault(x => x.ORGANIZATION_ID == id);
-        if ( organization != null )
+        if (organization != null)
             return organization;
 
         organization = DbHelper.GetTracked<Organization>(databaseContext)
             .FirstOrDefault(x => x.ORGANIZATION_ID == id);
-        if ( organization != null )
+        if (organization != null)
             return organization;
 
-        organization = new Organization {ORGANIZATION_ID = id, NAME = name};
+        organization = new Organization { ORGANIZATION_ID = id, NAME = name };
 
         databaseContext.Organizations.Add(organization);
 
@@ -40,17 +40,17 @@ public static class OrganizationMethods
         var allStakers = dbContext.Addresses.FromSqlRaw(@"SELECT * FROM ""Addresses"" WHERE CAST(""STAKED_AMOUNT_RAW"" AS BIGINT) > 0")
             .Select(x => x.ADDRESS)
             .ToList();
-        
+
         // TODO these interfaces are also bad, we should be passing db entity IDs.
         OrganizationAddressMethods.RemoveFromOrganizationAddressesIfNeeded(dbContext, stakersOrg, allStakers);
         OrganizationAddressMethods.InsertIfNotExists(dbContext, stakersOrg, allStakers, chain);
-        
+
         var smsOrg = Get(dbContext, "masters");
 
         var smStakers = dbContext.Addresses.FromSqlRaw(@"SELECT * FROM ""Addresses"" WHERE CAST(""STAKED_AMOUNT_RAW"" AS BIGINT) >= 5000000000000")
             .Select(x => x.ADDRESS)
             .ToList();
-        
+
         // TODO these interfaces are also bad, we should be passing db entity IDs.
         OrganizationAddressMethods.RemoveFromOrganizationAddressesIfNeeded(dbContext, smsOrg, smStakers);
         OrganizationAddressMethods.InsertIfNotExists(dbContext, smsOrg, smStakers, chain);

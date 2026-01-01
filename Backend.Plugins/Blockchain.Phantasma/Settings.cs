@@ -81,13 +81,13 @@ internal class Settings
     /// <returns></returns>
     public string GetRest()
     {
-        if ( PhaRestNodes == null || PhaRestNodes.Count == 0 )
+        if (PhaRestNodes == null || PhaRestNodes.Count == 0)
             return null;
 
         // Round-robin per request to distribute parallel load across nodes.
         var index = Interlocked.Increment(ref _restNodeIndex);
         var position = index % PhaRestNodes.Count;
-        if ( position < 0 )
+        if (position < 0)
             position += PhaRestNodes.Count;
 
         SelectedPhaRestNodes = PhaRestNodes[position];
@@ -101,20 +101,20 @@ internal class Settings
     /// <returns></returns>
     public string GetRpc()
     {
-        if ( string.IsNullOrEmpty(SelectedPhaRpcNodes))
+        if (string.IsNullOrEmpty(SelectedPhaRpcNodes))
             SelectedPhaRpcNodes = PhaRpcNodes[0];
-        
+
         if (Utils.HasElapsed(LastNodeChange, TimeSpan.FromMinutes(ChangeNodesInterval)))
         {
             LastNodeChange = DateTime.Now;
             var index = PhaRpcNodes.IndexOf(SelectedPhaRpcNodes);
-            if ( index == PhaRpcNodes.Count - 1 )
+            if (index == PhaRpcNodes.Count - 1)
                 index = 0;
             else
                 index++;
             SelectedPhaRpcNodes = PhaRpcNodes[index];
         }
-        
+
         return SelectedPhaRpcNodes;
     }
 }

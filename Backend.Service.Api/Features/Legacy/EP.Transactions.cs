@@ -22,7 +22,7 @@ public static class GetTransactions
         public EventPayloadMapper.TransactionProjection Projection { get; init; }
     }
 
-    [ProducesResponseType(typeof(TransactionResult), ( int )HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(TransactionResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
     public static async Task<TransactionResult> Execute(
@@ -48,7 +48,7 @@ public static class GetTransactions
         int with_script = 0,
         int with_neighbors = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -73,43 +73,43 @@ public static class GetTransactions
         {
             #region ArgValidation
 
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, filter) )
+            if (!ArgValidation.CheckLimit(limit, filter))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(hashUpper) && !ArgValidation.CheckHash(hashUpper) )
+            if (!string.IsNullOrEmpty(hashUpper) && !ArgValidation.CheckHash(hashUpper))
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(hashPartialUpper) && !ArgValidation.CheckHash(hashPartialUpper) )
+            if (!string.IsNullOrEmpty(hashPartialUpper) && !ArgValidation.CheckHash(hashPartialUpper))
                 throw new ApiParameterException("Unsupported value for 'hash_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-            if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
+            if (!string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
+            if (!string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less))
                 throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater))
                 throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
-            if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash.ToUpper()) )
+            if (!string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash.ToUpper()))
                 throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
+            if (!string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height))
                 throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             #endregion
@@ -147,7 +147,7 @@ public static class GetTransactions
                     }
                 };
 
-            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             var useCursorForList = string.IsNullOrEmpty(hashUpper);
@@ -161,7 +161,7 @@ public static class GetTransactions
 
             #region Filtering
 
-            if ( !string.IsNullOrEmpty(qUpper) )
+            if (!string.IsNullOrEmpty(qUpper))
             {
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
@@ -171,33 +171,33 @@ public static class GetTransactions
                 var treatAsHashPartial = !isNumber && !isAddress && !isFullHash;
 
                 query = query.Where(x =>
-                    ( isFullHash && x.HASH == qUpper ) ||
-                    ( isHexPartial && x.HASH.Contains(qUpper) ) ||
-                    ( isNumber && x.Block.HEIGHT == qTrimmed ) ||
-                    ( isAddress && x.TransactionAddresses.Any(y => y.Address.ADDRESS == qTrimmed) ) ||
-                    ( treatAsHashPartial && x.HASH.Contains(qUpper) ));
+                    (isFullHash && x.HASH == qUpper) ||
+                    (isHexPartial && x.HASH.Contains(qUpper)) ||
+                    (isNumber && x.Block.HEIGHT == qTrimmed) ||
+                    (isAddress && x.TransactionAddresses.Any(y => y.Address.ADDRESS == qTrimmed)) ||
+                    (treatAsHashPartial && x.HASH.Contains(qUpper)));
             }
 
-            if ( !string.IsNullOrEmpty(hashUpper) )
+            if (!string.IsNullOrEmpty(hashUpper))
                 query = query.Where(x => x.HASH == hashUpper);
 
-            if ( !string.IsNullOrEmpty(hashPartialUpper) )
+            if (!string.IsNullOrEmpty(hashPartialUpper))
                 query = query.Where(x =>
                     x.HASH.Contains(hashPartialUpper) ||
                     x.Block.HASH.Contains(hashPartialUpper) ||
                     x.Block.HEIGHT == hashPartialUpper ||
                     x.Block.HEIGHT.Contains(hashPartialUpper));
 
-            if ( !string.IsNullOrEmpty(date_less) )
+            if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
 
-            if ( !string.IsNullOrEmpty(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
-            if ( !string.IsNullOrEmpty(address) )
+            if (!string.IsNullOrEmpty(address))
             {
                 var addressId = 0;
-                if ( PhantasmaPhoenix.Cryptography.Address.IsValidAddress(address) )
+                if (PhantasmaPhoenix.Cryptography.Address.IsValidAddress(address))
                 {
                     addressId = await databaseContext.Addresses.Where(x => x.ADDRESS == address).Select(x => x.ID).FirstOrDefaultAsync();
                 }
@@ -205,21 +205,21 @@ public static class GetTransactions
                 {
                     addressId = await databaseContext.Addresses.Where(x => x.ADDRESS_NAME == address).Select(x => x.ID).FirstOrDefaultAsync();
                 }
-                
+
                 query = query.Where(x => x.TransactionAddresses.Any(y => y.AddressId == addressId));
             }
 
-            if ( !string.IsNullOrEmpty(block_hash) )
+            if (!string.IsNullOrEmpty(block_hash))
                 query = query.Where(x => x.Block.HASH == block_hash.ToUpper());
 
-            if ( !string.IsNullOrEmpty(block_height) )
+            if (!string.IsNullOrEmpty(block_height))
                 query = query.Where(x => x.Block.HEIGHT == block_height);
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Block.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Block.Chain.NAME == chain);
 
             #endregion
 
-            if ( !useCursor && with_total == 1 )
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new TransactionPageItem
@@ -273,20 +273,20 @@ public static class GetTransactions
                     },
                     EventProjections = with_events == 1
                         ? x.Events.Select(e => new EventPayloadMapper.EventProjection
+                        {
+                            ApiEvent = new Event
                             {
-                                ApiEvent = new Event
-                                {
-                                    event_id = e.ID,
-                                    chain = e.Chain.NAME.ToLower(),
-                                    date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
-                                    transaction_hash = x.HASH,
-                                    token_id = e.TOKEN_ID,
-                                    payload_json = e.PAYLOAD_JSON,
-                                    raw_data = e.RAW_DATA,
-                                    event_kind = e.EventKind.NAME,
-                                    address = e.Address.ADDRESS,
-                                    address_name = e.Address.ADDRESS_NAME,
-                                    contract = e.Contract != null
+                                event_id = e.ID,
+                                chain = e.Chain.NAME.ToLower(),
+                                date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
+                                transaction_hash = x.HASH,
+                                token_id = e.TOKEN_ID,
+                                payload_json = e.PAYLOAD_JSON,
+                                raw_data = e.RAW_DATA,
+                                event_kind = e.EventKind.NAME,
+                                address = e.Address.ADDRESS,
+                                address_name = e.Address.ADDRESS_NAME,
+                                contract = e.Contract != null
                                         ? new Contract
                                         {
                                             name = e.Contract.NAME,
@@ -294,7 +294,7 @@ public static class GetTransactions
                                             symbol = e.Contract.SYMBOL
                                         }
                                         : null,
-                                    nft_metadata = with_nft == 1 && e.Nft != null
+                                nft_metadata = with_nft == 1 && e.Nft != null
                                         ? new NftMetadata
                                         {
                                             name = e.Nft.NAME,
@@ -308,7 +308,7 @@ public static class GetTransactions
                                             mint_number = e.Nft.MINT_NUMBER.ToString()
                                         }
                                         : null,
-                                    series = with_nft == 1 && e.Nft != null && e.Nft.Series != null
+                                series = with_nft == 1 && e.Nft != null && e.Nft.Series != null
                                         ? new Series
                                         {
                                             id = e.Nft.Series.ID,
@@ -334,19 +334,19 @@ public static class GetTransactions
                                             attr_value_3 = e.Nft.Series.ATTR_VALUE_3
                                         }
                                         : null
-                                },
-                                ChainId = e.ChainId,
-                                TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
-                                PayloadJson = e.PAYLOAD_JSON,
-                                RawData = e.RAW_DATA,
-                                NftMetadata = e.Nft != null ? e.Nft.METADATA : null,
-                                SeriesMetadata = e.Nft != null && e.Nft.Series != null
+                            },
+                            ChainId = e.ChainId,
+                            TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
+                            PayloadJson = e.PAYLOAD_JSON,
+                            RawData = e.RAW_DATA,
+                            NftMetadata = e.Nft != null ? e.Nft.METADATA : null,
+                            SeriesMetadata = e.Nft != null && e.Nft.Series != null
                                     ? e.Nft.Series.METADATA
                                     : null,
-                                NftCreator = e.Nft != null && e.Nft.CreatorAddress != null
+                            NftCreator = e.Nft != null && e.Nft.CreatorAddress != null
                                     ? e.Nft.CreatorAddress.ADDRESS
                                     : null
-                            })
+                        })
                             .ToArray()
                         : Array.Empty<EventPayloadMapper.EventProjection>()
                 }
@@ -355,7 +355,7 @@ public static class GetTransactions
             EventPayloadMapper.TransactionProjection[] transactionProjections;
             string queryString;
 
-            if ( useCursor )
+            if (useCursor)
             {
                 var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
                     x => x.Id);
@@ -374,49 +374,49 @@ public static class GetTransactions
                     CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
                 IQueryable<TransactionPageItem> pageItems;
 
-                if ( !string.IsNullOrEmpty(hashUpper) )
+                if (!string.IsNullOrEmpty(hashUpper))
                     pageItems = orderedQuery.Take(1);
-                else if ( limit > 0 )
+                else if (limit > 0)
                     pageItems = orderedQuery.Skip(offset).Take(limit);
                 else
                     pageItems = orderedQuery;
 
                 queryString = pageItems.ToQueryString();
-                transactionProjections = ( await pageItems.ToArrayAsync() ).Select(x => x.Projection).ToArray();
+                transactionProjections = (await pageItems.ToArrayAsync()).Select(x => x.Projection).ToArray();
             }
 
             var allEventProjections = transactionProjections.SelectMany(x => x.EventProjections).ToArray();
             await EventPayloadMapper.ApplyAsync(databaseContext, allEventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
 
-            foreach ( var projection in allEventProjections )
+            foreach (var projection in allEventProjections)
             {
-                if ( projection.ApiEvent.nft_metadata != null )
+                if (projection.ApiEvent.nft_metadata != null)
                     projection.ApiEvent.nft_metadata.metadata = MetadataMapper.FromNft(
                         projection.NftMetadata,
                         projection.ApiEvent.nft_metadata,
                         projection.NftCreator,
                         projection.ApiEvent.series?.series_id);
 
-                if ( projection.ApiEvent.series != null )
+                if (projection.ApiEvent.series != null)
                     projection.ApiEvent.series.metadata =
                         MetadataMapper.FromSeries(projection.SeriesMetadata, projection.ApiEvent.series);
             }
 
             const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas sentinel
 
-            foreach ( var projection in transactionProjections )
+            foreach (var projection in transactionProjections)
             {
-                if ( projection.ApiTransaction.gas_limit_raw == UnlimitedGasRaw )
+                if (projection.ApiTransaction.gas_limit_raw == UnlimitedGasRaw)
                     projection.ApiTransaction.gas_limit = null;
 
-                if ( with_events == 1 )
+                if (with_events == 1)
                     projection.ApiTransaction.events = projection.EventProjections.Select(p => p.ApiEvent).ToArray();
             }
 
             transactions = transactionProjections.Select(x => x.ApiTransaction).ToArray();
 
-            if ( !string.IsNullOrEmpty(hashUpper) && transactionProjections?.Length == 1 )
+            if (!string.IsNullOrEmpty(hashUpper) && transactionProjections?.Length == 1)
             {
                 var anchor = transactionProjections[0];
 
@@ -434,27 +434,27 @@ public static class GetTransactions
                     .Select(x => x.HASH)
                     .FirstOrDefaultAsync();
 
-                if ( transactions.Length > 0 )
+                if (transactions.Length > 0)
                 {
                     transactions[0].previous_hash = previousHash;
                     transactions[0].next_hash = nextHash;
                 }
             }
-            
+
             var responseTime = DateTime.Now - startTime;
 
-            if ( responseTime.TotalSeconds > 1 )
+            if (responseTime.TotalSeconds > 1)
             {
                 Log.Warning($"Slow query: " + queryString);
             }
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Transaction()", exception);
             throw new ApiUnexpectedException(logMessage, exception);

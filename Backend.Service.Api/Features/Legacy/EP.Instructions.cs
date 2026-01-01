@@ -11,7 +11,7 @@ namespace Backend.Service.Api;
 
 public static class GetInstructions
 {
-    [ProducesResponseType(typeof(DisassemblerResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(DisassemblerResult), (int)HttpStatusCode.OK)]
     [HttpPost("{script}")]
     [ApiInfo(typeof(DisassemblerResult), "Returns the disassembled version of the Script")]
     public static async Task<DisassemblerResult> Execute([FromBody] Script script)
@@ -21,10 +21,10 @@ public static class GetInstructions
 
         try
         {
-            if ( script == null )
+            if (script == null)
                 throw new ApiParameterException("Unsupported value for 'script' parameter.");
 
-            if ( !string.IsNullOrEmpty(script.script_raw) && !ArgValidation.CheckString(script.script_raw) )
+            if (!string.IsNullOrEmpty(script.script_raw) && !ArgValidation.CheckString(script.script_raw))
                 throw new ApiParameterException("Unsupported value for 'script_raw' parameter.");
 
             var startTime = DateTime.Now;
@@ -34,7 +34,7 @@ public static class GetInstructions
             {
                 instructions = Utils.GetInstructionsFromScript(script.script_raw);
             }
-            catch ( Exception exception )
+            catch (Exception exception)
             {
                 throw new ApiParameterException(exception.Message);
             }
@@ -50,16 +50,16 @@ public static class GetInstructions
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Disassembler()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new DisassemblerResult {total_results = totalResults, Instructions = instructionArray};
+        return new DisassemblerResult { total_results = totalResults, Instructions = instructionArray };
     }
 }

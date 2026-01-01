@@ -17,16 +17,16 @@ public static class AddressBalanceMethods
 
         var balanceListToAdd = new List<AddressBalance>();
         var balanceListAll = new List<AddressBalance>();
-        foreach ( var (chainName, symbol, amount) in balances )
+        foreach (var (chainName, symbol, amount) in balances)
         {
             var token = await TokenMethods.GetAsync(databaseContext, address.Chain, symbol);
-            if ( token == null ) continue;
+            if (token == null) continue;
 
             var entry = await databaseContext.AddressBalances.FirstOrDefaultAsync(x =>
                 x.Address == address && x.Token == token);
 
             var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
-            if ( entry != null )
+            if (entry != null)
             {
                 entry.AMOUNT = amountConverted;
                 entry.AMOUNT_RAW = BigInteger.TryParse(amount, out var result) ? result : BigInteger.Zero;
@@ -51,6 +51,6 @@ public static class AddressBalanceMethods
             .Where(tokenBalance => !balanceListAll.Select(x => x.TokenId).Contains(tokenBalance.TokenId))
             .ToList();
 
-        if ( removeList.Any() ) databaseContext.AddressBalances.RemoveRange(removeList);
+        if (removeList.Any()) databaseContext.AddressBalances.RemoveRange(removeList);
     }
 }

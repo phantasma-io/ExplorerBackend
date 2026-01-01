@@ -30,11 +30,11 @@ public class EventBus : IEventBus
         {
             await RunInternal(cancellationToken);
         }
-        catch ( OperationCanceledException )
+        catch (OperationCanceledException)
         {
             throw;
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             _logger.LogCritical(e, "Event bus encountered an unexpected exception");
         }

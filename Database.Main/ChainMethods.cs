@@ -15,9 +15,9 @@ public static class ChainMethods
     {
         var chain = databaseContext.Chains.FirstOrDefault(x => x.NAME == name);
 
-        if ( chain != null ) return chain;
+        if (chain != null) return chain;
 
-        chain = new Chain {NAME = name, CURRENT_HEIGHT = "0"};
+        chain = new Chain { NAME = name, CURRENT_HEIGHT = "0" };
 
         databaseContext.Chains.Add(chain);
 
@@ -35,7 +35,7 @@ public static class ChainMethods
     {
         return databaseContext.Chains.Single(x => x.NAME == name);
     }
-    
+
     public static async Task<Chain> GetAsync(MainDbContext databaseContext, string name)
     {
         return await databaseContext.Chains.SingleAsync(x => x.NAME == name);
@@ -62,7 +62,7 @@ public static class ChainMethods
         var chain = Get(databaseContext, chainName);
         chain.CURRENT_HEIGHT = height.ToString();
 
-        if ( saveChanges ) databaseContext.SaveChanges();
+        if (saveChanges) databaseContext.SaveChanges();
     }
 
 

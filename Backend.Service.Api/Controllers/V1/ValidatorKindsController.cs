@@ -31,7 +31,7 @@ public class ValidatorKindsController : BaseControllerV1
         [FromQuery] int limit = 50,
         [FromQuery] string validator_kind = "",
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetValidatorKinds.Execute(

@@ -51,7 +51,7 @@ public class NftsController : BaseControllerV1
         [FromQuery] string series_id = "",
         [FromQuery] string status = "all",
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetNfts.Execute(

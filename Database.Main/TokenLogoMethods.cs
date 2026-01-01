@@ -8,10 +8,10 @@ public static class TokenLogoMethods
     public static void InsertIfNotExistList(MainDbContext databaseContext, Token token,
         Dictionary<string, string> tokenLogoList, bool saveChanges = true)
     {
-        if ( !tokenLogoList.Any() ) return;
+        if (!tokenLogoList.Any()) return;
 
         var tokenLogos = new List<TokenLogo>();
-        foreach ( var (type, url) in tokenLogoList )
+        foreach (var (type, url) in tokenLogoList)
         {
             var tokenLogoType = TokenLogoTypeMethods.Upsert(databaseContext, type);
 
@@ -20,7 +20,7 @@ public static class TokenLogoMethods
                 DbHelper.GetTracked<TokenLogo>(databaseContext)
                     .FirstOrDefault(x => x.Token == token && x.TokenLogoType == tokenLogoType);
 
-            if ( tokenLogo != null )
+            if (tokenLogo != null)
             {
                 tokenLogo.URL = url;
                 continue;
@@ -36,6 +36,6 @@ public static class TokenLogoMethods
         }
 
         databaseContext.TokenLogos.AddRange(tokenLogos);
-        if ( !saveChanges ) databaseContext.SaveChanges();
+        if (!saveChanges) databaseContext.SaveChanges();
     }
 }

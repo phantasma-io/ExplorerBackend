@@ -24,7 +24,7 @@ public abstract class Plugin : IDisposable
 
     static Plugin()
     {
-        if ( !Directory.Exists(PluginsDirectory) ) return;
+        if (!Directory.Exists(PluginsDirectory)) return;
         configWatcher = new FileSystemWatcher(PluginsDirectory)
         {
             EnableRaisingEvents = true,
@@ -40,9 +40,9 @@ public abstract class Plugin : IDisposable
     protected Plugin()
     {
         Plugins.Add(this);
-        if ( this is IDBAccessPlugin dbAccessPlugin ) DBAPlugins.Add(dbAccessPlugin);
+        if (this is IDBAccessPlugin dbAccessPlugin) DBAPlugins.Add(dbAccessPlugin);
 
-        if ( this is IBlockchainPlugin blockchainPlugin ) BlockchainPlugins.Add(blockchainPlugin);
+        if (this is IBlockchainPlugin blockchainPlugin) BlockchainPlugins.Add(blockchainPlugin);
 
         Configure();
     }
@@ -78,22 +78,22 @@ public abstract class Plugin : IDisposable
 
     private static void Plugin_Changed(object sender, FileSystemEventArgs e)
     {
-        switch ( GetExtension(e.Name) )
+        switch (GetExtension(e.Name))
         {
             case ".json":
                 try
                 {
                     Plugins.FirstOrDefault(p => p.ConfigFile == e.FullPath)?.Configure();
                 }
-                catch ( FormatException )
+                catch (FormatException)
                 {
                 }
 
                 break;
             case ".dll":
-                if ( e.ChangeType != WatcherChangeTypes.Created ) return;
+                if (e.ChangeType != WatcherChangeTypes.Created) return;
 
-                if ( GetDirectoryName(e.FullPath) != PluginsDirectory ) return;
+                if (GetDirectoryName(e.FullPath) != PluginsDirectory) return;
 
                 try
                 {
@@ -111,37 +111,37 @@ public abstract class Plugin : IDisposable
 
     private static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
     {
-        if ( args.Name.Contains(".resources") ) return null;
+        if (args.Name.Contains(".resources")) return null;
 
         var an = new AssemblyName(args.Name);
 
         var assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.FullName == args.Name) ??
                        AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == an.Name);
 
-        if ( assembly != null ) return assembly;
+        if (assembly != null) return assembly;
 
         var filename = an.Name + ".dll";
         var path = filename;
-        if ( !File.Exists(path) )
+        if (!File.Exists(path))
             path = Combine(GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? string.Empty, filename);
 
-        if ( !File.Exists(path) ) path = Combine(PluginsDirectory, filename);
+        if (!File.Exists(path)) path = Combine(PluginsDirectory, filename);
 
-        if ( !File.Exists(path) )
-            if ( args.RequestingAssembly != null )
+        if (!File.Exists(path))
+            if (args.RequestingAssembly != null)
             {
                 var path2 = args.RequestingAssembly.GetName().Name;
-                if ( path2 != null )
+                if (path2 != null)
                     path = Combine(PluginsDirectory, path2, filename);
             }
 
-        if ( !File.Exists(path) ) return null;
+        if (!File.Exists(path)) return null;
 
         try
         {
             return AssemblyLoadWrapper(path);
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             Log.Error(e, $"{nameof(Plugin)}: Failed to resolve assembly or its dependency");
             return null;
@@ -162,25 +162,25 @@ public abstract class Plugin : IDisposable
 
     private static void LoadPlugin(Assembly assembly)
     {
-        foreach ( var type in assembly.ExportedTypes )
+        foreach (var type in assembly.ExportedTypes)
         {
-            if ( !type.IsSubclassOf(typeof(Plugin)) ) continue;
+            if (!type.IsSubclassOf(typeof(Plugin))) continue;
 
-            if ( type.IsAbstract ) continue;
+            if (type.IsAbstract) continue;
 
             var constructor = type.GetConstructor(Type.EmptyTypes);
             var retries = 0;
-            while ( true )
+            while (true)
                 try
                 {
                     constructor?.Invoke(null);
                     break;
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     Log.Error(e, "Failed to initialize plugin");
 
-                    if ( retries < 10 )
+                    if (retries < 10)
                     {
                         // Retrying every minute for 10 minutes.
                         Thread.Sleep(60000);
@@ -197,7 +197,7 @@ public abstract class Plugin : IDisposable
 
     public static void LoadPlugins()
     {
-        if ( !Directory.Exists(PluginsDirectory) )
+        if (!Directory.Exists(PluginsDirectory))
         {
             Log.Error("LoadPlugins(): PluginsDirectory {PluginsDirectory} not exists", PluginsDirectory);
             return;
@@ -205,17 +205,17 @@ public abstract class Plugin : IDisposable
 
         var assemblies = new List<Assembly>();
 
-        foreach ( var filename in Directory.EnumerateFiles(PluginsDirectory, "*.dll", SearchOption.TopDirectoryOnly) )
+        foreach (var filename in Directory.EnumerateFiles(PluginsDirectory, "*.dll", SearchOption.TopDirectoryOnly))
             try
             {
                 assemblies.Add(AssemblyLoadWrapper(filename));
             }
-            catch ( Exception ex )
+            catch (Exception ex)
             {
                 Log.Error(ex, "LoadPlugins(): Plugin load '{Filename}' exception", filename);
             }
 
-        foreach ( var assembly in assemblies ) LoadPlugin(assembly);
+        foreach (var assembly in assemblies) LoadPlugin(assembly);
     }
 
 

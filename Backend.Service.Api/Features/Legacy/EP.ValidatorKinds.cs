@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetValidatorKinds
 {
-    [ProducesResponseType(typeof(ValidatorKindResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ValidatorKindResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ValidatorKindResult), "Returns the ValidatorKinds on the backend.", false, 10)]
     public static async Task<ValidatorKindResult> Execute(
@@ -23,7 +23,7 @@ public static class GetValidatorKinds
         int limit = 50,
         string validator_kind = "",
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -31,33 +31,33 @@ public static class GetValidatorKinds
 
         try
         {
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(validator_kind) && !ArgValidation.CheckString(validator_kind, true) )
+            if (!string.IsNullOrEmpty(validator_kind) && !ArgValidation.CheckString(validator_kind, true))
                 throw new ApiParameterException("Unsupported value for 'validator_kind' parameter.");
 
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.AddressValidatorKinds.AsQueryable().AsNoTracking();
 
-            if ( !string.IsNullOrEmpty(validator_kind) ) query = query.Where(x => x.NAME == validator_kind);
+            if (!string.IsNullOrEmpty(validator_kind)) query = query.Where(x => x.NAME == validator_kind);
 
             // Count total number of results before adding order and limit parts of query.
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             //in case we add more to sort
-            if ( order_direction == "asc" )
+            if (order_direction == "asc")
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.ID),
@@ -81,17 +81,17 @@ public static class GetValidatorKinds
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("ValidatorKinds()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new ValidatorKindResult
-            {total_results = with_total == 1 ? totalResults : null, validator_kinds = validatorKindArray};
+        { total_results = with_total == 1 ? totalResults : null, validator_kinds = validatorKindArray };
     }
 }

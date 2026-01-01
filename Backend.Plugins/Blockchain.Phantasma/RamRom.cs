@@ -48,7 +48,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             using MainDbContext databaseContext = new();
             updatedNftCount = HandleSingleNft(chainId, chainName, databaseContext, startTime);
-        }while ( updatedNftCount > 0 );
+        } while (updatedNftCount > 0);
     }
 
 
@@ -60,8 +60,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var nfts = databaseContext.Nfts
             .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true)
             .Take(MaxRomRamUpdatesForOneSession).ToList();
-        
-        foreach ( var nft in nfts )
+
+        foreach (var nft in nfts)
         {
             Log.Verbose("[{Name}] checking NFT, Symbol {Symbol}, Token Id {Token}", Name, nft.Contract.SYMBOL,
                 nft.TOKEN_ID);
@@ -69,21 +69,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                       "&IDtext=" + nft.TOKEN_ID + "&extended=true";
 
             var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
-            if ( response == null )
+            if (response == null)
             {
                 Log.Warning(
                     "[{Name}][RAM/ROM update] Response in null, raw response is {StringResponse} for {Symbol} NFT with id {ID}",
                     Name, stringResponse, nft.Contract.SYMBOL, nft.TOKEN_ID);
 
-                if ( nft.Contract.SYMBOL.ToUpper() == "GAME" )
+                if (nft.Contract.SYMBOL.ToUpper() == "GAME")
                 {
                     // Hack for binary data inside JSON
                     var cutFrom = stringResponse.IndexOf(",{\"Key\" : \"OriginalMetadata\"",
                         StringComparison.InvariantCulture);
                     stringResponse = stringResponse[..cutFrom] + "]}";
 
-                    if ( stringResponse.Contains(
-                            "\"creatorAddress\" : \"P2K9ih2iuscWbHT3eyzcjdX4UyEbyY44aJnukdQAS8C2WUY\"") )
+                    if (stringResponse.Contains(
+                            "\"creatorAddress\" : \"P2K9ih2iuscWbHT3eyzcjdX4UyEbyY44aJnukdQAS8C2WUY\""))
                         // Hack for broken links inside NFT descriptions
                         stringResponse = stringResponse.Replace(
                             "P2KJ5JxtdZcnh9EXuQ1unq3FmLZzNKgXYoTTJNVH9rSvqkL",
@@ -93,7 +93,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     {
                         response = JsonDocument.Parse(stringResponse);
                     }
-                    catch ( Exception e )
+                    catch (Exception e)
                     {
                         Log.Error(
                             "[{Name}] GAME hack parsing error:\n{Message}\nHacked response: {StringResponse}",
@@ -105,19 +105,19 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 //would make json invalid, should be fixed on the node 
                 Utils.ReplaceCharacter(ref stringResponse, ref response, @"\u000X", Name);
 
-                if ( response == null ) continue;
+                if (response == null) continue;
             }
 
             // Following code should be called before leaving
             // if NFT is burned,
             // so that burned NFT has maximum info available.
 
-            if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
+            if (response.RootElement.TryGetProperty("error", out var errorProperty))
             {
                 var error = errorProperty.GetString();
 
                 {
-                    if ( error.ToLower().Contains("invalid cast: expected") )
+                    if (error.ToLower().Contains("invalid cast: expected"))
                     {
                         // NFT is broken, getNFT chain call is failing.
                         // TODO introduce blacklisting instead of burning.
@@ -125,8 +125,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         nft.DM_UNIX_SECONDS = UnixSeconds.Now();
                         Log.Error("[{Name}] NFT {ID} is broken, chain error: {Error}", Name, nft.TOKEN_ID, error);
                     }
-                    else if ( error.Contains("nft does not exists") ||
-                               ( error.Contains("nft") && error.Contains("does not exist") ) )
+                    else if (error.Contains("nft does not exists") ||
+                               (error.Contains("nft") && error.Contains("does not exist")))
                     {
                         // NFT was burned, marking it.
                         nft.BURNED = true;
@@ -147,14 +147,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             // Reading properties
             List<TokenProperty> properties = new();
-            if ( response.RootElement.TryGetProperty("properties", out var propertiesNode) )
-                foreach ( var entry in propertiesNode.EnumerateArray() )
+            if (response.RootElement.TryGetProperty("properties", out var propertiesNode))
+                foreach (var entry in propertiesNode.EnumerateArray())
                 {
                     TokenProperty property = new()
                     {
                         Key = entry.GetProperty("key").GetString()
                     };
-                    if ( entry.TryGetProperty("value", out var valueProperty) )
+                    if (entry.TryGetProperty("value", out var valueProperty))
                         property.Value = valueProperty.GetString();
 
                     properties.Add(property);
@@ -164,7 +164,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var series = response.RootElement.GetProperty("series").GetString();
             // TODO remove later after changing SERIES_ID type to string
             // Hack for long series numbers (21 or 24 digits) inside GAME NFT descriptions
-            if ( !string.IsNullOrEmpty(series) && series.Length < 21 )
+            if (!string.IsNullOrEmpty(series) && series.Length < 21)
                 nft.Series = SeriesMethods.Upsert(databaseContext, nft.ContractId, series);
 
             nft.MINT_NUMBER = int.Parse(response.RootElement.GetProperty("mint").GetString());
@@ -184,7 +184,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             // For cases when NFT was created not from mint event,
             // try to get date from ROM.
-            if ( nft.MINT_DATE_UNIX_SECONDS == 0 )
+            if (nft.MINT_DATE_UNIX_SECONDS == 0)
             {
                 var date = parsedRom.GetDate();
                 nft.MINT_DATE_UNIX_SECONDS = date;
@@ -196,7 +196,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             nft.INFO_URL = GetPropertyValue(properties, "infoURL");
 
             // Feeling Series with available information, if needed.
-            if ( nft.Series != null && nft.Series.SERIES_ID != null )
+            if (nft.Series != null && nft.Series.SERIES_ID != null)
             {
                 nft.Series.CreatorAddressId = nft.CreatorAddressId;
                 nft.Series.NAME = nft.NAME;
@@ -207,7 +207,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         ? royalties
                         : 0;
 
-                nft.Series.TYPE = ( int ) parsedRom.GetNftType();
+                nft.Series.TYPE = (int)parsedRom.GetNftType();
 
                 nft.Series.ATTR_TYPE_1 = GetPropertyValue(properties, "attrT1");
                 nft.Series.ATTR_VALUE_1 = GetPropertyValue(properties, "attrV1");
@@ -239,17 +239,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             updatedNftCount++;
 
-            if ( updatedNftCount == MaxRomRamUpdatesForOneSession ) break;
+            if (updatedNftCount == MaxRomRamUpdatesForOneSession) break;
         }
 
         try
         {
             databaseContext.SaveChanges();
         }
-        catch ( Exception ex )
+        catch (Exception ex)
         {
-            if ( ex.Message.Contains(
-                    "Database operation expected to affect 1 row(s) but actually affected 0 row(s).") )
+            if (ex.Message.Contains(
+                    "Database operation expected to affect 1 row(s) but actually affected 0 row(s)."))
             {
                 var attemptTime = DateTime.Now - startTime;
                 Log.Warning(
@@ -260,15 +260,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 // Unknown exception, throwing futher.
                 ExceptionDispatchInfo.Capture(ex).Throw();
         }
-        
+
         var updateTime = DateTime.Now - startTime;
-        if(updateTime.TotalSeconds > 1 || updatedNftCount > 0)
+        if (updateTime.TotalSeconds > 1 || updatedNftCount > 0)
         {
             Log.Information(
                 "[{Name}] RAM/ROM update took {UpdateTime} sec, {UpdatedNftCount} NFTs updated",
                 Name, Math.Round(updateTime.TotalSeconds, 3), updatedNftCount);
         }
-        
+
         return updatedNftCount;
     }
 
@@ -281,7 +281,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         // If we have available quota per iteration, adding other NFTs
         // 0.7 to avoid doing 2nd query for just couple or so NFTs
-        if ( nfts.Count < 0.7 * MaxRomRamUpdatesForOneSession )
+        if (nfts.Count < 0.7 * MaxRomRamUpdatesForOneSession)
         {
             var nftsOthers = databaseContext.Nfts
                 .Where(x => x.ChainId == chainId && x.ROM == null && x.BURNED != true
@@ -296,21 +296,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void HandleNullResponse(JsonDocument response, string stringResponse, string symbol, string nftIDs)
     {
-        if ( response == null )
+        if (response == null)
         {
             Log.Warning(
                 "[{Name}][RAM/ROM update] Response in null, raw response is {StringResponse} for {Symbol} NFT with id {ID}",
                 Name, stringResponse, symbol, nftIDs);
 
-            if ( symbol.ToUpper() == "GAME" )
+            if (symbol.ToUpper() == "GAME")
             {
                 // Hack for binary data inside JSON
                 var cutFrom = stringResponse.IndexOf(",{\"Key\" : \"OriginalMetadata\"",
                     StringComparison.InvariantCulture);
                 stringResponse = stringResponse[..cutFrom] + "]}";
 
-                if ( stringResponse.Contains(
-                        "\"creatorAddress\" : \"P2K9ih2iuscWbHT3eyzcjdX4UyEbyY44aJnukdQAS8C2WUY\"") )
+                if (stringResponse.Contains(
+                        "\"creatorAddress\" : \"P2K9ih2iuscWbHT3eyzcjdX4UyEbyY44aJnukdQAS8C2WUY\""))
                     // Hack for broken links inside NFT descriptions
                     stringResponse = stringResponse.Replace(
                         "P2KJ5JxtdZcnh9EXuQ1unq3FmLZzNKgXYoTTJNVH9rSvqkL",
@@ -320,7 +320,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     response = JsonDocument.Parse(stringResponse);
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     Log.Error(
                         "[{Name}] GAME hack parsing error:\n{Message}\nHacked response: {StringResponse}",
@@ -333,32 +333,32 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Utils.ReplaceCharacter(ref stringResponse, ref response, @"\u000X", Name);
         }
     }
-    
+
     private void HandleMultipleNFTs(int chainId, string chainName, MainDbContext databaseContext, DateTime startTime, ref int updatedNftCount)
     {
         var nfts = GetNFTs(chainId, chainName, databaseContext);
-        
+
 
         updatedNftCount = 0;
-        List<string> contractSymbols =  nfts.Select(nft => nft.Contract.SYMBOL).Distinct().ToList();
-        foreach ( var symbol in contractSymbols )
+        List<string> contractSymbols = nfts.Select(nft => nft.Contract.SYMBOL).Distinct().ToList();
+        foreach (var symbol in contractSymbols)
         {
             var numNFTs = nfts.Where(nft => nft.Contract.SYMBOL.ToUpper().Equals(symbol.ToUpper())).Count();
-            for ( int i = 0; i < numNFTs / ChunkPerRequest; i++ )
+            for (int i = 0; i < numNFTs / ChunkPerRequest; i++)
             {
                 var chunkArray = nfts.Where(nft => nft.Contract.SYMBOL.ToUpper().Equals(symbol.ToUpper())).Chunk(ChunkPerRequest);
                 string requestIDs = string.Join(",", chunkArray);
                 Log.Verbose("[{Name}] checking NFTs, Symbol {Symbol}, Token Id {Token}", Name, symbol, requestIDs);
                 var url = $"{Settings.Default.GetRest()}/api/v1/getNFTs?symbol=" + symbol.ToUpper() +
                           "&IDtext=" + requestIDs + "&extended=true";
-            
+
                 var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
                 HandleNullResponse(response, stringResponse, symbol, requestIDs);
-                
-                
+
+
             }
         }
-        
+
     }
 
 
@@ -432,12 +432,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             try
             {
                 var rom = VMObject.FromBytes(romBytes);
-                if ( rom.Type == VMType.Struct )
-                    _fields = ( Dictionary<VMObject, VMObject> ) rom.Data;
+                if (rom.Type == VMType.Struct)
+                    _fields = (Dictionary<VMObject, VMObject>)rom.Data;
                 else
                     Log.Warning("[PHA][CustomRom] Cannot parse ROM{Context}", BuildContextSuffix(context));
             }
-            catch ( Exception e )
+            catch (Exception e)
             {
                 Log.Warning("[PHA][CustomRom] ROM parsing failed{Context}: {Exception}", BuildContextSuffix(context),
                     e.Message);
@@ -472,10 +472,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         public BigInteger GetNftType()
         {
-            if ( _fields.TryGetValue(VMObject.FromObject("typeNFT"), out var value) ) return value.AsNumber();
+            if (_fields.TryGetValue(VMObject.FromObject("typeNFT"), out var value)) return value.AsNumber();
 
             // TODO - remove, for old testnet NFTs
-            if ( _fields.TryGetValue(VMObject.FromObject("type"), out value) ) return value.AsNumber();
+            if (_fields.TryGetValue(VMObject.FromObject("type"), out value)) return value.AsNumber();
 
             // TODO - sounds better, no?
             return _fields.TryGetValue(VMObject.FromObject("nftType"), out value) ? value.AsNumber() : 0;
@@ -486,7 +486,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         {
             try
             {
-                if ( _fields.TryGetValue(VMObject.FromObject("hasLocked"), out var value) )
+                if (_fields.TryGetValue(VMObject.FromObject("hasLocked"), out var value))
                 {
                     Log.Verbose("[PHA][CustomRom] ROM hasLocked {Value}", value);
                     //TODO maybe fix
@@ -494,7 +494,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     return value.ToString().Equals("1");
                 }
             }
-            catch ( Exception e )
+            catch (Exception e)
             {
                 Log.Error("[PHA][CustomRom] ROM parsing error in GetHasLocked(): {Exception}", e.Message);
             }

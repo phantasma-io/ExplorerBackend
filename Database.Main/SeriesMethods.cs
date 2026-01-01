@@ -16,42 +16,42 @@ public static class SeriesMethods
         var series = databaseContext.Serieses
             .FirstOrDefault(x => x.ContractId == contractId && x.SERIES_ID == seriesId);
 
-        if ( series == null )
+        if (series == null)
         {
-            series = new Series {ContractId = contractId, SERIES_ID = seriesId};
+            series = new Series { ContractId = contractId, SERIES_ID = seriesId };
 
             databaseContext.Serieses.Add(series);
             databaseContext.SaveChanges();
         }
 
-        if ( creatorAddressId != null ) series.CreatorAddressId = ( int ) creatorAddressId;
+        if (creatorAddressId != null) series.CreatorAddressId = (int)creatorAddressId;
 
-        if ( currentSupply != null ) series.CURRENT_SUPPLY = ( int ) currentSupply;
+        if (currentSupply != null) series.CURRENT_SUPPLY = (int)currentSupply;
 
-        if ( maxSupply != null ) series.MAX_SUPPLY = ( int ) maxSupply;
+        if (maxSupply != null) series.MAX_SUPPLY = (int)maxSupply;
 
-        if ( !string.IsNullOrEmpty(seriesModeName) )
+        if (!string.IsNullOrEmpty(seriesModeName))
             series.SeriesMode = SeriesModeMethods.Upsert(databaseContext, seriesModeName, false);
 
-        if ( !string.IsNullOrEmpty(name) ) series.NAME = name;
+        if (!string.IsNullOrEmpty(name)) series.NAME = name;
 
-        if ( !string.IsNullOrEmpty(description) ) series.DESCRIPTION = description;
+        if (!string.IsNullOrEmpty(description)) series.DESCRIPTION = description;
 
-        if ( !string.IsNullOrEmpty(image) ) series.IMAGE = image;
+        if (!string.IsNullOrEmpty(image)) series.IMAGE = image;
 
-        if ( royalties != null ) series.ROYALTIES = ( decimal ) royalties;
+        if (royalties != null) series.ROYALTIES = (decimal)royalties;
 
-        if ( !string.IsNullOrEmpty(attrType1) ) series.ATTR_TYPE_1 = attrType1;
+        if (!string.IsNullOrEmpty(attrType1)) series.ATTR_TYPE_1 = attrType1;
 
-        if ( !string.IsNullOrEmpty(attrValue1) ) series.ATTR_VALUE_1 = attrValue1;
+        if (!string.IsNullOrEmpty(attrValue1)) series.ATTR_VALUE_1 = attrValue1;
 
-        if ( !string.IsNullOrEmpty(attrType2) ) series.ATTR_TYPE_2 = attrType2;
+        if (!string.IsNullOrEmpty(attrType2)) series.ATTR_TYPE_2 = attrType2;
 
-        if ( !string.IsNullOrEmpty(attrValue2) ) series.ATTR_VALUE_2 = attrValue2;
+        if (!string.IsNullOrEmpty(attrValue2)) series.ATTR_VALUE_2 = attrValue2;
 
-        if ( !string.IsNullOrEmpty(attrType3) ) series.ATTR_TYPE_3 = attrType3;
+        if (!string.IsNullOrEmpty(attrType3)) series.ATTR_TYPE_3 = attrType3;
 
-        if ( !string.IsNullOrEmpty(attrValue3) ) series.ATTR_VALUE_3 = attrValue3;
+        if (!string.IsNullOrEmpty(attrValue3)) series.ATTR_VALUE_3 = attrValue3;
 
         return series;
     }

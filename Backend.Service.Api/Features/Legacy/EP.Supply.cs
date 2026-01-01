@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class Supply
 {
-    [ProducesResponseType(typeof(double), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(double), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(double), "Returns circulating supply of SOUL token", false, 10)]
     public static async Task<double> Execute()

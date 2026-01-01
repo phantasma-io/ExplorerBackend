@@ -39,7 +39,7 @@ public class PlatformsController : BaseControllerV1
         [FromQuery] int with_token = 0,
         [FromQuery] int with_creation_event = 0,
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetPlatforms.Execute(

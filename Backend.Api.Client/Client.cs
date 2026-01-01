@@ -40,28 +40,28 @@ public static class Client
         Log.Debug("API request: url: {Url}", url);
 
         const int max = 5;
-        for ( var i = 1; i <= max; i++ )
+        for (var i = 1; i <= max; i++)
             try
             {
                 var effectiveTimeout = timeoutInSeconds > 0 ? timeoutInSeconds : 100;
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(effectiveTimeout));
 
                 var startTime = DateTime.Now;
-                switch ( requestType )
+                switch (requestType)
                 {
                     case RequestType.Get:
-                    {
-                        using var response = SharedClient.GetAsync(url, cts.Token).GetAwaiter().GetResult();
-                        stringResponse = response.Content.ReadAsStringAsync(cts.Token).GetAwaiter().GetResult();
-                        break;
-                    }
+                        {
+                            using var response = SharedClient.GetAsync(url, cts.Token).GetAwaiter().GetResult();
+                            stringResponse = response.Content.ReadAsStringAsync(cts.Token).GetAwaiter().GetResult();
+                            break;
+                        }
                     case RequestType.Post:
-                    {
-                        using var content = new StringContent(postString, Encoding.UTF8, "application/json");
-                        using var response = SharedClient.PostAsync(url, content, cts.Token).GetAwaiter().GetResult();
-                        stringResponse = response.Content.ReadAsStringAsync(cts.Token).GetAwaiter().GetResult();
-                        break;
-                    }
+                        {
+                            using var content = new StringContent(postString, Encoding.UTF8, "application/json");
+                            using var response = SharedClient.PostAsync(url, content, cts.Token).GetAwaiter().GetResult();
+                            stringResponse = response.Content.ReadAsStringAsync(cts.Token).GetAwaiter().GetResult();
+                            break;
+                        }
                     default:
                         throw new Exception("Unknown RequestType");
                 }
@@ -73,18 +73,18 @@ public static class Client
                     url, Math.Round(responseTime.TotalSeconds, 3),
                     string.IsNullOrEmpty(stringResponse) ? " Empty response" : "");
 
-                if ( string.IsNullOrEmpty(stringResponse) ) return default;
+                if (string.IsNullOrEmpty(stringResponse)) return default;
 
                 // Log.Write("APIRequest: response: " + contents, Log.Level.Networking);
 
-                if ( typeof(T) == typeof(JsonDocument) )
+                if (typeof(T) == typeof(JsonDocument))
                 {
                     JsonDocument node = null;
                     try
                     {
                         node = JsonDocument.Parse(stringResponse);
                     }
-                    catch ( Exception e )
+                    catch (Exception e)
                     {
                         Log.Debug(
                             "API request error for {Url}:\nJSON parsing error:\n{Message}\nResponse: {Response}",
@@ -92,32 +92,32 @@ public static class Client
                         );
                     }
 
-                    return ( T ) ( object ) node;
+                    return (T)(object)node;
                 }
 
-                if ( typeof(T) == typeof(JsonNode) )
+                if (typeof(T) == typeof(JsonNode))
                 {
                     JsonNode node = null;
                     try
                     {
                         node = JsonNode.Parse(stringResponse);
                     }
-                    catch ( Exception e )
+                    catch (Exception e)
                     {
                         Log.Debug(
                             "API request error for {Url}:\nJSON parsing error:\n{Message}\nResponse: {Response}",
                             url, e.Message, stringResponse);
                     }
 
-                    return ( T ) ( object ) node;
+                    return (T)(object)node;
                 }
 
                 throw new Exception($"Unsupported output type {typeof(T).FullName}");
             }
-            catch ( Exception e )
+            catch (Exception e)
             {
                 string logMessage;
-                if ( e.Message.Contains("The operation has timed out.") ||
+                if (e.Message.Contains("The operation has timed out.") ||
                      e.Message.Contains(
                          "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.") ||
                      e.Message.Contains(
@@ -132,12 +132,12 @@ public static class Client
                     logMessage = $"API request error for {url}:\n{e.Message}";
 
                     // We don't need stacktrace for known errors like "response ended prematurely".
-                    if ( !e.Message.Contains(
+                    if (!e.Message.Contains(
                              "An error occurred while sending the request. The response ended prematurely.") &&
-                         !e.Message.ToUpper().Contains("TOO MANY REQUESTS") )
+                         !e.Message.ToUpper().Contains("TOO MANY REQUESTS"))
                     {
                         var inner = e.InnerException;
-                        while ( inner != null )
+                        while (inner != null)
                         {
                             logMessage += "\n---> " + inner.Message + "\n\n" + inner.StackTrace;
 
@@ -147,12 +147,12 @@ public static class Client
                         logMessage += "\n\n" + e.StackTrace;
                     }
 
-                    if ( errorHandlingCallback == null ) Log.Debug(logMessage);
+                    if (errorHandlingCallback == null) Log.Debug(logMessage);
                 }
 
                 errorHandlingCallback?.Invoke(logMessage);
 
-                if ( i < max )
+                if (i < max)
                 {
                     Thread.Sleep(1000 * i);
                     Log.Debug("API request for {Url}:\nTrying again...", url);
@@ -185,32 +185,32 @@ public static class Client
                 switch (requestType)
                 {
                     case RequestType.Get:
-                    {
-                        using var response = await SharedClient.GetAsync(url, cts.Token);
-                        if (!response.IsSuccessStatusCode)
                         {
-                            var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
-                            Log.Warning("[API request]: {Url} returned {StatusCode}: {Body}", url,
-                                response.StatusCode, errorBody);
-
-                            if (i < _maxAttempts)
+                            using var response = await SharedClient.GetAsync(url, cts.Token);
+                            if (!response.IsSuccessStatusCode)
                             {
-                                await Task.Delay(1000 * i, cts.Token);
-                                Log.Debug("API request for {Url}:\nRetrying after non-success status...", url);
-                                continue;
+                                var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
+                                Log.Warning("[API request]: {Url} returned {StatusCode}: {Body}", url,
+                                    response.StatusCode, errorBody);
+
+                                if (i < _maxAttempts)
+                                {
+                                    await Task.Delay(1000 * i, cts.Token);
+                                    Log.Debug("API request for {Url}:\nRetrying after non-success status...", url);
+                                    continue;
+                                }
+
+                                throw new Exception($"API returned {(int)response.StatusCode} {response.StatusCode}");
                             }
 
-                            throw new Exception($"API returned {(int)response.StatusCode} {response.StatusCode}");
+                            Log.Debug($"[API request]: header code: {response.StatusCode}");
+                            stringResponse = await response.Content.ReadAsStringAsync(cts.Token);
+                            Log.Debug($"[API request]: response: {stringResponse}");
+                            break;
                         }
-
-                        Log.Debug($"[API request]: header code: {response.StatusCode}");
-                        stringResponse = await response.Content.ReadAsStringAsync(cts.Token);
-                        Log.Debug($"[API request]: response: {stringResponse}");
-                        break;
-                    }
                     case RequestType.Post:
                         {
-                            if(string.IsNullOrEmpty(postString)) throw new Exception("Empty POST body");
+                            if (string.IsNullOrEmpty(postString)) throw new Exception("Empty POST body");
                             var content = new StringContent(postString, Encoding.UTF8, "application/json");
                             using var responsePost = await SharedClient.PostAsync(url, content, cts.Token);
                             if (!responsePost.IsSuccessStatusCode)
@@ -249,7 +249,7 @@ public static class Client
                 var logMessage =
                     $"API request attempt {i}/{_maxAttempts} failed for {url}: {e.GetType().Name} {e.Message}";
                 Log.Error(e, logMessage);
-                if ( i < _maxAttempts )
+                if (i < _maxAttempts)
                 {
                     Thread.Sleep(1000 * i);
                     Log.Debug("API request for {Url}:\nTrying again...", url);

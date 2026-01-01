@@ -49,7 +49,7 @@ public class SeriesController : BaseControllerV1
         [FromQuery] string symbol = "",
         [FromQuery] string token_id = "",
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetSeries.Execute(

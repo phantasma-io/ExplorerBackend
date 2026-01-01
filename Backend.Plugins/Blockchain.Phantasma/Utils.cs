@@ -75,7 +75,7 @@ internal static class Utils
     public static void ReplaceCharacter(ref string stringResponse, ref JsonDocument response, string toReplace,
         string logString)
     {
-        if ( !stringResponse.Contains(toReplace) ) return;
+        if (!stringResponse.Contains(toReplace)) return;
 
         stringResponse = stringResponse.Replace(toReplace, "");
 
@@ -85,14 +85,14 @@ internal static class Utils
         {
             response = JsonDocument.Parse(stringResponse);
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             Log.Error(
                 "[{Name}] hack tried to replace not set unicode character, parsing error:\n{Message}\nHacked response: {StringResponse}",
                 logString, e.Message, stringResponse);
         }
     }
-    
+
     public static bool HasElapsed(DateTime startTime, TimeSpan duration)
     {
         // Calculate the time elapsed since startTime

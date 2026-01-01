@@ -14,10 +14,10 @@ internal static class MetadataMapper
 {
     private static void AddIfMissing(IDictionary<string, string> target, string key, string value)
     {
-        if ( string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value) )
+        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
             return;
 
-        if ( target.TryGetValue(key, out var existing) && !string.IsNullOrWhiteSpace(existing) )
+        if (target.TryGetValue(key, out var existing) && !string.IsNullOrWhiteSpace(existing))
             return;
 
         target[key] = value;
@@ -27,15 +27,15 @@ internal static class MetadataMapper
     private static Dictionary<string, string> Extract(JsonDocument metadata)
     {
         Dictionary<string, string> result = new(StringComparer.OrdinalIgnoreCase);
-        if ( metadata == null )
+        if (metadata == null)
             return result;
 
         try
         {
-            if ( metadata.RootElement.ValueKind != JsonValueKind.Object )
+            if (metadata.RootElement.ValueKind != JsonValueKind.Object)
                 return result;
 
-            foreach ( var property in metadata.RootElement.EnumerateObject() )
+            foreach (var property in metadata.RootElement.EnumerateObject())
             {
                 var valueString = property.Value.ValueKind switch
                 {
@@ -44,7 +44,7 @@ internal static class MetadataMapper
                     _ => property.Value.ToString()
                 };
 
-                if ( string.IsNullOrWhiteSpace(valueString) )
+                if (string.IsNullOrWhiteSpace(valueString))
                     continue;
 
                 result[property.Name] = valueString;
@@ -72,7 +72,7 @@ internal static class MetadataMapper
         metadata.Remove("_i");
         metadata.Remove("series");
 
-        if ( nftMetadata != null )
+        if (nftMetadata != null)
         {
             AddIfMissing(metadata, "name", nftMetadata.name);
             AddIfMissing(metadata, "description", nftMetadata.description);
@@ -85,7 +85,7 @@ internal static class MetadataMapper
 
         AddIfMissing(metadata, "creator", creatorAddress);
 
-        if ( !string.IsNullOrWhiteSpace(seriesId) )
+        if (!string.IsNullOrWhiteSpace(seriesId))
             AddIfMissing(metadata, "seriesId", seriesId);
 
         return Normalize(metadata);
@@ -94,7 +94,7 @@ internal static class MetadataMapper
 
     public static Dictionary<string, string>? FromNft(DbNft nft)
     {
-        if ( nft == null )
+        if (nft == null)
             return null;
 
         var fallbackMetadata = new NftMetadata
@@ -119,11 +119,11 @@ internal static class MetadataMapper
 
     public static Dictionary<string, string>? FromNft(JsonDocument metadata, ApiNft apiNft)
     {
-        if ( apiNft == null )
+        if (apiNft == null)
             return null;
 
         var seriesId = apiNft.series?.series_id;
-        if ( string.IsNullOrWhiteSpace(seriesId) && apiNft.series != null && apiNft.series.id != 0 )
+        if (string.IsNullOrWhiteSpace(seriesId) && apiNft.series != null && apiNft.series.id != 0)
             seriesId = apiNft.series.id.ToString(CultureInfo.InvariantCulture);
 
         return BuildNftMetadata(metadata, apiNft.nft_metadata, apiNft.creator_address, seriesId);
@@ -139,7 +139,7 @@ internal static class MetadataMapper
 
     public static Dictionary<string, string>? FromSeries(DbSeries series)
     {
-        if ( series == null )
+        if (series == null)
             return null;
 
         var metadata = Extract(series.METADATA);
@@ -149,7 +149,7 @@ internal static class MetadataMapper
         AddIfMissing(metadata, "imageURL", series.IMAGE);
         AddIfMissing(metadata, "royalties", series.ROYALTIES.ToString(CultureInfo.InvariantCulture));
 
-        if ( series.TYPE > 0 )
+        if (series.TYPE > 0)
             AddIfMissing(metadata, "type", series.TYPE.ToString(CultureInfo.InvariantCulture));
 
         AddIfMissing(metadata, "attrType1", series.ATTR_TYPE_1);
@@ -159,16 +159,16 @@ internal static class MetadataMapper
         AddIfMissing(metadata, "attrType3", series.ATTR_TYPE_3);
         AddIfMissing(metadata, "attrValue3", series.ATTR_VALUE_3);
 
-        if ( series.SeriesMode != null )
+        if (series.SeriesMode != null)
             AddIfMissing(metadata, "modeName", series.SeriesMode.MODE_NAME);
 
-        if ( series.CURRENT_SUPPLY > 0 )
+        if (series.CURRENT_SUPPLY > 0)
             AddIfMissing(metadata, "current_supply", series.CURRENT_SUPPLY.ToString(CultureInfo.InvariantCulture));
 
-        if ( series.MAX_SUPPLY > 0 )
+        if (series.MAX_SUPPLY > 0)
             AddIfMissing(metadata, "max_supply", series.MAX_SUPPLY.ToString(CultureInfo.InvariantCulture));
 
-        if ( series.CreatorAddress != null )
+        if (series.CreatorAddress != null)
             AddIfMissing(metadata, "creator", series.CreatorAddress.ADDRESS);
 
         return Normalize(metadata);
@@ -177,7 +177,7 @@ internal static class MetadataMapper
 
     public static Dictionary<string, string>? FromSeries(JsonDocument metadata, ApiSeries apiSeries)
     {
-        if ( apiSeries == null )
+        if (apiSeries == null)
             return null;
 
         var result = Extract(metadata);
@@ -187,7 +187,7 @@ internal static class MetadataMapper
         AddIfMissing(result, "imageURL", apiSeries.image);
         AddIfMissing(result, "royalties", apiSeries.royalties);
 
-        if ( apiSeries.type != 0 )
+        if (apiSeries.type != 0)
             AddIfMissing(result, "type", apiSeries.type.ToString());
 
         AddIfMissing(result, "attrType1", apiSeries.attr_type_1);
@@ -199,11 +199,11 @@ internal static class MetadataMapper
         AddIfMissing(result, "modeName", apiSeries.mode_name);
         AddIfMissing(result, "creator", apiSeries.creator);
 
-        if ( apiSeries.current_supply != 0 )
+        if (apiSeries.current_supply != 0)
             AddIfMissing(result, "current_supply",
                 apiSeries.current_supply.ToString(CultureInfo.InvariantCulture));
 
-        if ( apiSeries.max_supply != 0 )
+        if (apiSeries.max_supply != 0)
             AddIfMissing(result, "max_supply", apiSeries.max_supply.ToString(CultureInfo.InvariantCulture));
 
         AddIfMissing(result, "creator", apiSeries.creator);

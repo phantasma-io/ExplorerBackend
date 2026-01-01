@@ -7,10 +7,10 @@ public static class Utils
     // TDOD fix implementation of UnitConversion.ToDecimal() in Phantasma's code
     public static string ToDecimal(string amount, int tokenDecimals)
     {
-        if ( amount == "0" || tokenDecimals == 0 )
+        if (amount == "0" || tokenDecimals == 0)
             return amount;
 
-        if ( amount.Length <= tokenDecimals )
+        if (amount.Length <= tokenDecimals)
         {
             return "0." + amount.PadLeft(tokenDecimals, '0').TrimEnd('0');
         }

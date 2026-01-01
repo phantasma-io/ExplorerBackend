@@ -24,7 +24,7 @@ public static class GetNfts
         public JsonDocument SeriesMetadata { get; init; }
     }
 
-    [ProducesResponseType(typeof(NftsResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(NftsResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(NftsResult), "Returns NFTs available on Phantasma blockchain.", false, 10, cacheTag: "nfts")]
     public static async Task<NftsResult> Execute(
@@ -45,7 +45,7 @@ public static class GetNfts
         string series_id = "",
         string status = "all",
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         // Results of the query
@@ -59,49 +59,49 @@ public static class GetNfts
         {
             #region ArgValidations
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
+            if (!string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator))
                 throw new ApiParameterException("Unsupported value for 'creator' parameter.");
 
-            if ( !string.IsNullOrEmpty(owner) && !ArgValidation.CheckAddress(owner) )
+            if (!string.IsNullOrEmpty(owner) && !ArgValidation.CheckAddress(owner))
                 throw new ApiParameterException("Unsupported value for 'owner' parameter.");
 
-            if ( !string.IsNullOrEmpty(contract_hash) && !ArgValidation.CheckHash(contract_hash, true) )
+            if (!string.IsNullOrEmpty(contract_hash) && !ArgValidation.CheckHash(contract_hash, true))
                 throw new ApiParameterException("Unsupported value for 'contract' parameter.");
 
-            if ( !string.IsNullOrEmpty(contract_hash) && string.IsNullOrEmpty(chain) )
+            if (!string.IsNullOrEmpty(contract_hash) && string.IsNullOrEmpty(chain))
                 throw new ApiParameterException("Pass chain when using contract filter.");
 
-            if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
+            if (!string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name))
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
-            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
-            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+            if (!string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol))
                 throw new ApiParameterException("Unsupported value for 'symbol' parameter.");
 
-            if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
+            if (!string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id))
                 throw new ApiParameterException("Unsupported value for 'token_id' parameter.");
 
-            if ( !string.IsNullOrEmpty(series_id) && !ArgValidation.CheckNumber(series_id) )
+            if (!string.IsNullOrEmpty(series_id) && !ArgValidation.CheckNumber(series_id))
                 throw new ApiParameterException("Unsupported value for 'series_id' parameter.");
 
-            if ( !string.IsNullOrEmpty(status) && status != "all" && status != "active" && status != "infused" )
+            if (!string.IsNullOrEmpty(status) && status != "all" && status != "active" && status != "infused")
                 throw new ApiParameterException("Unsupported value for 'status' parameter.");
 
             #endregion
@@ -131,7 +131,7 @@ public static class GetNfts
                     }
                 };
 
-            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
@@ -143,11 +143,11 @@ public static class GetNfts
             #region Filtering
 
             query = query.Where(x =>
-                x.NSFW == false && ( x.BURNED == null || x.BURNED == false ) && x.BLACKLISTED == false);
+                x.NSFW == false && (x.BURNED == null || x.BURNED == false) && x.BLACKLISTED == false);
 
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
 
-            if ( !string.IsNullOrEmpty(qUpper) )
+            if (!string.IsNullOrEmpty(qUpper))
             {
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
                 var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
@@ -158,16 +158,16 @@ public static class GetNfts
                     EF.Functions.ILike(x.DESCRIPTION, $"%{qTrimmed}%") ||
                     EF.Functions.ILike(x.TOKEN_ID, $"%{qTrimmed}%") ||
                     EF.Functions.ILike(x.Contract.SYMBOL, $"%{qTrimmed}%") ||
-                    ( x.Series != null && EF.Functions.ILike(x.Series.SERIES_ID, $"%{qTrimmed}%") ) ||
-                    ( x.Series != null && EF.Functions.ILike(x.Series.NAME, $"%{qTrimmed}%") ) ||
-                    ( isHex && x.Contract.HASH.Contains(qUpper) ) ||
-                    ( isNumber && x.Series != null && x.Series.SERIES_ID == qTrimmed ) ||
-                    ( isAddress && ( x.CreatorAddress.ADDRESS == qTrimmed ||
-                                     ( x.NftOwnerships != null &&
-                                       x.NftOwnerships.Any(o => o.Address.ADDRESS == qTrimmed) ) ) ));
+                    (x.Series != null && EF.Functions.ILike(x.Series.SERIES_ID, $"%{qTrimmed}%")) ||
+                    (x.Series != null && EF.Functions.ILike(x.Series.NAME, $"%{qTrimmed}%")) ||
+                    (isHex && x.Contract.HASH.Contains(qUpper)) ||
+                    (isNumber && x.Series != null && x.Series.SERIES_ID == qTrimmed) ||
+                    (isAddress && (x.CreatorAddress.ADDRESS == qTrimmed ||
+                                     (x.NftOwnerships != null &&
+                                       x.NftOwnerships.Any(o => o.Address.ADDRESS == qTrimmed)))));
             }
 
-            if ( !string.IsNullOrEmpty(status) )
+            if (!string.IsNullOrEmpty(status))
                 query = status switch
                 {
                     "active" => query.Where(x => x.InfusedInto == null),
@@ -175,22 +175,22 @@ public static class GetNfts
                     _ => query
                 };
 
-            if ( !string.IsNullOrEmpty(creator) ) query = query.Where(x => x.CreatorAddress.ADDRESS == creator);
+            if (!string.IsNullOrEmpty(creator)) query = query.Where(x => x.CreatorAddress.ADDRESS == creator);
 
-            if ( !string.IsNullOrEmpty(contract_hash) ) query = query.Where(x => x.Contract.HASH == contract_hash);
+            if (!string.IsNullOrEmpty(contract_hash)) query = query.Where(x => x.Contract.HASH == contract_hash);
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
 
-            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.Contract.SYMBOL == symbol);
+            if (!string.IsNullOrEmpty(symbol)) query = query.Where(x => x.Contract.SYMBOL == symbol);
 
-            if ( !string.IsNullOrEmpty(token_id) ) query = query.Where(x => x.TOKEN_ID == token_id);
+            if (!string.IsNullOrEmpty(token_id)) query = query.Where(x => x.TOKEN_ID == token_id);
 
-            if ( !string.IsNullOrEmpty(series_id) ) query = query.Where(x => x.Series.SERIES_ID == series_id);
+            if (!string.IsNullOrEmpty(series_id)) query = query.Where(x => x.Series.SERIES_ID == series_id);
 
-            if ( !string.IsNullOrEmpty(name) )
+            if (!string.IsNullOrEmpty(name))
                 query = query.Where(x => x.NAME.Contains(name) || x.DESCRIPTION.Contains(name));
 
-            if ( !string.IsNullOrEmpty(owner) )
+            if (!string.IsNullOrEmpty(owner))
             {
                 var ids = NftMethods.GetIdsByOwnerAddress(databaseContext, owner, chain);
 
@@ -199,7 +199,7 @@ public static class GetNfts
 
             #endregion
 
-            if ( !useCursor && with_total == 1 )
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
             #region ResultArray
@@ -289,7 +289,7 @@ public static class GetNfts
                 }
             });
 
-            if ( useCursor )
+            if (useCursor)
             {
                 var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
                     x => x.Id);
@@ -297,13 +297,13 @@ public static class GetNfts
                     x => x.Id);
                 var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
                     limit);
-                foreach ( var item in page.Items )
+                foreach (var item in page.Items)
                 {
-                    if ( item.ApiNft?.nft_metadata != null )
+                    if (item.ApiNft?.nft_metadata != null)
                         item.ApiNft.nft_metadata.metadata =
                             MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
 
-                    if ( item.ApiNft?.series != null )
+                    if (item.ApiNft?.series != null)
                         item.ApiNft.series.metadata =
                             MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
                 }
@@ -317,13 +317,13 @@ public static class GetNfts
                 var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
                 var materializedPage = await pageItems.ToArrayAsync();
 
-                foreach ( var item in materializedPage )
+                foreach (var item in materializedPage)
                 {
-                    if ( item.ApiNft?.nft_metadata != null )
+                    if (item.ApiNft?.nft_metadata != null)
                         item.ApiNft.nft_metadata.metadata =
                             MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
 
-                    if ( item.ApiNft?.series != null )
+                    if (item.ApiNft?.series != null)
                         item.ApiNft.series.metadata =
                             MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
                 }
@@ -337,11 +337,11 @@ public static class GetNfts
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Nfts()", exception);
             throw new ApiUnexpectedException(logMessage, exception);

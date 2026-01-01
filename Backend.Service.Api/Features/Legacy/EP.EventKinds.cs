@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetEventKinds
 {
-    [ProducesResponseType(typeof(EventKindResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(EventKindResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(EventKindResult), "Returns the eventKinds on the backend.", false, 10)]
     public static async Task<EventKindResult> Execute(
@@ -24,7 +24,7 @@ public static class GetEventKinds
         string event_kind = "",
         string chain = "main",
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -32,22 +32,22 @@ public static class GetEventKinds
 
         try
         {
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckString(event_kind, true) )
+            if (!string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckString(event_kind, true))
                 throw new ApiParameterException("Unsupported value for 'event_kind' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
@@ -55,16 +55,16 @@ public static class GetEventKinds
             await using MainDbContext databaseContext = new();
             var query = databaseContext.EventKinds.AsQueryable().AsNoTracking();
 
-            if ( !string.IsNullOrEmpty(event_kind) ) query = query.Where(x => x.NAME == event_kind);
+            if (!string.IsNullOrEmpty(event_kind)) query = query.Where(x => x.NAME == event_kind);
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
 
             // Count total number of results before adding order and limit parts of query.
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             //in case we add more to sort
-            if ( order_direction == "asc" )
+            if (order_direction == "asc")
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.ID),
@@ -88,17 +88,17 @@ public static class GetEventKinds
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("EventKinds()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new EventKindResult
-            {total_results = with_total == 1 ? totalResults : null, event_kinds = eventKindArray};
+        { total_results = with_total == 1 ? totalResults : null, event_kinds = eventKindArray };
     }
 }

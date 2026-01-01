@@ -24,7 +24,7 @@ public static class GetSeries
         public JsonDocument Metadata { get; init; }
     }
 
-    [ProducesResponseType(typeof(SeriesResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(SeriesResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(SeriesResult), "Returns series of NFTs available on the backend.", false, 10, cacheTag: "serieses")]
     public static async Task<SeriesResult> Execute(
@@ -44,7 +44,7 @@ public static class GetSeries
         string symbol = "",
         string token_id = "",
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         // Results of the query
@@ -58,43 +58,43 @@ public static class GetSeries
         {
             #region ArgValidation
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !string.IsNullOrEmpty(series_id) && !ArgValidation.CheckNumber(series_id) )
+            if (!string.IsNullOrEmpty(series_id) && !ArgValidation.CheckNumber(series_id))
                 throw new ApiParameterException("Unsupported value for 'series_id' parameter.");
 
-            if ( !string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator) )
+            if (!string.IsNullOrEmpty(creator) && !ArgValidation.CheckAddress(creator))
                 throw new ApiParameterException("Unsupported value for 'creator' parameter.");
 
-            if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name) )
+            if (!string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name))
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
-            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
-            if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true) )
+            if (!string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true))
                 throw new ApiParameterException("Unsupported value for 'contract' parameter.");
 
-            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+            if (!string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol))
                 throw new ApiParameterException("Unsupported value for 'symbol' parameter.");
 
-            if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
+            if (!string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id))
                 throw new ApiParameterException("Unsupported value for 'token_id' parameter.");
 
-            if ( !string.IsNullOrEmpty(id) && !ArgValidation.CheckNumber(id) )
+            if (!string.IsNullOrEmpty(id) && !ArgValidation.CheckNumber(id))
                 throw new ApiParameterException("Unsupported value for 'id' parameter.");
 
             #endregion
@@ -132,7 +132,7 @@ public static class GetSeries
                     }
                 };
 
-            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
@@ -148,7 +148,7 @@ public static class GetSeries
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
             var hasParsedId = int.TryParse(qTrimmed, out var qParsedId);
 
-            if ( !string.IsNullOrEmpty(qUpper) )
+            if (!string.IsNullOrEmpty(qUpper))
             {
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
@@ -156,23 +156,23 @@ public static class GetSeries
                 var isHexPartial = isHex && !isFullHash;
 
                 query = query.Where(x =>
-                    ( isNumber && ( x.SERIES_ID == qTrimmed || ( hasParsedId && x.ID == qParsedId ) ) ) ||
-                    ( isFullHash && x.Contract.HASH == qUpper ) ||
-                    ( isHexPartial && x.Contract.HASH.Contains(qUpper) ) ||
+                    (isNumber && (x.SERIES_ID == qTrimmed || (hasParsedId && x.ID == qParsedId))) ||
+                    (isFullHash && x.Contract.HASH == qUpper) ||
+                    (isHexPartial && x.Contract.HASH.Contains(qUpper)) ||
                     EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ||
                     EF.Functions.ILike(x.DESCRIPTION, $"%{qTrimmed}%") ||
                     EF.Functions.ILike(x.Contract.SYMBOL, $"%{qTrimmed}%"));
             }
 
-            if ( !string.IsNullOrEmpty(id) && int.TryParse(id, out var parsedId) )
+            if (!string.IsNullOrEmpty(id) && int.TryParse(id, out var parsedId))
                 query = query.Where(x => x.ID == parsedId);
 
             // Searching for series using SERIES_ID.
-            if ( !string.IsNullOrEmpty(series_id) ) query = query.Where(x => x.SERIES_ID == series_id);
+            if (!string.IsNullOrEmpty(series_id)) query = query.Where(x => x.SERIES_ID == series_id);
 
-            if ( !string.IsNullOrEmpty(creator) ) query = query.Where(x => x.CreatorAddress.ADDRESS == creator);
+            if (!string.IsNullOrEmpty(creator)) query = query.Where(x => x.CreatorAddress.ADDRESS == creator);
 
-            if ( !string.IsNullOrEmpty(name) )
+            if (!string.IsNullOrEmpty(name))
             {
                 var collectionsIds = databaseContext.Serieses.Where(
                         x => x.NAME.Contains(name) || x.DESCRIPTION.Contains(name)).Select(x => x.ID).Distinct()
@@ -182,14 +182,14 @@ public static class GetSeries
             }
 
             // Searching for series using given chain.
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Contract.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Contract.Chain.NAME == chain);
 
-            if ( !string.IsNullOrEmpty(contract) ) query = query.Where(x => x.Contract.HASH == contract);
+            if (!string.IsNullOrEmpty(contract)) query = query.Where(x => x.Contract.HASH == contract);
 
             // Searching for series by symbol.
-            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.Contract.SYMBOL == symbol);
+            if (!string.IsNullOrEmpty(symbol)) query = query.Where(x => x.Contract.SYMBOL == symbol);
 
-            if ( !string.IsNullOrEmpty(token_id) )
+            if (!string.IsNullOrEmpty(token_id))
             {
                 var ids = NftMethods.GetSeriesIdsByTokenId(databaseContext, token_id);
                 query = query.Where(x => ids.Contains(x.ID));
@@ -198,7 +198,7 @@ public static class GetSeries
             #endregion
 
             // Count total number of results before adding order and limit parts of query.
-            if ( !useCursor && with_total == 1 )
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
             #region ResultArray
@@ -231,7 +231,7 @@ public static class GetSeries
                 Metadata = x.METADATA
             });
 
-            if ( useCursor )
+            if (useCursor)
             {
                 var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
                     x => x.Id);
@@ -239,9 +239,9 @@ public static class GetSeries
                     CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
                 var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
                     limit);
-                foreach ( var item in page.Items )
+                foreach (var item in page.Items)
                 {
-                    if ( item.ApiSeries != null )
+                    if (item.ApiSeries != null)
                         item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
                 }
 
@@ -254,9 +254,9 @@ public static class GetSeries
                 var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
                 var materializedPage = await pageItems.ToArrayAsync();
 
-                foreach ( var item in materializedPage )
+                foreach (var item in materializedPage)
                 {
-                    if ( item.ApiSeries != null )
+                    if (item.ApiSeries != null)
                         item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
                 }
 
@@ -269,11 +269,11 @@ public static class GetSeries
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Series()", exception);
             throw new ApiUnexpectedException(logMessage, exception);

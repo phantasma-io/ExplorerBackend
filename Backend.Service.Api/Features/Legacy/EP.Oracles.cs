@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetOracles
 {
-    [ProducesResponseType(typeof(OracleResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(OracleResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(OracleResult), "Returns the Oracles on the backend.", false, 10)]
     public static async Task<OracleResult> Execute(
@@ -25,7 +25,7 @@ public static class GetOracles
         string block_height = "",
         string chain = "main",
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -35,48 +35,48 @@ public static class GetOracles
 
         try
         {
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, filter) )
+            if (!ArgValidation.CheckLimit(limit, filter))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
+            if (!string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash))
                 throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
+            if (!string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height))
                 throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
 
-            if ( string.IsNullOrEmpty(block_hash) && string.IsNullOrEmpty(block_height) )
+            if (string.IsNullOrEmpty(block_hash) && string.IsNullOrEmpty(block_height))
                 throw new ApiParameterException("Need either block_hash or block_height != null");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.BlockOracles.AsQueryable().AsNoTracking();
 
-            if ( !string.IsNullOrEmpty(block_hash) )
+            if (!string.IsNullOrEmpty(block_hash))
                 query = query.Where(x => x.Block.HASH == block_hash);
 
-            if ( !string.IsNullOrEmpty(block_height) )
+            if (!string.IsNullOrEmpty(block_height))
                 query = query.Where(x => x.Block.HEIGHT == block_height);
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Block.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Block.Chain.NAME == chain);
 
             // Count total number of results before adding order and limit parts of query.
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             //in case we add more to sort
-            if ( order_direction == "asc" )
+            if (order_direction == "asc")
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.Oracle.ID),
@@ -93,7 +93,7 @@ public static class GetOracles
                     _ => query
                 };
 
-            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
+            if (limit > 0) query = query.Skip(offset).Take(limit);
 
             oracleArray = await query.Select(x => new Oracle
             {
@@ -105,16 +105,16 @@ public static class GetOracles
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Oracles()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new OracleResult {total_results = with_total == 1 ? totalResults : null, oracles = oracleArray};
+        return new OracleResult { total_results = with_total == 1 ? totalResults : null, oracles = oracleArray };
     }
 }

@@ -8,7 +8,7 @@ public static class ContractMethodMethods
         long timestampUnixSeconds)
     {
         var contractMethod = new ContractMethod
-            {Contract = contract, METHODS = data, TIMESTAMP_UNIX_SECONDS = timestampUnixSeconds};
+        { Contract = contract, METHODS = data, TIMESTAMP_UNIX_SECONDS = timestampUnixSeconds };
 
         mainDbContext.ContractMethods.Add(contractMethod);
 

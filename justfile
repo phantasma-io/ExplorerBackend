@@ -27,6 +27,10 @@ TIMESTAMP := `date "+%Y%m%d%H%M"`
 b:
     dotnet build ExplorerBackend.sln
 
+[group('format')]
+format:
+    dotnet format ExplorerBackend.sln
+
 [group('build')]
 c:
     sh clean.sh

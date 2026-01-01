@@ -15,7 +15,8 @@ internal class Settings
     {
         var connectionSettings = section.GetSection("Main").Get<DatabaseConnectionSettings>();
 
-        ConnectionString = new NpgsqlConnectionStringBuilder {
+        ConnectionString = new NpgsqlConnectionStringBuilder
+        {
             Host = connectionSettings.Host,
             Port = connectionSettings.Port,
             Username = connectionSettings.Username,

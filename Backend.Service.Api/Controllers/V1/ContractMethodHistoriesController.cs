@@ -39,7 +39,7 @@ public class ContractMethodHistoriesController : BaseControllerV1
         [FromQuery] string date_less = "",
         [FromQuery] string date_greater = "",
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetContractMethodHistories.Execute(

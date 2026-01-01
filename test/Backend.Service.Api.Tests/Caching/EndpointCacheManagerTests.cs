@@ -121,11 +121,11 @@ public class EndpointCacheManagerTests
         // Arrange
         var route1 = "/api/v1/user";
         var queryParameters1 =
-            new List<KeyValuePair<string, StringValues>> {new("id", new StringValues("123"))};
+            new List<KeyValuePair<string, StringValues>> { new("id", new StringValues("123")) };
         var tag1 = "user";
         var route2 = "/api/v1/assets";
         var queryParameters2 =
-            new List<KeyValuePair<string, StringValues>> {new("p", new StringValues("10"))};
+            new List<KeyValuePair<string, StringValues>> { new("p", new StringValues("10")) };
         var tag2 = "assets";
         await _cacheManager.Add("/api/v1/user/[id, 123]", @"{""username"":""test""}", 10, tag1);
         await _cacheManager.Add("/api/v1/assets/[p, 10]", @"{""test"":""data""}", 10, tag2);

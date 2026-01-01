@@ -26,9 +26,9 @@ public static class NftMethods
     public static void Delete(MainDbContext databaseContext, int id, bool saveChanges = true)
     {
         var nft = databaseContext.Nfts.FirstOrDefault(x => x.ID == id);
-        if ( nft != null ) databaseContext.Entry(nft).State = EntityState.Deleted;
+        if (nft != null) databaseContext.Entry(nft).State = EntityState.Deleted;
 
-        if ( saveChanges ) databaseContext.SaveChanges();
+        if (saveChanges) databaseContext.SaveChanges();
     }
 
 
@@ -40,7 +40,7 @@ public static class NftMethods
             .GetTracked<Nft>(databaseContext).FirstOrDefault(x =>
                 x.Chain == chain && x.ContractId == contractId && x.TOKEN_ID == tokenId);
 
-        if ( entry != null )
+        if (entry != null)
         {
             entry.TOKEN_URI = tokenUri;
             return (entry, false);
@@ -70,7 +70,7 @@ public static class NftMethods
         // We can switch to 1155 logic, but don't see any pros in it for now.
 
         var lockSting = OwnershipProcessingLock + chain.ID;
-        lock ( string.Intern(lockSting) )
+        lock (string.Intern(lockSting))
         {
             //also check in cache
             var ownership = databaseContext.NftOwnerships.Where(x => x.Nft == nft)
@@ -78,7 +78,7 @@ public static class NftMethods
                 .GetTracked<NftOwnership>(databaseContext).Where(x => x.Nft == nft)
                 .MinBy(x => x.LAST_CHANGE_UNIX_SECONDS);
 
-            if ( ownership == null )
+            if (ownership == null)
             {
                 // Ownership was never registered before, creating new entity.
 
@@ -92,16 +92,16 @@ public static class NftMethods
 
                 databaseContext.NftOwnerships.Add(ownership);
 
-                if ( saveChanges ) databaseContext.SaveChanges();
+                if (saveChanges) databaseContext.SaveChanges();
             }
-            else if ( timestampUnixSeconds >= ownership.LAST_CHANGE_UNIX_SECONDS )
+            else if (timestampUnixSeconds >= ownership.LAST_CHANGE_UNIX_SECONDS)
             {
                 // Our ownership change is newer, we need to update entity.
 
                 ownership.Address = toAddress;
                 ownership.LAST_CHANGE_UNIX_SECONDS = timestampUnixSeconds;
 
-                if ( saveChanges ) databaseContext.SaveChanges();
+                if (saveChanges) databaseContext.SaveChanges();
             }
         }
     }

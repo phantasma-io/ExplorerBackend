@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetOrganizations
 {
-    [ProducesResponseType(typeof(OrganizationResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(OrganizationResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(OrganizationResult), "Returns the Organizations on the backend.", false, 10)]
     public static async Task<OrganizationResult> Execute(
@@ -29,7 +29,7 @@ public static class GetOrganizations
         int with_creation_event = 0,
         int with_address = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -38,33 +38,33 @@ public static class GetOrganizations
 
         try
         {
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(organization_id) && !ArgValidation.CheckString(organization_id) )
+            if (!string.IsNullOrEmpty(organization_id) && !ArgValidation.CheckString(organization_id))
                 throw new ApiParameterException("Unsupported value for 'organization_id' parameter.");
 
-            if ( !string.IsNullOrEmpty(organization_id_partial) &&
-                 !ArgValidation.CheckString(organization_id_partial) )
+            if (!string.IsNullOrEmpty(organization_id_partial) &&
+                 !ArgValidation.CheckString(organization_id_partial))
                 throw new ApiParameterException("Unsupported value for 'organization_name_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
+            if (!string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name))
                 throw new ApiParameterException("Unsupported value for 'organization_name' parameter.");
 
-            if ( !string.IsNullOrEmpty(organization_name_partial) &&
-                 !ArgValidation.CheckString(organization_name_partial) )
+            if (!string.IsNullOrEmpty(organization_name_partial) &&
+                 !ArgValidation.CheckString(organization_name_partial))
                 throw new ApiParameterException("Unsupported value for 'organization_name_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
             var startTime = DateTime.Now;
@@ -73,29 +73,29 @@ public static class GetOrganizations
 
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
 
-            if ( !string.IsNullOrEmpty(qUpper) )
+            if (!string.IsNullOrEmpty(qUpper))
                 query = query.Where(x =>
                     EF.Functions.ILike(x.ORGANIZATION_ID, $"%{qTrimmed}%") ||
                     EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ||
-                    ( x.ADDRESS != null && EF.Functions.ILike(x.ADDRESS, $"%{qTrimmed}%") ) ||
-                    ( x.ADDRESS_NAME != null && EF.Functions.ILike(x.ADDRESS_NAME, $"%{qTrimmed}%") ));
+                    (x.ADDRESS != null && EF.Functions.ILike(x.ADDRESS, $"%{qTrimmed}%")) ||
+                    (x.ADDRESS_NAME != null && EF.Functions.ILike(x.ADDRESS_NAME, $"%{qTrimmed}%")));
 
-            if ( !string.IsNullOrEmpty(organization_id) )
+            if (!string.IsNullOrEmpty(organization_id))
                 query = query.Where(x => x.ORGANIZATION_ID == organization_id);
 
-            if ( !string.IsNullOrEmpty(organization_id_partial) )
+            if (!string.IsNullOrEmpty(organization_id_partial))
                 query = query.Where(x => x.ORGANIZATION_ID.Contains(organization_id_partial));
 
-            if ( !string.IsNullOrEmpty(organization_name) ) query = query.Where(x => x.NAME == organization_name);
+            if (!string.IsNullOrEmpty(organization_name)) query = query.Where(x => x.NAME == organization_name);
 
-            if ( !string.IsNullOrEmpty(organization_name_partial) )
+            if (!string.IsNullOrEmpty(organization_name_partial))
                 query = query.Where(x => x.NAME.Contains(organization_name_partial));
 
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             //in case we add more to sort
-            if ( order_direction == "asc" )
+            if (order_direction == "asc")
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.ID),
@@ -152,17 +152,17 @@ public static class GetOrganizations
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Organization()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new OrganizationResult
-            {total_results = with_total == 1 ? totalResults : null, organizations = organizationArray};
+        { total_results = with_total == 1 ? totalResults : null, organizations = organizationArray };
     }
 }

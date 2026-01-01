@@ -17,7 +17,7 @@ public static class EventMethods
     public static void DeleteByNftId(MainDbContext databaseContext, int nftId)
     {
         var tokenEvents = databaseContext.Events.Where(x => x.NftId == nftId);
-        foreach ( var tokenEvent in tokenEvents ) databaseContext.Entry(tokenEvent).State = EntityState.Deleted;
+        foreach (var tokenEvent in tokenEvents) databaseContext.Entry(tokenEvent).State = EntityState.Deleted;
     }
 
 
@@ -30,10 +30,10 @@ public static class EventMethods
 
         Log.Verbose("Got {Count} Ntfs to defuse", nftList.Count());
 
-        foreach ( var item in nftList )
+        foreach (var item in nftList)
         {
             item.InfusedInto = null;
-            if ( nft != null )
+            if (nft != null)
                 Log.Information("NFT defused: {DefusedNft} from NFT {Nft}", item.TOKEN_ID, nft.TOKEN_ID);
         }
     }
@@ -72,7 +72,7 @@ public static class EventMethods
         databaseContext.Events.Add(eventEntry);
 
         newEventCreated = true;
-        
+
         AddressTransactionMethods.UpsertAsync(databaseContext, address, transaction).Wait();
 
         return eventEntry;
@@ -84,7 +84,7 @@ public static class EventMethods
     {
         var eventUpdated = false;
 
-        if ( eventItem == null ) return eventUpdated;
+        if (eventItem == null) return eventUpdated;
 
         eventItem.Chain = chain;
         eventItem.ContractId = contractId;
@@ -94,7 +94,7 @@ public static class EventMethods
 
         eventUpdated = true;
 
-        if ( eventKind != PhantasmaPhoenix.Protocol.EventKind.TokenBurn || nft == null )
+        if (eventKind != PhantasmaPhoenix.Protocol.EventKind.TokenBurn || nft == null)
             return eventUpdated;
 
         //TODO check if always needed

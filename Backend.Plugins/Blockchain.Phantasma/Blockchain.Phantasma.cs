@@ -38,7 +38,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         Log.Information("{Name} plugin: Startup ...", Name);
 
-        if ( !Settings.Default.Enabled )
+        if (!Settings.Default.Enabled)
         {
             Log.Information("{Name} plugin is disabled, stopping", Name);
             return;
@@ -48,7 +48,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         try
         {
-            using ( MainDbContext databaseContext = new() )
+            using (MainDbContext databaseContext = new())
             {
                 InitChains();
 
@@ -57,7 +57,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 //init tokens once too, cause we might need them, to keep them update, thread them later
 
-                foreach ( var chain in _chainList )
+                foreach (var chain in _chainList)
                 {
                     InitNexusData(chain.ID);
                     EventKindMethods.UpsertAllAsync(databaseContext, chain).Wait();
@@ -68,7 +68,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
 
             Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, _chainList.Count);
-            foreach ( var chain in _chainList )
+            foreach (var chain in _chainList)
             {
                 Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name,
                     chain.NAME,
@@ -82,10 +82,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 StartupContractSync(chain);
                 StartupContractMethodsSync(chain);
             }
-            
+
             // Initialization was successful
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             LogEx.Exception("Chains processing", e);
 
@@ -102,7 +102,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         Thread nexusDataInitThread = new(async () =>
         {
-            while ( _running )
+            while (_running)
                 try
                 {
                     InitNexusData(chain.ID);
@@ -111,7 +111,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     Thread.Sleep(Settings.Default.TokensProcessingInterval *
                                  1000); // We process tokens every TokensProcessingInterval seconds
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception("NexusData init", e);
 
@@ -120,7 +120,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         });
         nexusDataInitThread.Start();
     }
-    
+
     /// <summary>
     /// 
     /// </summary>
@@ -128,7 +128,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         Thread blocksSyncThread = new(async () =>
         {
-            while ( _running )
+            while (_running)
                 try
                 {
                     BigInteger currentHeight;
@@ -162,7 +162,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     Thread.Sleep(Settings.Default.BlocksProcessingInterval *
                                  1000); // We sync blocks every BlocksProcessingInterval seconds
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception("Block fetch", e);
 
@@ -175,7 +175,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void StartupRomRamSync(Chain chain)
     {
-        if(!Settings.Default.RomRamProcessingEnabled)
+        if (!Settings.Default.RomRamProcessingEnabled)
         {
             Log.Warning("[{Name}][RAM/ROM update] Disabled", Name);
             return;
@@ -183,7 +183,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         Thread romRamSyncThread = new(() =>
         {
-            while ( _running )
+            while (_running)
                 try
                 {
                     NewNftsSetRomRam(chain.ID, chain.NAME);
@@ -191,7 +191,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     Thread.Sleep(Settings.Default.RomRamProcessingInterval *
                                  1000); // We process ROM/RAM every RomRamProcessingInterval seconds
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception("ROM/RAM load", e);
 
@@ -206,7 +206,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         Thread seriesSyncThread = new(() =>
         {
-            while ( _running )
+            while (_running)
                 try
                 {
                     NewSeriesLoad(chain.ID);
@@ -214,7 +214,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     Thread.Sleep(Settings.Default.SeriesProcessingInterval *
                                  1000); // We check for new series every SeriesProcessingInterval seconds
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception("Series load", e);
 
@@ -228,7 +228,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         Thread contractSyncThread = new(() =>
         {
-            while ( _running )
+            while (_running)
                 try
                 {
                     ContractDataSync(chain.ID);
@@ -236,7 +236,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     Thread.Sleep(Settings.Default.NamesSyncInterval *
                                  1000); // We sync names every NamesSyncInterval seconds
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception("Contract sync", e);
 
@@ -251,7 +251,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         Thread contractMethodSyncThread = new(() =>
         {
-            while ( _running )
+            while (_running)
                 try
                 {
                     ContractMethodSync();
@@ -259,7 +259,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     Thread.Sleep(Settings.Default.NamesSyncInterval *
                                  1000); // We sync names every NamesSyncInterval seconds
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception("ContractMethod sync", e);
 
@@ -283,9 +283,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         // Getting ownership first.
         var owner = GetCurrentOwnerAddress(contractHash, tokenId, out var getOwnerError);
-        if ( !string.IsNullOrEmpty(getOwnerError) )
+        if (!string.IsNullOrEmpty(getOwnerError))
         {
-            if ( getOwnerError.Contains("nft does not exists") )
+            if (getOwnerError.Contains("nft does not exists"))
             {
                 error = "NFT is burned";
                 return false;
@@ -295,7 +295,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             return false;
         }
 
-        if ( string.IsNullOrEmpty(owner) )
+        if (string.IsNullOrEmpty(owner))
         {
             error = "Unknown owner retrieval error";
             return false;
@@ -303,7 +303,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         // publicAddress is not mandatory for phantasma,
         // but if passed - we compare it to owner that we've calculated.
-        if ( !string.IsNullOrEmpty(publicKey) && publicKey != owner )
+        if (!string.IsNullOrEmpty(publicKey) && publicKey != owner)
         {
             error = $"Passed owner '{publicKey}' differs from a real owner '{owner}'";
             return false;
@@ -371,9 +371,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                   "&extended=true";
 
         var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
-        if ( response == null ) return null;
+        if (response == null) return null;
 
-        if ( response.RootElement.TryGetProperty("error", out var errorProperty) ) error = errorProperty.GetString();
+        if (response.RootElement.TryGetProperty("error", out var errorProperty)) error = errorProperty.GetString();
 
         return response.RootElement.TryGetProperty("ownerAddress", out var ownerAddressProperty)
             ? ownerAddressProperty.GetString()

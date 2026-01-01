@@ -18,7 +18,7 @@ public class TTRS : Plugin, IDBAccessPlugin
     {
         Log.Information("{Name} plugin: Startup...", Name);
 
-        if ( !Settings.Default.Enabled )
+        if (!Settings.Default.Enabled)
         {
             Log.Information("{Name} plugin is disabled, stopping", Name);
             return;
@@ -32,20 +32,20 @@ public class TTRS : Plugin, IDBAccessPlugin
 
             Nft.Fetch.Init();
 
-            while ( _running )
+            while (_running)
                 try
                 {
                     Nft.Fetch.LoadNfts();
                     //Nft.Fetch.LoadGAMENfts(); lets try without
 
-                    Thread.Sleep(( int ) Settings.Default.RunInterval *
+                    Thread.Sleep((int)Settings.Default.RunInterval *
                                  1000); // We repeat task every RunInterval seconds.
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception($"{Name} plugin", e);
 
-                    Thread.Sleep(( int ) Settings.Default.RunInterval * 1000);
+                    Thread.Sleep((int)Settings.Default.RunInterval * 1000);
                 }
         });
         mainThread.Start();

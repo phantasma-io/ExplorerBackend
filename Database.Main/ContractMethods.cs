@@ -33,11 +33,11 @@ public static class ContractMethods
     public static void InsertIfNotExistList(MainDbContext databaseContext, List<Tuple<string, string>> contractInfoList,
         Chain chain, string symbol)
     {
-        if ( !contractInfoList.Any() || string.IsNullOrEmpty(symbol) ) return;
+        if (!contractInfoList.Any() || string.IsNullOrEmpty(symbol)) return;
 
         var contractList = new List<Contract>();
         //name, hash
-        foreach ( var (name, hash) in contractInfoList )
+        foreach (var (name, hash) in contractInfoList)
         {
             var contract =
                 databaseContext.Contracts.FirstOrDefault(x =>
@@ -45,9 +45,9 @@ public static class ContractMethods
                     .GetTracked<Contract>(databaseContext).FirstOrDefault(x =>
                         x.Chain == chain && x.HASH == hash && x.SYMBOL == symbol);
 
-            if ( contract != null ) continue;
+            if (contract != null) continue;
 
-            contract = new Contract {NAME = name, Chain = chain, HASH = hash, SYMBOL = symbol};
+            contract = new Contract { NAME = name, Chain = chain, HASH = hash, SYMBOL = symbol };
             contractList.Add(contract);
         }
 
@@ -64,24 +64,24 @@ public static class ContractMethods
                 .FirstOrDefault(x => x.Chain == chain && x.HASH == hash && x.SYMBOL == symbol);
 
         // Fallback: existing contract with same hash but different symbol (or null symbol)
-        if ( contract == null )
+        if (contract == null)
         {
             contract = await databaseContext.Contracts.FirstOrDefaultAsync(x => x.Chain == chain && x.HASH == hash) ??
                        DbHelper.GetTracked<Contract>(databaseContext)
                            .FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
         }
 
-        if ( contract != null )
+        if (contract != null)
         {
-            if ( !string.IsNullOrEmpty(name) )
+            if (!string.IsNullOrEmpty(name))
                 contract.NAME = name;
-            if ( !string.IsNullOrEmpty(symbol) )
+            if (!string.IsNullOrEmpty(symbol))
                 contract.SYMBOL = symbol;
 
             return contract;
         }
 
-        contract = new Contract {NAME = name, Chain = chain, HASH = hash, SYMBOL = symbol};
+        contract = new Contract { NAME = name, Chain = chain, HASH = hash, SYMBOL = symbol };
 
         await databaseContext.Contracts.AddAsync(contract);
 
@@ -91,7 +91,7 @@ public static class ContractMethods
     public static Contract Get(MainDbContext databaseContext, Chain chain, string hash)
     {
         var contract = databaseContext.Contracts.FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
-        if ( contract != null ) return contract;
+        if (contract != null) return contract;
 
         contract = DbHelper.GetTracked<Contract>(databaseContext)
             .FirstOrDefault(x => x.Chain == chain && x.HASH == hash);
@@ -105,7 +105,7 @@ public static class ContractMethods
 
         var now = UnixSeconds.Now();
 
-        if(chunk.Count == 0)
+        if (chunk.Count == 0)
         {
             return [];
         }
@@ -156,7 +156,7 @@ public static class ContractMethods
     {
         Dictionary<ChainHashKey, int> result = [];
 
-        if(contracts.Count == 0)
+        if (contracts.Count == 0)
         {
             return [];
         }

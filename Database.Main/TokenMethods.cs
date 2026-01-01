@@ -33,7 +33,7 @@ public static class TokenMethods
         var entry = await GetAsync(databaseContext, chain, symbol);
 
 
-        if ( entry != null )
+        if (entry != null)
         {
             entry.NAME = name;
             entry.DECIMALS = decimals;
@@ -50,9 +50,9 @@ public static class TokenMethods
             entry.Address = addressEntry;
             entry.Owner = ownerEntry;
             entry.SCRIPT_RAW = scriptRaw;
-            if ( carbonTokenSchemas is {Length: > 0} &&
-                 ( entry.CARBON_TOKEN_SCHEMAS == null ||
-                   !entry.CARBON_TOKEN_SCHEMAS.SequenceEqual(carbonTokenSchemas) ) )
+            if (carbonTokenSchemas is { Length: > 0 } &&
+                 (entry.CARBON_TOKEN_SCHEMAS == null ||
+                   !entry.CARBON_TOKEN_SCHEMAS.SequenceEqual(carbonTokenSchemas)))
             {
                 entry.CARBON_TOKEN_SCHEMAS = carbonTokenSchemas;
             }
@@ -94,7 +94,7 @@ public static class TokenMethods
         string maxSupply,
         string burnedSupply)
     {
-        if ( token == null )
+        if (token == null)
         {
             return;
         }
@@ -117,7 +117,7 @@ public static class TokenMethods
     {
         var tokens = databaseContext.Tokens.ToList();
 
-        return tokens.Select(token => new Symbol {ChainName = token.Chain.NAME, NativeSymbol = token.SYMBOL}).ToList();
+        return tokens.Select(token => new Symbol { ChainName = token.Chain.NAME, NativeSymbol = token.SYMBOL }).ToList();
     }
 
 
@@ -145,11 +145,11 @@ public static class TokenMethods
         var entry = databaseContext.Tokens
             .FirstOrDefault(x => x.ChainId == chainId && x.SYMBOL == symbol);
 
-        if ( entry == null )
+        if (entry == null)
             // Token with this symbol is not found, cannot set the price - normal situation, not an error.
             return;
 
-        switch ( fiatPairSymbol.ToUpper() )
+        switch (fiatPairSymbol.ToUpper())
         {
             case "AUD":
                 entry.PRICE_AUD = price;
@@ -179,7 +179,7 @@ public static class TokenMethods
                 throw new Exception($"Unknown FIAT currency with symbol '{fiatPairSymbol}', cannot set the price");
         }
 
-        if ( saveChanges ) databaseContext.SaveChanges();
+        if (saveChanges) databaseContext.SaveChanges();
     }
 
 
@@ -205,11 +205,11 @@ public static class TokenMethods
 
     public static decimal ToDecimal(string priceInTokens, string tokenSymbol)
     {
-        if ( !double.TryParse(priceInTokens, out var priceInTokensDouble) )
+        if (!double.TryParse(priceInTokens, out var priceInTokensDouble))
             throw new Exception($"{priceInTokens} price cannot be parced.");
 
         //TODO
-        switch ( tokenSymbol.ToUpper() )
+        switch (tokenSymbol.ToUpper())
         {
             case "SOUL":
                 priceInTokensDouble /= Math.Pow(10, 8);
@@ -267,21 +267,21 @@ public static class TokenMethods
                 break;
         }
 
-        return ( decimal ) priceInTokensDouble;
+        return (decimal)priceInTokensDouble;
     }
 
 
     // Returns calculated price for given price in tokens, using token prices dictionary.
     public static double CalculatePrice(IEnumerable<TokenPrice> prices, string priceInTokens, string tokenSymbol)
     {
-        if ( string.IsNullOrEmpty(priceInTokens) || string.IsNullOrEmpty(tokenSymbol) ) return 0;
+        if (string.IsNullOrEmpty(priceInTokens) || string.IsNullOrEmpty(tokenSymbol)) return 0;
 
         // Applying decimal points.
         var priceInTokensDecimal = ToDecimal(priceInTokens, tokenSymbol);
 
         var tokenPrice = prices.Where(x => x.Symbol == tokenSymbol).Select(x => x.Price).FirstOrDefault();
 
-        return ( double ) ( tokenPrice * priceInTokensDecimal );
+        return (double)(tokenPrice * priceInTokensDecimal);
     }
 
     public static Token Get(MainDbContext databaseContext, int id)
@@ -299,7 +299,7 @@ public static class TokenMethods
     public static void SetPrice(MainDbContext databaseContext, Token token, string fiatPairSymbol, decimal price,
         bool saveChanges = true)
     {
-        switch ( fiatPairSymbol.ToUpper() )
+        switch (fiatPairSymbol.ToUpper())
         {
             case "AUD":
                 token.PRICE_AUD = price;
@@ -329,7 +329,7 @@ public static class TokenMethods
                 throw new Exception($"Unknown FIAT currency with symbol '{fiatPairSymbol}', cannot set the price");
         }
 
-        if ( saveChanges ) databaseContext.SaveChanges();
+        if (saveChanges) databaseContext.SaveChanges();
     }
 
 

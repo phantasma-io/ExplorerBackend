@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetHistoryPrices
 {
-    [ProducesResponseType(typeof(HistoryPriceResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(HistoryPriceResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(HistoryPriceResult), "Returns the Token Price History on the backend.", false, 10)]
     public static async Task<HistoryPriceResult> Execute(
@@ -26,7 +26,7 @@ public static class GetHistoryPrices
         string date_greater = "",
         int with_token = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -36,47 +36,47 @@ public static class GetHistoryPrices
 
         try
         {
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, filter) )
+            if (!ArgValidation.CheckLimit(limit, filter))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+            if (!string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
+            if (!string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less))
                 throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater))
                 throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.TokenDailyPrices.AsQueryable().AsNoTracking();
 
-            if ( !string.IsNullOrEmpty(symbol) )
+            if (!string.IsNullOrEmpty(symbol))
                 query = query.Where(x => x.Token.SYMBOL == symbol);
 
             //might work
-            if ( !string.IsNullOrEmpty(date_less) )
+            if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.DATE_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
 
-            if ( !string.IsNullOrEmpty(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater))
                 query = query.Where(x => x.DATE_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
 
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             //in case we add more to sort
-            if ( order_direction == "asc" )
+            if (order_direction == "asc")
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.ID),
@@ -93,7 +93,7 @@ public static class GetHistoryPrices
                     _ => query
                 };
 
-            if ( limit > 0 ) query = query.Skip(offset).Take(limit);
+            if (limit > 0) query = query.Skip(offset).Take(limit);
 
             historyArray = await query.Select(x => new HistoryPrice
             {
@@ -132,17 +132,17 @@ public static class GetHistoryPrices
             var responseTime = DateTime.Now - startTime;
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("TokenHistoryPrice()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new HistoryPriceResult
-            {total_results = with_total == 1 ? totalResults : null, history_prices = historyArray};
+        { total_results = with_total == 1 ? totalResults : null, history_prices = historyArray };
     }
 }

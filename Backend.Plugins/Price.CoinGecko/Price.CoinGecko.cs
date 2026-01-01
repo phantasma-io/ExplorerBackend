@@ -24,7 +24,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
     {
         Log.Information("{Name} plugin: Startup ...", Name);
 
-        if ( !Settings.Default.Enabled )
+        if (!Settings.Default.Enabled)
         {
             Log.Information("{Name} plugin is disabled, stopping", Name);
             return;
@@ -35,7 +35,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
         {
             Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            while ( _running )
+            while (_running)
                 try
                 {
                     // Coingecko ids can be found here:
@@ -43,7 +43,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
                     // Get token symbols that are used in auctions <chainShortName, tokenSymbol>.
                     List<TokenMethods.Symbol> cryptoSymbols;
-                    using ( MainDbContext databaseContext = new() )
+                    using (MainDbContext databaseContext = new())
                     {
                         cryptoSymbols = TokenMethods.GetSupportedTokens(databaseContext);
                     }
@@ -52,9 +52,9 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     // Set tokens API IDs that are compatible with CoinGecko.
                     // CoinGecko's id for SOUL, for example, is "phantasma".
                     // Also we skip those symbols that are unavailable on CoinGecko.
-                    foreach ( var t in cryptoSymbols )
+                    foreach (var t in cryptoSymbols)
                     {
-                        switch ( t.NativeSymbol.ToUpper() )
+                        switch (t.NativeSymbol.ToUpper())
                         {
                             case "SOUL":
                                 // Using "PHANTASMA" id for "SOUL" tokens.
@@ -92,16 +92,16 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                         }
                     }
 
-                    if(!Settings.Default.EnableCoingeckoPaidFeatures)
+                    if (!Settings.Default.EnableCoingeckoPaidFeatures)
                     {
-                        if(!_inactiveCoinsWarningPrinted)
+                        if (!_inactiveCoinsWarningPrinted)
                         {
                             var inactiveCryptoSymbols = cryptoSymbols
                                 .Where(x => Settings.Default.InactiveCoins.Contains(x.ApiSymbol))
                                 .Select(x => x.ApiSymbol)
                                 .ToList();
 
-                            if(inactiveCryptoSymbols.Any())
+                            if (inactiveCryptoSymbols.Any())
                             {
                                 Log.Warning("{Name} plugin: These inactive coins will not be updated: {inactiveCoins}", Name, string.Join(",", inactiveCryptoSymbols));
                             }
@@ -124,14 +124,14 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     // Load daily token prices.
                     LoadPricesHistory(cryptoSymbols);
 
-                    Thread.Sleep(( int ) Settings.Default.RunInterval *
+                    Thread.Sleep((int)Settings.Default.RunInterval *
                                  1000); // We repeat task every RunInterval seconds.
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception($"{Name} plugin", e);
 
-                    Thread.Sleep(( int ) Settings.Default.RunInterval * 1000);
+                    Thread.Sleep((int)Settings.Default.RunInterval * 1000);
                 }
         });
         mainThread.Start();
@@ -175,29 +175,29 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                           .ToList()) + "&vs_currencies=" + string.Join(separator, fiatSymbols);
 
         var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse);
-        if ( response == null ) return;
+        if (response == null) return;
 
-        if ( stringResponse.ToLowerInvariant().Contains("exceeded the rate limit") )
+        if (stringResponse.ToLowerInvariant().Contains("exceeded the rate limit"))
         {
             Log.Warning("[{Name}] Exceeded the rate limit, stopping for now", Name);
             return;
         }
-        
+
         var pricesUpdated = 0;
 
-        using ( MainDbContext databaseContext = new() )
+        using (MainDbContext databaseContext = new())
         {
-            foreach ( var cryptoSymbol in cryptoSymbols )
+            foreach (var cryptoSymbol in cryptoSymbols)
             {
                 var chain = ChainMethods.Get(databaseContext, cryptoSymbol.ChainName);
                 // TODO async
                 var token = TokenMethods.GetAsync(databaseContext, chain, cryptoSymbol.NativeSymbol).Result;
 
-                if ( string.IsNullOrEmpty(cryptoSymbol.ApiSymbol) ) continue;
+                if (string.IsNullOrEmpty(cryptoSymbol.ApiSymbol)) continue;
 
-                if ( response.RootElement.TryGetProperty(cryptoSymbol.ApiSymbol.ToLower(), out var priceNode) )
-                    foreach ( var fiatSymbol in fiatSymbols )
-                        if ( priceNode.TryGetProperty(fiatSymbol.ToLower(), out var priceElement) )
+                if (response.RootElement.TryGetProperty(cryptoSymbol.ApiSymbol.ToLower(), out var priceNode))
+                    foreach (var fiatSymbol in fiatSymbols)
+                        if (priceNode.TryGetProperty(fiatSymbol.ToLower(), out var priceElement))
                         {
                             TokenMethods.SetPrice(databaseContext, token, fiatSymbol, priceElement.GetDecimal(), false);
 
@@ -229,13 +229,13 @@ public class CoinGecko : Plugin, IDBAccessPlugin
         var pricesUpdated = 0;
 
         // First pass. We get all tokens prices in USD.
-        using ( MainDbContext databaseContext = new() )
+        using (MainDbContext databaseContext = new())
         {
             var lastLoadedDate = databaseContext.TokenDailyPrices.OrderByDescending(x => x.DATE_UNIX_SECONDS)
                 .Select(x => x.DATE_UNIX_SECONDS).FirstOrDefault();
 
             var oneYearBeforeDate = UnixSeconds.AddDays(UnixSeconds.GetDate(UnixSeconds.Now()), -365);
-            if(lastLoadedDate < oneYearBeforeDate && !Settings.Default.EnableCoingeckoPaidFeatures)
+            if (lastLoadedDate < oneYearBeforeDate && !Settings.Default.EnableCoingeckoPaidFeatures)
             {
                 Log.Warning("[{Name}] We had to skip dates from {from} to {to}",
                     Name,
@@ -250,7 +250,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
 
             var lastLoadedDateString = UnixSeconds.ToDateTime(lastLoadedDate).ToString("dd-MM-yyyy");
 
-            while ( lastLoadedDate <= UnixSeconds.Now() )
+            while (lastLoadedDate <= UnixSeconds.Now())
             {
                 foreach (var cryptoSymbol in cryptoSymbols)
                 {
@@ -261,7 +261,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     // TODO async
                     var token = TokenMethods.GetAsync(databaseContext, chain, cryptoSymbol.NativeSymbol).Result;
 
-                    if ( token == null )
+                    if (token == null)
                     {
                         Log.Warning("[{Name}] Symbol {Symbol} could not be found", Name, cryptoSymbol.NativeSymbol);
                         continue;
@@ -278,7 +278,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                                 Name);
                         });
 
-                    if ( response == null )
+                    if (response == null)
                     {
                         databaseContext.SaveChanges();
                         Log.Error(
@@ -287,26 +287,26 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                         return;
                     }
 
-                    if ( stringResponse.ToLowerInvariant().Contains("exceeded the rate limit") )
+                    if (stringResponse.ToLowerInvariant().Contains("exceeded the rate limit"))
                     {
                         databaseContext.SaveChanges();
                         Log.Warning("[{Name}] Exceeded the rate limit, stopping for now", Name);
                         return;
                     }
 
-                    if ( response.RootElement.TryGetProperty("error", out var errorProperty) )
+                    if (response.RootElement.TryGetProperty("error", out var errorProperty))
                     {
-                        if ( errorProperty.TryGetProperty("status", out var statusProperty) )
+                        if (errorProperty.TryGetProperty("status", out var statusProperty))
                         {
-                            if ( statusProperty.TryGetProperty("error_message", out var errorMessageProperty) )
+                            if (statusProperty.TryGetProperty("error_message", out var errorMessageProperty))
                             {
                                 var errorMessage = errorMessageProperty.GetString();
                                 Log.Error("[{Name}] Cannot fetch data. Error: {Error}",
                                     Name, errorMessage);
 
-                                if ( errorMessage is not null &&
+                                if (errorMessage is not null &&
                                      errorMessage.Contains("Could not find coin with the given id",
-                                         StringComparison.CurrentCultureIgnoreCase) )
+                                         StringComparison.CurrentCultureIgnoreCase))
                                 {
                                     Log.Warning(errorMessage);
                                 }
@@ -325,7 +325,7 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     }
 
                     var priceUsd = 0m;
-                    if ( !response.RootElement.TryGetProperty("market_data", out var marketProperty) )
+                    if (!response.RootElement.TryGetProperty("market_data", out var marketProperty))
                     {
                         Log.Warning(
                             "[{Name}] plugin: market_data is unavailable for symbol {Symbol}, response: {Response}.'",
@@ -333,14 +333,14 @@ public class CoinGecko : Plugin, IDBAccessPlugin
                     }
                     else
                     {
-                        if ( marketProperty.TryGetProperty("current_price", out var priceNode) )
+                        if (marketProperty.TryGetProperty("current_price", out var priceNode))
                         {
                             //it is send in lowercase now
                             priceUsd = priceNode.GetProperty("usd").GetDecimal();
                         }
                     }
 
-                    if ( cryptoSymbol.NativeSymbol.ToUpper() == "SOUL" )
+                    if (cryptoSymbol.NativeSymbol.ToUpper() == "SOUL")
                     {
                         // TODO async
                         token = TokenMethods.GetAsync(databaseContext, chain, "GOATI").Result;

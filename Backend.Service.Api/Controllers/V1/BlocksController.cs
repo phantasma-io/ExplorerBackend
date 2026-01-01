@@ -66,7 +66,7 @@ public class BlocksController : BaseControllerV1
         [FromQuery] int with_nft = 0,
         [FromQuery] int with_fiat = 0,
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetBlocks.Execute(

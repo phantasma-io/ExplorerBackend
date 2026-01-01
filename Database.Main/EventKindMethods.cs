@@ -30,10 +30,10 @@ public static class EventKindMethods
     {
         var query = dbContext.EventKinds.AsNoTracking();
 
-        if ( !string.IsNullOrEmpty(chainName) )
+        if (!string.IsNullOrEmpty(chainName))
             query = query.Where(x => x.Chain.NAME == chainName);
 
-        if ( onlyWithEvents )
+        if (onlyWithEvents)
             query = query.Where(x => x.Events.Any());
 
         return query.Select(x => x.NAME).Distinct().OrderBy(x => x).ToListAsync();
@@ -45,13 +45,13 @@ public static class EventKindMethods
     {
         var query = dbContext.EventKinds.AsNoTracking();
 
-        if ( chainId.HasValue )
+        if (chainId.HasValue)
             query = query.Where(x => x.ChainId == chainId.Value);
 
-        if ( onlyWithEvents )
+        if (onlyWithEvents)
             query = query.Where(x => x.Events.Any());
 
-        var eventKinds = await query.Select(x => new {x.NAME, x.ID}).ToListAsync();
+        var eventKinds = await query.Select(x => new { x.NAME, x.ID }).ToListAsync();
 
         return eventKinds.ToDictionary(x => x.NAME, x => x.ID, StringComparer.OrdinalIgnoreCase);
     }
@@ -64,7 +64,7 @@ public static class EventKindMethods
         {
             if (!dbContext.EventKinds.Any(e => e.Chain.ID == chain.ID && e.NAME == kind.ToString()))
             {
-                dbContext.EventKinds.Add(new EventKind {Chain = chain, NAME = kind.ToString()});
+                dbContext.EventKinds.Add(new EventKind { Chain = chain, NAME = kind.ToString() });
             }
         }
     }

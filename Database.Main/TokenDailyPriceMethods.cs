@@ -13,21 +13,21 @@ public static class TokenDailyPricesMethods
     public static void Upsert(MainDbContext databaseContext, long dateUnixSeconds, Token token,
         decimal usdPrice, bool saveChanges = true)
     {
-        if ( token == null ) return;
+        if (token == null) return;
 
         dateUnixSeconds = UnixSeconds.GetDate(dateUnixSeconds);
 
         var entry = databaseContext.TokenDailyPrices.FirstOrDefault(x =>
             x.Token == token && x.DATE_UNIX_SECONDS == dateUnixSeconds);
-        if ( entry == null )
+        if (entry == null)
         {
-            entry = new TokenDailyPrice {DATE_UNIX_SECONDS = dateUnixSeconds, Token = token};
+            entry = new TokenDailyPrice { DATE_UNIX_SECONDS = dateUnixSeconds, Token = token };
             databaseContext.TokenDailyPrices.Add(entry);
         }
 
         entry.PRICE_USD = usdPrice;
 
-        if ( saveChanges ) databaseContext.SaveChanges();
+        if (saveChanges) databaseContext.SaveChanges();
     }
 
 
@@ -38,7 +38,7 @@ public static class TokenDailyPricesMethods
 
         var entry = await databaseContext.TokenDailyPrices.FirstOrDefaultAsync(x =>
             x.Token == token && x.DATE_UNIX_SECONDS == dateUnixSeconds);
-        if ( entry == null ) return 0;
+        if (entry == null) return 0;
 
         return entry.PRICE_USD;
     }

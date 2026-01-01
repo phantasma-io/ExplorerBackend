@@ -7,13 +7,13 @@ public static class MarketEventFiatPriceMethods
     public static MarketEventFiatPrice Upsert(MainDbContext databaseContext, MarketEvent marketEvent, decimal priceUsd,
         decimal priceEndUsd)
     {
-        if ( marketEvent is null ) return null;
+        if (marketEvent is null) return null;
 
         var marketEventFiatPrice =
             databaseContext.MarketEventFiatPrices.FirstOrDefault(x => x.MarketEvent == marketEvent);
         //already inserted, update values
 
-        if ( marketEventFiatPrice == null )
+        if (marketEventFiatPrice == null)
         {
             marketEventFiatPrice = new MarketEventFiatPrice
             {

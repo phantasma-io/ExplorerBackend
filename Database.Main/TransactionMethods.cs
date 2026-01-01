@@ -22,7 +22,7 @@ public static class TransactionMethods
             .GetTracked<Transaction>(databaseContext)
             .FirstOrDefault(x => x.Block == block && x.HASH == hash);
 
-        if ( entry != null ) return entry;
+        if (entry != null) return entry;
 
         var transactionState = TransactionStateMethods.Upsert(databaseContext, state, false);
         var senderAddress = await AddressMethods.UpsertAsync(databaseContext, block.Chain, sender);
@@ -61,13 +61,13 @@ public static class TransactionMethods
         };
 
         await databaseContext.Transactions.AddAsync(entry);
-        
+
         await AddressTransactionMethods.UpsertAsync(databaseContext, senderAddress, entry);
-        if ( gasPayerAddress.ADDRESS != senderAddress.ADDRESS )
+        if (gasPayerAddress.ADDRESS != senderAddress.ADDRESS)
         {
             await AddressTransactionMethods.UpsertAsync(databaseContext, gasPayerAddress, entry);
         }
-        if ( gasTargetAddress.ADDRESS != gasPayerAddress.ADDRESS )
+        if (gasTargetAddress.ADDRESS != gasPayerAddress.ADDRESS)
         {
             await AddressTransactionMethods.UpsertAsync(databaseContext, gasTargetAddress, entry);
         }

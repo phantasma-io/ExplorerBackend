@@ -22,7 +22,7 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
     {
         Log.Information("{Name} plugin: Startup ...", Name);
 
-        if ( !Settings.Default.Enabled )
+        if (!Settings.Default.Enabled)
         {
             Log.Information("{Name} plugin is disabled, stopping", Name);
             return;
@@ -33,19 +33,19 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
         {
             Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            while ( _running )
+            while (_running)
                 try
                 {
                     CheckDirectory();
 
-                    Thread.Sleep(( int ) Settings.Default.RunInterval *
+                    Thread.Sleep((int)Settings.Default.RunInterval *
                                  1000); // We repeat task every RunInterval seconds.
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception($"{Name} plugin", e);
 
-                    Thread.Sleep(( int ) Settings.Default.RunInterval * 1000);
+                    Thread.Sleep((int)Settings.Default.RunInterval * 1000);
                 }
         });
         mainThread.Start();
@@ -89,39 +89,39 @@ public class BlockChainImgPlugin : Plugin, IDBAccessPlugin
         var defaultImg = "";
 
         var baseLink = Settings.Default.HostName + Settings.Default.Folder;
-        foreach ( var file in files )
+        foreach (var file in files)
         {
             var token = GetFileNameWithoutExtension(file.Name);
             Log.Verbose("[{Name}] Processing Image for Token {Token}, File Name {File}", Name, token, file.Name);
 
-            if ( token == Settings.Default.DefaultImage ) defaultImg = file.Name;
+            if (token == Settings.Default.DefaultImage) defaultImg = file.Name;
 
-            if ( string.IsNullOrEmpty(token) ) continue;
+            if (string.IsNullOrEmpty(token)) continue;
             // TODO async
             var tokenEntry = TokenMethods.GetAsync(databaseContext, chain, token).Result;
 
-            if ( tokenEntry == null ) continue;
+            if (tokenEntry == null) continue;
 
             Log.Verbose("[{Name}] building and adding Link for Token {Token}", Name, tokenEntry.SYMBOL);
             TokenLogoMethods.InsertIfNotExistList(databaseContext, tokenEntry,
-                new Dictionary<string, string> {{"logo", baseLink + "/" + file.Name}}, false);
+                new Dictionary<string, string> { { "logo", baseLink + "/" + file.Name } }, false);
             tokenUrlCount++;
         }
 
         var tokensWithoutLogo = TokenMethods.GetTokensWithoutLogo(databaseContext);
-        if ( !string.IsNullOrEmpty(defaultImg) )
+        if (!string.IsNullOrEmpty(defaultImg))
         {
             Log.Verbose("[{Name}] building Links for Tokens with default Image", Name);
-            foreach ( var token in tokensWithoutLogo )
+            foreach (var token in tokensWithoutLogo)
             {
                 Log.Verbose("[{Name}] building and adding Link for Token {Token}", Name, token.SYMBOL);
                 TokenLogoMethods.InsertIfNotExistList(databaseContext, token,
-                    new Dictionary<string, string> {{"logo", baseLink + "/" + defaultImg}}, false);
+                    new Dictionary<string, string> { { "logo", baseLink + "/" + defaultImg } }, false);
                 tokenUrlCount++;
             }
         }
 
-        if ( tokenUrlCount > 0 )
+        if (tokenUrlCount > 0)
         {
             databaseContext.SaveChanges();
             Log.Information("[{Name}] plugin: {Count} Token for Urls processed", Name, tokenUrlCount);

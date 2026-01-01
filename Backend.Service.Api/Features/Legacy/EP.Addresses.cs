@@ -25,7 +25,7 @@ public static class GetAddresses
         public Address ApiAddress { get; init; }
     }
 
-    [ProducesResponseType(typeof(AddressResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(AddressResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(AddressResult), "Returns the addresses on the backend.", false, 10, cacheTag: "addresses")]
     public static async Task<AddressResult> Execute(
@@ -46,7 +46,7 @@ public static class GetAddresses
         int with_stakes = 0,
         int with_balance = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -62,34 +62,34 @@ public static class GetAddresses
         {
             #region ArgValidation
 
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, filter) )
+            if (!ArgValidation.CheckLimit(limit, filter))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
+            if (!string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
+            if (!string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial))
                 throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name) )
+            if (!string.IsNullOrEmpty(address_name) && !ArgValidation.CheckString(address_name))
                 throw new ApiParameterException("Unsupported value for 'address_name' parameter.");
 
-            if ( !string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name) )
+            if (!string.IsNullOrEmpty(organization_name) && !ArgValidation.CheckString(organization_name))
                 throw new ApiParameterException("Unsupported value for 'organization_name' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
-            if ( !string.IsNullOrEmpty(validator_kind) && !ArgValidation.CheckString(validator_kind, true) )
+            if (!string.IsNullOrEmpty(validator_kind) && !ArgValidation.CheckString(validator_kind, true))
                 throw new ApiParameterException("Unsupported value for 'validator_kind' parameter.");
 
             #endregion
@@ -141,7 +141,7 @@ public static class GetAddresses
                     }
                 };
 
-            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
@@ -156,35 +156,35 @@ public static class GetAddresses
             #region Filtering
 
             bool isValidAddress = false;
-            if ( !string.IsNullOrEmpty(address) )
+            if (!string.IsNullOrEmpty(address))
                 isValidAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(address);
-            
-            if ( !string.IsNullOrEmpty(address) && isValidAddress) query = query.Where(x => x.ADDRESS == address);
 
-            if ( !string.IsNullOrEmpty(address_name) ) query = query.Where(x => x.ADDRESS_NAME == address_name);
-            
-            if ( !string.IsNullOrEmpty(address) && !isValidAddress ) query = query.Where(x => x.ADDRESS_NAME == address);
+            if (!string.IsNullOrEmpty(address) && isValidAddress) query = query.Where(x => x.ADDRESS == address);
 
-            if ( !string.IsNullOrEmpty(address_partial) )
+            if (!string.IsNullOrEmpty(address_name)) query = query.Where(x => x.ADDRESS_NAME == address_name);
+
+            if (!string.IsNullOrEmpty(address) && !isValidAddress) query = query.Where(x => x.ADDRESS_NAME == address);
+
+            if (!string.IsNullOrEmpty(address_partial))
                 query = query.Where(x => x.ADDRESS.Contains(address_partial));
 
-            if ( !string.IsNullOrEmpty(organization_name) )
+            if (!string.IsNullOrEmpty(organization_name))
             {
                 var organizationAddresses = OrganizationAddressMethods
                     .GetOrganizationAddressByOrganization(databaseContext, organization_name).ToList();
                 query = query.Where(x => x.OrganizationAddresses.Any(y => organizationAddresses.Contains(y)));
             }
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
 
-            if ( !string.IsNullOrEmpty(validator_kind) )
+            if (!string.IsNullOrEmpty(validator_kind))
                 query = query.Where(x => x.AddressValidatorKind.NAME == validator_kind);
 
             #endregion
 
             #region ResultArray
 
-            if ( !useCursor && with_total == 1 )
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new AddressPageItem
@@ -194,7 +194,7 @@ public static class GetAddresses
                 AddressName = x.ADDRESS_NAME,
                 BalanceMissingScore = balanceUsesSoul
                     ? 0
-                    : ( x.AddressBalances.Any(y => y.Token.SYMBOL == symbolUpper) ? 0 : 1 ),
+                    : (x.AddressBalances.Any(y => y.Token.SYMBOL == symbolUpper) ? 0 : 1),
                 BalanceRaw = balanceUsesSoul
                     ? x.TOTAL_SOUL_AMOUNT
                     : x.AddressBalances.Where(y => y.Token.SYMBOL == symbolUpper).Select(y => y.AMOUNT_RAW)
@@ -216,7 +216,7 @@ public static class GetAddresses
                             avatar = x.AVATAR
                         }
                         : null,
-                    stakes = with_stakes == 1 && ( !string.IsNullOrEmpty(x.STAKED_AMOUNT) || !string.IsNullOrEmpty(x.UNCLAIMED_AMOUNT) )
+                    stakes = with_stakes == 1 && (!string.IsNullOrEmpty(x.STAKED_AMOUNT) || !string.IsNullOrEmpty(x.UNCLAIMED_AMOUNT))
                         ? new AddressStakes
                         {
                             amount = x.STAKED_AMOUNT,
@@ -228,8 +228,8 @@ public static class GetAddresses
                         : null,
                     balances = with_balance == 1 && x.AddressBalances != null
                         ? x.AddressBalances.Select(b => new AddressBalance
-                            {
-                                token = b.Token != null
+                        {
+                            token = b.Token != null
                                     ? new Token
                                     {
                                         symbol = b.Token.SYMBOL,
@@ -245,14 +245,14 @@ public static class GetAddresses
                                         decimals = b.Token.DECIMALS
                                     }
                                     : null,
-                                chain = new Chain
-                                    {
-                                        // TODO probably useless, check if can be removed
-                                        chain_name = b.Address.Chain.NAME
-                                    },
-                                amount = b.AMOUNT,
-                                amount_raw = b.AMOUNT_RAW.ToString()
-                            }
+                            chain = new Chain
+                            {
+                                // TODO probably useless, check if can be removed
+                                chain_name = b.Address.Chain.NAME
+                            },
+                            amount = b.AMOUNT,
+                            amount_raw = b.AMOUNT_RAW.ToString()
+                        }
                         ).ToArray()
                         : null
                 }
@@ -263,7 +263,7 @@ public static class GetAddresses
                 : pageQuery;
             var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
 
-            if ( useCursor )
+            if (useCursor)
             {
                 var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
                     limit);
@@ -273,7 +273,7 @@ public static class GetAddresses
             else
             {
                 var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                addressArray = ( await pageItems.ToArrayAsync() ).Select(x => x.ApiAddress).ToArray();
+                addressArray = (await pageItems.ToArrayAsync()).Select(x => x.ApiAddress).ToArray();
             }
 
             #endregion
@@ -282,11 +282,11 @@ public static class GetAddresses
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Address()", exception);
             throw new ApiUnexpectedException(logMessage, exception);

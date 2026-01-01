@@ -23,7 +23,7 @@ public static class UnixSeconds
         {
             return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(unixSeconds);
         }
-        catch ( Exception )
+        catch (Exception)
         {
             Serilog.Log.Error("UnixSeconds.ToDateTime() crashed on this date: '{UnixSeconds}'", unixSeconds);
             throw;
@@ -100,7 +100,7 @@ public static class UnixMilliseconds
         {
             return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(unixMilliseconds);
         }
-        catch ( Exception )
+        catch (Exception)
         {
             Log.Error("UnixMilliseconds.ToDateTime() crashed on this date: '{UnixMilliseconds}'", unixMilliseconds);
             throw;

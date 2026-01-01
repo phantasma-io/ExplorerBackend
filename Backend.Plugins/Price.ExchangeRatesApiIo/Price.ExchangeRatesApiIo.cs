@@ -21,7 +21,7 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
     {
         Log.Information("{Name} plugin: Startup ...", Name);
 
-        if ( !Settings.Default.Enabled )
+        if (!Settings.Default.Enabled)
         {
             Log.Information("{Name} plugin is disabled, stopping", Name);
             return;
@@ -33,19 +33,19 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
         {
             Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            while ( _running )
+            while (_running)
                 try
                 {
                     LoadPrices();
 
-                    Thread.Sleep(( int ) Settings.Default.RunInterval *
+                    Thread.Sleep((int)Settings.Default.RunInterval *
                                  1000); // We repeat task every RunInterval seconds.
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception($"{Name} plugin", e);
 
-                    Thread.Sleep(( int ) Settings.Default.RunInterval * 1000);
+                    Thread.Sleep((int)Settings.Default.RunInterval * 1000);
                 }
         });
         mainThread.Start();
@@ -82,15 +82,15 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
                   Settings.Default.ApiKeys.GetValue(rnd.Next(Settings.Default.ApiKeys.Length));
 
         var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse);
-        if ( response == null ) return;
+        if (response == null) return;
 
         var pricesUpdated = 0;
-        using ( MainDbContext databaseContext = new() )
+        using (MainDbContext databaseContext = new())
         {
-            foreach ( var fiatSymbol in TokenMethods.GetSupportedFiatSymbols() )
+            foreach (var fiatSymbol in TokenMethods.GetSupportedFiatSymbols())
             {
                 decimal price;
-                if ( response.RootElement.TryGetProperty("rates", out var element) )
+                if (response.RootElement.TryGetProperty("rates", out var element))
                     price = element.GetProperty(fiatSymbol).GetDecimal();
                 else
                 {
@@ -103,7 +103,7 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
                 // Setting pegged token prices.
 
                 // GOATI. 1 GOATI = 0.1 USD
-                if ( fiatSymbol.ToUpper() == "USD" )
+                if (fiatSymbol.ToUpper() == "USD")
                     TokenMethods.SetPrice(databaseContext, ChainMethods.GetId(databaseContext, "main"), "GOATI",
                         fiatSymbol, 0.1m, false);
                 else
@@ -113,7 +113,7 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
                 pricesUpdated++;
             }
 
-            if ( pricesUpdated > 0 ) databaseContext.SaveChanges();
+            if (pricesUpdated > 0) databaseContext.SaveChanges();
         }
 
         Log.Information("{Name} plugin: {PricesUpdated} prices updated", Name, pricesUpdated);
