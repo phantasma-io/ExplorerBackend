@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,9 +29,64 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     public string[] ChainNames { get; private set; }
     private BigInteger height = 0;
     private Dictionary<EventKindMethods.ChainEventKindKey, int> _eventKinds;
+    private readonly ConcurrentDictionary<int, SyncLagState> _syncLagStates = new();
+
+    private sealed class SyncLagState
+    {
+        public long LastLag;
+        public long LastUpdatedAtUnixSeconds;
+    }
 
     public void Fetch()
     {
+    }
+
+    private SyncLagState GetSyncLagState(int chainId)
+    {
+        return _syncLagStates.GetOrAdd(chainId, _ => new SyncLagState());
+    }
+
+    private void UpdateSyncLagState(int chainId, long lag)
+    {
+        var state = GetSyncLagState(chainId);
+        Interlocked.Exchange(ref state.LastLag, lag);
+        Interlocked.Exchange(ref state.LastUpdatedAtUnixSeconds, UnixSeconds.Now());
+    }
+
+    private static long ComputeLagValue(BigInteger chainHeight, BigInteger currentHeight)
+    {
+        var lag = chainHeight - currentHeight;
+        if (lag.Sign < 0)
+            return long.MaxValue;
+
+        if (lag > long.MaxValue)
+            return long.MaxValue;
+
+        return (long)lag;
+    }
+
+    private void UpdateSyncLagStateFromDb(int chainId, string chainName, BigInteger chainHeight)
+    {
+        using var databaseContext = new MainDbContext();
+        var processedHeight = ChainMethods.GetLastProcessedBlock(databaseContext, chainName);
+        var lag = ComputeLagValue(chainHeight, processedHeight);
+        UpdateSyncLagState(chainId, lag);
+    }
+
+    private bool IsBackgroundSyncAllowed(int chainId)
+    {
+        var state = GetSyncLagState(chainId);
+        var lastUpdated = Interlocked.Read(ref state.LastUpdatedAtUnixSeconds);
+        if (lastUpdated == 0)
+            return false;
+
+        var now = UnixSeconds.Now();
+        var staleThreshold = Math.Max(1, Settings.Default.BlocksProcessingInterval * 2);
+        if (now - lastUpdated > staleThreshold)
+            return false;
+
+        var lag = Interlocked.Read(ref state.LastLag);
+        return lag <= BalanceSyncLagThreshold;
     }
 
 
@@ -105,6 +161,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             while (_running)
                 try
                 {
+                    if (!IsBackgroundSyncAllowed(chain.ID))
+                    {
+                        Thread.Sleep(Settings.Default.TokensProcessingInterval * 1000);
+                        continue;
+                    }
+
                     InitNexusData(chain.ID);
                     await UpdateTokens(chain.ID);
 
@@ -128,6 +190,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         Thread blocksSyncThread = new(async () =>
         {
+            var chainId = 0;
+            using (MainDbContext databaseContext = new())
+            {
+                chainId = ChainMethods.GetId(databaseContext, chainName);
+            }
+
             while (_running)
                 try
                 {
@@ -143,20 +211,25 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     if (currentHeight > height)
                     {
                         Log.Warning("[Blocks] RPC is out of sync, RPC: {Height}, explorer: {explorerHeight}", height, currentHeight);
+                        UpdateSyncLagState(chainId, long.MaxValue);
                     }
                     else if (Settings.Default.HeightLimit != 0 && currentHeight >= Settings.Default.HeightLimit)
                     {
                         Log.Warning("[Blocks] Height limit is reached {Height} >= {HeightLimit}", currentHeight, Settings.Default.HeightLimit);
+                        UpdateSyncLagState(chainId, 0);
                     }
                     else
                     {
-                        if (Settings.Default.HeightLimit != 0 && height >= Settings.Default.HeightLimit)
+                        var targetHeight = height;
+                        if (Settings.Default.HeightLimit != 0 && targetHeight >= Settings.Default.HeightLimit)
                         {
-                            height = Settings.Default.HeightLimit;
+                            targetHeight = Settings.Default.HeightLimit;
                         }
-                        var lag = height - currentHeight;
+
+                        var lag = ComputeLagValue(targetHeight, currentHeight);
                         var allowBalanceSync = lag <= BalanceSyncLagThreshold;
-                        FetchBlocksRange(chainName, currentHeight, height, allowBalanceSync).Wait();
+                        FetchBlocksRange(chainName, currentHeight, targetHeight, allowBalanceSync).Wait();
+                        UpdateSyncLagStateFromDb(chainId, chainName, targetHeight);
                     }
 
                     Thread.Sleep(Settings.Default.BlocksProcessingInterval *
@@ -231,6 +304,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             while (_running)
                 try
                 {
+                    if (!IsBackgroundSyncAllowed(chain.ID))
+                    {
+                        Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
+                        continue;
+                    }
+
                     ContractDataSync(chain.ID);
 
                     Thread.Sleep(Settings.Default.NamesSyncInterval *
@@ -254,6 +333,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             while (_running)
                 try
                 {
+                    if (!IsBackgroundSyncAllowed(chain.ID))
+                    {
+                        Thread.Sleep(Settings.Default.NamesSyncInterval * 1000);
+                        continue;
+                    }
+
                     ContractMethodSync();
 
                     Thread.Sleep(Settings.Default.NamesSyncInterval *
