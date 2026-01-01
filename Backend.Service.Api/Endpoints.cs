@@ -140,8 +140,8 @@ public struct ApiEntry
 
     private int GetParameterIndex(string name)
     {
-        for ( var i = 0; i < Parameters.Count; i++ )
-            if ( string.Equals(Parameters[i].Name.ToUpper(), name.ToUpper()) )
+        for (var i = 0; i < Parameters.Count; i++)
+            if (string.Equals(Parameters[i].Name.ToUpper(), name.ToUpper()))
                 return i;
 
         return -1;
@@ -151,7 +151,7 @@ public struct ApiEntry
     private object GetParameter(string name, params object[] input)
     {
         var parameterIndex = GetParameterIndex(name);
-        if ( parameterIndex == -1 ) return null;
+        if (parameterIndex == -1) return null;
 
         return input.Length <= parameterIndex ? null : input[parameterIndex];
     }
@@ -167,13 +167,13 @@ public struct ApiEntry
 
         var parameters = info.GetParameters();
         Parameters = new List<ApiValue>();
-        foreach ( var entry in parameters )
+        foreach (var entry in parameters)
         {
             string description;
             string exampleValue;
 
             var descAttr = entry.GetCustomAttribute<ApiParameterAttribute>();
-            if ( descAttr != null )
+            if (descAttr != null)
             {
                 description = descAttr.Description;
                 exampleValue = descAttr.Value;
@@ -202,7 +202,7 @@ public struct ApiEntry
         try
         {
             var attr = info.GetCustomAttribute<ApiInfoAttribute>();
-            if ( attr == null )
+            if (attr == null)
             {
                 ReturnType = null;
                 ReturnTypeDescription = null;
@@ -250,22 +250,22 @@ public struct ApiModel
         Name = name;
         Fields = new List<ApiModelValue>();
         InternalOnly = internalOnly;
-        foreach ( var entry in fields )
+        foreach (var entry in fields)
         {
             string description = null;
 
             var descAttr = entry.GetCustomAttribute<ApiDescriptionAttribute>();
-            if ( descAttr != null ) description = descAttr.Description;
+            if (descAttr != null) description = descAttr.Description;
 
             var isArray = false;
             Type type;
-            if ( entry.FieldType.IsArray )
+            if (entry.FieldType.IsArray)
             {
                 isArray = true;
                 type = entry.FieldType.GetElementType();
             }
-            else if ( entry.FieldType.IsGenericType &&
-                      entry.FieldType.GetGenericTypeDefinition() == typeof(Nullable<>) )
+            else if (entry.FieldType.IsGenericType &&
+                      entry.FieldType.GetGenericTypeDefinition() == typeof(Nullable<>))
                 type = Nullable.GetUnderlyingType(entry.FieldType);
             else
                 type = entry.FieldType;

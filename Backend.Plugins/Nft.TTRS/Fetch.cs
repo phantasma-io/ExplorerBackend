@@ -74,34 +74,34 @@ public class Fetch
 
     private static void LoadStoreNftFromDataNode(List<string> ids, JsonNode storeNft)
     {
-        if ( storeNft == null ) return;
+        if (storeNft == null) return;
 
         var startTime = DateTime.Now;
         var updatedNftsCount = 0;
 
-        using ( MainDbContext databaseContext = new() )
+        using (MainDbContext databaseContext = new())
         {
             databaseContext.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            using ( var transaction = databaseContext.Database.BeginTransaction() )
+            using (var transaction = databaseContext.Database.BeginTransaction())
             {
                 try
                 {
-                    foreach ( var id in ids )
+                    foreach (var id in ids)
                     {
                         var item = storeNft[id];
 
-                        if ( item is not JsonObject ) continue;
+                        if (item is not JsonObject) continue;
 
                         var itemInfo = item["item_info"];
 
                         var nft = NftMethods.Get(databaseContext, _chainId, _contractId, id);
 
-                        if ( nft == null ) continue;
+                        if (nft == null) continue;
                         updatedNftsCount++;
 
                         //TODO maybe we should not do that
-                        if ( ( ( string ) item["type"] )!.Contains("System object") )
+                        if (((string)item["type"])!.Contains("System object"))
                         {
                             // We found "system" NFT, which is an internal non-tradable object.
                             // We should delete it.
@@ -109,21 +109,21 @@ public class Fetch
                             NftMethods.Delete(databaseContext, nft.ID);
                             Log.Information(
                                 "DB: Deleting {NftSymbol} system NFT with type '{Type}'", NtfHash,
-                                ( string ) item["type"]);
+                                (string)item["type"]);
                         }
                         else
                         {
-                            if ( itemInfo != null )
+                            if (itemInfo != null)
                                 NftMetadataMethods.Set(databaseContext,
                                     nft,
                                     0,
                                     null,
                                     null,
-                                    ( string ) itemInfo["description_english"],
-                                    ( string ) itemInfo["name_english"],
-                                    ( string ) item["img"],
-                                    ( int ) item["timestamp"],
-                                    ( int ) item["mint"],
+                                    (string)itemInfo["description_english"],
+                                    (string)itemInfo["name_english"],
+                                    (string)item["img"],
+                                    (int)item["timestamp"],
+                                    (int)item["mint"],
                                     JsonDocument.Parse(item.ToJsonString()),
                                     false);
                         }
@@ -135,7 +135,7 @@ public class Fetch
                     databaseContext.SaveChanges();
                     transaction.Commit();
                 }
-                catch ( Exception ex )
+                catch (Exception ex)
                 {
                     transaction.Rollback();
                     ExceptionDispatchInfo.Capture(ex).Throw();
@@ -157,7 +157,7 @@ public class Fetch
 
         List<string> ids;
 
-        using ( MainDbContext databaseContext = new() )
+        using (MainDbContext databaseContext = new())
         {
             // Select TOKEN_IDs which have no corresponding OFFCHAIN_API_RESPONSE -> they should be loaded.
             // Also check that series != null - to avoid troubles first we deal with chain api, then with offchain api.
@@ -166,15 +166,15 @@ public class Fetch
                             x.Series != null && x.OFFCHAIN_API_RESPONSE == null).Select(x => x.TOKEN_ID).ToList();
         }
 
-        if ( ids.Count == 0 ) return;
+        if (ids.Count == 0) return;
 
-        for ( var i = 0; i < ids.Count; i += NftLoadPageSize )
+        for (var i = 0; i < ids.Count; i += NftLoadPageSize)
         {
             var idsPage = ids.GetRange(i, Math.Min(NftLoadPageSize, ids.Count - i));
             var request = "{\"ids\":[" + "\"" + string.Join("\", \"", idsPage) + "\"" + "]}";
             var response = Client.ApiRequest<JsonNode>(url, out var stringResponse, null, 0,
                 request, Client.RequestType.Post);
-            if ( response == null )
+            if (response == null)
             {
                 Log.Error("TTRS error: Parsed response is null, raw response: '{Response}', request: {Request}", stringResponse, request);
                 return;
@@ -190,10 +190,10 @@ public class Fetch
     {
         const string url = "https://pavillionhub.com/api/nft_data?phantasma_ids=1&token=GAME&meta=1&ids=";
 
-        for ( var i = 0; i < 1000; i += 1 )
+        for (var i = 0; i < 1000; i += 1)
         {
             string id;
-            using ( MainDbContext databaseContext = new() )
+            using (MainDbContext databaseContext = new())
             {
                 // Select TOKEN_IDs which have no corresponding OFFCHAIN_API_RESPONSE -> they should be loaded.
                 // Also check that series != null - to avoid troubles first we deal with chain api, then with offchain api.
@@ -203,10 +203,10 @@ public class Fetch
                     .FirstOrDefault();
             }
 
-            if ( string.IsNullOrEmpty(id) ) return;
+            if (string.IsNullOrEmpty(id)) return;
 
             var response = Client.ApiRequest<JsonNode>(url + id, out var stringResponse);
-            if ( response == null )
+            if (response == null)
             {
                 Log.Error("GAME meta: null response for {ID}, returning", id);
                 return;
@@ -214,7 +214,7 @@ public class Fetch
 
             var meta = response["meta"];
 
-            if ( meta is not JsonObject )
+            if (meta is not JsonObject)
             {
                 Log.Error("GAME meta: null meta for {ID}, returning", id);
                 return;
@@ -223,11 +223,11 @@ public class Fetch
             }
 
 
-            var metadataKey = ( string ) response["nfts"][0]["parsed_rom"]["metadata"];
+            var metadataKey = (string)response["nfts"][0]["parsed_rom"]["metadata"];
 
             var metaJsonDocument = JsonDocument.Parse(meta[metadataKey].ToJsonString());
 
-            using ( MainDbContext databaseContext = new() )
+            using (MainDbContext databaseContext = new())
             {
                 var nft = NftMethods.Get(databaseContext, _chainId, _gameContractId, id);
                 nft.OFFCHAIN_API_RESPONSE = metaJsonDocument;

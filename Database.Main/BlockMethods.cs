@@ -23,7 +23,7 @@ public static class BlockMethods
             entry = (Block)Utils.GetTrackedObjects(databaseContext, typeof(Block)).Where(x => ((Block)x).ChainId == chainId && ((Block)x).TIMESTAMP == timestamp && ((Block)x).HEIGHT == height.ToString()).FirstOrDefault();
         }*/
 
-        if ( entry != null ) return entry;
+        if (entry != null) return entry;
 
         var chainAddressEntry = await AddressMethods.UpsertAsync(databaseContext, chain, chainAddress);
         var validatorAddressEntry = await AddressMethods.UpsertAsync(databaseContext, chain, validatorAddress);
@@ -54,7 +54,7 @@ public static class BlockMethods
 
     public static Block GetHighestBlock(MainDbContext dbContext, int chainId)
     {
-        var id = dbContext.Blocks.Where(x => x.ChainId == chainId).Max(x => ( int? ) x.ID);
-        return id != null ? Get(dbContext, ( int ) id) : null;
+        var id = dbContext.Blocks.Where(x => x.ChainId == chainId).Max(x => (int?)x.ID);
+        return id != null ? Get(dbContext, (int)id) : null;
     }
 }

@@ -64,7 +64,7 @@ public class TransactionsController : BaseControllerV1
         [FromQuery] int with_script = 0,
         [FromQuery] int with_neighbors = 0,
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetTransactions.Execute(

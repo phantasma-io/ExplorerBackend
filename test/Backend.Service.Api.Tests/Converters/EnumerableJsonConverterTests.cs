@@ -14,7 +14,7 @@ public class EnumerableJsonConverterTests
     {
         IncludeFields = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = {new EnumerableJsonConverterFactory()}
+        Converters = { new EnumerableJsonConverterFactory() }
     };
 
 
@@ -22,7 +22,7 @@ public class EnumerableJsonConverterTests
     public void Write_should_return_json_string_with_no_results_property()
     {
         // Arrange
-        var apiResult = new TestApiResult {total_results = 0, assets = Array.Empty<TestAsset>()};
+        var apiResult = new TestApiResult { total_results = 0, assets = Array.Empty<TestAsset>() };
 
         // Act
         var result = JsonSerializer.Serialize(apiResult, _defaultOptions);
@@ -38,7 +38,8 @@ public class EnumerableJsonConverterTests
         // Arrange
         var apiResult = new TestApiResult
         {
-            total_results = 2, assets = new[] {new TestAsset {name = "test1"}, new TestAsset {name = "test2"}}
+            total_results = 2,
+            assets = new[] { new TestAsset { name = "test1" }, new TestAsset { name = "test2" } }
         };
 
         // Act

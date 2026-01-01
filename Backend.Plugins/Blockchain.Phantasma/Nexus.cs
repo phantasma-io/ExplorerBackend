@@ -278,7 +278,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             throw new Exception("Cannot get result for getTokens call");
         }
 
-        foreach(var tokenResult in response)
+        foreach (var tokenResult in response)
         {
             var token = await TokenMethods.GetAsync(dbContext, chainEntry, tokenResult.symbol);
             TokenMethods.SetSupplies(token, tokenResult.currentSupply, tokenResult.maxSupply, tokenResult.burnedSupply);

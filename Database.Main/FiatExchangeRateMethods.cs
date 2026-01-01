@@ -11,11 +11,11 @@ public static class FiatExchangeRateMethods
     public static void Upsert(MainDbContext databaseContext, string symbol, decimal usdPrice)
     {
         var entry = databaseContext.FiatExchangeRates.FirstOrDefault(x => x.SYMBOL == symbol);
-        if ( entry != null )
+        if (entry != null)
             entry.USD_PRICE = usdPrice;
         else
         {
-            entry = new FiatExchangeRate {SYMBOL = symbol, USD_PRICE = usdPrice};
+            entry = new FiatExchangeRate { SYMBOL = symbol, USD_PRICE = usdPrice };
             databaseContext.FiatExchangeRates.Add(entry);
         }
     }
@@ -24,7 +24,7 @@ public static class FiatExchangeRateMethods
     // Dictionary key contains fiat currency symbol, and value contains price in USD.
     public static Dictionary<string, decimal> GetPrices(MainDbContext databaseContext)
     {
-        return databaseContext.FiatExchangeRates.Select(x => new {key = x.SYMBOL, value = x.USD_PRICE})
+        return databaseContext.FiatExchangeRates.Select(x => new { key = x.SYMBOL, value = x.USD_PRICE })
             .ToDictionary(x => x.key, x => x.value);
     }
 
@@ -32,11 +32,11 @@ public static class FiatExchangeRateMethods
     public static decimal Convert(Dictionary<string, decimal> fiatPricesInUsd, decimal price, string fromSymbol,
         string toSymbol)
     {
-        if ( string.IsNullOrEmpty(fromSymbol) || string.IsNullOrEmpty(toSymbol) || fromSymbol == toSymbol )
+        if (string.IsNullOrEmpty(fromSymbol) || string.IsNullOrEmpty(toSymbol) || fromSymbol == toSymbol)
             return price; // No calculation is needed.
 
         var usdPrice = fiatPricesInUsd.Where(x => x.Key == fromSymbol).Select(x => x.Value).SingleOrDefault();
-        if ( usdPrice == 0 ) return 0;
+        if (usdPrice == 0) return 0;
 
         price /= usdPrice;
 

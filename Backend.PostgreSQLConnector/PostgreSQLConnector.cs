@@ -48,8 +48,8 @@ public class PostgreSQLConnector
     {
         var cmd = new NpgsqlCommand(query, Connection);
 
-        if ( parameters != null )
-            foreach ( var (item1, item2) in parameters )
+        if (parameters != null)
+            foreach (var (item1, item2) in parameters)
                 cmd.Parameters.AddWithValue(item1, item2);
 
         object result;
@@ -57,7 +57,7 @@ public class PostgreSQLConnector
         {
             result = cmd.ExecuteScalar();
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             throw new Exception($"Error executing '{query}' statement:\n{e.Message}");
         }
@@ -72,9 +72,9 @@ public class PostgreSQLConnector
     {
         var result = ExecQuery(query, parameters);
 
-        if ( result == null ) return false;
+        if (result == null) return false;
 
-        var iResult = ( bool ) result;
+        var iResult = (bool)result;
 
         return iResult;
     }
@@ -84,7 +84,7 @@ public class PostgreSQLConnector
     {
         var result = ExecQuery(query, parameters);
 
-        return ( long? ) result;
+        return (long?)result;
     }
 
 
@@ -92,7 +92,7 @@ public class PostgreSQLConnector
     {
         var result = ExecQuery(query, parameters);
 
-        return ( int? ) result;
+        return (int?)result;
     }
 
 
@@ -100,7 +100,7 @@ public class PostgreSQLConnector
     {
         var result = ExecQuery(query, parameters);
 
-        if ( result == null ) return "";
+        if (result == null) return "";
 
         var sResult = result.ToString();
 
@@ -111,15 +111,15 @@ public class PostgreSQLConnector
     public IEnumerable<Dictionary<string, object>> ExecQueryDNex(bool forceQueryLogging, string query,
         List<Tuple<string, object>> parameters = null)
     {
-        if ( forceQueryLogging && !Log.IsEnabled(LogEventLevel.Debug) )
+        if (forceQueryLogging && !Log.IsEnabled(LogEventLevel.Debug))
             Log.Information("DB: ExecQueryDN(): Query: {Query}", query);
         else
             Log.Debug("DB: ExecQueryDN(): Query: {Query}", query);
 
         var cmd = new NpgsqlCommand(query, Connection);
 
-        if ( parameters != null )
-            foreach ( var parameter in parameters )
+        if (parameters != null)
+            foreach (var parameter in parameters)
                 cmd.Parameters.AddWithValue(parameter.Item1, parameter.Item2);
 
         var executeStartTime = DateTime.Now;
@@ -128,7 +128,7 @@ public class PostgreSQLConnector
         {
             dr = cmd.ExecuteReader();
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             throw new Exception($"Error executing '{query}' statement:\n{e.Message}");
         }
@@ -138,19 +138,19 @@ public class PostgreSQLConnector
 
         var resultStartTime = DateTime.Now;
         var result = new List<Dictionary<string, object>>();
-        while ( dr.Read() )
+        while (dr.Read())
         {
             var row = new Dictionary<string, object>(StringComparer.InvariantCultureIgnoreCase);
             result.Add(row);
-            for ( var i = 0; i < dr.FieldCount; i++ )
+            for (var i = 0; i < dr.FieldCount; i++)
             {
                 var arrayType = dr[i].GetType();
                 var elementType = arrayType.GetElementType();
                 var elementTypeCode = Type.GetTypeCode(elementType);
 
-                if ( elementTypeCode == TypeCode.Byte )
-                    row.Add(dr.GetName(i).ToLower(), Encoding.Default.GetString(( byte[] ) dr[i]));
-                else if ( !string.IsNullOrEmpty(dr[i].ToString()) ) row.Add(dr.GetName(i).ToLower(), dr[i]);
+                if (elementTypeCode == TypeCode.Byte)
+                    row.Add(dr.GetName(i).ToLower(), Encoding.Default.GetString((byte[])dr[i]));
+                else if (!string.IsNullOrEmpty(dr[i].ToString())) row.Add(dr.GetName(i).ToLower(), dr[i]);
             }
         }
 
@@ -174,10 +174,10 @@ public class PostgreSQLConnector
 
     public static void LogResult(List<Dictionary<string, object>> result)
     {
-        foreach ( var row in result )
+        foreach (var row in result)
         {
             var rowSerialized = "";
-            foreach ( var (key, value) in row ) rowSerialized += $" {key} {value}";
+            foreach (var (key, value) in row) rowSerialized += $" {key} {value}";
 
             Log.Information(rowSerialized);
         }
@@ -192,15 +192,15 @@ public class PostgreSQLConnector
 
         cmd.CommandText = command;
 
-        if ( parameters != null )
-            foreach ( var (item1, item2) in parameters )
+        if (parameters != null)
+            foreach (var (item1, item2) in parameters)
                 cmd.Parameters.AddWithValue(item1, item2);
 
         try
         {
             rowsAffected = cmd.ExecuteNonQuery();
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             throw new Exception($"Error executing '{cmd.CommandText}' statement:\n{e.Message}");
         }
@@ -220,17 +220,17 @@ public class PostgreSQLConnector
 
         cmd.CommandText =
             $"INSERT INTO {tableName}({string.Join(", ", valuePairs.Keys)}) VALUES({string.Join(", ", valuePairs.Keys.Select(key => "@" + key))})";
-        if ( !string.IsNullOrEmpty(upsertTarget) )
+        if (!string.IsNullOrEmpty(upsertTarget))
             cmd.CommandText +=
-                $" ON CONFLICT {upsertTarget} DO {( string.IsNullOrEmpty(upsertAction) ? "NOTHING" : upsertAction )}";
+                $" ON CONFLICT {upsertTarget} DO {(string.IsNullOrEmpty(upsertAction) ? "NOTHING" : upsertAction)}";
 
-        foreach ( var (key, value) in valuePairs ) cmd.Parameters.AddWithValue("@" + key, value);
+        foreach (var (key, value) in valuePairs) cmd.Parameters.AddWithValue("@" + key, value);
 
         try
         {
             rowsAffected = cmd.ExecuteNonQuery();
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             throw new Exception(
                 $"Error executing '{cmd.CommandText}' statement with values:\n({string.Join(", ", valuePairs.Select(x => $"{x.Key}: {x.Value}"))}):\n{e.Message}");
@@ -250,20 +250,20 @@ public class PostgreSQLConnector
 
         cmd.CommandText =
             $"INSERT INTO {tableName}({string.Join(", ", valuePairs.Keys)}) VALUES({string.Join(", ", valuePairs.Keys.Select(key => "@" + key))})";
-        if ( !string.IsNullOrEmpty(upsertTarget) )
+        if (!string.IsNullOrEmpty(upsertTarget))
             cmd.CommandText +=
-                $" ON CONFLICT {upsertTarget} DO {( string.IsNullOrEmpty(upsertAction) ? "NOTHING" : upsertAction )}";
+                $" ON CONFLICT {upsertTarget} DO {(string.IsNullOrEmpty(upsertAction) ? "NOTHING" : upsertAction)}";
 
         cmd.CommandText += $" RETURNING {idColumnName}";
 
-        foreach ( var (key, value) in valuePairs ) cmd.Parameters.AddWithValue("@" + key, value);
+        foreach (var (key, value) in valuePairs) cmd.Parameters.AddWithValue("@" + key, value);
 
         object result;
         try
         {
             result = cmd.ExecuteScalar();
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             throw new Exception(
                 $"Error executing '{cmd.CommandText}' statement with values:\n({string.Join(", ", valuePairs.Select(x => $"{x.Key}: {x.Value}"))}):\n{e.Message}");
@@ -271,7 +271,7 @@ public class PostgreSQLConnector
 
         cmd.Dispose();
 
-        var rowId = ( int? ) result;
+        var rowId = (int?)result;
 
         return rowId;
     }
@@ -285,7 +285,7 @@ public class PostgreSQLConnector
 
     public void TransactionStart()
     {
-        if ( transaction != null ) throw new Exception("Transaction already started.");
+        if (transaction != null) throw new Exception("Transaction already started.");
 
         transaction = Connection.BeginTransaction();
     }
@@ -293,7 +293,7 @@ public class PostgreSQLConnector
 
     public void TransactionCommit()
     {
-        if ( transaction == null ) throw new Exception("Transaction not opened.");
+        if (transaction == null) throw new Exception("Transaction not opened.");
 
         transaction.Commit();
         transaction = null;
@@ -302,9 +302,9 @@ public class PostgreSQLConnector
 
     public void TransactionRollback(bool throwExceptionIfTransactionNotOpened = true)
     {
-        if ( transaction == null )
+        if (transaction == null)
         {
-            if ( throwExceptionIfTransactionNotOpened ) throw new Exception("Transaction not opened.");
+            if (throwExceptionIfTransactionNotOpened) throw new Exception("Transaction not opened.");
 
             return;
         }

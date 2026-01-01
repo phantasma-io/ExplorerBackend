@@ -65,7 +65,7 @@ public static class ArgValidation
 
     public static bool CheckLimit(int value, bool filterSet)
     {
-        if ( filterSet ) return value >= -1;
+        if (filterSet) return value >= -1;
         return value > 0;
     }
 
@@ -158,9 +158,9 @@ public static class ArgValidation
     public static bool CheckLink(string value)
     {
         var result = Uri.TryCreate(value, UriKind.Absolute, out var uriResult)
-                     && ( uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps
+                     && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps
                                                                 || uriResult.Scheme.ToLower() == "ipfs" ||
-                                                                uriResult.Scheme.ToLower() == "ipfs-video" );
+                                                                uriResult.Scheme.ToLower() == "ipfs-video");
 
         return result;
     }
@@ -186,7 +186,7 @@ public static class ArgValidation
 
     public static bool CheckUnixTimestamp(string value, bool onlySecondsAllowed = true)
     {
-        return Regex.IsMatch(value, @"^[0-9]+$") && ( !onlySecondsAllowed || value.Length <= 10 );
+        return Regex.IsMatch(value, @"^[0-9]+$") && (!onlySecondsAllowed || value.Length <= 10);
     }
 
 
@@ -198,7 +198,7 @@ public static class ArgValidation
 
     public static bool CheckNonzeroPrice(string value)
     {
-        if ( string.IsNullOrEmpty(value) ) return false;
+        if (string.IsNullOrEmpty(value)) return false;
 
         return !Regex.IsMatch(value, @"^0+$") && CheckNumber(value);
     }
@@ -267,7 +267,7 @@ public static class ArgValidation
             var extractedAddress = new MailAddress(address).Address;
             return extractedAddress == address;
         }
-        catch ( FormatException )
+        catch (FormatException)
         {
             return false;
         }

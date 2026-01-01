@@ -9,7 +9,7 @@ public static class SignatureMethods
     public static void InsertIfNotExists(MainDbContext databaseContext, List<Tuple<string, string>> signatures,
         Transaction transaction)
     {
-        if ( !signatures.Any() || transaction == null ) return;
+        if (!signatures.Any() || transaction == null) return;
 
         //item1 == kind
         var kindList = signatures.Select(tuple => tuple.Item1).ToList();
@@ -17,7 +17,7 @@ public static class SignatureMethods
 
         var signatureList = new List<Signature>();
 
-        foreach ( var (kind, data) in signatures )
+        foreach (var (kind, data) in signatures)
         {
             var signature = new Signature
             {

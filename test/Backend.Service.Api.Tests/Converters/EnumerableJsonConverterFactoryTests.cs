@@ -44,7 +44,7 @@ public class EnumerableJsonConverterFactoryTests
     [Theory]
     [InlineData(typeof(IEnumerable<Nft>))]
     [InlineData(typeof(IEnumerable<Event>))]
-    public void CreateConverter_should_return_converter(Type type)
+    public void CreateConverter_should_return_converter()
     {
         // Arrange
         //var sut = new EnumerableJsonConverterFactory();

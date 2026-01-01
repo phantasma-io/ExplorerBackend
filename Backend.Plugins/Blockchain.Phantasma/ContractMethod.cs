@@ -19,13 +19,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         using MainDbContext databaseContext = new();
 
-        while ( _methodQueue.Any() )
+        while (_methodQueue.Any())
         {
             var (contractString, chainInt, timestampUnixSeconds) = _methodQueue.Peek();
             var chainItem = ChainMethods.Get(databaseContext, chainInt);
             var contractItem = ContractMethods.Get(databaseContext, chainItem, contractString);
 
-            if ( chainItem == null || contractItem == null )
+            if (chainItem == null || contractItem == null)
             {
                 _methodQueue.Dequeue();
                 continue;
@@ -37,14 +37,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var url =
                 $"{Settings.Default.GetRest()}/api/v1/getContract?chainAddressOrName={chainItem.NAME}&contractName={contractItem.NAME}";
             var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
-            if ( response == null )
+            if (response == null)
             {
                 Log.Error("[{Name}] Contract Update sync: null result, dequeue", Name);
                 _methodQueue.Dequeue();
                 continue;
             }
 
-            if ( response.RootElement.TryGetProperty("methods", out var methodsProperty) )
+            if (response.RootElement.TryGetProperty("methods", out var methodsProperty))
             {
                 var method = ContractMethodMethods.Insert(databaseContext, contractItem, methodsProperty,
                     timestampUnixSeconds);
@@ -56,7 +56,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Log.Verbose("[{Name}] processed and dequeued, go on with next {Bool}", Name, _methodQueue.Any());
         }
 
-        if ( contractMethodsUpdated <= 0 ) return;
+        if (contractMethodsUpdated <= 0) return;
 
         var transactionStart = DateTime.Now;
         databaseContext.SaveChanges();
@@ -65,7 +65,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         var updateTime = DateTime.Now - startTime;
 
-        if(updateTime.TotalSeconds > 1 || contractMethodsUpdated > 0)
+        if (updateTime.TotalSeconds > 1 || contractMethodsUpdated > 0)
         {
             Log.Information("[{Name}] ContractMethod sync took {Time} sec, {Updated} names updated", Name,
                 Math.Round(updateTime.TotalSeconds, 3), contractMethodsUpdated);

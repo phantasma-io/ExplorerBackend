@@ -9,23 +9,23 @@ public class InternalDocumentFilter : IDocumentFilter
 {
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
     {
-        foreach ( var description in context.ApiDescriptions )
+        foreach (var description in context.ApiDescriptions)
         {
             var attribute = description.ActionDescriptor.EndpointMetadata.OfType<ApiInfoAttribute>()
                 .FirstOrDefault();
 
-            if ( attribute is not {InternalEndpoint: true} ) continue;
+            if (attribute is not { InternalEndpoint: true }) continue;
 
             var key = "/" + description.RelativePath?.TrimEnd('/');
-            if ( description.HttpMethod != null )
+            if (description.HttpMethod != null)
             {
-                var operation = ( OperationType ) Enum.Parse(typeof(OperationType), description.HttpMethod, true);
+                var operation = (OperationType)Enum.Parse(typeof(OperationType), description.HttpMethod, true);
 
                 swaggerDoc.Paths[key].Operations.Remove(operation);
             }
 
             // Drop the entire route of there are no operations left
-            if ( !swaggerDoc.Paths[key].Operations.Any() ) swaggerDoc.Paths.Remove(key);
+            if (!swaggerDoc.Paths[key].Operations.Any()) swaggerDoc.Paths.Remove(key);
 
             var referenceSchema = swaggerDoc.Paths.SelectMany(p => p.Value.Operations.Values)
                 .SelectMany(o => o.Responses.Values).SelectMany(r => r.Content.Values).Select(c => c.Schema)
@@ -40,7 +40,7 @@ public class InternalDocumentFilter : IDocumentFilter
             var listOfUnreferencedDefinition = swaggerDoc.Components.Schemas
                 .Where(x => list3.All(y => y != x.Key)).ToList();
 
-            foreach ( var unreferencedDefinition in listOfUnreferencedDefinition )
+            foreach (var unreferencedDefinition in listOfUnreferencedDefinition)
                 swaggerDoc.Components.Schemas.Remove(unreferencedDefinition.Key);
         }
     }

@@ -11,14 +11,14 @@ namespace Backend.Service.Api;
 
 public static class GetEventKindsWithEvents
 {
-    [ProducesResponseType(typeof(EventKindResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(EventKindResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(EventKindResult), "Returns event kinds that have events on the backend.", false, 10)]
     public static async Task<EventKindResult> Execute(
         // ReSharper disable InconsistentNaming
         string chain = "main",
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -26,7 +26,7 @@ public static class GetEventKindsWithEvents
 
         try
         {
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
@@ -40,23 +40,23 @@ public static class GetEventKindsWithEvents
                 name = x
             }).ToArray();
 
-            if ( with_total == 1 ) totalResults = eventKindArray.LongLength;
+            if (with_total == 1) totalResults = eventKindArray.LongLength;
 
             var responseTime = DateTime.Now - startTime;
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("EventKindsWithEvents()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
         return new EventKindResult
-            {total_results = with_total == 1 ? totalResults : null, event_kinds = eventKindArray};
+        { total_results = with_total == 1 ? totalResults : null, event_kinds = eventKindArray };
     }
 }

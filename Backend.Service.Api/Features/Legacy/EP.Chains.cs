@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetChains
 {
-    [ProducesResponseType(typeof(ChainResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ChainResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ChainResult), "Returns the chains on the backend.", false, 10)]
     public static async Task<ChainResult> Execute(
@@ -21,7 +21,7 @@ public static class GetChains
         int limit = 50,
         string chain = "main",
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -29,13 +29,13 @@ public static class GetChains
 
         try
         {
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             var startTime = DateTime.Now;
@@ -43,10 +43,10 @@ public static class GetChains
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Chains.AsQueryable().AsNoTracking();
 
-            if ( !string.IsNullOrEmpty(chain) )
+            if (!string.IsNullOrEmpty(chain))
                 query = query.Where(x => x.NAME == chain);
 
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             chainArray = await query.Skip(offset).Take(limit).Select(x => new Chain
@@ -59,16 +59,16 @@ public static class GetChains
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Chains()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new ChainResult {total_results = with_total == 1 ? totalResults : null, chains = chainArray};
+        return new ChainResult { total_results = with_total == 1 ? totalResults : null, chains = chainArray };
     }
 }

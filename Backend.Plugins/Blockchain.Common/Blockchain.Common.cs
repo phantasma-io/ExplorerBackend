@@ -16,7 +16,7 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
     {
         Log.Information("{Name} plugin: Startup ...", Name);
 
-        if ( !Settings.Default.Enabled )
+        if (!Settings.Default.Enabled)
         {
             Log.Information("{Name} plugin is disabled, stopping", Name);
             return;
@@ -28,7 +28,7 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
         {
             Thread.Sleep(Settings.Default.StartDelay * 1000);
 
-            while ( _running )
+            while (_running)
                 try
                 {
                     MarkBurnedNfts();
@@ -37,7 +37,7 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                     Thread.Sleep(Settings.Default.EventsProcessingInterval *
                                  1000); // We process events every EventsProcessingInterval seconds
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception($"{Name} plugin: Events processing", e);
 

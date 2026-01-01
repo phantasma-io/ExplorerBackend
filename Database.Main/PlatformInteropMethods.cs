@@ -15,16 +15,16 @@ public static class PlatformInteropMethods
 
         var platformInteropList = new List<PlatformInterop>();
 
-        foreach ( var (localAddress, externalAddress) in interopList )
+        foreach (var (localAddress, externalAddress) in interopList)
         {
             var addressEntry = addressMap.GetValueOrDefault(localAddress);
             var platformInterop =
                 databaseContext.PlatformInterops.FirstOrDefault(x =>
                     x.EXTERNAL == externalAddress && x.LocalAddress == addressEntry);
-            if ( platformInterop != null ) continue;
+            if (platformInterop != null) continue;
 
             platformInterop = new PlatformInterop
-                {EXTERNAL = externalAddress, LocalAddress = addressEntry, Platform = platform};
+            { EXTERNAL = externalAddress, LocalAddress = addressEntry, Platform = platform };
             platformInteropList.Add(platformInterop);
         }
 

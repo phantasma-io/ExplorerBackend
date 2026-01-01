@@ -34,8 +34,8 @@ public static class Program
             .Enrich.FromLogContext()
             .WriteTo.Console()
             .CreateBootstrapLogger();
-        
-        
+
+
         try
         {
             Settings.Load(configSection);
@@ -56,7 +56,7 @@ public static class Program
             await Log.CloseAndFlushAsync();
         }
     }
-    
+
     private static IHostBuilder BootstrapHostBuilder(
         string[] args
     )

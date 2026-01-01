@@ -100,7 +100,7 @@ public class MainDbContext : DbContext
         // Check environment override first
         var host = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_HOST");
         var port = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_PORT") ?? "5432";
-        var db   = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_NAME");
+        var db = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_NAME");
         var user = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_USER");
         var pass = Environment.GetEnvironmentVariable("PHA_EXPLORER_DB_PWD");
 
@@ -191,7 +191,7 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<Contract>()
-            .HasIndex(x => new {x.ChainId, x.HASH})
+            .HasIndex(x => new { x.ChainId, x.HASH })
             .IsUnique();
 
         //////////////////////
@@ -219,10 +219,10 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<Block>()
-            .HasIndex(x => new {x.TIMESTAMP_UNIX_SECONDS});
+            .HasIndex(x => new { x.TIMESTAMP_UNIX_SECONDS });
 
         modelBuilder.Entity<Block>()
-            .HasIndex(x => new {x.ChainId, x.HEIGHT});
+            .HasIndex(x => new { x.ChainId, x.HEIGHT });
 
         modelBuilder.Entity<Block>()
             .HasIndex(x => x.HASH)
@@ -274,10 +274,10 @@ public class MainDbContext : DbContext
 
         // We should not make it unique to allow mixing mainnet and testnet in testnet DB.
         modelBuilder.Entity<Transaction>()
-            .HasIndex(x => new {x.BlockId, x.INDEX});
+            .HasIndex(x => new { x.BlockId, x.INDEX });
 
         modelBuilder.Entity<Transaction>()
-            .HasIndex(x => new {x.HASH});
+            .HasIndex(x => new { x.HASH });
 
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => x.HASH)
@@ -286,7 +286,7 @@ public class MainDbContext : DbContext
             .HasOperators("gin_trgm_ops");
 
         modelBuilder.Entity<Transaction>()
-            .HasIndex(x => new {x.TIMESTAMP_UNIX_SECONDS});
+            .HasIndex(x => new { x.TIMESTAMP_UNIX_SECONDS });
 
         //////////////////////
         // EventKind
@@ -302,7 +302,7 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<EventKind>()
-            .HasIndex(x => new {x.ChainId, x.NAME})
+            .HasIndex(x => new { x.ChainId, x.NAME })
             .IsUnique();
 
         //////////////////////
@@ -326,27 +326,30 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Address>()
             .Ignore(a => a.Organization);
-        
+
         /*modelBuilder.Entity<Address>()
             .HasOne(x => x.Organization)
             .WithMany(y => y.Addresses)
             .HasForeignKey(x => x.OrganizationId);*/
 
         // Indexes
-        
+
         /*modelBuilder.Entity<Address>()
             .HasIndex(x => new {x.Organizations, x.ADDRESS})
             .IsUnique();*/
 
         modelBuilder.Entity<Address>()
-            .HasIndex(x => new {x.ChainId, x.ADDRESS})
+            .HasIndex(x => new { x.ChainId, x.ADDRESS })
             .IsUnique();
 
         modelBuilder.Entity<Address>()
-            .HasIndex(x => new {x.ChainId, x.NAME_LAST_UPDATED_UNIX_SECONDS});
+            .HasIndex(x => new { x.ChainId, x.NAME_LAST_UPDATED_UNIX_SECONDS });
 
         modelBuilder.Entity<Address>()
-            .HasIndex(x => new {x.ADDRESS, x.ADDRESS_NAME});
+            .HasIndex(x => new { x.ADDRESS, x.ADDRESS_NAME });
+
+        modelBuilder.Entity<Address>()
+            .HasIndex(x => new { x.ChainId, x.BALANCE_DIRTY_BLOCK });
 
         //////////////////////
         // Event
@@ -482,13 +485,13 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.EventKindId);
 
         modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.ContractId, x.TOKEN_ID});
+            .HasIndex(x => new { x.ContractId, x.TOKEN_ID });
 
         modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.BURNED, x.EventKindId});
+            .HasIndex(x => new { x.BURNED, x.EventKindId });
 
         modelBuilder.Entity<Event>()
-            .HasIndex(x => new {x.EventKindId, x.ChainId, x.TIMESTAMP_UNIX_SECONDS, x.ID})
+            .HasIndex(x => new { x.EventKindId, x.ChainId, x.TIMESTAMP_UNIX_SECONDS, x.ID })
             .HasDatabaseName("IX_Events_EventKind_Chain_Timestamp_Id");
 
         modelBuilder.Entity<Event>()
@@ -524,11 +527,11 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<Token>()
-            .HasIndex(x => new {x.ChainId, x.ContractId, x.SYMBOL})
+            .HasIndex(x => new { x.ChainId, x.ContractId, x.SYMBOL })
             .IsUnique();
 
         modelBuilder.Entity<Token>()
-            .HasIndex(x => new {x.SYMBOL, x.ChainId});
+            .HasIndex(x => new { x.SYMBOL, x.ChainId });
 
 
         //////////////////////
@@ -545,7 +548,7 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<TokenDailyPrice>()
-            .HasIndex(x => new {x.DATE_UNIX_SECONDS});
+            .HasIndex(x => new { x.DATE_UNIX_SECONDS });
 
         //////////////////////
         // NftOwnership
@@ -566,7 +569,7 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<NftOwnership>()
-            .HasIndex(x => new {x.AddressId, x.NftId})
+            .HasIndex(x => new { x.AddressId, x.NftId })
             .IsUnique();
 
         modelBuilder.Entity<NftOwnership>()
@@ -608,12 +611,12 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.DM_UNIX_SECONDS);
 
         modelBuilder.Entity<Nft>()
-            .HasIndex(x => new {x.ContractId, x.TOKEN_ID})
+            .HasIndex(x => new { x.ContractId, x.TOKEN_ID })
             .IsUnique();
 
         // Can't make it unique, AirNFT (BSC) has some duplicates.
         modelBuilder.Entity<Nft>()
-            .HasIndex(x => new {x.ContractId, x.TOKEN_URI});
+            .HasIndex(x => new { x.ContractId, x.TOKEN_URI });
 
         modelBuilder.Entity<Nft>()
             .HasIndex(x => x.BURNED);
@@ -657,10 +660,10 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<Series>()
-            .HasIndex(x => new {x.SERIES_ID});
+            .HasIndex(x => new { x.SERIES_ID });
 
         modelBuilder.Entity<Series>()
-            .HasIndex(x => new {x.ContractId, x.SERIES_ID})
+            .HasIndex(x => new { x.ContractId, x.SERIES_ID })
             .IsUnique();
 
 
@@ -696,7 +699,7 @@ public class MainDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<FiatExchangeRate>()
-            .HasIndex(x => new {x.SYMBOL, x.USD_PRICE});
+            .HasIndex(x => new { x.SYMBOL, x.USD_PRICE });
 
         //////////////////////
         // Platform
@@ -853,7 +856,7 @@ public class MainDbContext : DbContext
 
         // Indexes
         modelBuilder.Entity<SaleEventKind>()
-            .HasIndex(x => new {x.ChainId, x.NAME})
+            .HasIndex(x => new { x.ChainId, x.NAME })
             .IsUnique();
 
         modelBuilder.Entity<SaleEventKind>()
@@ -936,7 +939,7 @@ public class MainDbContext : DbContext
 
         // Indexes
         modelBuilder.Entity<MarketEventKind>()
-            .HasIndex(x => new {x.ChainId, x.NAME})
+            .HasIndex(x => new { x.ChainId, x.NAME })
             .IsUnique();
 
         modelBuilder.Entity<MarketEventKind>()
@@ -989,7 +992,7 @@ public class MainDbContext : DbContext
 
         // Indexes
         modelBuilder.Entity<Oracle>()
-            .HasIndex(x => new {x.URL, x.CONTENT})
+            .HasIndex(x => new { x.URL, x.CONTENT })
             .IsUnique();
 
         //////////////////////
@@ -1050,7 +1053,7 @@ public class MainDbContext : DbContext
         // Indexes
 
         modelBuilder.Entity<MarketEventFiatPrice>()
-            .HasIndex(x => new {x.PRICE_END_USD, x.PRICE_USD});
+            .HasIndex(x => new { x.PRICE_END_USD, x.PRICE_USD });
 
         //////////////////////
         // AddressTransaction
@@ -1061,18 +1064,18 @@ public class MainDbContext : DbContext
             .HasOne(x => x.Address)
             .WithMany(y => y.AddressTransactions)
             .HasForeignKey(x => x.AddressId);
-        
+
         modelBuilder.Entity<AddressTransaction>()
             .HasOne(x => x.Transaction)
             .WithMany(y => y.TransactionAddresses)
             .HasForeignKey(x => x.TransactionId);
-        
+
         // Indexes
-        
+
         modelBuilder.Entity<AddressTransaction>()
-            .HasIndex(x => new {x.AddressId, x.TransactionId})
+            .HasIndex(x => new { x.AddressId, x.TransactionId })
             .IsUnique();
-        
+
         //////////////////////
         // AddressBalance
         //////////////////////
@@ -1133,7 +1136,7 @@ public class MainDbContext : DbContext
 
         // Indexes
         modelBuilder.Entity<TokenLogo>()
-            .HasIndex(x => new {x.TokenId, x.TokenLogoTypeId})
+            .HasIndex(x => new { x.TokenId, x.TokenLogoTypeId })
             .IsUnique();
 
 
@@ -1157,7 +1160,7 @@ public class MainDbContext : DbContext
         // Indexes
         modelBuilder.Entity<TransactionState>()
             .HasIndex(x => x.NAME);
-        
+
 
         //////////////////////
         // GlobalVariable
@@ -1286,6 +1289,7 @@ public class Address
     public string ADDRESS_NAME { get; set; }
     public string USER_NAME { get; set; }
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
+    public long BALANCE_DIRTY_BLOCK { get; set; }
     public long STAKE_TIMESTAMP { get; set; }
     public string STAKED_AMOUNT { get; set; }
     public string STAKED_AMOUNT_RAW { get; set; }

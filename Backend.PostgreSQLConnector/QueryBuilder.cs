@@ -91,7 +91,7 @@ public class QueryBuilder
 
     public void AddWhere(string clause, bool addBrackets = false)
     {
-        if ( addBrackets )
+        if (addBrackets)
             WhereClauses.Add("(" + clause + ")");
         else
             WhereClauses.Add(clause);
@@ -164,16 +164,16 @@ public class QueryBuilder
                     ? x.CompleteJoin
                     : x.JoinType.ToString().ToLower() +
                       $@" join ""{x.JoinTableName}"" " +
-                      ( !string.IsNullOrEmpty(x.JoinTableAlias) ? $@"as ""{x.JoinTableAlias}"" " : "" ) +
-                      $@"on ""{x.OnTableNameOrAlias}"".""{x.OnColumnName}"" = ""{( !string.IsNullOrEmpty(x.JoinTableAlias) ? x.JoinTableAlias : x.JoinTableName )}"".""{x.JoinColumnName}""")
+                      (!string.IsNullOrEmpty(x.JoinTableAlias) ? $@"as ""{x.JoinTableAlias}"" " : "") +
+                      $@"on ""{x.OnTableNameOrAlias}"".""{x.OnColumnName}"" = ""{(!string.IsNullOrEmpty(x.JoinTableAlias) ? x.JoinTableAlias : x.JoinTableName)}"".""{x.JoinColumnName}""")
             .ToArray());
 
         query += "\n";
 
         var where = "";
-        for ( var i = 0; i < WhereClauses.Count; i++ )
+        for (var i = 0; i < WhereClauses.Count; i++)
         {
-            if ( i == 0 )
+            if (i == 0)
                 where += "where ";
             else
                 where += " and ";
@@ -199,31 +199,31 @@ public class QueryBuilder
         var part = "";
 
 
-        if ( !string.IsNullOrEmpty(GroupByColumn) )
+        if (!string.IsNullOrEmpty(GroupByColumn))
             part += "group by " +
-                    ( !string.IsNullOrEmpty(GroupByTable) ? $@"""{GroupByTable}""." : "" ) +
+                    (!string.IsNullOrEmpty(GroupByTable) ? $@"""{GroupByTable}""." : "") +
                     $@"""{GroupByColumn}"" ";
-        else if ( GroupByAuto )
+        else if (GroupByAuto)
             part += "group by " + string.Join(",\n",
-                Columns.Select(x => ( !string.IsNullOrEmpty(x.TableNameOrAlias) ? $@"""{x.TableNameOrAlias}""." : "" ) +
-                                    ( x.QuoteColumnName ? $@"""{x.ColumnName}""" : $@"{x.ColumnName}" )).ToArray());
+                Columns.Select(x => (!string.IsNullOrEmpty(x.TableNameOrAlias) ? $@"""{x.TableNameOrAlias}""." : "") +
+                                    (x.QuoteColumnName ? $@"""{x.ColumnName}""" : $@"{x.ColumnName}")).ToArray());
 
 
-        if ( !string.IsNullOrEmpty(CompleteOrderBy) )
+        if (!string.IsNullOrEmpty(CompleteOrderBy))
             part += CompleteOrderBy;
-        else if ( !string.IsNullOrEmpty(OrderByColumn) )
+        else if (!string.IsNullOrEmpty(OrderByColumn))
             part += "order by " +
-                    ( !string.IsNullOrEmpty(OrderByTable) ? $@"""{OrderByTable}""." : "" ) +
+                    (!string.IsNullOrEmpty(OrderByTable) ? $@"""{OrderByTable}""." : "") +
                     $@"""{OrderByColumn}""";
 
-        if ( !string.IsNullOrEmpty(OrderDirection) )
-            part += ( !string.IsNullOrEmpty(part) ? " " : "" ) + $"{OrderDirection}";
+        if (!string.IsNullOrEmpty(OrderDirection))
+            part += (!string.IsNullOrEmpty(part) ? " " : "") + $"{OrderDirection}";
 
         part += nullsOrder;
 
-        if ( !string.IsNullOrEmpty(Limit) ) part += ( !string.IsNullOrEmpty(part) ? " " : "" ) + $"limit {Limit}";
+        if (!string.IsNullOrEmpty(Limit)) part += (!string.IsNullOrEmpty(part) ? " " : "") + $"limit {Limit}";
 
-        if ( !string.IsNullOrEmpty(Offset) ) part += ( !string.IsNullOrEmpty(part) ? " " : "" ) + $"offset {Offset}";
+        if (!string.IsNullOrEmpty(Offset)) part += (!string.IsNullOrEmpty(part) ? " " : "") + $"offset {Offset}";
 
         return part;
     }
@@ -233,18 +233,18 @@ public class QueryBuilder
     {
         var query = "select ";
 
-        if ( Distinct )
+        if (Distinct)
         {
-            if ( string.IsNullOrEmpty(DistinctFields) )
+            if (string.IsNullOrEmpty(DistinctFields))
                 query += "distinct ";
             else
             {
                 query += "distinct on (" + DistinctFields;
 
                 // Including order by into distinct
-                if ( !string.IsNullOrEmpty(OrderByColumn) )
+                if (!string.IsNullOrEmpty(OrderByColumn))
                     query += ", " +
-                             ( !string.IsNullOrEmpty(OrderByTable) ? $@"""{OrderByTable}""." : "" ) +
+                             (!string.IsNullOrEmpty(OrderByTable) ? $@"""{OrderByTable}""." : "") +
                              $@"""{OrderByColumn}""";
 
                 query += ") ";
@@ -252,11 +252,11 @@ public class QueryBuilder
         }
 
         query += string.Join(",\n",
-            Columns.Select(x => ( !string.IsNullOrEmpty(x.TableNameOrAlias) ? $@"""{x.TableNameOrAlias}""." : "" ) +
-                                ( x.QuoteColumnName ? $@"""{x.ColumnName}""" : $@"{x.ColumnName}" ) +
-                                ( !string.IsNullOrEmpty(x.ColumnAlias) ? $@" as ""{x.ColumnAlias}""" : "" )).ToArray());
+            Columns.Select(x => (!string.IsNullOrEmpty(x.TableNameOrAlias) ? $@"""{x.TableNameOrAlias}""." : "") +
+                                (x.QuoteColumnName ? $@"""{x.ColumnName}""" : $@"{x.ColumnName}") +
+                                (!string.IsNullOrEmpty(x.ColumnAlias) ? $@" as ""{x.ColumnAlias}""" : "")).ToArray());
 
-        if ( Columns.Count > 0 && Subselects.Count > 0 ) query += ",\n";
+        if (Columns.Count > 0 && Subselects.Count > 0) query += ",\n";
 
         query += string.Join(",\n", Subselects.Select(x => $"({x})").ToArray());
 

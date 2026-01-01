@@ -35,7 +35,7 @@ public class OraclesController : BaseControllerV1
         [FromQuery] string block_height = "",
         [FromQuery] string chain = "main",
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetOracles.Execute(

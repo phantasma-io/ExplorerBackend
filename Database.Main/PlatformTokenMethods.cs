@@ -9,12 +9,12 @@ public static class PlatformTokenMethods
         bool saveChanges = true)
     {
         var tokens =
-            ( from name in names
-                let platformToken = databaseContext.PlatformTokens.FirstOrDefault(x => x.NAME == name)
-                where platformToken == null
-                select new PlatformToken {NAME = name, Platform = platform} ).ToList();
+            (from name in names
+             let platformToken = databaseContext.PlatformTokens.FirstOrDefault(x => x.NAME == name)
+             where platformToken == null
+             select new PlatformToken { NAME = name, Platform = platform }).ToList();
 
         databaseContext.PlatformTokens.AddRange(tokens);
-        if ( !saveChanges ) databaseContext.SaveChanges();
+        if (!saveChanges) databaseContext.SaveChanges();
     }
 }

@@ -43,7 +43,7 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
 
         var pricesProcessed = 0;
 
-        using ( var databaseContext = new MainDbContext() )
+        using (var databaseContext = new MainDbContext())
         {
             var tokenPrices = TokenMethods.GetPrices(databaseContext, "USD");
 
@@ -61,9 +61,9 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
             var events = databaseContext.Events
                 .Where(e => marketKinds.Contains(e.EventKind.NAME))
                 .Where(e => e.MarketEvent != null &&
-                            ( e.MarketEvent.MarketEventFiatPrice == null ||
+                            (e.MarketEvent.MarketEventFiatPrice == null ||
                               e.MarketEvent.MarketEventFiatPrice.PRICE_USD == 0 ||
-                              e.MarketEvent.MarketEventFiatPrice.PRICE_END_USD == 0 ))
+                              e.MarketEvent.MarketEventFiatPrice.PRICE_END_USD == 0))
                 .OrderBy(e => e.ID)
                 .Take(MaxEventUsdPricesProcessedPerSession)
                 .Select(e => new
@@ -83,13 +83,13 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                 "Got {Count} market events for pricing in {Time} sec",
                 events.Count, Math.Round(eventTimeEnd.TotalSeconds, 3));
 
-            foreach ( var evt in events )
+            foreach (var evt in events)
             {
-                if ( !marketEventsByEventId.TryGetValue(evt.Event.ID, out var marketEvent) )
+                if (!marketEventsByEventId.TryGetValue(evt.Event.ID, out var marketEvent))
                     continue;
 
                 var marketPayload = ParseMarketPayload(evt.Event.PAYLOAD_JSON);
-                if ( marketPayload == null || string.IsNullOrEmpty(marketPayload.QuoteToken) )
+                if (marketPayload == null || string.IsNullOrEmpty(marketPayload.QuoteToken))
                     continue;
 
                 try
@@ -99,7 +99,7 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                     var endPriceUsd = GetSymbolPrice(databaseContext, evt.Chain, evt.Event.DATE_UNIX_SECONDS,
                         marketPayload.QuoteToken, marketPayload.EndPrice, tokenPrices);
 
-                    if ( priceUsd == 0 && endPriceUsd == 0 ) continue;
+                    if (priceUsd == 0 && endPriceUsd == 0) continue;
 
                     MarketEventFiatPriceMethods.Upsert(databaseContext, marketEvent, priceUsd, endPriceUsd);
                     pricesProcessed++;
@@ -111,11 +111,11 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                 }
             }
 
-            if ( pricesProcessed > 0 ) databaseContext.SaveChanges();
+            if (pricesProcessed > 0) databaseContext.SaveChanges();
         }
 
         var processTime = DateTime.Now - startTime;
-        if(processTime.TotalSeconds > 1 || pricesProcessed > 0)
+        if (processTime.TotalSeconds > 1 || pricesProcessed > 0)
         {
             Log.Information(
                 "{Name} plugin: Processed events USD prices: {PricesProcessed} processed in {ProcessTime} sec", Name,
@@ -126,7 +126,7 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
 
     private static MarketEventData ParseMarketPayload(string payloadJson)
     {
-        if ( string.IsNullOrWhiteSpace(payloadJson) )
+        if (string.IsNullOrWhiteSpace(payloadJson))
             return null;
 
         try
@@ -144,14 +144,14 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
         long dateUnixSeconds, string quoteTokenSymbol, string priceRaw,
         IEnumerable<TokenMethods.TokenPrice> tokenPrices)
     {
-        if ( chain == null || string.IsNullOrEmpty(quoteTokenSymbol) || string.IsNullOrEmpty(priceRaw) )
+        if (chain == null || string.IsNullOrEmpty(quoteTokenSymbol) || string.IsNullOrEmpty(priceRaw))
             return 0;
 
         var price = TokenDailyPricesMethods.CalculateAsync(databaseContext, chain,
             dateUnixSeconds, quoteTokenSymbol, priceRaw).Result;
 
-        if ( price == 0 )
-            price = ( decimal ) TokenMethods.CalculatePrice(tokenPrices, priceRaw, quoteTokenSymbol);
+        if (price == 0)
+            price = (decimal)TokenMethods.CalculatePrice(tokenPrices, priceRaw, quoteTokenSymbol);
 
         return price;
     }

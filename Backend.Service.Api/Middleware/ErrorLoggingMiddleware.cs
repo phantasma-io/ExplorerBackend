@@ -30,26 +30,26 @@ public class ErrorLoggingMiddleware
         {
             await _next(httpContext);
         }
-        catch ( Exception e ) when ( e is ApiParameterException or ApiUnexpectedException )
+        catch (Exception e) when (e is ApiParameterException or ApiUnexpectedException)
         {
             // If there is no inner exception, it is likely just a field validation error so we won't log it
-            if ( e.InnerException != null )
+            if (e.InnerException != null)
                 _logger.LogError(e, "{Type} exception caught: {Path}", e.GetType().ToString(), path);
 
-            if ( e is ApiParameterException )
+            if (e is ApiParameterException)
                 _logger.LogWarning(e, "{Type} exception caught: {Path}", e.GetType().ToString(), path);
 
             var body = JsonSerializer.Serialize(
-                new ErrorResult {error = e.InnerException != null ? e.ToString() : e.Message},
-                new JsonSerializerOptions {IncludeFields = true});
+                new ErrorResult { error = e.InnerException != null ? e.ToString() : e.Message },
+                new JsonSerializerOptions { IncludeFields = true });
             var response = Encoding.UTF8.GetBytes(body);
             httpContext.Response.ContentType = "application/json; charset=utf-8";
             httpContext.Response.StatusCode = e is ApiParameterException
-                ? ( int ) HttpStatusCode.BadRequest
-                : ( int ) HttpStatusCode.InternalServerError;
+                ? (int)HttpStatusCode.BadRequest
+                : (int)HttpStatusCode.InternalServerError;
             await httpContext.Response.Body.WriteAsync(response);
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             _logger.LogCritical(e, "Unexpected exception caught: {Path}", path);
 

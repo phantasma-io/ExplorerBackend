@@ -80,7 +80,7 @@ public class EventsController : BaseControllerV1
         [FromQuery] int with_nsfw = 0,
         [FromQuery] int with_blacklisted = 0,
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetEvents.Execute(

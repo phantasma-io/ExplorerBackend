@@ -40,7 +40,7 @@ public partial class PhantasmaPlugin
 
     private static bool HasData(byte[]? value)
     {
-        return value is {Length: > 0};
+        return value is { Length: > 0 };
     }
 
     private static Token? FindTrackedToken(MainDbContext databaseContext, int chainId, string symbol)
@@ -59,7 +59,7 @@ public partial class PhantasmaPlugin
             parsed = CarbonBlob.New<TokenSchemas>(schemaBytes);
             return true;
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             Log.Warning("[{Name}][Metadata] Failed to parse carbon token schemas for {Symbol} on {Chain}: {Message}",
                 nameof(PhantasmaPlugin), symbol, chainName, e.Message);
@@ -70,16 +70,16 @@ public partial class PhantasmaPlugin
 
     private async Task<Transaction?> GetCreateTransactionAsync(MainDbContext databaseContext, Token token)
     {
-        if ( token?.CreateEvent?.Transaction != null )
+        if (token?.CreateEvent?.Transaction != null)
             return token.CreateEvent.Transaction;
 
-        if ( token?.CreateEventId.HasValue == true )
+        if (token?.CreateEventId.HasValue == true)
         {
             var createEvent = await databaseContext.Events
                 .Include(x => x.Transaction)
                 .SingleOrDefaultAsync(x => x.ID == token.CreateEventId.Value);
 
-            if ( createEvent != null )
+            if (createEvent != null)
                 token.CreateEvent = createEvent;
 
             return createEvent?.Transaction;
@@ -90,29 +90,29 @@ public partial class PhantasmaPlugin
 
     private byte[] ExtractCarbonSchemasFromCreateTransaction(Transaction? createTransaction, string symbol)
     {
-        if ( createTransaction == null || !createTransaction.CARBON_TX_TYPE.HasValue ||
-             string.IsNullOrWhiteSpace(createTransaction.CARBON_TX_DATA) )
+        if (createTransaction == null || !createTransaction.CARBON_TX_TYPE.HasValue ||
+             string.IsNullOrWhiteSpace(createTransaction.CARBON_TX_DATA))
             return Array.Empty<byte>();
 
         try
         {
-            var carbonType = ( TxTypes ) createTransaction.CARBON_TX_TYPE.Value;
-            if ( carbonType != TxTypes.Call )
+            var carbonType = (TxTypes)createTransaction.CARBON_TX_TYPE.Value;
+            if (carbonType != TxTypes.Call)
                 return Array.Empty<byte>();
 
             var carbonBytes = Base16.Decode(createTransaction.CARBON_TX_DATA);
-            if ( carbonBytes == null || carbonBytes.Length == 0 )
+            if (carbonBytes == null || carbonBytes.Length == 0)
                 return Array.Empty<byte>();
             var call = CarbonBlob.New<TxMsgCall>(carbonBytes);
 
-            if ( call.moduleId != ( uint ) ModuleId.Token ||
-                 call.methodId != ( uint ) TokenContract_Methods.CreateToken )
+            if (call.moduleId != (uint)ModuleId.Token ||
+                 call.methodId != (uint)TokenContract_Methods.CreateToken)
                 return Array.Empty<byte>();
 
             var tokenInfo = CarbonBlob.New<TokenInfo>(call.args);
             return tokenInfo.tokenSchemas ?? Array.Empty<byte>();
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             Log.Warning("[{Name}][Metadata] Failed to extract carbon schemas for {Symbol} from tx {Hash}: {Message}",
                 Name, symbol, createTransaction?.HASH, e.Message);
@@ -123,16 +123,16 @@ public partial class PhantasmaPlugin
     private async Task<TokenSchemas?> GetCarbonTokenSchemasAsync(MainDbContext databaseContext, Chain chain,
         string symbol)
     {
-        if ( databaseContext == null || chain == null || string.IsNullOrWhiteSpace(symbol) )
+        if (databaseContext == null || chain == null || string.IsNullOrWhiteSpace(symbol))
             return null;
 
         var cacheKey = BuildTokenCacheKey(chain.ID, symbol);
-        if ( _carbonTokenSchemasCache.TryGetValue(cacheKey, out var cached) )
+        if (_carbonTokenSchemasCache.TryGetValue(cacheKey, out var cached))
             return cached;
 
         var token = FindTrackedToken(databaseContext, chain.ID, symbol);
 
-        if ( token == null )
+        if (token == null)
         {
             token = await databaseContext.Tokens
                 .Include(x => x.CreateEvent)
@@ -140,24 +140,24 @@ public partial class PhantasmaPlugin
                 .SingleOrDefaultAsync(x => x.ChainId == chain.ID && x.SYMBOL == symbol);
         }
 
-        if ( token == null )
+        if (token == null)
             return null;
 
         var schemasBytes = token.CARBON_TOKEN_SCHEMAS;
 
-        if ( !HasData(schemasBytes) )
+        if (!HasData(schemasBytes))
         {
             var createTransaction = await GetCreateTransactionAsync(databaseContext, token);
             schemasBytes = ExtractCarbonSchemasFromCreateTransaction(createTransaction, symbol);
 
-            if ( HasData(schemasBytes) )
+            if (HasData(schemasBytes))
                 token.CARBON_TOKEN_SCHEMAS = schemasBytes;
         }
 
-        if ( !HasData(schemasBytes) )
+        if (!HasData(schemasBytes))
             return null;
 
-        if ( !TryParseCarbonTokenSchemas(schemasBytes, symbol, chain.NAME, out var parsedSchemas) )
+        if (!TryParseCarbonTokenSchemas(schemasBytes, symbol, chain.NAME, out var parsedSchemas))
             return null;
 
         _carbonTokenSchemasCache[cacheKey] = parsedSchemas;
@@ -172,7 +172,7 @@ public partial class PhantasmaPlugin
             result = VmDynamicStruct.New(schema, data);
             return true;
         }
-        catch ( Exception e )
+        catch (Exception e)
         {
             var hint = e.Message.IndexOf("BigInt too big", StringComparison.OrdinalIgnoreCase) >= 0
                 ? " Schema expects Int256 first; payload looks like placeholder bytes (for example AA) instead of a VM struct."
@@ -186,9 +186,9 @@ public partial class PhantasmaPlugin
 
     private static bool TryGetField(VmDynamicStruct structData, string name, out VmDynamicVariable value)
     {
-        foreach ( var field in structData.fields )
+        foreach (var field in structData.fields)
         {
-            if ( field.name.data.Equals(name, StringComparison.OrdinalIgnoreCase) )
+            if (field.name.data.Equals(name, StringComparison.OrdinalIgnoreCase))
             {
                 value = field.value;
                 return true;
@@ -201,7 +201,7 @@ public partial class PhantasmaPlugin
 
     private static string? GetStringField(VmDynamicStruct structData, string name)
     {
-        if ( TryGetField(structData, name, out var value) )
+        if (TryGetField(structData, name, out var value))
         {
             try
             {
@@ -218,7 +218,7 @@ public partial class PhantasmaPlugin
 
     private static int? GetIntField(VmDynamicStruct structData, string name)
     {
-        if ( TryGetField(structData, name, out var value) )
+        if (TryGetField(structData, name, out var value))
         {
             try
             {
@@ -227,7 +227,7 @@ public partial class PhantasmaPlugin
                     VmType.Int8 => value.GetInt8(),
                     VmType.Int16 => value.GetInt16(),
                     VmType.Int32 => value.GetInt32(),
-                    VmType.Int64 => ( int ) value.GetInt64(),
+                    VmType.Int64 => (int)value.GetInt64(),
                     _ => null
                 };
             }
@@ -242,7 +242,7 @@ public partial class PhantasmaPlugin
 
     private static byte[] GetBytesField(VmDynamicStruct structData, string name)
     {
-        if ( TryGetField(structData, name, out var value) )
+        if (TryGetField(structData, name, out var value))
         {
             try
             {
@@ -259,17 +259,17 @@ public partial class PhantasmaPlugin
 
     private static string NormalizeImageUrl(string? url)
     {
-        if ( string.IsNullOrWhiteSpace(url) )
+        if (string.IsNullOrWhiteSpace(url))
             return url;
 
         var trimmed = url.Trim();
-        if ( trimmed.StartsWith("data:", StringComparison.OrdinalIgnoreCase) )
+        if (trimmed.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
             return trimmed;
 
-        if ( trimmed.Contains("://", StringComparison.Ordinal) )
+        if (trimmed.Contains("://", StringComparison.Ordinal))
             return trimmed;
 
-        if ( trimmed.StartsWith("//", StringComparison.Ordinal) )
+        if (trimmed.StartsWith("//", StringComparison.Ordinal))
             return $"https:{trimmed}";
 
         return $"https://{trimmed}";
@@ -296,9 +296,9 @@ public partial class PhantasmaPlugin
         VmDynamicStruct? sharedRomStruct = null;
         byte[] sharedRom = Array.Empty<byte>();
 
-        if ( metadataBytes is {Length: > 0} &&
+        if (metadataBytes is { Length: > 0 } &&
              TryDecodeCarbonStruct(schemas.seriesMetadata, metadataBytes,
-                 $"series:{symbol}:{carbonSeriesId}:metadata", out var decodedMetadata) )
+                 $"series:{symbol}:{carbonSeriesId}:metadata", out var decodedMetadata))
         {
             metadataStruct = decodedMetadata;
 
@@ -311,15 +311,15 @@ public partial class PhantasmaPlugin
             var metaImage = NormalizeImageUrl(GetStringField(decodedMetadata, "imageURL"));
             var metaRoyalties = GetIntField(decodedMetadata, "royalties");
 
-            if ( !string.IsNullOrWhiteSpace(metaName) ) series.NAME = metaName;
-            if ( !string.IsNullOrWhiteSpace(metaDescription) ) series.DESCRIPTION = metaDescription;
-            if ( !string.IsNullOrWhiteSpace(metaImage) ) series.IMAGE = metaImage;
-            if ( metaRoyalties.HasValue ) series.ROYALTIES = metaRoyalties.Value;
+            if (!string.IsNullOrWhiteSpace(metaName)) series.NAME = metaName;
+            if (!string.IsNullOrWhiteSpace(metaDescription)) series.DESCRIPTION = metaDescription;
+            if (!string.IsNullOrWhiteSpace(metaImage)) series.IMAGE = metaImage;
+            if (metaRoyalties.HasValue) series.ROYALTIES = metaRoyalties.Value;
 
             sharedRom = GetBytesField(decodedMetadata, "rom");
-            if ( sharedRom.Length > 0 &&
+            if (sharedRom.Length > 0 &&
                  TryDecodeCarbonStruct(schemas.rom, sharedRom,
-                     $"series:{symbol}:{carbonSeriesId}:rom", out var decodedSharedRom) )
+                     $"series:{symbol}:{carbonSeriesId}:rom", out var decodedSharedRom))
             {
                 sharedRomStruct = decodedSharedRom;
                 ApplyRomMetadataToSeries(series, decodedSharedRom);
@@ -338,31 +338,31 @@ public partial class PhantasmaPlugin
     private void ProcessCarbonMint(Nft nft, string symbol, int chainId, TxMsgMintNonFungible carbonMintTx,
         TokenSchemas tokenSchemas)
     {
-        if ( nft == null )
+        if (nft == null)
             return;
 
         VmDynamicStruct? sharedRomStruct = null;
         byte[] sharedRomBytes = Array.Empty<byte>();
-        if ( carbonMintTx.seriesId > 0 )
+        if (carbonMintTx.seriesId > 0)
         {
             var cachedSeries = GetCachedSeries(chainId, symbol, carbonMintTx.seriesId);
-            if ( cachedSeries != null && cachedSeries.SharedRom.Length > 0 )
+            if (cachedSeries != null && cachedSeries.SharedRom.Length > 0)
             {
                 sharedRomBytes = cachedSeries.SharedRom;
-                if ( TryDecodeCarbonStruct(tokenSchemas.rom, sharedRomBytes,
-                         $"series:{symbol}:{carbonMintTx.seriesId}:sharedRom", out var decodedSharedRom) )
+                if (TryDecodeCarbonStruct(tokenSchemas.rom, sharedRomBytes,
+                         $"series:{symbol}:{carbonMintTx.seriesId}:sharedRom", out var decodedSharedRom))
                     sharedRomStruct = decodedSharedRom;
             }
         }
 
-        if ( carbonMintTx.rom == null || carbonMintTx.rom.Length == 0 )
+        if (carbonMintTx.rom == null || carbonMintTx.rom.Length == 0)
         {
-            if ( sharedRomStruct.HasValue )
+            if (sharedRomStruct.HasValue)
                 ApplyRomMetadataToNft(nft, sharedRomStruct.Value, sharedRomBytes,
                     carbonMintTx.ram ?? Array.Empty<byte>(), sharedRomStruct);
             else
             {
-                if ( carbonMintTx.ram is {Length: > 0} ) nft.RAM = Base16.Encode(carbonMintTx.ram);
+                if (carbonMintTx.ram is { Length: > 0 }) nft.RAM = Base16.Encode(carbonMintTx.ram);
                 UpdateNftMetadata(nft,
                     CreateMetadataFromRomRam(Array.Empty<byte>(), carbonMintTx.ram ?? Array.Empty<byte>()));
                 nft.DM_UNIX_SECONDS = UnixSeconds.Now();
@@ -371,10 +371,10 @@ public partial class PhantasmaPlugin
             return;
         }
 
-        if ( !TryDecodeCarbonStruct(tokenSchemas.rom, carbonMintTx.rom,
-                 $"nft:{symbol}:{carbonMintTx.seriesId}:rom", out var romStruct) )
+        if (!TryDecodeCarbonStruct(tokenSchemas.rom, carbonMintTx.rom,
+                 $"nft:{symbol}:{carbonMintTx.seriesId}:rom", out var romStruct))
         {
-            if ( sharedRomStruct.HasValue )
+            if (sharedRomStruct.HasValue)
             {
                 var romBytes = sharedRomBytes.Length > 0 ? sharedRomBytes : carbonMintTx.rom ?? Array.Empty<byte>();
                 ApplyRomMetadataToNft(nft, sharedRomStruct.Value, romBytes,
@@ -382,8 +382,8 @@ public partial class PhantasmaPlugin
             }
             else
             {
-                if ( carbonMintTx.rom is {Length: > 0} ) nft.ROM = Base16.Encode(carbonMintTx.rom);
-                if ( carbonMintTx.ram is {Length: > 0} ) nft.RAM = Base16.Encode(carbonMintTx.ram);
+                if (carbonMintTx.rom is { Length: > 0 }) nft.ROM = Base16.Encode(carbonMintTx.rom);
+                if (carbonMintTx.ram is { Length: > 0 }) nft.RAM = Base16.Encode(carbonMintTx.ram);
                 UpdateNftMetadata(nft,
                     CreateMetadataFromRomRam(carbonMintTx.rom ?? Array.Empty<byte>(),
                         carbonMintTx.ram ?? Array.Empty<byte>()));
@@ -404,16 +404,16 @@ public partial class PhantasmaPlugin
         var image = NormalizeImageUrl(GetStringField(romStruct, "imageURL"));
         var royalties = GetIntField(romStruct, "royalties");
 
-        if ( !string.IsNullOrWhiteSpace(name) ) series.NAME = name;
-        if ( !string.IsNullOrWhiteSpace(description) ) series.DESCRIPTION = description;
-        if ( !string.IsNullOrWhiteSpace(image) ) series.IMAGE = image;
-        if ( royalties.HasValue ) series.ROYALTIES = royalties.Value;
+        if (!string.IsNullOrWhiteSpace(name)) series.NAME = name;
+        if (!string.IsNullOrWhiteSpace(description)) series.DESCRIPTION = description;
+        if (!string.IsNullOrWhiteSpace(image)) series.IMAGE = image;
+        if (royalties.HasValue) series.ROYALTIES = royalties.Value;
     }
 
     private void ApplyRomMetadataToNft(Nft nft, VmDynamicStruct romStruct, byte[] carbonRomBytes, byte[] carbonRamBytes,
         VmDynamicStruct? sharedRomStruct)
     {
-        if ( nft == null )
+        if (nft == null)
             return;
 
         var name = GetStringField(romStruct, "name") ?? (sharedRomStruct.HasValue ? GetStringField(sharedRomStruct.Value, "name") : null);
@@ -426,46 +426,46 @@ public partial class PhantasmaPlugin
         var royalties = GetIntField(romStruct, "royalties") ??
                         (sharedRomStruct.HasValue ? GetIntField(sharedRomStruct.Value, "royalties") : null);
 
-        if ( nft.Series != null )
+        if (nft.Series != null)
         {
-            if ( string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(nft.Series.NAME) )
+            if (string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(nft.Series.NAME))
                 name = nft.Series.NAME;
-            if ( string.IsNullOrWhiteSpace(description) && !string.IsNullOrWhiteSpace(nft.Series.DESCRIPTION) )
+            if (string.IsNullOrWhiteSpace(description) && !string.IsNullOrWhiteSpace(nft.Series.DESCRIPTION))
                 description = nft.Series.DESCRIPTION;
-            if ( string.IsNullOrWhiteSpace(image) && !string.IsNullOrWhiteSpace(nft.Series.IMAGE) )
+            if (string.IsNullOrWhiteSpace(image) && !string.IsNullOrWhiteSpace(nft.Series.IMAGE))
                 image = nft.Series.IMAGE;
-            if ( royalties == null )
-                royalties = ( int ) nft.Series.ROYALTIES;
+            if (royalties == null)
+                royalties = (int)nft.Series.ROYALTIES;
         }
 
-        if ( !string.IsNullOrWhiteSpace(name) ) nft.NAME = name;
-        if ( !string.IsNullOrWhiteSpace(description) ) nft.DESCRIPTION = description;
-        if ( !string.IsNullOrWhiteSpace(image) ) nft.IMAGE = image;
-        if ( !string.IsNullOrWhiteSpace(infoUrl) ) nft.INFO_URL = infoUrl;
+        if (!string.IsNullOrWhiteSpace(name)) nft.NAME = name;
+        if (!string.IsNullOrWhiteSpace(description)) nft.DESCRIPTION = description;
+        if (!string.IsNullOrWhiteSpace(image)) nft.IMAGE = image;
+        if (!string.IsNullOrWhiteSpace(infoUrl)) nft.INFO_URL = infoUrl;
 
-        if ( royalties.HasValue && nft.Series != null )
+        if (royalties.HasValue && nft.Series != null)
             nft.Series.ROYALTIES = royalties.Value;
 
-        if ( carbonRomBytes is {Length: > 0} ) nft.ROM = Base16.Encode(carbonRomBytes);
-        if ( carbonRamBytes is {Length: > 0} ) nft.RAM = Base16.Encode(carbonRamBytes);
+        if (carbonRomBytes is { Length: > 0 }) nft.ROM = Base16.Encode(carbonRomBytes);
+        if (carbonRamBytes is { Length: > 0 }) nft.RAM = Base16.Encode(carbonRamBytes);
 
         var innerRom = GetBytesField(romStruct, "rom");
-        if ( innerRom.Length > 0 )
+        if (innerRom.Length > 0)
         {
             try
             {
                 var parsedRom = new CustomRom(innerRom, $"nft:{nft.TOKEN_ID}:innerRom");
                 var mintDate = parsedRom.GetDate();
-                if ( mintDate > 0 )
+                if (mintDate > 0)
                     nft.MINT_DATE_UNIX_SECONDS = mintDate;
 
-                if ( nft.Series != null )
+                if (nft.Series != null)
                 {
-                    nft.Series.TYPE = ( int ) parsedRom.GetNftType();
+                    nft.Series.TYPE = (int)parsedRom.GetNftType();
                     nft.Series.HAS_LOCKED = parsedRom.GetHasLocked();
                 }
             }
-            catch ( Exception e )
+            catch (Exception e)
             {
                 Log.Warning("[{Name}][Metadata] Failed to parse inner ROM for NFT {TokenId}: {Message}", Name,
                     nft.TOKEN_ID, e.Message);
@@ -478,6 +478,6 @@ public partial class PhantasmaPlugin
         UpdateNftMetadata(nft, romMetadata, sharedMetadata, romRamMetadata);
 
         nft.DM_UNIX_SECONDS = UnixSeconds.Now();
-        if ( nft.Series != null ) nft.Series.DM_UNIX_SECONDS = UnixSeconds.Now();
+        if (nft.Series != null) nft.Series.DM_UNIX_SECONDS = UnixSeconds.Now();
     }
 }

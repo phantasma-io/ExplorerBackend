@@ -21,7 +21,7 @@ namespace Database.Main.Migrations
                 oldClrType: typeof(string),
                 oldType: "text",
                 oldNullable: true);*/
-            
+
             migrationBuilder.Sql("""
                 ALTER TABLE "AddressBalances"
                 ALTER COLUMN "AMOUNT_RAW" TYPE numeric USING "AMOUNT_RAW"::numeric;

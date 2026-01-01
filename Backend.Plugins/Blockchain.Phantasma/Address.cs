@@ -16,10 +16,41 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
+    private static void MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
+        long blockHeight)
+    {
+        if (addresses == null || addresses.Count == 0)
+            return;
+
+        var distinct = addresses.Distinct().ToList();
+        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, distinct);
+        if (addressMap == null)
+            return;
+
+        foreach (var entry in addressMap.Values)
+        {
+            if (entry == null)
+                continue;
+
+            if (entry.BALANCE_DIRTY_BLOCK < blockHeight)
+                entry.BALANCE_DIRTY_BLOCK = blockHeight;
+        }
+    }
+
+    private static Task MarkAllBalancesDirtyAsync(MainDbContext databaseContext, int chainId)
+    {
+        return databaseContext.Database.ExecuteSqlRawAsync(@"
+UPDATE ""Addresses"" a
+SET ""BALANCE_DIRTY_BLOCK"" = CAST(c.""CURRENT_HEIGHT"" AS BIGINT)
+FROM ""Chains"" c
+WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
+", chainId);
+    }
+
     private async Task UpdateAddressesBalancesAsync(MainDbContext databaseContext, Chain chain, List<string> addresses, int updateChunkSize)
     {
         var startTime = DateTime.Now;
-        
+
         var processed = 0;
 
         var addressesToUpdate = await databaseContext.Addresses.Where(x =>
@@ -30,7 +61,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, chain);
 
         var splitAddresses = addressesToUpdate.Chunk(updateChunkSize).ToList();
-        for ( var i = 0; i < splitAddresses.Count; i++ )
+        for (var i = 0; i < splitAddresses.Count; i++)
         {
             var split = splitAddresses.ElementAt(i).Select(x => x.ADDRESS).ToList();
             var addressesComaSeparated = string.Join(",", split);
@@ -40,10 +71,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 1000);
 
-                if ( response == null)
+                if (response == null)
                 {
                     Log.Error("[{Name}] Balance sync: null result", Name);
-                    if ( updateChunkSize > 1 )
+                    if (updateChunkSize > 1)
                     {
                         // Temp solution for situation when batch of addresses crash API
                         await UpdateAddressesBalancesAsync(databaseContext, chain, split, 1);
@@ -53,7 +84,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if (response.RootElement.ValueKind == JsonValueKind.Object && response.RootElement.TryGetProperty("Error", out var errorProperty))
                 {
-                    if(updateChunkSize == 1)
+                    if (updateChunkSize == 1)
                     {
                         Log.Error("[{Name}] Balance sync [{Address}]: Error: {errorProperty} [{apiCallUrl}]", Name, split.First(), errorProperty, url);
                     }
@@ -61,7 +92,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     {
                         Log.Error("[{Name}] Balance sync: Error: {errorProperty}", Name, errorProperty);
                     }
-                    if ( updateChunkSize > 1 )
+                    if (updateChunkSize > 1)
                     {
                         // Temp solution for situation when batch of addresses crash API
                         await UpdateAddressesBalancesAsync(databaseContext, chain, split, 1);
@@ -70,21 +101,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
 
                 var accounts = response.RootElement.EnumerateArray().ToList();
-                foreach ( var account in accounts )
+                foreach (var account in accounts)
                 {
                     var address =
                         addressesToUpdate.FirstOrDefault(x => x.ADDRESS == account.GetProperty("address").GetString());
-                    if ( address == null ) continue;
+                    if (address == null) continue;
 
                     var name = account.GetProperty("name").GetString();
-                    if ( name.ToLowerInvariant() == "anonymous" )
+                    if (name.ToLowerInvariant() == "anonymous")
                     {
                         name = null;
                     }
-                    address.ADDRESS_NAME = name;                    
+                    address.ADDRESS_NAME = name;
                     address.NAME_LAST_UPDATED_UNIX_SECONDS = UnixSeconds.Now();
 
-                    if ( account.TryGetProperty("stakes", out var stakesProperty) )
+                    if (account.TryGetProperty("stakes", out var stakesProperty))
                     {
                         var amount = stakesProperty.GetProperty("amount").GetString();
                         var unclaimed = stakesProperty.GetProperty("unclaimed").GetString();
@@ -157,15 +188,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         var startTime = DateTime.Now;
 
-        if ( string.IsNullOrEmpty(addressName) ) return null;
+        if (string.IsNullOrEmpty(addressName)) return null;
 
         var addressEntry = AddressMethods.GetByName(databaseContext, chain, addressName);
 
-        if ( addressEntry == null )
+        if (addressEntry == null)
         {
             var url = $"{Settings.Default.GetRest()}/api/v1/lookUpName?name={addressName}";
             var response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
-            if ( response == null )
+            if (response == null)
             {
                 Log.Error("[{Name}] lookUpName: null result", Name);
                 return null;
@@ -174,17 +205,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var address = response.RootElement.GetString();
             Log.Verbose("[{Name}] Found Address {Address} for name {AddressName}", Name, address, addressName);
 
-            if ( string.IsNullOrEmpty(address) ) return null;
+            if (string.IsNullOrEmpty(address)) return null;
 
             addressEntry = AddressMethods.Get(databaseContext, chain, address);
 
-            if ( addressEntry != null )
+            if (addressEntry != null)
                 addressEntry.ADDRESS_NAME = addressName;
             else
             {
                 url = $"{Settings.Default.GetRest()}/api/v1/getAccount?account={address}&extended=false&checkAddressReservedByte=false";
                 response = Client.ApiRequest<JsonDocument>(url, out _, null, 10);
-                if ( response == null )
+                if (response == null)
                 {
                     Log.Error("[{Name}] getAccount: null result", Name);
                     return null;
@@ -192,23 +223,23 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 //do not process everything here, let the sync to that later, we just call it to make sure
                 string? name = "anonymous";
-                if ( response.RootElement.TryGetProperty("name", out JsonElement jsonName) )
+                if (response.RootElement.TryGetProperty("name", out JsonElement jsonName))
                 {
                     name = jsonName.GetString();
                 }
                 addressEntry = await AddressMethods.UpsertAsync(databaseContext, chain, address);
-                if ( name == "anonymous" ) name = null;
+                if (name == "anonymous") name = null;
 
                 addressEntry.ADDRESS_NAME = name;
             }
         }
 
-        if ( organization != null )
+        if (organization != null)
         {
             Log.Verbose("[{Name}] setting Organization {Organization} for Address {Address}", Name,
                 organization.ORGANIZATION_ID, addressEntry.ADDRESS);
             addressEntry.Organization = organization;
-            if ( addressEntry.Organizations == null ) addressEntry.Organizations = new List<Organization>();
+            if (addressEntry.Organizations == null) addressEntry.Organizations = new List<Organization>();
             addressEntry.Organizations.AddDistinct(organization);
             organization.ADDRESS_NAME = addressName;
             organization.ADDRESS = addressEntry.ADDRESS;

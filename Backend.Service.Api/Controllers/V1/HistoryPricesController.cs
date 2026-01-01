@@ -37,7 +37,7 @@ public class HistoryPricesController : BaseControllerV1
         [FromQuery] string date_greater = "",
         [FromQuery] int with_token = 0,
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetHistoryPrices.Execute(

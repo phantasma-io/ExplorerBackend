@@ -17,7 +17,7 @@ public class JsonTests
 
         // Act
         var result = "";
-        if ( node.RootElement.TryGetProperty("error", out var property) ) result = property.GetString();
+        if (node.RootElement.TryGetProperty("error", out var property)) result = property.GetString();
 
         // Assert
         result.ShouldContain("does not exist");
@@ -69,17 +69,17 @@ public class JsonTests
         var timestampUnixSeconds = node.RootElement.GetProperty("timestamp").GetUInt32();
         var address = "";
 
-        if ( node.RootElement.TryGetProperty("txs", out var txsProperty) )
+        if (node.RootElement.TryGetProperty("txs", out var txsProperty))
         {
             var txs = txsProperty.EnumerateArray();
-            for ( var txIndex = 0; txIndex < txs.Count(); txIndex++ )
+            for (var txIndex = 0; txIndex < txs.Count(); txIndex++)
             {
                 var tx = txs.ElementAt(txIndex);
 
                 var events = new JsonElement.ArrayEnumerator();
-                if ( tx.TryGetProperty("events", out var eventsProperty) ) events = eventsProperty.EnumerateArray();
+                if (tx.TryGetProperty("events", out var eventsProperty)) events = eventsProperty.EnumerateArray();
 
-                for ( var eventIndex = 0; eventIndex < events.Count(); eventIndex++ )
+                for (var eventIndex = 0; eventIndex < events.Count(); eventIndex++)
                 {
                     var eventNode = events.ElementAt(eventIndex);
                     address = eventNode.GetProperty("address").GetString();
@@ -91,7 +91,7 @@ public class JsonTests
         }
 
         // Assert
-        timestampUnixSeconds.ShouldBeEquivalentTo(( uint ) 1580746293);
+        timestampUnixSeconds.ShouldBeEquivalentTo((uint)1580746293);
 
         address.ShouldBeEquivalentTo("P2KAY2e4bTxEQoLhdcYcH4y7JMZahHnPo2VtjQGiqjxkD9R");
     }
@@ -102,12 +102,15 @@ public class JsonTests
     {
         // Arrange
 
-        object[] parameters = {"par1", "par2"};
+        object[] parameters = { "par1", "par2" };
 
         // System.Text.Json
         var rpcRequest = new RpcRequest
         {
-            jsonrpc = "2.0", method = "testMethod", id = "1", @params = parameters.ToArray()
+            jsonrpc = "2.0",
+            method = "testMethod",
+            id = "1",
+            @params = parameters.ToArray()
         };
 
         // Act

@@ -51,7 +51,7 @@ public class AssetController : BaseControllerV1
         [FromQuery] int with_stakes = 0,
         [FromQuery] int with_balance = 0,
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetAddresses.Execute(

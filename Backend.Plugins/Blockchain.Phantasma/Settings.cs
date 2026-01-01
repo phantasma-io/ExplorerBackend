@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using Microsoft.Extensions.Configuration;
 
 namespace Backend.Blockchain;
@@ -38,6 +39,7 @@ internal class Settings
         RomRamProcessingInterval = section.GetValue<int>("romRamProcessingInterval");
         SeriesProcessingInterval = section.GetValue<int>("seriesProcessingInterval");
         NamesSyncInterval = section.GetValue<int>("namesSyncInterval");
+        BalanceResyncOnStartup = section.GetValue("balanceResyncOnStartup", true);
         ChangeNodesInterval = 30; //30 mins
         LastNodeChange = DateTime.Now;
     }
@@ -61,8 +63,10 @@ internal class Settings
     public int RomRamProcessingInterval { get; }
     public int SeriesProcessingInterval { get; }
     public int NamesSyncInterval { get; }
+    public bool BalanceResyncOnStartup { get; }
 
     public static Settings Default { get; private set; }
+    private int _restNodeIndex = -1;
 
 
     public static void Load(IConfigurationSection section)
@@ -77,20 +81,16 @@ internal class Settings
     /// <returns></returns>
     public string GetRest()
     {
-        if ( string.IsNullOrEmpty(SelectedPhaRestNodes))
-            SelectedPhaRestNodes = PhaRestNodes[0];
-        
-        if (Utils.HasElapsed(LastNodeChange, TimeSpan.FromMinutes(ChangeNodesInterval)))
-        {
-            LastNodeChange = DateTime.Now;
-            var index = PhaRestNodes.IndexOf(SelectedPhaRestNodes);
-            if ( index == PhaRestNodes.Count - 1 )
-                index = 0;
-            else
-                index++;
-            SelectedPhaRestNodes = PhaRestNodes[index];
-        }
-        
+        if (PhaRestNodes == null || PhaRestNodes.Count == 0)
+            return null;
+
+        // Round-robin per request to distribute parallel load across nodes.
+        var index = Interlocked.Increment(ref _restNodeIndex);
+        var position = index % PhaRestNodes.Count;
+        if (position < 0)
+            position += PhaRestNodes.Count;
+
+        SelectedPhaRestNodes = PhaRestNodes[position];
         return SelectedPhaRestNodes;
     }
 
@@ -101,20 +101,20 @@ internal class Settings
     /// <returns></returns>
     public string GetRpc()
     {
-        if ( string.IsNullOrEmpty(SelectedPhaRpcNodes))
+        if (string.IsNullOrEmpty(SelectedPhaRpcNodes))
             SelectedPhaRpcNodes = PhaRpcNodes[0];
-        
+
         if (Utils.HasElapsed(LastNodeChange, TimeSpan.FromMinutes(ChangeNodesInterval)))
         {
             LastNodeChange = DateTime.Now;
             var index = PhaRpcNodes.IndexOf(SelectedPhaRpcNodes);
-            if ( index == PhaRpcNodes.Count - 1 )
+            if (index == PhaRpcNodes.Count - 1)
                 index = 0;
             else
                 index++;
             SelectedPhaRpcNodes = PhaRpcNodes[index];
         }
-        
+
         return SelectedPhaRpcNodes;
     }
 }

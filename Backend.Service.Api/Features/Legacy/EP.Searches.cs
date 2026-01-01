@@ -14,20 +14,20 @@ namespace Backend.Service.Api;
 
 public static class GetSearch
 {
-    [ProducesResponseType(typeof(SearchResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(SearchResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(SearchResult), "Returns the ValidatorKinds on the backend.", false, 10)]
     public static async Task<SearchResult> Execute(
         // ReSharper disable InconsistentNaming
         [Required] string value
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         var searchList = new List<Search>();
 
         try
         {
-            if ( string.IsNullOrEmpty(value) || !ArgValidation.CheckSearch(value) || value.Length < 3 )
+            if (string.IsNullOrEmpty(value) || !ArgValidation.CheckSearch(value) || value.Length < 3)
                 throw new ApiParameterException("Unsupported value for 'value' parameter.");
 
             var startTime = DateTime.Now;
@@ -45,11 +45,11 @@ public static class GetSearch
                 new("transactions", "hash")
             };
 
-            foreach ( var (endpoint, parameter) in searches )
+            foreach (var (endpoint, parameter) in searches)
             {
                 var anyHit = endpoint switch
                 {
-                    "addresses" => databaseContext.Addresses.AsNoTracking().Any(x => x.ADDRESS == value || x.USER_NAME == value ||  x.ADDRESS_NAME == value),
+                    "addresses" => databaseContext.Addresses.AsNoTracking().Any(x => x.ADDRESS == value || x.USER_NAME == value || x.ADDRESS_NAME == value),
                     "blocks" => databaseContext.Blocks.AsNoTracking().Any(x => x.HASH == value),
                     "chains" => databaseContext.Chains.AsNoTracking().Any(x => x.NAME == value),
                     "contracts" => databaseContext.Contracts.AsNoTracking()
@@ -62,7 +62,7 @@ public static class GetSearch
                     _ => false
                 };
 
-                searchList.Add(new Search {endpoint_name = endpoint, endpoint_parameter = parameter, found = anyHit});
+                searchList.Add(new Search { endpoint_name = endpoint, endpoint_parameter = parameter, found = anyHit });
             }
 
 
@@ -70,16 +70,16 @@ public static class GetSearch
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Search()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new SearchResult {result = searchList.ToArray()};
+        return new SearchResult { result = searchList.ToArray() };
     }
 }

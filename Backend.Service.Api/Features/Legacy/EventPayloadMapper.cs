@@ -104,50 +104,50 @@ internal static class EventPayloadMapper
             var addressKeys = new HashSet<ChainAddressKey>();
             var platformNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach ( var envelope in events )
+            foreach (var envelope in events)
             {
                 chainIds.Add(envelope.Projection.ChainId);
                 var payload = envelope.Payload;
-                if ( payload == null ) continue;
+                if (payload == null) continue;
 
-                if ( !string.IsNullOrEmpty(payload.TokenEvent?.Token) )
+                if (!string.IsNullOrEmpty(payload.TokenEvent?.Token))
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.TokenEvent.Token));
 
-                if ( !string.IsNullOrEmpty(payload.TokenSeriesEvent?.Token) )
+                if (!string.IsNullOrEmpty(payload.TokenSeriesEvent?.Token))
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.TokenSeriesEvent.Token));
 
-                if ( !string.IsNullOrEmpty(payload.InfusionEvent?.BaseToken) )
+                if (!string.IsNullOrEmpty(payload.InfusionEvent?.BaseToken))
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.InfusionEvent.BaseToken));
 
-                if ( !string.IsNullOrEmpty(payload.InfusionEvent?.InfusedToken) )
+                if (!string.IsNullOrEmpty(payload.InfusionEvent?.InfusedToken))
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.InfusionEvent.InfusedToken));
 
-                if ( !string.IsNullOrEmpty(payload.MarketEvent?.BaseToken) )
+                if (!string.IsNullOrEmpty(payload.MarketEvent?.BaseToken))
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.MarketEvent.BaseToken));
 
-                if ( !string.IsNullOrEmpty(payload.MarketEvent?.QuoteToken) )
+                if (!string.IsNullOrEmpty(payload.MarketEvent?.QuoteToken))
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.MarketEvent.QuoteToken));
 
-                if ( !string.IsNullOrEmpty(payload.GasEvent?.Address) )
+                if (!string.IsNullOrEmpty(payload.GasEvent?.Address))
                 {
                     addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.GasEvent.Address));
                 }
-                if ( payload.GasEvent != null )
+                if (payload.GasEvent != null)
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, "KCAL"));
 
-                if ( !string.IsNullOrEmpty(payload.TokenSeriesEvent?.Owner) )
+                if (!string.IsNullOrEmpty(payload.TokenSeriesEvent?.Owner))
                     addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.TokenSeriesEvent.Owner));
 
-                if ( !string.IsNullOrEmpty(payload.AddressEvent?.Address) )
+                if (!string.IsNullOrEmpty(payload.AddressEvent?.Address))
                     addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.AddressEvent.Address));
 
-                if ( !string.IsNullOrEmpty(payload.OrganizationEvent?.Address) )
+                if (!string.IsNullOrEmpty(payload.OrganizationEvent?.Address))
                     addressKeys.Add(new ChainAddressKey(envelope.Projection.ChainId, payload.OrganizationEvent.Address));
 
-                if ( !string.IsNullOrEmpty(payload.TokenCreateEvent?.Symbol) )
+                if (!string.IsNullOrEmpty(payload.TokenCreateEvent?.Symbol))
                     tokenKeys.Add(new ChainSymbolKey(envelope.Projection.ChainId, payload.TokenCreateEvent.Symbol));
 
-                if ( !string.IsNullOrEmpty(payload.TransactionSettleEvent?.Platform) )
+                if (!string.IsNullOrEmpty(payload.TransactionSettleEvent?.Platform))
                     platformNames.Add(payload.TransactionSettleEvent.Platform);
             }
 
@@ -480,27 +480,27 @@ internal static class EventPayloadMapper
         string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
-        if ( !withEventData || projections == null || projections.Count == 0 )
+        if (!withEventData || projections == null || projections.Count == 0)
         {
             return;
         }
 
         var envelopes = projections.Select(p => new EventPayloadEnvelope
-            {
-                Projection = p,
-                Payload = ParsePayload(p.PayloadJson)
-            })
+        {
+            Projection = p,
+            Payload = ParsePayload(p.PayloadJson)
+        })
             .ToArray();
 
         var context = await EventPayloadContext.BuildAsync(databaseContext, envelopes, withFiat);
 
-        foreach ( var envelope in envelopes )
+        foreach (var envelope in envelopes)
         {
             var payload = envelope.Payload;
             var apiEvent = envelope.Projection.ApiEvent;
             var eventKind = apiEvent.event_kind;
 
-            if ( payload == null ) continue;
+            if (payload == null) continue;
 
             apiEvent.address_event = BuildAddressEvent(payload, context, envelope.Projection.ChainId);
             apiEvent.chain_event = BuildChainEvent(payload);
@@ -548,7 +548,7 @@ internal static class EventPayloadMapper
                 apiEvent.token_series_event != null ||
                 apiEvent.transaction_settle_event != null;
 
-            if ( !hasSpecific || string.Equals(eventKind, "ContractDeploy", StringComparison.OrdinalIgnoreCase) )
+            if (!hasSpecific || string.Equals(eventKind, "ContractDeploy", StringComparison.OrdinalIgnoreCase))
             {
                 apiEvent.unknown_event = new UnknownEvent
                 {
@@ -561,7 +561,7 @@ internal static class EventPayloadMapper
 
     private static EventPayload ParsePayload(string payloadJson)
     {
-        if ( string.IsNullOrWhiteSpace(payloadJson) )
+        if (string.IsNullOrWhiteSpace(payloadJson))
         {
             return null;
         }
@@ -578,17 +578,17 @@ internal static class EventPayloadMapper
 
     private static string ExtractGovernanceValue(Dictionary<string, JsonElement> payload, params string[] keys)
     {
-        if ( payload == null )
+        if (payload == null)
         {
             return null;
         }
 
-        foreach ( var key in keys )
+        foreach (var key in keys)
         {
-            if ( !payload.TryGetValue(key, out var element) ) continue;
-            if ( element.ValueKind == JsonValueKind.Null || element.ValueKind == JsonValueKind.Undefined )
+            if (!payload.TryGetValue(key, out var element)) continue;
+            if (element.ValueKind == JsonValueKind.Null || element.ValueKind == JsonValueKind.Undefined)
                 return null;
-            if ( element.ValueKind == JsonValueKind.String )
+            if (element.ValueKind == JsonValueKind.String)
                 return element.GetString();
 
             return element.ToString();
@@ -599,7 +599,7 @@ internal static class EventPayloadMapper
 
     private static string ApplyDecimals(string raw, int decimals)
     {
-        if ( string.IsNullOrWhiteSpace(raw) )
+        if (string.IsNullOrWhiteSpace(raw))
         {
             return raw;
         }
@@ -609,7 +609,7 @@ internal static class EventPayloadMapper
 
     private static AddressEvent BuildAddressEvent(EventPayload payload, EventPayloadContext context, int chainId)
     {
-        if ( payload.AddressEvent == null || string.IsNullOrEmpty(payload.AddressEvent.Address) )
+        if (payload.AddressEvent == null || string.IsNullOrEmpty(payload.AddressEvent.Address))
             return null;
 
         var address = context.GetAddress(chainId, payload.AddressEvent.Address);
@@ -625,7 +625,7 @@ internal static class EventPayloadMapper
 
     private static ChainEvent BuildChainEvent(EventPayload payload)
     {
-        if ( payload.ChainEvent == null ) return null;
+        if (payload.ChainEvent == null) return null;
 
         return new ChainEvent
         {
@@ -642,14 +642,14 @@ internal static class EventPayloadMapper
 
     private static GasEvent BuildGasEvent(EventPayload payload, EventPayloadContext context, int chainId)
     {
-        if ( payload.GasEvent == null ) return null;
+        if (payload.GasEvent == null) return null;
 
         var fee = CalculateGasFee(payload.GasEvent.Price, payload.GasEvent.Amount, context, chainId);
         var address = context.GetAddress(chainId, payload.GasEvent.Address);
         var kcal = context.GetToken(chainId, "KCAL");
         var amountRaw = payload.GasEvent.Amount;
 
-        if ( amountRaw == UnlimitedGasRaw )
+        if (amountRaw == UnlimitedGasRaw)
         {
             amountRaw = null;
             fee = "0";
@@ -676,18 +676,18 @@ internal static class EventPayloadMapper
 
     private static string CalculateGasFee(string price, string amount, EventPayloadContext context, int chainId)
     {
-        if ( amount == UnlimitedGasRaw )
+        if (amount == UnlimitedGasRaw)
             return null;
 
-        if ( string.IsNullOrEmpty(price) || string.IsNullOrEmpty(amount) ) return null;
+        if (string.IsNullOrEmpty(price) || string.IsNullOrEmpty(amount)) return null;
 
-        if ( !BigInteger.TryParse(price, out var parsedPrice) || !BigInteger.TryParse(amount, out var parsedAmount) )
+        if (!BigInteger.TryParse(price, out var parsedPrice) || !BigInteger.TryParse(amount, out var parsedAmount))
             return null;
 
         var kcal = context.GetToken(chainId, "KCAL");
-        if ( kcal == null ) return null;
+        if (kcal == null) return null;
 
-        var fee = ( parsedPrice * parsedAmount ).ToString();
+        var fee = (parsedPrice * parsedAmount).ToString();
         return CommonsUtils.ToDecimal(fee, kcal.DECIMALS);
     }
 
@@ -746,7 +746,7 @@ internal static class EventPayloadMapper
     private static SpecialResolutionEvent BuildSpecialResolutionEvent(EventPayload payload)
     {
         var special = payload.SpecialResolutionEvent;
-        if ( special == null )
+        if (special == null)
             return null;
 
         return new SpecialResolutionEvent
@@ -759,7 +759,7 @@ internal static class EventPayloadMapper
 
     private static SpecialResolutionCall[] BuildSpecialResolutionCalls(SpecialResolutionCallPayload[] calls)
     {
-        if ( calls == null || calls.Length == 0 )
+        if (calls == null || calls.Length == 0)
             return Array.Empty<SpecialResolutionCall>();
 
         return calls.Select(call => new SpecialResolutionCall
@@ -775,14 +775,14 @@ internal static class EventPayloadMapper
 
     private static HashEvent BuildHashEvent(EventPayload payload)
     {
-        if ( payload.HashEvent == null ) return null;
+        if (payload.HashEvent == null) return null;
 
-        return new HashEvent {hash = payload.HashEvent.Hash};
+        return new HashEvent { hash = payload.HashEvent.Hash };
     }
 
     private static InfusionEvent BuildInfusionEvent(EventPayload payload, EventPayloadContext context, int chainId)
     {
-        if ( payload.InfusionEvent == null ) return null;
+        if (payload.InfusionEvent == null) return null;
 
         return new InfusionEvent
         {
@@ -798,10 +798,10 @@ internal static class EventPayloadMapper
         EventPayloadContext context, long timestampUnixSeconds, int chainId, bool withFiat, string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
-        if ( payload.MarketEvent == null ) return null;
+        if (payload.MarketEvent == null) return null;
 
         FiatPrice fiatPrice = null;
-        if ( withFiat )
+        if (withFiat)
         {
             var chain = context.GetChain(chainId);
             var priceUsd = await CalculateUsdPriceAsync(databaseContext, chain, timestampUnixSeconds,
@@ -809,7 +809,7 @@ internal static class EventPayloadMapper
             var endPriceUsd = await CalculateUsdPriceAsync(databaseContext, chain, timestampUnixSeconds,
                 payload.MarketEvent.QuoteToken, payload.MarketEvent.EndPrice, context.TokenPrices);
 
-            if ( priceUsd.HasValue || endPriceUsd.HasValue )
+            if (priceUsd.HasValue || endPriceUsd.HasValue)
             {
                 fiatPrice = new FiatPrice
                 {
@@ -841,12 +841,12 @@ internal static class EventPayloadMapper
     private static async Task<decimal?> CalculateUsdPriceAsync(MainDbContext databaseContext, DbChain chain,
         long timestampUnixSeconds, string quoteToken, string rawPrice, TokenMethods.TokenPrice[] tokenPrices)
     {
-        if ( chain == null || string.IsNullOrEmpty(quoteToken) || string.IsNullOrEmpty(rawPrice) ) return null;
+        if (chain == null || string.IsNullOrEmpty(quoteToken) || string.IsNullOrEmpty(rawPrice)) return null;
 
         var priceUsd = await TokenDailyPricesMethods.CalculateAsync(databaseContext, chain, timestampUnixSeconds,
             quoteToken, rawPrice);
-        if ( priceUsd == 0 )
-            priceUsd = ( decimal ) TokenMethods.CalculatePrice(tokenPrices, rawPrice, quoteToken);
+        if (priceUsd == 0)
+            priceUsd = (decimal)TokenMethods.CalculatePrice(tokenPrices, rawPrice, quoteToken);
 
         return priceUsd == 0 ? null : priceUsd;
     }
@@ -854,37 +854,37 @@ internal static class EventPayloadMapper
     private static OrganizationEvent BuildOrganizationEvent(EventPayload payload, EventPayloadContext context,
         int chainId)
     {
-        if ( payload.OrganizationEvent == null ) return null;
+        if (payload.OrganizationEvent == null) return null;
 
         var address = context.GetAddress(chainId, payload.OrganizationEvent.Address);
         return new OrganizationEvent
         {
             organization = string.IsNullOrEmpty(payload.OrganizationEvent.Organization)
                 ? null
-                : new Organization {name = payload.OrganizationEvent.Organization},
+                : new Organization { name = payload.OrganizationEvent.Organization },
             address = string.IsNullOrEmpty(payload.OrganizationEvent.Address)
                 ? null
-                : new Address {address = payload.OrganizationEvent.Address, address_name = address?.ADDRESS_NAME}
+                : new Address { address = payload.OrganizationEvent.Address, address_name = address?.ADDRESS_NAME }
         };
     }
 
     private static SaleEvent BuildSaleEvent(EventPayload payload)
     {
-        if ( payload.SaleEvent == null ) return null;
+        if (payload.SaleEvent == null) return null;
 
-        return new SaleEvent {hash = payload.SaleEvent.Hash, sale_event_kind = payload.SaleEvent.SaleEventKind};
+        return new SaleEvent { hash = payload.SaleEvent.Hash, sale_event_kind = payload.SaleEvent.SaleEventKind };
     }
 
     private static StringEvent BuildStringEvent(EventPayload payload)
     {
-        if ( payload.StringEvent == null ) return null;
+        if (payload.StringEvent == null) return null;
 
-        return new StringEvent {string_value = payload.StringEvent.StringValue};
+        return new StringEvent { string_value = payload.StringEvent.StringValue };
     }
 
     private static TokenEvent BuildTokenEvent(EventPayload payload, EventPayloadContext context, int chainId)
     {
-        if ( payload.TokenEvent == null ) return null;
+        if (payload.TokenEvent == null) return null;
 
         var tokenEntry = context.GetToken(chainId, payload.TokenEvent.Token);
         var valueRaw = payload.TokenEvent.ValueRaw ?? payload.TokenEvent.Value;
@@ -904,7 +904,7 @@ internal static class EventPayloadMapper
     private static TokenCreateEvent BuildTokenCreateEvent(EventPayload payload, EventPayloadContext context,
         int chainId)
     {
-        if ( payload.TokenCreateEvent == null ) return null;
+        if (payload.TokenCreateEvent == null) return null;
 
         return new TokenCreateEvent
         {
@@ -921,7 +921,7 @@ internal static class EventPayloadMapper
     private static TokenSeriesEvent BuildTokenSeriesEvent(EventPayload payload, EventPayloadContext context,
         int chainId)
     {
-        if ( payload.TokenSeriesEvent == null ) return null;
+        if (payload.TokenSeriesEvent == null) return null;
 
         var ownerEntry = string.IsNullOrEmpty(payload.TokenSeriesEvent.Owner)
             ? null
@@ -948,7 +948,7 @@ internal static class EventPayloadMapper
 
     private static Token MapToken(DbToken token, string symbolFallback = null)
     {
-        if ( token != null )
+        if (token != null)
             return new Token
             {
                 symbol = token.SYMBOL,
@@ -964,13 +964,13 @@ internal static class EventPayloadMapper
                 decimals = token.DECIMALS
             };
 
-        return string.IsNullOrEmpty(symbolFallback) ? null : new Token {symbol = symbolFallback};
+        return string.IsNullOrEmpty(symbolFallback) ? null : new Token { symbol = symbolFallback };
     }
 
     private static TransactionSettleEvent BuildTransactionSettleEvent(EventPayload payload,
         EventPayloadContext context)
     {
-        if ( payload.TransactionSettleEvent == null ) return null;
+        if (payload.TransactionSettleEvent == null) return null;
 
         var platform = context.GetPlatform(payload.TransactionSettleEvent.Platform);
         return new TransactionSettleEvent

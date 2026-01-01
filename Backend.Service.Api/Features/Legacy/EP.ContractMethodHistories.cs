@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetContractMethodHistories
 {
-    [ProducesResponseType(typeof(ContractMethodHistoryResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ContractMethodHistoryResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(ContractMethodHistoryResult), "Returns the contract methods on the backend.", false, 10)]
     public static async Task<ContractMethodHistoryResult> Execute(
@@ -27,7 +27,7 @@ public static class GetContractMethodHistories
         string date_less = "",
         string date_greater = "",
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -37,31 +37,31 @@ public static class GetContractMethodHistories
         {
             #region ArgValidation
 
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+            if (!string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash) )
+            if (!string.IsNullOrEmpty(hash) && !ArgValidation.CheckString(hash))
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
+            if (!string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less))
                 throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater))
                 throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
             #endregion
@@ -73,26 +73,26 @@ public static class GetContractMethodHistories
 
             #region Filtering
 
-            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.Contract.SYMBOL == symbol);
+            if (!string.IsNullOrEmpty(symbol)) query = query.Where(x => x.Contract.SYMBOL == symbol);
 
-            if ( !string.IsNullOrEmpty(hash) ) query = query.Where(x => x.Contract.HASH == hash);
+            if (!string.IsNullOrEmpty(hash)) query = query.Where(x => x.Contract.HASH == hash);
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Contract.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Contract.Chain.NAME == chain);
 
-            if ( !string.IsNullOrEmpty(date_less) )
+            if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
 
-            if ( !string.IsNullOrEmpty(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
             #endregion
 
             // Count total number of results before adding order and limit parts of query.
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             //in case we add more to sort
-            if ( order_direction == "asc" )
+            if (order_direction == "asc")
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.ID),
@@ -111,16 +111,16 @@ public static class GetContractMethodHistories
 
 
             contractMethodHistoryArray = await query.Skip(offset).Take(limit).Select(x => new ContractMethodHistory
+            {
+                contract = new Contract
                 {
-                    contract = new Contract
-                    {
-                        name = x.Contract.NAME,
-                        hash = x.Contract.HASH,
-                        symbol = x.Contract.SYMBOL,
-                        methods = x.Contract.ContractMethod != null ? x.Contract.ContractMethod.METHODS : null
-                    },
-                    date = x.TIMESTAMP_UNIX_SECONDS.ToString()
-                }
+                    name = x.Contract.NAME,
+                    hash = x.Contract.HASH,
+                    symbol = x.Contract.SYMBOL,
+                    methods = x.Contract.ContractMethod != null ? x.Contract.ContractMethod.METHODS : null
+                },
+                date = x.TIMESTAMP_UNIX_SECONDS.ToString()
+            }
             ).ToArrayAsync();
 
 
@@ -128,11 +128,11 @@ public static class GetContractMethodHistories
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("ContractMethodHistoryResult()", exception);
             throw new ApiUnexpectedException(logMessage, exception);

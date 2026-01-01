@@ -20,8 +20,8 @@ public static class Worker
 
     private static string ConfigFile => Path.Combine(configDirectory, "explorer-backend-config.json");
 
-	public static IConfiguration Configuration { get; private set; } = new ConfigurationBuilder()
-		.AddJsonFile(ConfigFile)
+    public static IConfiguration Configuration { get; private set; } = new ConfigurationBuilder()
+        .AddJsonFile(ConfigFile)
         .Build();
 
     private static void Main()
@@ -35,7 +35,7 @@ public static class Worker
         Settings.Load(new ConfigurationBuilder().AddJsonFile(ConfigFile, false).Build()
             .GetSection("FetcherServiceConfiguration"));
 
-        using ( var database = new MainDbContext() )
+        using (var database = new MainDbContext())
         {
             PostgreSQLConnector.PostgreSQLConnector pgConnection = null;
             var max = MainDbContext.GetConnectionMaxRetries();
@@ -43,15 +43,15 @@ public static class Worker
 
             Log.Debug("Getting Database Connection, MaxRetries {Max}, Timeout {Timeout}", max, timeout);
 
-            for ( var i = 1; i <= max; i++ )
+            for (var i = 1; i <= max; i++)
                 try
                 {
                     pgConnection = new PostgreSQLConnector.PostgreSQLConnector(MainDbContext.GetConnectionString());
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     Log.Warning("Database connection error: {Message}", e.Message);
-                    if ( i < max )
+                    if (i < max)
                     {
                         Thread.Sleep(timeout * i);
                         Log.Warning("Database connection: Trying again ({Index}/{Max})...", i, max);
@@ -60,7 +60,7 @@ public static class Worker
                         throw;
                 }
 
-            if ( pgConnection != null ) Log.Information("PostgreSQL version: {Version}", pgConnection.GetVersion());
+            if (pgConnection != null) Log.Information("PostgreSQL version: {Version}", pgConnection.GetVersion());
 
             // Add supported chains and tokens to the database.
             //supported tokens and chains are added by the plugin
@@ -71,7 +71,7 @@ public static class Worker
         Plugin.LoadPlugins();
 
         // Start up self contained plugins
-        foreach ( var plugin in Plugin.DBAPlugins ) plugin.Startup();
+        foreach (var plugin in Plugin.DBAPlugins) plugin.Startup();
 
         _fetchInterval = Settings.Default.FetchInterval;
         Log.Information("Worker Service is ready, Interval {Interval}", _fetchInterval);
@@ -80,13 +80,13 @@ public static class Worker
 
         new Thread(() =>
         {
-            while ( running )
+            while (running)
             {
                 try
                 {
-                    foreach ( var plugin in Plugin.BlockchainPlugins ) plugin.Fetch();
+                    foreach (var plugin in Plugin.BlockchainPlugins) plugin.Fetch();
                 }
-                catch ( Exception e )
+                catch (Exception e)
                 {
                     LogEx.Exception("Fetch", e);
                 }
@@ -102,9 +102,9 @@ public static class Worker
             try
             {
                 // Stopping code.
-                foreach ( var plugin in Plugin.DBAPlugins ) plugin.Shutdown();
+                foreach (var plugin in Plugin.DBAPlugins) plugin.Shutdown();
             }
-            catch ( Exception e )
+            catch (Exception e)
             {
                 Log.Error(e, "Termination service exception");
             }

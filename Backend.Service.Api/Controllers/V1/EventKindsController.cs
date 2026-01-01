@@ -33,7 +33,7 @@ public class EventKindsController : BaseControllerV1
         [FromQuery] string event_kind = "",
         [FromQuery] string chain = "main",
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetEventKinds.Execute(
@@ -64,7 +64,7 @@ public class EventKindsController : BaseControllerV1
         // ReSharper disable InconsistentNaming
         [FromQuery] string chain = "main",
         [FromQuery] int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetEventKindsWithEvents.Execute(chain, with_total);

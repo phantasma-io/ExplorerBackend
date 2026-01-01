@@ -77,12 +77,12 @@ public class Startup
                 options.JsonSerializerOptions.Converters.Add(new EnumerableJsonConverterFactory());
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
-        
+
         services.AddFluentValidationAutoValidation();
         services.AddValidatorsFromAssemblyContaining<Startup>();
-        
+
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Startup).Assembly));
-        
+
         services.AddSingleton<ICacheClient>(sp => new InMemoryCacheClient(optionsBuilder =>
             optionsBuilder.CloneValues(true).MaxItems(10000)
                 .LoggerFactory(sp.GetRequiredService<ILoggerFactory>())));
@@ -173,7 +173,7 @@ public class Startup
             endpoints.MapHealthChecks("/health");
             endpoints.MapControllers();
         });
-        
+
         app.UseStaticFiles(new StaticFileOptions
         {
             FileProvider = new PhysicalFileProvider(

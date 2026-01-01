@@ -64,9 +64,9 @@ public sealed class CursorOrderSegment<T, TValue> : ICursorOrderSegment<T>
     {
         _selector = selector;
         _parse = parse;
-        _serialize = serialize ?? (value => ( value is IFormattable formattable
+        _serialize = serialize ?? (value => (value is IFormattable formattable
             ? formattable.ToString(null, CultureInfo.InvariantCulture)
-            : value?.ToString() ) ?? string.Empty);
+            : value?.ToString()) ?? string.Empty);
         _directionResolver = directionResolver ?? (direction => direction);
         _valueGetter = selector.Compile();
     }
@@ -149,10 +149,10 @@ public static class CursorPagination
 {
     public static CursorSortDirection ParseSortDirection(string orderDirection)
     {
-        if ( orderDirection.Equals("asc", StringComparison.OrdinalIgnoreCase) )
+        if (orderDirection.Equals("asc", StringComparison.OrdinalIgnoreCase))
             return CursorSortDirection.Asc;
 
-        if ( orderDirection.Equals("desc", StringComparison.OrdinalIgnoreCase) )
+        if (orderDirection.Equals("desc", StringComparison.OrdinalIgnoreCase))
             return CursorSortDirection.Desc;
 
         throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
@@ -160,7 +160,7 @@ public static class CursorPagination
 
     public static CursorToken? ParseCursor(string? rawCursor)
     {
-        if ( string.IsNullOrWhiteSpace(rawCursor) ) return null;
+        if (string.IsNullOrWhiteSpace(rawCursor)) return null;
 
         try
         {
@@ -168,7 +168,7 @@ public static class CursorPagination
             var json = Encoding.UTF8.GetString(decoded);
             return JsonSerializer.Deserialize<CursorToken>(json);
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             throw new ApiParameterException($"Unsupported value for 'cursor' parameter. {exception.Message}");
         }
@@ -176,7 +176,7 @@ public static class CursorPagination
 
     public static bool ShouldUseCursor(CursorToken? cursorToken, int offset, int withTotal = 0)
     {
-        if ( cursorToken != null && offset != 0 )
+        if (cursorToken != null && offset != 0)
             throw new ApiParameterException("Cursor pagination cannot be combined with offset.");
 
         return cursorToken != null || (offset == 0 && withTotal == 0);
@@ -188,14 +188,14 @@ public static class CursorPagination
         CursorSortDirection sortDirection,
         Expression<Func<T, int>> idSelector)
     {
-        if ( orderDefinition.Segments.Count == 0 )
+        if (orderDefinition.Segments.Count == 0)
             throw new ApiUnexpectedException(
                 "Cursor order definition must contain at least one segment",
                 new InvalidOperationException("Cursor order definition has no segments."));
 
         var ordered = orderDefinition.Segments[0].ApplyOrdering(query, sortDirection);
 
-        foreach ( var segment in orderDefinition.Segments.Skip(1) )
+        foreach (var segment in orderDefinition.Segments.Skip(1))
             ordered = segment.ApplyThenOrdering(ordered, sortDirection);
 
         ordered = sortDirection == CursorSortDirection.Asc
@@ -212,23 +212,23 @@ public static class CursorPagination
         CursorToken? cursorToken,
         Expression<Func<T, int>> idSelector)
     {
-        if ( cursorToken == null ) return query;
+        if (cursorToken == null) return query;
 
-        if ( !orderDefinition.Name.Equals(cursorToken.order_by, StringComparison.OrdinalIgnoreCase) )
+        if (!orderDefinition.Name.Equals(cursorToken.order_by, StringComparison.OrdinalIgnoreCase))
             throw new ApiParameterException("Cursor order_by does not match request parameters.");
 
-        if ( cursorToken.values.Length != orderDefinition.Segments.Count )
+        if (cursorToken.values.Length != orderDefinition.Segments.Count)
             throw new ApiParameterException("Cursor is incompatible with the requested order.");
 
         var directionFromCursor = ParseSortDirection(cursorToken.order_direction);
-        if ( directionFromCursor != sortDirection )
+        if (directionFromCursor != sortDirection)
             throw new ApiParameterException("Cursor order_direction does not match request parameters.");
 
         var parameter = Expression.Parameter(typeof(T), "item");
 
         Expression comparison = BuildTailComparison(parameter, idSelector, cursorToken.id, sortDirection);
 
-        for ( var i = orderDefinition.Segments.Count - 1; i >= 0; i-- )
+        for (var i = orderDefinition.Segments.Count - 1; i >= 0; i--)
         {
             var segment = orderDefinition.Segments[i];
             var rawValue = cursorToken.values[i];
@@ -237,7 +237,7 @@ public static class CursorPagination
             {
                 comparison = segment.BuildComparison(parameter, rawValue, sortDirection, comparison);
             }
-            catch ( Exception exception ) when ( exception is FormatException || exception is OverflowException )
+            catch (Exception exception) when (exception is FormatException || exception is OverflowException)
             {
                 throw new ApiParameterException("Unsupported cursor value for requested order.");
             }
@@ -261,7 +261,7 @@ public static class CursorPagination
 
         string? nextCursor = null;
 
-        if ( hasMore && items.Length > 0 )
+        if (hasMore && items.Length > 0)
         {
             var lastItem = items[^1];
             var idGetter = idSelector.Compile();

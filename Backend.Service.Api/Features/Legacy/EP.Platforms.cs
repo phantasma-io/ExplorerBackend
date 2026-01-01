@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetPlatforms
 {
-    [ProducesResponseType(typeof(PlatformResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(PlatformResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(PlatformResult), "Returns the Platform on the backend.", false, 10)]
     public static async Task<PlatformResult> Execute(
@@ -27,7 +27,7 @@ public static class GetPlatforms
         int with_token = 0,
         int with_creation_event = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -35,19 +35,19 @@ public static class GetPlatforms
 
         try
         {
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(name) && !ArgValidation.CheckString(name) )
+            if (!string.IsNullOrEmpty(name) && !ArgValidation.CheckString(name))
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
             var startTime = DateTime.Now;
@@ -56,13 +56,13 @@ public static class GetPlatforms
 
             query = query.Where(x => x.HIDDEN == false);
 
-            if ( !string.IsNullOrEmpty(name) ) query = query.Where(x => x.NAME == name);
+            if (!string.IsNullOrEmpty(name)) query = query.Where(x => x.NAME == name);
 
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             //in case we add more to sort
-            if ( order_direction == "asc" )
+            if (order_direction == "asc")
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.ID),
@@ -159,16 +159,16 @@ public static class GetPlatforms
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Platform()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new PlatformResult {total_results = with_total == 1 ? totalResults : null, platforms = platformArray};
+        return new PlatformResult { total_results = with_total == 1 ? totalResults : null, platforms = platformArray };
     }
 }

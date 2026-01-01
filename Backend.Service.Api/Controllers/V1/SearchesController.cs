@@ -23,7 +23,7 @@ public class SearchesController : BaseControllerV1
     public Task<SearchResult> GetResults(
         // ReSharper disable InconsistentNaming
         [FromQuery] string value
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetSearch.Execute(

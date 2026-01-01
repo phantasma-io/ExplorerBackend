@@ -13,7 +13,7 @@ public partial class PhantasmaPlugin
 {
     private static void AddIfNotEmpty(Dictionary<string, string> metadata, string key, string value)
     {
-        if ( string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value) )
+        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
             return;
 
         metadata[key] = value.Trim();
@@ -23,15 +23,15 @@ public partial class PhantasmaPlugin
     private static Dictionary<string, string> ExtractMetadata(JsonDocument metadataDocument)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if ( metadataDocument == null )
+        if (metadataDocument == null)
             return result;
 
         try
         {
-            if ( metadataDocument.RootElement.ValueKind != JsonValueKind.Object )
+            if (metadataDocument.RootElement.ValueKind != JsonValueKind.Object)
                 return result;
 
-            foreach ( var property in metadataDocument.RootElement.EnumerateObject() )
+            foreach (var property in metadataDocument.RootElement.EnumerateObject())
             {
                 var valueString = property.Value.ValueKind switch
                 {
@@ -40,7 +40,7 @@ public partial class PhantasmaPlugin
                     _ => property.Value.ToString()
                 };
 
-                if ( string.IsNullOrWhiteSpace(valueString) )
+                if (string.IsNullOrWhiteSpace(valueString))
                     continue;
 
                 result[property.Name] = valueString;
@@ -59,10 +59,10 @@ public partial class PhantasmaPlugin
     {
         Dictionary<string, string> metadata = new(StringComparer.OrdinalIgnoreCase);
 
-        if ( properties == null )
+        if (properties == null)
             return metadata;
 
-        foreach ( var property in properties )
+        foreach (var property in properties)
         {
             AddIfNotEmpty(metadata, property.Key, property.Value);
         }
@@ -75,10 +75,10 @@ public partial class PhantasmaPlugin
     {
         Dictionary<string, string> metadata = new(StringComparer.OrdinalIgnoreCase);
 
-        if ( values == null )
+        if (values == null)
             return metadata;
 
-        foreach ( var (key, value) in values )
+        foreach (var (key, value) in values)
         {
             AddIfNotEmpty(metadata, key, value);
         }
@@ -113,10 +113,10 @@ public partial class PhantasmaPlugin
     {
         Dictionary<string, string> metadata = new(StringComparer.OrdinalIgnoreCase);
 
-        if ( !structData.HasValue )
+        if (!structData.HasValue)
             return metadata;
 
-        foreach ( var field in structData.Value.fields )
+        foreach (var field in structData.Value.fields)
         {
             var fieldName = field.name.data?.ToString();
             var fieldValue = GetVmValueString(field.value);
@@ -132,10 +132,10 @@ public partial class PhantasmaPlugin
     {
         Dictionary<string, string> metadata = new(StringComparer.OrdinalIgnoreCase);
 
-        if ( romBytes is {Length: > 0} )
+        if (romBytes is { Length: > 0 })
             AddIfNotEmpty(metadata, "rom", Base16.Encode(romBytes));
 
-        if ( ramBytes is {Length: > 0} )
+        if (ramBytes is { Length: > 0 })
             AddIfNotEmpty(metadata, "ram", Base16.Encode(ramBytes));
 
         return metadata;
@@ -144,50 +144,50 @@ public partial class PhantasmaPlugin
 
     private static void UpdateNftMetadata(Nft nft, params Dictionary<string, string>[] sources)
     {
-        if ( nft == null )
+        if (nft == null)
             return;
 
         var metadata = nft.METADATA != null
             ? ExtractMetadata(nft.METADATA)
             : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach ( var source in sources.Where(s => s != null) )
+        foreach (var source in sources.Where(s => s != null))
         {
-            foreach ( var (key, value) in source )
+            foreach (var (key, value) in source)
             {
-                if ( string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value) )
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
                     continue;
 
                 metadata[key] = value;
             }
         }
 
-        if ( metadata.Count > 0 )
+        if (metadata.Count > 0)
             nft.METADATA = JsonSerializer.SerializeToDocument(metadata);
     }
 
 
     private static void UpdateSeriesMetadata(Series series, params Dictionary<string, string>[] sources)
     {
-        if ( series == null )
+        if (series == null)
             return;
 
         var metadata = series.METADATA != null
             ? ExtractMetadata(series.METADATA)
             : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach ( var source in sources.Where(s => s != null) )
+        foreach (var source in sources.Where(s => s != null))
         {
-            foreach ( var (key, value) in source )
+            foreach (var (key, value) in source)
             {
-                if ( string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value) )
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
                     continue;
 
                 metadata[key] = value;
             }
         }
 
-        if ( metadata.Count > 0 )
+        if (metadata.Count > 0)
             series.METADATA = JsonSerializer.SerializeToDocument(metadata);
     }
 }

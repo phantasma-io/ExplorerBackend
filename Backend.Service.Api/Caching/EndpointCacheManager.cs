@@ -45,7 +45,7 @@ public class EndpointCacheManager : IEndpointCacheManager
         queryParams = queryParams.OrderBy(pair => pair.Key).ToArray();
 
         var cacheKey = "";
-        foreach ( var arg in queryParams )
+        foreach (var arg in queryParams)
         {
             // Sort values for consistent cache key
             var values = arg.Value.OrderBy(value => value).ToArray();
@@ -57,7 +57,7 @@ public class EndpointCacheManager : IEndpointCacheManager
         result.Key = $"{route}{cacheKey}";
 
         var cached = await tagCache.GetAsync<string>(result.Key, null);
-        if ( string.IsNullOrEmpty(cached) ) return result;
+        if (string.IsNullOrEmpty(cached)) return result;
 
         result.Cached = true;
         result.Content = cached;
@@ -66,13 +66,13 @@ public class EndpointCacheManager : IEndpointCacheManager
         StringBuilder sb = new();
         sb.Append("API request");
 
-        if ( result.Cached ) sb.Append(" [Cached]");
+        if (result.Cached) sb.Append(" [Cached]");
 
         sb.Append($": {route}(");
 
-        for ( var i = 0; i < queryParams.Count(); i++ )
+        for (var i = 0; i < queryParams.Count(); i++)
         {
-            if ( i > 0 )
+            if (i > 0)
             {
                 sb.Append(',');
                 sb.Append(' ');

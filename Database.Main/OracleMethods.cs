@@ -8,10 +8,10 @@ public static class OracleMethods
 {
     public static Oracle Upsert(MainDbContext databaseContext, string url, string content, bool saveChanges = true)
     {
-        if ( string.IsNullOrEmpty(url) || string.IsNullOrEmpty(content) ) return null;
+        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(content)) return null;
 
         var oracle = databaseContext.Oracles.FirstOrDefault(x => x.URL == url && x.CONTENT == content);
-        if ( oracle != null )
+        if (oracle != null)
             return oracle;
 
         oracle = new Oracle
@@ -21,7 +21,7 @@ public static class OracleMethods
         };
 
         databaseContext.Oracles.Add(oracle);
-        if ( saveChanges ) databaseContext.SaveChanges();
+        if (saveChanges) databaseContext.SaveChanges();
 
         return oracle;
     }
@@ -30,18 +30,18 @@ public static class OracleMethods
     public static IEnumerable<Oracle> InsertIfNotExists(MainDbContext databaseContext,
         List<Tuple<string, string>> oracleList)
     {
-        if ( !oracleList.Any() ) return null;
+        if (!oracleList.Any()) return null;
 
         var oracleListToReturn = new List<Oracle>();
         var oracleListToInsert = new List<Oracle>();
 
-        foreach ( var (url, content) in oracleList )
+        foreach (var (url, content) in oracleList)
         {
             //might be faster than equals + toUpper
             var oracle = databaseContext.Oracles.FirstOrDefault(x =>
                 x.URL == url && x.CONTENT == content);
 
-            if ( oracle == null )
+            if (oracle == null)
             {
                 oracle = new Oracle
                 {

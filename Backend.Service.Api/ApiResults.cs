@@ -654,7 +654,7 @@ public class Token
     /// </summary>
     /// <example>Phantasma Stake</example>
     public string? name { get; set; }
-    
+
     /// <summary>
     ///     Returns Symbol
     /// </summary>
@@ -1114,9 +1114,9 @@ public class Block
     public string? reward { get; set; }
 
     /// <summary>
-///     list of transactions
-/// </summary>
-public Transaction[]? transactions { get; set; }
+    ///     list of transactions
+    /// </summary>
+    public Transaction[]? transactions { get; set; }
 }
 
 public abstract class PaginatedResult

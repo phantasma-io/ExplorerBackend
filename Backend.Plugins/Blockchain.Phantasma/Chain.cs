@@ -22,12 +22,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var url = $"{Settings.Default.GetRest()}/api/v1/getChains";
 
         var response = Client.ApiRequest<JsonDocument>(url, out var stringResponse, null, 10);
-        if ( response != null )
+        if (response != null)
         {
             var chains = response.RootElement.EnumerateArray();
             Log.Information("[{Name}] got {ChainCount} Chains", Name, chains.Count());
 
-            for ( var idx = 0; idx < chains.Count(); idx++ )
+            for (var idx = 0; idx < chains.Count(); idx++)
             {
                 var element = chains.ElementAt(idx);
 
@@ -40,7 +40,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Log.Verbose("[{Name}] chain {ChainName} with Database Id {Id} processed, go on with Contracts",
                     Name, chainName, chain.ID);
 
-                if ( element.TryGetProperty("contracts", out var contractsProperty) )
+                if (element.TryGetProperty("contracts", out var contractsProperty))
                 {
                     var transactionStart = DateTime.Now;
 
@@ -59,7 +59,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
-        if ( updatedChainsCount > 0 )
+        if (updatedChainsCount > 0)
         {
             databaseContext.SaveChanges();
         }

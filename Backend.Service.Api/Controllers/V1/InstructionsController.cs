@@ -17,7 +17,7 @@ public class InstructionsController : BaseControllerV1
     /// <response code="500">Internal Server Error</response>
     [HttpPost("instructions")]
     [ApiInfo(typeof(DisassemblerResult), "Returns the disassembled version of the script")]
-    [ProducesResponseType(typeof(DisassemblerResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(DisassemblerResult), (int)HttpStatusCode.OK)]
     public Task<DisassemblerResult> GetResult(
         [FromBody] Script script
     )

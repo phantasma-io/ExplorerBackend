@@ -23,7 +23,7 @@ public static class GetEvents
         public EventPayloadMapper.EventProjection Projection { get; init; }
     }
 
-    [ProducesResponseType(typeof(EventsResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(EventsResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(EventsResult), "Returns events available on the backend.", false, 10, cacheTag: "events")]
     public static async Task<EventsResult> Execute(
@@ -57,7 +57,7 @@ public static class GetEvents
         int with_nsfw = 0,
         int with_blacklisted = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         // Results of the query
@@ -81,71 +81,71 @@ public static class GetEvents
         {
             #region ArgValidation
 
-            if ( !ArgValidation.CheckLimit(limit, filter) )
+            if (!ArgValidation.CheckLimit(limit, filter))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
-            if ( !string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true) )
+            if (!string.IsNullOrEmpty(contract) && !ArgValidation.CheckHash(contract, true))
                 throw new ApiParameterException("Unsupported value for 'contract' parameter.");
 
-            if ( !string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id) )
+            if (!string.IsNullOrEmpty(token_id) && !ArgValidation.CheckTokenId(token_id))
                 throw new ApiParameterException("Unsupported value for 'token_id' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$") )
+            if (!string.IsNullOrEmpty(date_day) && !Regex.IsMatch(date_day, @"^[0-9.]+$"))
                 throw new ApiParameterException("Unsupported value for 'date_day' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
+            if (!string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less))
                 throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater))
                 throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
-            if ( !string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckString(event_kind, true) )
+            if (!string.IsNullOrEmpty(event_kind) && !ArgValidation.CheckString(event_kind, true))
                 throw new ApiParameterException("Unsupported value for 'event_kind' parameter.");
 
-            if ( !string.IsNullOrEmpty(event_kind_partial) && !ArgValidation.CheckString(event_kind_partial, true) )
+            if (!string.IsNullOrEmpty(event_kind_partial) && !ArgValidation.CheckString(event_kind_partial, true))
                 throw new ApiParameterException("Unsupported value for 'event_kind_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(nft_name_partial) && !ArgValidation.CheckName(nft_name_partial) )
+            if (!string.IsNullOrEmpty(nft_name_partial) && !ArgValidation.CheckName(nft_name_partial))
                 throw new ApiParameterException("Unsupported value for 'nft_name_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(nft_description_partial) &&
-                 !Regex.IsMatch(nft_description_partial, @"^[_\-a-zA-Z0-9]+$") )
+            if (!string.IsNullOrEmpty(nft_description_partial) &&
+                 !Regex.IsMatch(nft_description_partial, @"^[_\-a-zA-Z0-9]+$"))
                 throw new ApiParameterException("Unsupported value for 'nft_description_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address) )
+            if (!string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if ( !string.IsNullOrEmpty(address) && string.IsNullOrEmpty(chain) )
+            if (!string.IsNullOrEmpty(address) && string.IsNullOrEmpty(chain))
                 throw new ApiParameterException("Pass chain when using address filter.");
 
-            if ( !string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial) )
+            if (!string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial))
                 throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-            if ( !string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash) )
+            if (!string.IsNullOrEmpty(block_hash) && !ArgValidation.CheckHash(block_hash))
                 throw new ApiParameterException("Unsupported value for 'block_hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height) )
+            if (!string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height))
                 throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
 
-            if ( !string.IsNullOrEmpty(transaction_hash) && !ArgValidation.CheckHash(transaction_hash) )
+            if (!string.IsNullOrEmpty(transaction_hash) && !ArgValidation.CheckHash(transaction_hash))
                 throw new ApiParameterException("Unsupported value for 'transaction_hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(event_id) && !ArgValidation.CheckNumber(event_id) )
+            if (!string.IsNullOrEmpty(event_id) && !ArgValidation.CheckNumber(event_id))
                 throw new ApiParameterException("Unsupported value for 'event_id' parameter.");
 
             #endregion
@@ -183,7 +183,7 @@ public static class GetEvents
                     }
                 };
 
-            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
@@ -194,20 +194,20 @@ public static class GetEvents
 
             int? chainId = null;
 
-            if ( !string.IsNullOrEmpty(chain) )
+            if (!string.IsNullOrEmpty(chain))
             {
                 chainId = await databaseContext.Chains.AsNoTracking()
                     .Where(x => x.NAME == chain)
-                    .Select(x => ( int? ) x.ID)
+                    .Select(x => (int?)x.ID)
                     .FirstOrDefaultAsync();
 
-                if ( !chainId.HasValue )
+                if (!chainId.HasValue)
                     throw new ApiParameterException("Unsupported value for 'chain' parameter.");
             }
 
             Dictionary<string, int>? eventKindIds = null;
 
-            if ( !string.IsNullOrEmpty(qTrimmed) || !string.IsNullOrEmpty(event_kind) )
+            if (!string.IsNullOrEmpty(qTrimmed) || !string.IsNullOrEmpty(event_kind))
                 eventKindIds = await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
 
             // Getting exchange rates in advance.
@@ -218,7 +218,7 @@ public static class GetEvents
             var detectedEventKind = string.Empty;
             int? detectedEventKindId = null;
 
-            if ( !string.IsNullOrEmpty(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed))
             {
                 eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
 
@@ -226,14 +226,14 @@ public static class GetEvents
                                           string.Equals(x, qTrimmed, StringComparison.OrdinalIgnoreCase)) ??
                                       string.Empty;
 
-                if ( !string.IsNullOrEmpty(detectedEventKind) )
+                if (!string.IsNullOrEmpty(detectedEventKind))
                     detectedEventKindId = eventKindIds[detectedEventKind];
             }
 
-            if ( detectedEventKindId.HasValue )
+            if (detectedEventKindId.HasValue)
                 query = query.Where(x => x.EventKindId == detectedEventKindId.Value);
 
-            if ( string.IsNullOrEmpty(detectedEventKind) && !string.IsNullOrEmpty(qUpper) )
+            if (string.IsNullOrEmpty(detectedEventKind) && !string.IsNullOrEmpty(qUpper))
             {
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
                 var isFullHash = isHex && qUpper.Length >= 64;
@@ -243,40 +243,40 @@ public static class GetEvents
                 var matchEventKind = qTrimmed.Length >= 3;
 
                 query = query.Where(x =>
-                    ( matchEventKind && EF.Functions.ILike(x.EventKind.NAME, $"%{qTrimmed}%") ) ||
-                    ( isFullHash && ( x.Transaction.HASH == qUpper || x.Transaction.Block.HASH == qUpper ) ) ||
-                    ( isHexPartial && ( x.Transaction.HASH.Contains(qUpper) || x.Transaction.Block.HASH.Contains(qUpper) ) ) ||
-                    ( isNumber && x.Transaction.Block.HEIGHT == qTrimmed ) ||
-                    ( isAddress && ( x.Address.ADDRESS == qTrimmed ||
-                                     ( x.TargetAddress != null && x.TargetAddress.ADDRESS == qTrimmed ) ) ));
+                    (matchEventKind && EF.Functions.ILike(x.EventKind.NAME, $"%{qTrimmed}%")) ||
+                    (isFullHash && (x.Transaction.HASH == qUpper || x.Transaction.Block.HASH == qUpper)) ||
+                    (isHexPartial && (x.Transaction.HASH.Contains(qUpper) || x.Transaction.Block.HASH.Contains(qUpper))) ||
+                    (isNumber && x.Transaction.Block.HEIGHT == qTrimmed) ||
+                    (isAddress && (x.Address.ADDRESS == qTrimmed ||
+                                     (x.TargetAddress != null && x.TargetAddress.ADDRESS == qTrimmed))));
             }
 
-            if ( with_nsfw == 0 )
+            if (with_nsfw == 0)
                 query = query.Where(x => x.NSFW != true);
 
-            if ( with_blacklisted == 0 )
+            if (with_blacklisted == 0)
                 query = query.Where(x => x.BLACKLISTED != true);
 
-            if ( chainId.HasValue ) query = query.Where(x => x.ChainId == chainId.Value);
+            if (chainId.HasValue) query = query.Where(x => x.ChainId == chainId.Value);
 
-            if ( !string.IsNullOrEmpty(token_id) ) query = query.Where(x => x.TOKEN_ID == token_id);
+            if (!string.IsNullOrEmpty(token_id)) query = query.Where(x => x.TOKEN_ID == token_id);
 
-            if ( !string.IsNullOrEmpty(contract) ) query = query.Where(x => x.Contract.HASH == contract);
+            if (!string.IsNullOrEmpty(contract)) query = query.Where(x => x.Contract.HASH == contract);
 
-            if ( !string.IsNullOrEmpty(date_day) )
+            if (!string.IsNullOrEmpty(date_day))
                 query = query.Where(x => x.DATE_UNIX_SECONDS == UnixSeconds.FromDateTimeString(date_day));
 
-            if ( !string.IsNullOrEmpty(date_less) )
+            if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
 
-            if ( !string.IsNullOrEmpty(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
-            if ( !string.IsNullOrEmpty(event_kind) )
+            if (!string.IsNullOrEmpty(event_kind))
             {
                 eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
 
-                if ( eventKindIds.TryGetValue(event_kind, out var eventKindId) )
+                if (eventKindIds.TryGetValue(event_kind, out var eventKindId))
                     query = query.Where(x => x.EventKindId == eventKindId);
                 else
                     return new EventsResult
@@ -287,37 +287,37 @@ public static class GetEvents
                     };
             }
 
-            if ( !string.IsNullOrEmpty(event_kind_partial) )
+            if (!string.IsNullOrEmpty(event_kind_partial))
                 query = query.Where(x => x.EventKind.NAME.Contains(event_kind_partial));
 
-            if ( !string.IsNullOrEmpty(nft_name_partial) )
+            if (!string.IsNullOrEmpty(nft_name_partial))
                 query = query.Where(x => x.Nft.NAME.Contains(nft_name_partial));
 
-            if ( !string.IsNullOrEmpty(nft_description_partial) )
+            if (!string.IsNullOrEmpty(nft_description_partial))
                 query = query.Where(x => x.Nft.DESCRIPTION.Contains(nft_description_partial));
 
-            if ( !string.IsNullOrEmpty(address) ) query = query.Where(x => x.Address.ADDRESS == address);
+            if (!string.IsNullOrEmpty(address)) query = query.Where(x => x.Address.ADDRESS == address);
 
-            if ( !string.IsNullOrEmpty(address_partial) )
+            if (!string.IsNullOrEmpty(address_partial))
                 query = query.Where(x => x.Address.ADDRESS.Contains(address_partial) ||
                                          x.Address.ADDRESS_NAME.Contains(address_partial) ||
                                          x.Address.USER_NAME.Contains(address_partial));
 
-            if ( !string.IsNullOrEmpty(block_hash) )
+            if (!string.IsNullOrEmpty(block_hash))
                 query = query.Where(x => x.Transaction.Block.HASH == block_hash);
 
-            if ( !string.IsNullOrEmpty(block_height) )
+            if (!string.IsNullOrEmpty(block_height))
                 query = query.Where(x => x.Transaction.Block.HEIGHT == block_height);
 
-            if ( !string.IsNullOrEmpty(transaction_hash) )
+            if (!string.IsNullOrEmpty(transaction_hash))
                 query = query.Where(x => x.Transaction.HASH == transaction_hash);
 
-            if ( !string.IsNullOrEmpty(event_id) && int.TryParse(event_id, out var parsedEventId) )
+            if (!string.IsNullOrEmpty(event_id) && int.TryParse(event_id, out var parsedEventId))
                 query = query.Where(x => x.ID == parsedEventId);
 
             #endregion
 
-            if ( !useCursor && with_total == 1 )
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
             #region ResultArray
@@ -399,7 +399,7 @@ public static class GetEvents
 
             EventPayloadMapper.EventProjection[] eventProjections;
 
-            if ( useCursor )
+            if (useCursor)
             {
                 var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
                     x => x.Id);
@@ -415,22 +415,22 @@ public static class GetEvents
                 var orderedQuery =
                     CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
                 var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                eventProjections = ( await pageItems.ToArrayAsync() ).Select(x => x.Projection).ToArray();
+                eventProjections = (await pageItems.ToArrayAsync()).Select(x => x.Projection).ToArray();
             }
 
             await EventPayloadMapper.ApplyAsync(databaseContext, eventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
 
-            foreach ( var projection in eventProjections )
+            foreach (var projection in eventProjections)
             {
-                if ( projection.ApiEvent.nft_metadata != null )
+                if (projection.ApiEvent.nft_metadata != null)
                     projection.ApiEvent.nft_metadata.metadata = MetadataMapper.FromNft(
                         projection.NftMetadata,
                         projection.ApiEvent.nft_metadata,
                         projection.NftCreator,
                         projection.ApiEvent.series?.series_id);
 
-                if ( projection.ApiEvent.series != null )
+                if (projection.ApiEvent.series != null)
                     projection.ApiEvent.series.metadata =
                         MetadataMapper.FromSeries(projection.SeriesMetadata, projection.ApiEvent.series);
             }
@@ -443,11 +443,11 @@ public static class GetEvents
 
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Events()", exception);
             throw new ApiUnexpectedException(logMessage, exception);

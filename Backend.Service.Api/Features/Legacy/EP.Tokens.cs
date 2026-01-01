@@ -12,7 +12,7 @@ namespace Backend.Service.Api;
 
 public static class GetTokens
 {
-    [ProducesResponseType(typeof(TokenResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(TokenResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TokenResult), "Returns the token on the backend.", false, 10)]
     public static async Task<TokenResult> Execute(
@@ -28,7 +28,7 @@ public static class GetTokens
         int with_creation_event = 0,
         int with_logo = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -37,25 +37,25 @@ public static class GetTokens
 
         try
         {
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, false) )
+            if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol) )
+            if (!string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
             var startTime = DateTime.Now;
@@ -64,23 +64,23 @@ public static class GetTokens
 
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
 
-            if ( !string.IsNullOrEmpty(qUpper) )
+            if (!string.IsNullOrEmpty(qUpper))
             {
                 query = query.Where(x =>
                     EF.Functions.ILike(x.SYMBOL, $"%{qTrimmed}%") ||
                     EF.Functions.ILike(x.NAME, $"%{qTrimmed}%"));
             }
 
-            if ( !string.IsNullOrEmpty(symbol) ) query = query.Where(x => x.SYMBOL == symbol.ToUpper());
+            if (!string.IsNullOrEmpty(symbol)) query = query.Where(x => x.SYMBOL == symbol.ToUpper());
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
 
             // Count total number of results before adding order and limit parts of query.
-            if ( with_total == 1 )
+            if (with_total == 1)
                 totalResults = await query.CountAsync();
 
             //in case we add more to sort
-            if ( order_direction == "asc" )
+            if (order_direction == "asc")
                 query = order_by switch
                 {
                     "id" => query.OrderBy(x => x.ID),
@@ -155,16 +155,16 @@ public static class GetTokens
             var responseTime = DateTime.Now - startTime;
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Token()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new TokenResult {total_results = with_total == 1 ? totalResults : null, tokens = tokenArray};
+        return new TokenResult { total_results = with_total == 1 ? totalResults : null, tokens = tokenArray };
     }
 }

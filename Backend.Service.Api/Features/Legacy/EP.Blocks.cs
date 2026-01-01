@@ -28,7 +28,7 @@ public static class GetBlocks
         public BlockProjection Projection { get; init; }
     }
 
-    [ProducesResponseType(typeof(BlockResult), ( int ) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(BlockResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(BlockResult), "Returns the block information from backend.", false, 10, cacheTag: "block")]
     public static async Task<BlockResult> Execute(
@@ -52,7 +52,7 @@ public static class GetBlocks
         int with_nft = 0,
         int with_fiat = 0,
         int with_total = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         long totalResults = 0;
@@ -71,37 +71,37 @@ public static class GetBlocks
         {
             #region ArgValidation
 
-            if ( !string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by) )
+            if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            if ( !ArgValidation.CheckOrderDirection(order_direction) )
+            if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if ( !ArgValidation.CheckLimit(limit, filter) )
+            if (!ArgValidation.CheckLimit(limit, filter))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
 
-            if ( !ArgValidation.CheckOffset(offset) )
+            if (!ArgValidation.CheckOffset(offset))
                 throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
-            if ( !string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash) )
+            if (!string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash))
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
 
-            if ( !string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial) )
+            if (!string.IsNullOrEmpty(hash_partial) && !ArgValidation.CheckHash(hash_partial))
                 throw new ApiParameterException("Unsupported value for 'hash_partial' parameter.");
 
-            if ( !string.IsNullOrEmpty(height) && !ArgValidation.CheckNumber(height) )
+            if (!string.IsNullOrEmpty(height) && !ArgValidation.CheckNumber(height))
                 throw new ApiParameterException("Unsupported value for 'height' parameter.");
 
-            if ( !string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed) )
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-            if ( !string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain) )
+            if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less) )
+            if (!string.IsNullOrEmpty(date_less) && !ArgValidation.CheckNumber(date_less))
                 throw new ApiParameterException("Unsupported value for 'date_less' parameter.");
 
-            if ( !string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater) && !ArgValidation.CheckNumber(date_greater))
                 throw new ApiParameterException("Unsupported value for 'date_greater' parameter.");
 
             #endregion
@@ -130,7 +130,7 @@ public static class GetBlocks
                 }
             };
 
-            if ( !orderDefinitions.TryGetValue(orderBy, out var orderDefinition) )
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
             useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
@@ -146,17 +146,17 @@ public static class GetBlocks
             #region Filtering
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
 
-            if ( !string.IsNullOrEmpty(qUpper) )
+            if (!string.IsNullOrEmpty(qUpper))
             {
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
                 var isFullHash = isHex && qUpper.Length >= 64;
 
-                if ( isFullHash )
+                if (isFullHash)
                 {
                     query = query.Where(x => x.HASH == qUpper);
                 }
-                else if ( isNumber )
+                else if (isNumber)
                 {
                     query = query.Where(x => x.HEIGHT == qTrimmed || x.HASH.Contains(qUpper));
                 }
@@ -166,33 +166,33 @@ public static class GetBlocks
                 }
             }
 
-            if ( !string.IsNullOrEmpty(id) )
+            if (!string.IsNullOrEmpty(id))
             {
                 query = id.Length == 64 ? query.Where(x => x.HASH == id || x.HEIGHT == id) : query.Where(x => x.HEIGHT == id);
             }
 
-            if ( !string.IsNullOrEmpty(hash) )
+            if (!string.IsNullOrEmpty(hash))
                 query = query.Where(x => x.HASH == hash);
 
-            if ( !string.IsNullOrEmpty(hash_partial) )
+            if (!string.IsNullOrEmpty(hash_partial))
                 query = query.Where(x => x.HASH.Contains(hash_partial));
 
-            if ( !string.IsNullOrEmpty(height) )
+            if (!string.IsNullOrEmpty(height))
                 query = query.Where(x => x.HEIGHT == height);
 
-            if ( !string.IsNullOrEmpty(date_less) )
+            if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
 
-            if ( !string.IsNullOrEmpty(date_greater) )
+            if (!string.IsNullOrEmpty(date_greater))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS >= UnixSeconds.FromString(date_greater));
 
-            if ( !string.IsNullOrEmpty(chain) ) query = query.Where(x => x.Chain.NAME == chain);
+            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
 
             #endregion
 
             #region ResultArray
 
-            if ( !useCursor && with_total == 1 )
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
             var blockQuery = query.Select(x => new BlockPageItem
@@ -214,69 +214,69 @@ public static class GetBlocks
                     },
                     TransactionProjections = with_transactions == 1 && x.Transactions != null
                         ? x.Transactions.Select(t => new EventPayloadMapper.TransactionProjection
+                        {
+                            ApiTransaction = new Transaction
                             {
-                                ApiTransaction = new Transaction
-                                {
-                                    hash = t.HASH,
-                                    block_hash = x.HASH,
-                                    block_height = x.HEIGHT,
-                                    index = t.INDEX,
-                                    date = t.TIMESTAMP_UNIX_SECONDS.ToString(),
-                                    fee = t.FEE,
-                                    fee_raw = t.FEE_RAW,
-                                    script_raw = t.SCRIPT_RAW,
-                                    result = t.RESULT,
-                                    payload = t.PAYLOAD,
-                                    expiration = t.EXPIRATION.ToString(),
-                                    gas_price = t.GAS_PRICE,
-                                    gas_price_raw = t.GAS_PRICE_RAW,
-                                    gas_limit = t.GAS_LIMIT,
-                                    gas_limit_raw = t.GAS_LIMIT_RAW,
-                                    state = t.State.NAME,
-                                    sender = t.Sender != null
+                                hash = t.HASH,
+                                block_hash = x.HASH,
+                                block_height = x.HEIGHT,
+                                index = t.INDEX,
+                                date = t.TIMESTAMP_UNIX_SECONDS.ToString(),
+                                fee = t.FEE,
+                                fee_raw = t.FEE_RAW,
+                                script_raw = t.SCRIPT_RAW,
+                                result = t.RESULT,
+                                payload = t.PAYLOAD,
+                                expiration = t.EXPIRATION.ToString(),
+                                gas_price = t.GAS_PRICE,
+                                gas_price_raw = t.GAS_PRICE_RAW,
+                                gas_limit = t.GAS_LIMIT,
+                                gas_limit_raw = t.GAS_LIMIT_RAW,
+                                state = t.State.NAME,
+                                sender = t.Sender != null
                                         ? new Address
                                         {
                                             address_name = t.Sender.ADDRESS_NAME,
                                             address = t.Sender.ADDRESS
                                         }
                                         : null,
-                                    gas_payer = t.GasPayer != null
+                                gas_payer = t.GasPayer != null
                                         ? new Address
                                         {
                                             address_name = t.GasPayer.ADDRESS_NAME,
                                             address = t.GasPayer.ADDRESS
                                         }
                                         : null,
-                                    gas_target = t.GasTarget != null
+                                gas_target = t.GasTarget != null
                                         ? new Address
                                         {
                                             address_name = t.GasTarget.ADDRESS_NAME,
                                             address = t.GasTarget.ADDRESS
                                         }
                                         : null
-                                },
-                                EventProjections = with_events == 1 && t.Events != null
+                            },
+                            EventProjections = with_events == 1 && t.Events != null
                                     ? t.Events.Select(e => new EventPayloadMapper.EventProjection
+                                    {
+                                        ApiEvent = new Event
                                         {
-                                            ApiEvent = new Event
+                                            event_id = e.ID,
+                                            chain = e.Chain.NAME.ToLower(),
+                                            date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
+                                            transaction_hash = t.HASH,
+                                            token_id = e.TOKEN_ID,
+                                            payload_json = e.PAYLOAD_JSON,
+                                            raw_data = e.RAW_DATA,
+                                            event_kind = e.EventKind.NAME,
+                                            address = e.Address.ADDRESS,
+                                            address_name = e.Address.ADDRESS_NAME,
+                                            contract = new Contract
                                             {
-                                                event_id = e.ID,
-                                                chain = e.Chain.NAME.ToLower(),
-                                                date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
-                                                transaction_hash = t.HASH,
-                                                token_id = e.TOKEN_ID,
-                                                payload_json = e.PAYLOAD_JSON,
-                                                raw_data = e.RAW_DATA,
-                                                event_kind = e.EventKind.NAME,
-                                                address = e.Address.ADDRESS,
-                                                address_name = e.Address.ADDRESS_NAME,
-                                                contract = new Contract
-                                                {
-                                                    name = e.Contract.NAME,
-                                                    hash = e.Contract.HASH,
-                                                    symbol = e.Contract.SYMBOL
-                                                },
-                                                nft_metadata = with_nft == 1 && e.Nft != null
+                                                name = e.Contract.NAME,
+                                                hash = e.Contract.HASH,
+                                                symbol = e.Contract.SYMBOL
+                                            },
+                                            nft_metadata = with_nft == 1 && e.Nft != null
                                                     ? new NftMetadata
                                                     {
                                                         name = e.Nft.NAME,
@@ -290,7 +290,7 @@ public static class GetBlocks
                                                         mint_number = e.Nft.MINT_NUMBER.ToString()
                                                     }
                                                     : null,
-                                                series = with_nft == 1 && e.Nft != null && e.Nft.Series != null
+                                            series = with_nft == 1 && e.Nft != null && e.Nft.Series != null
                                                     ? new Series
                                                     {
                                                         id = e.Nft.Series.ID,
@@ -300,9 +300,9 @@ public static class GetBlocks
                                                             : null,
                                                         current_supply = e.Nft.Series.CURRENT_SUPPLY,
                                                         max_supply = e.Nft.Series.MAX_SUPPLY,
-                                                        mode_name = ( e.Nft.Series.SeriesMode != null
+                                                        mode_name = (e.Nft.Series.SeriesMode != null
                                                             ? e.Nft.Series.SeriesMode.MODE_NAME
-                                                            : null )!,
+                                                            : null)!,
                                                         name = e.Nft.Series.NAME,
                                                         description = e.Nft.Series.DESCRIPTION,
                                                         image = e.Nft.Series.IMAGE,
@@ -317,22 +317,22 @@ public static class GetBlocks
                                                         attr_value_3 = e.Nft.Series.ATTR_VALUE_3
                                                     }
                                                     : null
-                                            },
-                                            ChainId = e.ChainId,
-                                            TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
-                                            PayloadJson = e.PAYLOAD_JSON,
-                                            RawData = e.RAW_DATA,
-                                            NftMetadata = e.Nft != null ? e.Nft.METADATA : null,
-                                            SeriesMetadata = e.Nft != null && e.Nft.Series != null
+                                        },
+                                        ChainId = e.ChainId,
+                                        TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
+                                        PayloadJson = e.PAYLOAD_JSON,
+                                        RawData = e.RAW_DATA,
+                                        NftMetadata = e.Nft != null ? e.Nft.METADATA : null,
+                                        SeriesMetadata = e.Nft != null && e.Nft.Series != null
                                                 ? e.Nft.Series.METADATA
                                                 : null,
-                                            NftCreator = e.Nft != null && e.Nft.CreatorAddress != null
+                                        NftCreator = e.Nft != null && e.Nft.CreatorAddress != null
                                                 ? e.Nft.CreatorAddress.ADDRESS
                                                 : null
-                                        })
+                                    })
                                         .ToArray()
                                     : Array.Empty<EventPayloadMapper.EventProjection>()
-                            })
+                        })
                             .ToArray()
                         : Array.Empty<EventPayloadMapper.TransactionProjection>()
                 }
@@ -340,7 +340,7 @@ public static class GetBlocks
 
             BlockProjection[] blockProjections;
 
-            if ( useCursor )
+            if (useCursor)
             {
                 var cursorFiltered = CursorPagination.ApplyCursor(blockQuery, orderDefinition, sortDirection,
                     cursorToken, x => x.Id);
@@ -366,30 +366,30 @@ public static class GetBlocks
             await EventPayloadMapper.ApplyAsync(databaseContext, allEventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
 
-            foreach ( var projection in allEventProjections )
+            foreach (var projection in allEventProjections)
             {
-                if ( projection.ApiEvent.nft_metadata != null )
+                if (projection.ApiEvent.nft_metadata != null)
                     projection.ApiEvent.nft_metadata.metadata = MetadataMapper.FromNft(
                         projection.NftMetadata,
                         projection.ApiEvent.nft_metadata,
                         projection.NftCreator,
                         projection.ApiEvent.series?.series_id);
 
-                if ( projection.ApiEvent.series != null )
+                if (projection.ApiEvent.series != null)
                     projection.ApiEvent.series.metadata =
                         MetadataMapper.FromSeries(projection.SeriesMetadata, projection.ApiEvent.series);
             }
 
-            foreach ( var blockProjection in blockProjections )
+            foreach (var blockProjection in blockProjections)
             {
-                foreach ( var transactionProjection in blockProjection.TransactionProjections )
+                foreach (var transactionProjection in blockProjection.TransactionProjections)
                 {
-                    if ( with_events == 1 )
+                    if (with_events == 1)
                         transactionProjection.ApiTransaction.events =
                             transactionProjection.EventProjections.Select(p => p.ApiEvent).ToArray();
                 }
 
-                if ( with_transactions == 1 )
+                if (with_transactions == 1)
                     blockProjection.ApiBlock.transactions =
                         blockProjection.TransactionProjections.Select(t => t.ApiTransaction).ToArray();
             }
@@ -401,11 +401,11 @@ public static class GetBlocks
             var responseTime = DateTime.Now - startTime;
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
-        catch ( ApiParameterException )
+        catch (ApiParameterException)
         {
             throw;
         }
-        catch ( Exception exception )
+        catch (Exception exception)
         {
             var logMessage = LogEx.Exception("Block()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
