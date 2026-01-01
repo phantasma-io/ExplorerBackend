@@ -29,7 +29,7 @@ b:
 
 [group('format')]
 format:
-    dotnet format ExplorerBackend.sln
+    dotnet format whitespace ExplorerBackend.sln
 
 [group('build')]
 c:
