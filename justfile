@@ -130,6 +130,25 @@ docker-prepare:
     mkdir -p Backend.Service.Api/Docker/config Backend.Service.Api/Docker/logs
     mkdir -p Backend.Service.Worker/Docker/config Backend.Service.Worker/Docker/logs
 
+[group('podman')]
+podman-deploy:
+    cd Backend.Service.Api/Docker && sh ./podman-deploy.sh
+    cd Backend.Service.Worker/Docker && sh ./podman-deploy.sh
+
+[group('podman')]
+podman-start:
+    cd Backend.Service.Api/Docker && sh ./podman-start.sh
+    cd Backend.Service.Worker/Docker && sh ./podman-start.sh
+
+[group('podman')]
+podman-stop:
+    cd Backend.Service.Api/Docker && sh ./stop.sh
+    cd Backend.Service.Worker/Docker && sh ./stop.sh
+
+[group('podman')]
+podman-prepare:
+    just docker-prepare
+
 # Danger! Resets db to backed up initial one!
 [group('manage')]
 db-reset:
