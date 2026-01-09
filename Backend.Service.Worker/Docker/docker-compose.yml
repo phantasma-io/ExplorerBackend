@@ -1,7 +1,7 @@
 services:
   api:
-    image: "explorer-backend-worker-production"
-    container_name: explorer-backend-worker-production
+    image: "explorer-backend-worker-${DEPLOY_ENV:-production}"
+    container_name: explorer-backend-worker-${DEPLOY_ENV:-production}
     build:
       context: ../..
       dockerfile: Backend.Service.Worker/Docker/build/Dockerfile
@@ -11,10 +11,8 @@ services:
       - ./logs:/app/logs
       - ./config:/app/config
     entrypoint: "./start-worker-service-docker.sh"
-    environment:
-      SENTRY_ENVIRONMENT: Production
     networks:
-      - worker-production
+      - worker
       - postgresql
     restart: unless-stopped
     logging:
@@ -24,8 +22,8 @@ services:
         max-size: "20m"
 
 networks:
-   worker-production:
-      name: worker-production-network
+   worker:
+      name: worker-${DEPLOY_ENV:-production}-network
    postgresql:
       name: postgresql-network
       external: true

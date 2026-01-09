@@ -1,7 +1,7 @@
 services:
   api:
-    image: "explorer-backend-api-production"
-    container_name: explorer-backend-api-production
+    image: "explorer-backend-api-${DEPLOY_ENV:-production}"
+    container_name: explorer-backend-api-${DEPLOY_ENV:-production}
     build:
       context: ../..
       dockerfile: Backend.Service.Api/Docker/build/Dockerfile
@@ -11,12 +11,10 @@ services:
       - ./logs:/app/logs
       - ./config:/app/config
     entrypoint: "./start-api-service-docker.sh"
-    environment:
-      SENTRY_ENVIRONMENT: Production
     ports:
-      - "9000:8000"
+      - "${API_PORT:-9000}:8000"
     networks:
-      - api-production
+      - api
       - postgresql
     restart: unless-stopped
     logging:
@@ -26,8 +24,8 @@ services:
         max-size: "20m"
 
 networks:
-   api-production:
-      name: api-production-network
+   api:
+      name: api-${DEPLOY_ENV:-production}-network
    postgresql:
       name: postgresql-network
       external: true
