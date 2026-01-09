@@ -3,6 +3,6 @@
 # Export env vars
 export $(grep -v '^#' .env | xargs)
 
-echo "Building image and use branch github branch '${BUILD_BRANCH}'..."
+echo "Building API image from local repo..."
 
-docker build ./build -t explorer-backend-api-production --build-arg BUILD_BRANCH=$BUILD_BRANCH --no-cache
+docker compose build "$@"

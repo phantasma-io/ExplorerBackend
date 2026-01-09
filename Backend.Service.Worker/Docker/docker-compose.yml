@@ -2,6 +2,11 @@ services:
   api:
     image: "explorer-backend-worker-production"
     container_name: explorer-backend-worker-production
+    build:
+      context: ../..
+      dockerfile: Backend.Service.Worker/Docker/build/Dockerfile
+      args:
+        BUILD_CONFIGURATION: ${BUILD_CONFIGURATION:-Release}
     volumes:
       - ./logs:/app/logs
       - ./config:/app/config

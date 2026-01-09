@@ -1,5 +1,8 @@
 #!/bin/bash
 
+BUILD_CONFIGURATION=${BUILD_CONFIGURATION:-Release}
+# Avoid shipping PDBs by default in container builds.
+INCLUDE_PDB=${INCLUDE_PDB:-0}
 OUT_FOLDER=./publish
 OUT_BIN_FOLDER=$OUT_FOLDER/bin
 NET_SUBFOLDER=net9.0
@@ -8,7 +11,9 @@ rm -r --force $OUT_FOLDER
 mkdir --parents $OUT_BIN_FOLDER
 
 cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
-cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+if [ "$INCLUDE_PDB" = "1" ]; then
+    cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+fi
 cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
 
 if [ -f "Backend.Service.Worker/bin/$NET_SUBFOLDER/Backend.Service.Worker" ]; then
@@ -21,7 +26,9 @@ else
 fi
 
 cp -a Backend.Service.Worker/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
-cp -a Backend.Service.Worker/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+if [ "$INCLUDE_PDB" = "1" ]; then
+    cp -a Backend.Service.Worker/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+fi
 cp -a Backend.Service.Worker/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
 
 mkdir --parents $OUT_BIN_FOLDER/Plugins
@@ -29,7 +36,7 @@ cp -a Backend.Api.Client/bin/$NET_SUBFOLDER/Backend.Api.Client.* $OUT_BIN_FOLDER
 cp -a Backend.Plugins/Blockchain.Common/bin/$NET_SUBFOLDER/Blockchain.Common.* $OUT_BIN_FOLDER/Plugins
 cp -a Backend.Plugins/Blockchain.Common/*.json $OUT_FOLDER
 cd Backend.Plugins/Blockchain.Phantasma
-dotnet publish
+dotnet publish -c "$BUILD_CONFIGURATION" -o "bin/$NET_SUBFOLDER/publish"
 cd -
 cp -a Backend.Plugins/Blockchain.Phantasma/bin/$NET_SUBFOLDER/Blockchain.Phantasma.* $OUT_BIN_FOLDER/Plugins
 cp -a Backend.Plugins/Blockchain.Phantasma/bin/$NET_SUBFOLDER/publish/PhantasmaPhoenix.* $OUT_BIN_FOLDER

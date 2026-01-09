@@ -107,6 +107,21 @@ stop:
     just stop-api
     just stop-worker
 
+[group('docker')]
+docker-deploy:
+    cd Backend.Service.Api/Docker && sh ./deploy.sh
+    cd Backend.Service.Worker/Docker && sh ./deploy.sh
+
+[group('docker')]
+docker-start:
+    cd Backend.Service.Api/Docker && sh ./start.sh
+    cd Backend.Service.Worker/Docker && sh ./start.sh
+
+[group('docker')]
+docker-stop:
+    cd Backend.Service.Api/Docker && sh ./stop.sh
+    cd Backend.Service.Worker/Docker && sh ./stop.sh
+
 # Danger! Resets db to backed up initial one!
 [group('manage')]
 db-reset:

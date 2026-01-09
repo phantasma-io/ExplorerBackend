@@ -1,5 +1,8 @@
 #!/bin/bash
 
+BUILD_CONFIGURATION=${BUILD_CONFIGURATION:-Release}
+# Avoid shipping PDBs by default in container builds.
+INCLUDE_PDB=${INCLUDE_PDB:-0}
 OUT_FOLDER=./publish
 OUT_BIN_FOLDER=$OUT_FOLDER/bin
 NET_SUBFOLDER=net9.0
@@ -18,11 +21,15 @@ else
 fi
 
 cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
-cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+if [ "$INCLUDE_PDB" = "1" ]; then
+    cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+fi
 cp -a Backend.Commons/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
 
 cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.dll $OUT_BIN_FOLDER
-cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+if [ "$INCLUDE_PDB" = "1" ]; then
+    cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.pdb $OUT_BIN_FOLDER
+fi
 cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.json $OUT_BIN_FOLDER
 cp -a Backend.Service.Api/bin/$NET_SUBFOLDER/*.xml $OUT_BIN_FOLDER
 
