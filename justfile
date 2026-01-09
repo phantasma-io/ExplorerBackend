@@ -122,6 +122,11 @@ docker-stop:
     cd Backend.Service.Api/Docker && sh ./stop.sh
     cd Backend.Service.Worker/Docker && sh ./stop.sh
 
+[group('docker')]
+docker-prepare:
+    mkdir -p Backend.Service.Api/Docker/config Backend.Service.Api/Docker/logs
+    mkdir -p Backend.Service.Worker/Docker/config Backend.Service.Worker/Docker/logs
+
 # Danger! Resets db to backed up initial one!
 [group('manage')]
 db-reset:
