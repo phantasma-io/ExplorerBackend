@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -12,6 +14,14 @@ namespace Backend.Service.Api;
 
 public static class GetOrganizations
 {
+    private sealed class OrganizationPageItem
+    {
+        public int Id { get; init; }
+        public string OrganizationId { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public Organization ApiOrganization { get; init; }
+    }
+
     [ProducesResponseType(typeof(OrganizationResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(OrganizationResult), "Returns the Organizations on the backend.", false, 10)]
@@ -21,6 +31,7 @@ public static class GetOrganizations
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
+        string cursor = "",
         string organization_id = "",
         string organization_id_partial = "",
         string organization_name = "",
@@ -34,6 +45,8 @@ public static class GetOrganizations
     {
         long totalResults = 0;
         Organization[] organizationArray;
+        string? nextCursor = null;
+        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -67,6 +80,44 @@ public static class GetOrganizations
             if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
+            var cursorToken = CursorPagination.ParseCursor(cursor);
+            var sortDirection = CursorPagination.ParseSortDirection(order_direction);
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "name" : order_by;
+
+            var orderDefinitions =
+                new Dictionary<string, CursorOrderDefinition<OrganizationPageItem>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {
+                        "id",
+                        new CursorOrderDefinition<OrganizationPageItem>(
+                            "id",
+                            new CursorOrderSegment<OrganizationPageItem, int>(
+                                x => x.Id,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "name",
+                        new CursorOrderDefinition<OrganizationPageItem>(
+                            "name",
+                            new CursorOrderSegment<OrganizationPageItem, string>(
+                                x => x.Name,
+                                value => value))
+                    },
+                    {
+                        "organization_id",
+                        new CursorOrderDefinition<OrganizationPageItem>(
+                            "organization_id",
+                            new CursorOrderSegment<OrganizationPageItem, string>(
+                                x => x.OrganizationId,
+                                value => value))
+                    }
+                };
+
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
+
+            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
+
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Organizations.AsQueryable().AsNoTracking();
@@ -91,61 +142,67 @@ public static class GetOrganizations
             if (!string.IsNullOrEmpty(organization_name_partial))
                 query = query.Where(x => x.NAME.Contains(organization_name_partial));
 
-            if (with_total == 1)
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
-            //in case we add more to sort
-            if (order_direction == "asc")
-                query = order_by switch
-                {
-                    "id" => query.OrderBy(x => x.ID),
-                    "name" => query.OrderBy(x => x.NAME),
-                    "organization_id" => query.OrderBy(x => x.ORGANIZATION_ID),
-                    _ => query
-                };
-            else
-                query = order_by switch
-                {
-                    "id" => query.OrderByDescending(x => x.ID),
-                    "name" => query.OrderByDescending(x => x.NAME),
-                    "organization_id" => query.OrderByDescending(x => x.ORGANIZATION_ID),
-                    _ => query
-                };
-
-            organizationArray = await query.Skip(offset).Take(limit).Select(x => new Organization
+            var pageQuery = query.Select(x => new OrganizationPageItem
             {
-                id = x.ORGANIZATION_ID,
-                name = x.NAME,
-                size = x.OrganizationAddresses.Count,
-                create_event = with_creation_event == 1 && x.CreateEvent != null
-                    ? new Event
-                    {
-                        event_id = x.ID,
-                        chain = x.CreateEvent.Chain.NAME.ToLower(),
-                        date = x.CreateEvent.TIMESTAMP_UNIX_SECONDS.ToString(),
-                        block_hash = x.CreateEvent.Transaction.Block.HASH,
-                        transaction_hash = x.CreateEvent.Transaction.HASH,
-                        token_id = x.CreateEvent.TOKEN_ID,
-                        event_kind = x.CreateEvent.EventKind.NAME,
-                        address = x.CreateEvent.Address.ADDRESS,
-                        address_name = x.CreateEvent.Address.ADDRESS_NAME,
-                        contract = new Contract
+                Id = x.ID,
+                OrganizationId = x.ORGANIZATION_ID ?? string.Empty,
+                Name = x.NAME ?? string.Empty,
+                ApiOrganization = new Organization
+                {
+                    id = x.ORGANIZATION_ID,
+                    name = x.NAME,
+                    size = x.OrganizationAddresses.Count,
+                    create_event = with_creation_event == 1 && x.CreateEvent != null
+                        ? new Event
                         {
-                            name = x.CreateEvent.Contract.NAME,
-                            hash = x.CreateEvent.Contract.HASH,
-                            symbol = x.CreateEvent.Contract.SYMBOL
-                        },
-                        string_event = EventPayloadMapper.ParseStringEvent(x.CreateEvent.PAYLOAD_JSON)
-                    }
-                    : null,
-                address = with_address == 1 && x.ADDRESS != null && x.ADDRESS_NAME != null
-                    ? new Address
-                    {
-                        address = x.ADDRESS,
-                        address_name = x.ADDRESS_NAME
-                    }
-                    : null
-            }).ToArrayAsync();
+                            event_id = x.ID,
+                            chain = x.CreateEvent.Chain.NAME.ToLower(),
+                            date = x.CreateEvent.TIMESTAMP_UNIX_SECONDS.ToString(),
+                            block_hash = x.CreateEvent.Transaction.Block.HASH,
+                            transaction_hash = x.CreateEvent.Transaction.HASH,
+                            token_id = x.CreateEvent.TOKEN_ID,
+                            event_kind = x.CreateEvent.EventKind.NAME,
+                            address = x.CreateEvent.Address.ADDRESS,
+                            address_name = x.CreateEvent.Address.ADDRESS_NAME,
+                            contract = new Contract
+                            {
+                                name = x.CreateEvent.Contract.NAME,
+                                hash = x.CreateEvent.Contract.HASH,
+                                symbol = x.CreateEvent.Contract.SYMBOL
+                            },
+                            string_event = EventPayloadMapper.ParseStringEvent(x.CreateEvent.PAYLOAD_JSON)
+                        }
+                        : null,
+                    address = with_address == 1 && x.ADDRESS != null && x.ADDRESS_NAME != null
+                        ? new Address
+                        {
+                            address = x.ADDRESS,
+                            address_name = x.ADDRESS_NAME
+                        }
+                        : null
+                }
+            });
+
+            if (useCursor)
+            {
+                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                    x => x.Id);
+                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                    x => x.Id);
+                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                    limit);
+                organizationArray = page.Items.Select(x => x.ApiOrganization).ToArray();
+                nextCursor = page.NextCursor;
+            }
+            else
+            {
+                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
+                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
+                organizationArray = (await pageItems.ToArrayAsync()).Select(x => x.ApiOrganization).ToArray();
+            }
 
 
             var responseTime = DateTime.Now - startTime;
@@ -163,6 +220,10 @@ public static class GetOrganizations
         }
 
         return new OrganizationResult
-        { total_results = with_total == 1 ? totalResults : null, organizations = organizationArray };
+        {
+            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            organizations = organizationArray,
+            next_cursor = nextCursor
+        };
     }
 }

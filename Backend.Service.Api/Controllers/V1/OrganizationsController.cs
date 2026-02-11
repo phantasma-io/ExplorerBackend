@@ -16,6 +16,7 @@ public class OrganizationsController : BaseControllerV1
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
+    /// <param name="cursor" example="eyJvcmRlcl9ieSI6Im5hbWUi...">pagination cursor</param>
     /// <param name="organization_id" example="validators">Organization id</param>
     /// <param name="organization_id_partial" example="valid">Organization id (partial)</param>
     /// <param name="organization_name" example="Block Producers">Organization Name</param>
@@ -35,6 +36,7 @@ public class OrganizationsController : BaseControllerV1
         [FromQuery] string order_direction = "asc",
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
+        [FromQuery] string cursor = "",
         [FromQuery] string organization_id = "",
         [FromQuery] string organization_id_partial = "",
         [FromQuery] string organization_name = "",
@@ -47,17 +49,18 @@ public class OrganizationsController : BaseControllerV1
     )
     {
         return GetOrganizations.Execute(
-            order_by,
-            order_direction,
-            offset,
-            limit,
-            organization_id,
-            organization_id_partial,
-            organization_name,
-            organization_name_partial,
-            q,
-            with_creation_event,
-            with_address,
-            with_total);
+            order_by: order_by,
+            order_direction: order_direction,
+            offset: offset,
+            limit: limit,
+            cursor: cursor,
+            organization_id: organization_id,
+            organization_id_partial: organization_id_partial,
+            organization_name: organization_name,
+            organization_name_partial: organization_name_partial,
+            q: q,
+            with_creation_event: with_creation_event,
+            with_address: with_address,
+            with_total: with_total);
     }
 }

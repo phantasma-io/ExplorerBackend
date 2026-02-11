@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -12,6 +14,13 @@ namespace Backend.Service.Api;
 
 public static class GetTokens
 {
+    private sealed class TokenPageItem
+    {
+        public int Id { get; init; }
+        public string Symbol { get; init; } = string.Empty;
+        public Token ApiToken { get; init; }
+    }
+
     [ProducesResponseType(typeof(TokenResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(TokenResult), "Returns the token on the backend.", false, 10)]
@@ -21,6 +30,7 @@ public static class GetTokens
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
+        string cursor = "",
         string symbol = "",
         string q = "",
         string chain = "main",
@@ -33,6 +43,8 @@ public static class GetTokens
     {
         long totalResults = 0;
         Token[] tokenArray;
+        string? nextCursor = null;
+        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -58,6 +70,36 @@ public static class GetTokens
             if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
+            var cursorToken = CursorPagination.ParseCursor(cursor);
+            var sortDirection = CursorPagination.ParseSortDirection(order_direction);
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+
+            var orderDefinitions =
+                new Dictionary<string, CursorOrderDefinition<TokenPageItem>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {
+                        "id",
+                        new CursorOrderDefinition<TokenPageItem>(
+                            "id",
+                            new CursorOrderSegment<TokenPageItem, int>(
+                                x => x.Id,
+                                value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "symbol",
+                        new CursorOrderDefinition<TokenPageItem>(
+                            "symbol",
+                            new CursorOrderSegment<TokenPageItem, string>(
+                                x => x.Symbol,
+                                value => value))
+                    }
+                };
+
+            if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
+                throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
+
+            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
+
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Tokens.AsQueryable().AsNoTracking();
@@ -75,83 +117,90 @@ public static class GetTokens
 
             if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
 
-            // Count total number of results before adding order and limit parts of query.
-            if (with_total == 1)
+            if (!useCursor && with_total == 1)
                 totalResults = await query.CountAsync();
 
-            //in case we add more to sort
-            if (order_direction == "asc")
-                query = order_by switch
-                {
-                    "id" => query.OrderBy(x => x.ID),
-                    "symbol" => query.OrderBy(x => x.SYMBOL),
-                    _ => query
-                };
-            else
-                query = order_by switch
-                {
-                    "id" => query.OrderByDescending(x => x.ID),
-                    "symbol" => query.OrderByDescending(x => x.SYMBOL),
-                    _ => query
-                };
-
-            tokenArray = await query.Skip(offset).Take(limit).Select(x => new Token
+            var pageQuery = query.Select(x => new TokenPageItem
             {
-                symbol = x.SYMBOL,
-                name = x.NAME,
-                fungible = x.FUNGIBLE,
-                transferable = x.TRANSFERABLE,
-                finite = x.FINITE,
-                divisible = x.DIVISIBLE,
-                fiat = x.FIAT,
-                fuel = x.FUEL,
-                swappable = x.SWAPPABLE,
-                burnable = x.BURNABLE,
-                stakable = x.STAKABLE,
-                mintable = x.MINTABLE,
-                decimals = x.DECIMALS,
-                current_supply = x.CURRENT_SUPPLY,
-                current_supply_raw = x.CURRENT_SUPPLY_RAW,
-                max_supply = x.MAX_SUPPLY,
-                max_supply_raw = x.MAX_SUPPLY_RAW,
-                burned_supply = x.BURNED_SUPPLY,
-                burned_supply_raw = x.BURNED_SUPPLY_RAW,
-                script_raw = x.SCRIPT_RAW,
-                price = with_price == 1
-                    ? new Price
-                    {
-                        usd = x.PRICE_USD != 0 ? x.PRICE_USD : null
-                    }
-                    : null,
-                create_event = with_creation_event == 1 && x.CreateEvent != null
-                    ? new Event
-                    {
-                        event_id = x.ID,
-                        chain = x.CreateEvent.Chain.NAME.ToLower(),
-                        date = x.CreateEvent.TIMESTAMP_UNIX_SECONDS.ToString(),
-                        block_hash = x.CreateEvent.Transaction.Block.HASH,
-                        transaction_hash = x.CreateEvent.Transaction.HASH,
-                        token_id = x.CreateEvent.TOKEN_ID,
-                        event_kind = x.CreateEvent.EventKind.NAME,
-                        address = x.CreateEvent.Address.ADDRESS,
-                        address_name = x.CreateEvent.Address.ADDRESS_NAME,
-                        contract = new Contract
+                Id = x.ID,
+                Symbol = x.SYMBOL,
+                ApiToken = new Token
+                {
+                    symbol = x.SYMBOL,
+                    name = x.NAME,
+                    fungible = x.FUNGIBLE,
+                    transferable = x.TRANSFERABLE,
+                    finite = x.FINITE,
+                    divisible = x.DIVISIBLE,
+                    fiat = x.FIAT,
+                    fuel = x.FUEL,
+                    swappable = x.SWAPPABLE,
+                    burnable = x.BURNABLE,
+                    stakable = x.STAKABLE,
+                    mintable = x.MINTABLE,
+                    decimals = x.DECIMALS,
+                    current_supply = x.CURRENT_SUPPLY,
+                    current_supply_raw = x.CURRENT_SUPPLY_RAW,
+                    max_supply = x.MAX_SUPPLY,
+                    max_supply_raw = x.MAX_SUPPLY_RAW,
+                    burned_supply = x.BURNED_SUPPLY,
+                    burned_supply_raw = x.BURNED_SUPPLY_RAW,
+                    script_raw = x.SCRIPT_RAW,
+                    price = with_price == 1
+                        ? new Price
                         {
-                            name = x.CreateEvent.Contract.NAME,
-                            hash = x.CreateEvent.Contract.HASH,
-                            symbol = x.CreateEvent.Contract.SYMBOL
-                        },
-                        string_event = EventPayloadMapper.ParseStringEvent(x.CreateEvent.PAYLOAD_JSON)
-                    }
-                    : null,
-                token_logos = with_logo == 1 && x.TokenLogos != null
-                    ? x.TokenLogos.Select(t => new TokenLogo
-                    {
-                        type = t.TokenLogoType.NAME,
-                        url = t.URL
-                    }).ToArray()
-                    : null
-            }).ToArrayAsync();
+                            usd = x.PRICE_USD != 0 ? x.PRICE_USD : null
+                        }
+                        : null,
+                    create_event = with_creation_event == 1 && x.CreateEvent != null
+                        ? new Event
+                        {
+                            event_id = x.ID,
+                            chain = x.CreateEvent.Chain.NAME.ToLower(),
+                            date = x.CreateEvent.TIMESTAMP_UNIX_SECONDS.ToString(),
+                            block_hash = x.CreateEvent.Transaction.Block.HASH,
+                            transaction_hash = x.CreateEvent.Transaction.HASH,
+                            token_id = x.CreateEvent.TOKEN_ID,
+                            event_kind = x.CreateEvent.EventKind.NAME,
+                            address = x.CreateEvent.Address.ADDRESS,
+                            address_name = x.CreateEvent.Address.ADDRESS_NAME,
+                            contract = new Contract
+                            {
+                                name = x.CreateEvent.Contract.NAME,
+                                hash = x.CreateEvent.Contract.HASH,
+                                symbol = x.CreateEvent.Contract.SYMBOL
+                            },
+                            string_event = EventPayloadMapper.ParseStringEvent(x.CreateEvent.PAYLOAD_JSON)
+                        }
+                        : null,
+                    token_logos = with_logo == 1 && x.TokenLogos != null
+                        ? x.TokenLogos.Select(t => new TokenLogo
+                        {
+                            type = t.TokenLogoType.NAME,
+                            url = t.URL
+                        }).ToArray()
+                        : null
+                }
+            });
+
+            if (useCursor)
+            {
+                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                    x => x.Id);
+                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                    x => x.Id);
+                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                    limit);
+                tokenArray = page.Items.Select(x => x.ApiToken).ToArray();
+                nextCursor = page.NextCursor;
+            }
+            else
+            {
+                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
+                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
+                tokenArray = (await pageItems.ToArrayAsync()).Select(x => x.ApiToken).ToArray();
+            }
+
             var responseTime = DateTime.Now - startTime;
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
         }
@@ -165,6 +214,11 @@ public static class GetTokens
             throw new ApiUnexpectedException(logMessage, exception);
         }
 
-        return new TokenResult { total_results = with_total == 1 ? totalResults : null, tokens = tokenArray };
+        return new TokenResult
+        {
+            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            tokens = tokenArray,
+            next_cursor = nextCursor
+        };
     }
 }
