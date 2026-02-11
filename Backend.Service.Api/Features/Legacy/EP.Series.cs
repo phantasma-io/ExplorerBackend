@@ -164,8 +164,25 @@ public static class GetSeries
                     EF.Functions.ILike(x.Contract.SYMBOL, $"%{qTrimmed}%"));
             }
 
-            if (!string.IsNullOrEmpty(id) && int.TryParse(id, out var parsedId))
+            if (!string.IsNullOrEmpty(id))
+            {
+                // `id` is a database row identifier (int). If the caller passes a very large numeric string
+                // (e.g. a chain series id), `int.TryParse` fails. Historically we would then ignore the filter
+                // and return the full list, which is both incorrect and expensive.
+                //
+                // Instead: treat out-of-range ids as "no match" and return an empty page immediately.
+                if (!int.TryParse(id, out var parsedId))
+                {
+                    return new SeriesResult
+                    {
+                        total_results = !useCursor && with_total == 1 ? 0 : null,
+                        series = Array.Empty<Series>(),
+                        next_cursor = null
+                    };
+                }
+
                 query = query.Where(x => x.ID == parsedId);
+            }
 
             // Searching for series using SERIES_ID.
             if (!string.IsNullOrEmpty(series_id)) query = query.Where(x => x.SERIES_ID == series_id);
