@@ -1,11 +1,13 @@
 using System;
 using System.Linq;
+using Microsoft.OpenApi;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Backend.Service.Api.Swagger;
 
-public class ParameterObsoleteFilter : Swashbuckle.AspNetCore.SwaggerGen.IOperationFilter
+public class ParameterObsoleteFilter : IOperationFilter
 {
-    public void Apply(Microsoft.OpenApi.Models.OpenApiOperation operation, Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext context)
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
         if (operation == null || context == null || context.ApiDescription?.ParameterDescriptions == null)
         {
@@ -18,9 +20,9 @@ public class ParameterObsoleteFilter : Swashbuckle.AspNetCore.SwaggerGen.IOperat
         foreach (var parameterToObsolete in parametersToObsolete)
         {
             var parameter = operation.Parameters.FirstOrDefault(parameter => string.Equals(parameter.Name, parameterToObsolete.Name, System.StringComparison.Ordinal));
-            if (parameter != null)
+            if (parameter is OpenApiParameter mutableParameter)
             {
-                parameter.Deprecated = true;
+                mutableParameter.Deprecated = true;
             }
         }
 

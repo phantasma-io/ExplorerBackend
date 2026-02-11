@@ -1,7 +1,6 @@
 ﻿using System.Linq;
-using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Backend.Service.Api.Swagger;
@@ -34,7 +33,7 @@ public class SwaggerDefaultValues : IOperationFilter
         {
             // REF: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/b7cf75e7905050305b115dd96640ddd6e74c7ac9/src/Swashbuckle.AspNetCore.SwaggerGen/SwaggerGenerator/SwaggerGenerator.cs#L383-L387
             string responseKey = responseType.IsDefaultResponse ? "default" : responseType.StatusCode.ToString();
-            OpenApiResponse response = operation.Responses[responseKey];
+            IOpenApiResponse response = operation.Responses[responseKey];
 
             foreach (string contentType in response.Content.Keys)
             {
@@ -52,18 +51,11 @@ public class SwaggerDefaultValues : IOperationFilter
 
         // REF: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/issues/412
         // REF: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/pull/413
-        foreach (OpenApiParameter parameter in operation.Parameters)
+        foreach (var parameter in operation.Parameters.OfType<OpenApiParameter>())
         {
             ApiParameterDescription description = apiDescription.ParameterDescriptions.First(p => p.Name == parameter.Name);
 
             parameter.Description ??= description.ModelMetadata?.Description;
-
-            if (parameter.Schema.Default == null && description.DefaultValue != null)
-            {
-                // REF: https://github.com/Microsoft/aspnet-api-versioning/issues/429#issuecomment-605402330
-                string json = JsonSerializer.Serialize(description.DefaultValue, description.ModelMetadata.ModelType);
-                parameter.Schema.Default = OpenApiAnyFactory.CreateFromJson(json);
-            }
 
             parameter.Required |= description.IsRequired;
         }
