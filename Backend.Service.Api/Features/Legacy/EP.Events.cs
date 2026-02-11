@@ -296,7 +296,41 @@ public static class GetEvents
             if (!string.IsNullOrEmpty(nft_description_partial))
                 query = query.Where(x => x.Nft.DESCRIPTION.Contains(nft_description_partial));
 
-            if (!string.IsNullOrEmpty(address)) query = query.Where(x => x.Address.ADDRESS == address);
+            if (!string.IsNullOrEmpty(address))
+            {
+                // IMPORTANT:
+                // This endpoint is used by the frontend address page, where the route parameter can be either
+                // a real on-chain address (P...) or an address name (e.g. "somename").
+                //
+                // Historically we filtered by `x.Address.ADDRESS == address` which:
+                // - does not work for address names (returns no rows),
+                // - and, worse, can trigger an extremely bad *generic* query plan on PostgreSQL for parameterized SQL
+                //   (scan the entire Events table ordered by timestamp and join to Addresses), taking 15-20s+ and
+                //   timing out on the frontend.
+                //
+                // Fix: resolve the address/name into an AddressId first (bounded lookup), then filter Events by AddressId.
+                // If no AddressId exists, return an empty page immediately.
+                var isValidAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(address);
+
+                var resolvedAddressId = await databaseContext.Addresses
+                    .AsNoTracking()
+                    .Where(a => a.ChainId == chainId!.Value)
+                    .Where(a => isValidAddress ? a.ADDRESS == address : a.ADDRESS_NAME == address)
+                    .Select(a => (int?)a.ID)
+                    .FirstOrDefaultAsync();
+
+                if (!resolvedAddressId.HasValue)
+                {
+                    return new EventsResult
+                    {
+                        total_results = !useCursor && with_total == 1 ? 0 : null,
+                        events = Array.Empty<Event>(),
+                        next_cursor = null
+                    };
+                }
+
+                query = query.Where(x => x.AddressId == resolvedAddressId.Value);
+            }
 
             if (!string.IsNullOrEmpty(address_partial))
                 query = query.Where(x => x.Address.ADDRESS.Contains(address_partial) ||
