@@ -97,10 +97,34 @@ public sealed class CursorOrderSegment<T, TValue> : ICursorOrderSegment<T>
         var direction = ResolveDirection(requestedDirection);
         var selectorBody = ReplaceParameter(_selector.Body, _selector.Parameters[0], parameter);
         var constant = Expression.Constant(_parse(rawValue), typeof(TValue));
-        var equals = Expression.Equal(selectorBody, constant);
-        var comparison = direction == CursorSortDirection.Asc
-            ? Expression.GreaterThan(selectorBody, constant)
-            : Expression.LessThan(selectorBody, constant);
+        Expression equals;
+        Expression comparison;
+
+        // String keyset comparisons need string.Compare(...), because expression operators
+        // like GreaterThan/LessThan are not defined for System.String.
+        if (typeof(TValue) == typeof(string))
+        {
+            var compareMethod = typeof(string).GetMethod(nameof(string.Compare), new[] { typeof(string), typeof(string) });
+            if (compareMethod == null)
+                throw new InvalidOperationException("Failed to resolve string.Compare(string, string).");
+
+            var compareCall = Expression.Call(
+                compareMethod,
+                Expression.Convert(selectorBody, typeof(string)),
+                Expression.Convert(constant, typeof(string)));
+
+            equals = Expression.Equal(compareCall, Expression.Constant(0));
+            comparison = direction == CursorSortDirection.Asc
+                ? Expression.GreaterThan(compareCall, Expression.Constant(0))
+                : Expression.LessThan(compareCall, Expression.Constant(0));
+        }
+        else
+        {
+            equals = Expression.Equal(selectorBody, constant);
+            comparison = direction == CursorSortDirection.Asc
+                ? Expression.GreaterThan(selectorBody, constant)
+                : Expression.LessThan(selectorBody, constant);
+        }
 
         return Expression.OrElse(comparison, Expression.AndAlso(equals, whenEqual));
     }
