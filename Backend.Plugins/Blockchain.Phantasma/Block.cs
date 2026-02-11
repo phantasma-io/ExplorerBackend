@@ -781,7 +781,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         symbolsFungibility.Add(infusionEventData.BaseSymbol, fungible);
                                     }
 
-                                    var tokenId = infusionEventData.TokenID.ToString();
+                                    // TODO(legacy): Remove NormalizeTokenId once we stop seeing negative TOKEN_ID values
+                                    // from decoded events and all legacy DB rows are normalized.
+                                    var tokenId = NormalizeTokenId(infusionEventData.TokenID);
                                     var infusedValueRaw = infusionEventData.InfusedValue.ToString();
 
                                     Nft nft = null;
@@ -839,7 +841,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         symbolsFungibility.Add(tokenEventData.Symbol, fungible);
                                     }
 
-                                    var tokenValue = tokenEventData.Value.ToString();
+                                    var tokenValueRaw = tokenEventData.Value.ToString();
+                                    // TODO(legacy): Remove NormalizeTokenId once we stop seeing negative TOKEN_ID values
+                                    // from decoded events and all legacy DB rows are normalized.
+                                    var tokenValue = fungible ? tokenValueRaw : NormalizeTokenId(tokenEventData.Value);
 
                                     Nft nft = null;
                                     if (!fungible)
@@ -913,7 +918,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     {
                                         ["token"] = tokenEventData.Symbol,
                                         ["value"] = tokenValue,
-                                        ["value_raw"] = tokenEventData.Value.ToString(),
+                                        ["value_raw"] = tokenValueRaw,
                                         ["chain_name"] = tokenEventData.ChainName
                                     };
 
