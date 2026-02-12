@@ -288,6 +288,10 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => new { x.TIMESTAMP_UNIX_SECONDS });
 
+        // Canonical transactions order is timestamp + id; keep both keys indexed for stable pagination.
+        modelBuilder.Entity<Transaction>()
+            .HasIndex(x => new { x.TIMESTAMP_UNIX_SECONDS, x.ID });
+
         //////////////////////
         // EventKind
         //////////////////////
