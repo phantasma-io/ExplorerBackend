@@ -56,7 +56,7 @@ public class TransactionsController : BaseControllerV1
         [FromQuery] string date_greater = "",
         [FromQuery] string block_hash = "",
         [FromQuery] string block_height = "",
-        [FromQuery] string chain = "main",
+        [FromQuery] string chain = "",
         [FromQuery] int with_nft = 0,
         [FromQuery] int with_events = 0,
         [FromQuery] int with_event_data = 0,
