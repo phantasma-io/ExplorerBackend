@@ -239,8 +239,6 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
             Log.Verbose("[{Name}] setting Organization {Organization} for Address {Address}", Name,
                 organization.ORGANIZATION_ID, addressEntry.ADDRESS);
             addressEntry.Organization = organization;
-            if (addressEntry.Organizations == null) addressEntry.Organizations = new List<Organization>();
-            addressEntry.Organizations.AddDistinct(organization);
             organization.ADDRESS_NAME = addressName;
             organization.ADDRESS = addressEntry.ADDRESS;
         }

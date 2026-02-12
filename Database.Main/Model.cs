@@ -771,9 +771,6 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<Organization>()
-            .HasMany(x => x.Addresses)
-            .WithMany(y => y.Organizations);
 
         /*modelBuilder.Entity<Organization>()
             .HasOne(x => x.Address)
@@ -1324,7 +1321,6 @@ public class Address
     public virtual List<Contract> Contracts { get; set; }
     public int? OrganizationId { get; set; }
     public virtual Organization Organization { get; set; }
-    public virtual List<Organization> Organizations { get; set; }
     public virtual List<Transaction> SentTransactions { get; set; }
     public virtual List<Transaction> TransactionsWithThisGasPayer { get; set; }
     public virtual List<Transaction> TransactionsWithThisGasTarget { get; set; }
@@ -1621,7 +1617,6 @@ public class Organization
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
     public int? CreateEventId { get; set; }
     public virtual Event CreateEvent { get; set; }
-    public virtual List<Address> Addresses { get; set; }
 }
 
 public class OrganizationEvent
