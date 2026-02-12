@@ -108,8 +108,26 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 InitChains();
 
-                _chainList = ChainMethods.GetChains(databaseContext).ToList();
-                ChainNames = ChainMethods.GetChainNames(databaseContext).ToArray();
+                var configuredChains = ChainMethods.GetChains(databaseContext).ToList();
+                _chainList = new List<Chain>();
+
+                // Historical/import-only chains can exist in DB but be unavailable on live RPC.
+                // Start background sync only for chains that can return block height right now.
+                foreach (var chain in configuredChains)
+                {
+                    if (CanStartBackgroundSyncForChain(chain.NAME))
+                    {
+                        _chainList.Add(chain);
+                    }
+                    else
+                    {
+                        Log.Warning(
+                            "[{Name}] Chain {ChainName} is present in DB but unavailable on current RPC. Skipping live background sync for this chain.",
+                            Name, chain.NAME);
+                    }
+                }
+
+                ChainNames = _chainList.Select(chain => chain.NAME).ToArray();
 
                 //init tokens once too, cause we might need them, to keep them update, thread them later
 
@@ -431,14 +449,48 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     public BigInteger GetCurrentBlockHeight(string chain)
     {
-        var url = $"{Settings.Default.GetRest()}/api/v1/getBlockHeight?chainInput=main";
+        if (string.IsNullOrWhiteSpace(chain))
+        {
+            throw new Exception("Chain name cannot be empty for getBlockHeight.");
+        }
+
+        var encodedChain = Uri.EscapeDataString(chain);
+        var url = $"{Settings.Default.GetRest()}/api/v1/getBlockHeight?chainInput={encodedChain}";
 
         HttpClient httpClient = new();
         var response = httpClient.GetAsync(url).Result;
         using var content = response.Content;
         var reply = content.ReadAsStringAsync().Result;
-        Log.Information("[Blocks] Get heigt result: {Result}, url: {Url}", reply, url);
-        return BigInteger.Parse(reply.Replace("\"", ""));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception(
+                $"getBlockHeight failed for chain '{chain}': {(int)response.StatusCode} {response.ReasonPhrase}, body: {reply}");
+        }
+
+        var parsedValue = reply.Replace("\"", "").Trim();
+        if (!BigInteger.TryParse(parsedValue, out var result))
+        {
+            throw new Exception($"getBlockHeight returned non-numeric value for chain '{chain}': {reply}");
+        }
+
+        Log.Information("[Blocks] Get height result for chain {Chain}: {Result}, url: {Url}", chain, parsedValue, url);
+        return result;
+    }
+
+    private bool CanStartBackgroundSyncForChain(string chainName)
+    {
+        try
+        {
+            _ = GetCurrentBlockHeight(chainName);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Log.Warning("[{Name}] Chain {ChainName} cannot be synced from current RPC: {Reason}", Name, chainName,
+                e.Message);
+            return false;
+        }
     }
 
 
