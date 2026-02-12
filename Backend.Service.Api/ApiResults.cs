@@ -1918,3 +1918,64 @@ public class SearchResult
     /// </summary>
     public Search[]? result { get; set; }
 }
+
+/// <summary>
+///     Aggregated counters used by explorer overview pages.
+/// </summary>
+public class OverviewStatsResult
+{
+    /// <summary>
+    ///     Chain filter used for chain-scoped counters.
+    /// </summary>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Whether burned NFTs were included in nft counters.
+    /// </summary>
+    public int include_burned { get; set; }
+
+    /// <summary>
+    ///     Whether legacy transaction chains were included in transaction counters.
+    /// </summary>
+    public int include_legacy_transactions { get; set; }
+
+    /// <summary>
+    ///     Total number of transactions for requested scope.
+    /// </summary>
+    public long transactions_total { get; set; }
+
+    /// <summary>
+    ///     Total number of tokens for requested scope.
+    /// </summary>
+    public long tokens_total { get; set; }
+
+    /// <summary>
+    ///     Total number of NFTs for requested scope and include_burned option.
+    /// </summary>
+    public long nfts_total { get; set; }
+
+    /// <summary>
+    ///     Total number of unburned NFTs for requested scope.
+    /// </summary>
+    public long nfts_unburned_total { get; set; }
+
+    /// <summary>
+    ///     Total number of burned NFTs for requested scope.
+    /// </summary>
+    public long nfts_burned_total { get; set; }
+
+    /// <summary>
+    ///     Total number of contracts for requested scope.
+    /// </summary>
+    public long contracts_total { get; set; }
+
+    /// <summary>
+    ///     Total number of addresses for requested scope.
+    /// </summary>
+    public long addresses_total { get; set; }
+
+    /// <summary>
+    ///     Total number of addresses in masters organization for requested scope.
+    /// </summary>
+    public long soul_masters_total { get; set; }
+}
