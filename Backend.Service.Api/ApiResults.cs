@@ -806,6 +806,11 @@ public class Transaction
     public string? block_height { get; set; }
 
     /// <summary>
+    ///     Chain name where the transaction is included
+    /// </summary>
+    public string? chain { get; set; }
+
+    /// <summary>
     ///     index in the Block from the transaction
     /// </summary>
     public int index { get; set; }

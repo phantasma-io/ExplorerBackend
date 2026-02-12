@@ -238,6 +238,7 @@ public static class GetTransactions
                         hash = x.HASH,
                         block_hash = x.Block.HASH,
                         block_height = x.Block.HEIGHT,
+                        chain = x.Block.Chain.NAME.ToLower(),
                         index = x.INDEX,
                         date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
                         fee = x.FEE,

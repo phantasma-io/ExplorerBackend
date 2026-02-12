@@ -220,6 +220,7 @@ public static class GetBlocks
                                 hash = t.HASH,
                                 block_hash = x.HASH,
                                 block_height = x.HEIGHT,
+                                chain = x.Chain.NAME.ToLower(),
                                 index = t.INDEX,
                                 date = t.TIMESTAMP_UNIX_SECONDS.ToString(),
                                 fee = t.FEE,
