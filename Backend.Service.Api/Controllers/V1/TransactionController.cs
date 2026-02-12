@@ -11,7 +11,7 @@ public class TransactionController : BaseControllerV1
     /// <remarks>
     ///     <a href='#model-Backend.Service.Api.TransactionResult'>TransactionResult</a>
     /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or hash</param>
+    /// <param name="order_by" example="date">accepted values are date, id, hash or index</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="hash"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash</param>
     /// <param name="hash_partial"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash (partial match)</param>
@@ -38,7 +38,7 @@ public class TransactionController : BaseControllerV1
     [ApiInfo(typeof(TransactionResult), "Returns transaction available on the chain", cacheDuration: 5, cacheTag: "transaction")]
     public Task<TransactionResult> GetResults(
         // ReSharper disable InconsistentNaming
-        [FromQuery] string order_by = "id",
+        [FromQuery] string order_by = "date",
         [FromQuery] string order_direction = "asc",
         [FromQuery] string hash = "",
         [FromQuery] string hash_partial = "",

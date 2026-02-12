@@ -12,7 +12,7 @@ public class TransactionsController : BaseControllerV1
     /// <remarks>
     ///     <a href='#model-Backend.Service.Api.TransactionResult'>TransactionResult</a>
     /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or hash</param>
+    /// <param name="order_by" example="date">accepted values are date, id, hash or index</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
@@ -43,7 +43,7 @@ public class TransactionsController : BaseControllerV1
     [ApiInfo(typeof(TransactionResult), "Returns transactions available on the chain", cacheDuration: 5, cacheTag: "transactions")]
     public Task<TransactionResult> GetResults(
         // ReSharper disable InconsistentNaming
-        [FromQuery] string order_by = "id",
+        [FromQuery] string order_by = "date",
         [FromQuery] string order_direction = "asc",
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,

@@ -19,6 +19,7 @@ public static class GetTransactions
         public int Id { get; init; }
         public string Hash { get; init; } = string.Empty;
         public int Index { get; init; }
+        public long TimestampUnixSeconds { get; init; }
         public EventPayloadMapper.TransactionProjection Projection { get; init; }
     }
 
@@ -27,7 +28,7 @@ public static class GetTransactions
     [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
     public static async Task<TransactionResult> Execute(
         // ReSharper disable InconsistentNaming
-        string order_by = "id",
+        string order_by = "date",
         string order_direction = "asc",
         int offset = 0,
         int limit = 50,
@@ -118,7 +119,7 @@ public static class GetTransactions
 
             var cursorToken = CursorPagination.ParseCursor(cursor);
             var sortDirection = CursorPagination.ParseSortDirection(order_direction);
-            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "date" : order_by;
 
             var orderDefinitions =
                 new Dictionary<string, CursorOrderDefinition<TransactionPageItem>>(StringComparer.OrdinalIgnoreCase)
@@ -146,6 +147,14 @@ public static class GetTransactions
                             new CursorOrderSegment<TransactionPageItem, int>(
                                 x => x.Index,
                                 value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "date",
+                        new CursorOrderDefinition<TransactionPageItem>(
+                            "date",
+                            new CursorOrderSegment<TransactionPageItem, long>(
+                                x => x.TimestampUnixSeconds,
+                                value => long.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
                     }
                 };
 
@@ -229,10 +238,12 @@ public static class GetTransactions
                 Id = x.ID,
                 Hash = x.HASH,
                 Index = x.INDEX,
+                TimestampUnixSeconds = x.TIMESTAMP_UNIX_SECONDS,
                 Projection = new EventPayloadMapper.TransactionProjection
                 {
                     TransactionId = x.ID,
                     ChainId = x.Block.ChainId,
+                    TimestampUnixSeconds = x.TIMESTAMP_UNIX_SECONDS,
                     ApiTransaction = new Transaction
                     {
                         hash = x.HASH,
@@ -425,15 +436,23 @@ public static class GetTransactions
 
                 previousHash = await databaseContext.Transactions
                     .AsNoTracking()
-                    .Where(x => x.Block.ChainId == anchor.ChainId && x.ID < anchor.TransactionId)
-                    .OrderByDescending(x => x.ID)
+                    .Where(x => x.Block.ChainId == anchor.ChainId &&
+                                (x.TIMESTAMP_UNIX_SECONDS < anchor.TimestampUnixSeconds ||
+                                 (x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
+                                  x.ID < anchor.TransactionId)))
+                    .OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS)
+                    .ThenByDescending(x => x.ID)
                     .Select(x => x.HASH)
                     .FirstOrDefaultAsync();
 
                 nextHash = await databaseContext.Transactions
                     .AsNoTracking()
-                    .Where(x => x.Block.ChainId == anchor.ChainId && x.ID > anchor.TransactionId)
-                    .OrderBy(x => x.ID)
+                    .Where(x => x.Block.ChainId == anchor.ChainId &&
+                                (x.TIMESTAMP_UNIX_SECONDS > anchor.TimestampUnixSeconds ||
+                                 (x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
+                                  x.ID > anchor.TransactionId)))
+                    .OrderBy(x => x.TIMESTAMP_UNIX_SECONDS)
+                    .ThenBy(x => x.ID)
                     .Select(x => x.HASH)
                     .FirstOrDefaultAsync();
 

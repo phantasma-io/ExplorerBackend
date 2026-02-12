@@ -42,6 +42,7 @@ internal static class EventPayloadMapper
         public Transaction ApiTransaction { get; init; }
         public int TransactionId { get; init; }
         public int ChainId { get; init; }
+        public long TimestampUnixSeconds { get; init; }
         public EventProjection[] EventProjections { get; init; } = Array.Empty<EventProjection>();
     }
 
