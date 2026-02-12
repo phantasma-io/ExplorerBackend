@@ -33,7 +33,7 @@ public static class GetEvents
         int offset = 0,
         int limit = 50,
         string cursor = "",
-        string chain = "main",
+        string chain = "",
         string contract = "",
         string token_id = "",
         string date_day = "",

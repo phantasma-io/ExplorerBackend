@@ -56,7 +56,7 @@ public class EventsController : BaseControllerV1
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string cursor = "",
-        [FromQuery] string chain = "main",
+        [FromQuery] string chain = "",
         [FromQuery] string contract = "",
         [FromQuery] string token_id = "",
         [FromQuery] string date_day = "",

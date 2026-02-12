@@ -430,27 +430,38 @@ public static class GetTransactions
 
             transactions = transactionProjections.Select(x => x.ApiTransaction).ToArray();
 
-            if (!string.IsNullOrEmpty(hashUpper) && transactionProjections?.Length == 1)
+            if (with_neighbors == 1 && !string.IsNullOrEmpty(hashUpper) && transactionProjections?.Length == 1)
             {
                 var anchor = transactionProjections[0];
+                var constrainNeighborsToChain = !string.IsNullOrEmpty(chain);
 
-                previousHash = await databaseContext.Transactions
+                // When hash lookup has no explicit chain filter, keep navigation global.
+                // This avoids expensive chain join scans on large legacy datasets and restores stable prev/next buttons.
+                var previousQuery = databaseContext.Transactions
                     .AsNoTracking()
-                    .Where(x => x.Block.ChainId == anchor.ChainId &&
-                                (x.TIMESTAMP_UNIX_SECONDS < anchor.TimestampUnixSeconds ||
-                                 (x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
-                                  x.ID < anchor.TransactionId)))
+                    .Where(x => x.TIMESTAMP_UNIX_SECONDS < anchor.TimestampUnixSeconds ||
+                                (x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
+                                 x.ID < anchor.TransactionId));
+
+                if (constrainNeighborsToChain)
+                    previousQuery = previousQuery.Where(x => x.Block.ChainId == anchor.ChainId);
+
+                previousHash = await previousQuery
                     .OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS)
                     .ThenByDescending(x => x.ID)
                     .Select(x => x.HASH)
                     .FirstOrDefaultAsync();
 
-                nextHash = await databaseContext.Transactions
+                var nextQuery = databaseContext.Transactions
                     .AsNoTracking()
-                    .Where(x => x.Block.ChainId == anchor.ChainId &&
-                                (x.TIMESTAMP_UNIX_SECONDS > anchor.TimestampUnixSeconds ||
-                                 (x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
-                                  x.ID > anchor.TransactionId)))
+                    .Where(x => x.TIMESTAMP_UNIX_SECONDS > anchor.TimestampUnixSeconds ||
+                                (x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
+                                 x.ID > anchor.TransactionId));
+
+                if (constrainNeighborsToChain)
+                    nextQuery = nextQuery.Where(x => x.Block.ChainId == anchor.ChainId);
+
+                nextHash = await nextQuery
                     .OrderBy(x => x.TIMESTAMP_UNIX_SECONDS)
                     .ThenBy(x => x.ID)
                     .Select(x => x.HASH)
