@@ -498,16 +498,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private void AddAddress(ref List<string> addresses, string address)
     {
-        if (string.IsNullOrEmpty(address))
-        {
-            throw new("Trying to add empty address");
-        }
+        var normalizedAddress = NormalizeAddress(address);
 
-        // Skip placeholder address to avoid invalid balance queries later.
-        if (address.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+        // Skip placeholder/null-like addresses to avoid invalid storage and balance queries.
+        if (normalizedAddress.Equals("NULL", StringComparison.OrdinalIgnoreCase))
             return;
 
-        addresses.Add(address);
+        addresses.Add(normalizedAddress);
     }
 
     private async Task ProcessBlock(RpcBlockResult block, string chainName)
