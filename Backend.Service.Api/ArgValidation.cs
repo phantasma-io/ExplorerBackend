@@ -112,7 +112,9 @@ public static class ArgValidation
 
     public static bool CheckChain(string value)
     {
-        return value.ToLower() == "main";
+        // Keep chain validation permissive enough for explicit historical namespaces
+        // (e.g. "main-generation-1") while still rejecting arbitrary unsafe input.
+        return Regex.IsMatch(value ?? string.Empty, @"^[a-z0-9][a-z0-9\-]{0,63}$");
     }
 
 

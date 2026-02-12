@@ -40,7 +40,7 @@ public static class GetTransactions
         string date_greater = "",
         string block_hash = "",
         string block_height = "",
-        string chain = "main",
+        string chain = "",
         int with_nft = 0,
         int with_events = 0,
         int with_event_data = 0,
@@ -61,6 +61,8 @@ public static class GetTransactions
         var hashPartialUpper = string.IsNullOrEmpty(hash_partial) ? string.Empty : hash_partial.ToUpper();
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
         var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+        var qIsHex = !string.IsNullOrEmpty(qTrimmed) && ArgValidation.CheckBase16(qTrimmed);
+        var qIsFullHash = qIsHex && qUpper.Length >= 64;
 
         const string fiatCurrency = "USD";
         var filter = !string.IsNullOrEmpty(hashUpper) || !string.IsNullOrEmpty(hashPartialUpper) ||
@@ -164,8 +166,8 @@ public static class GetTransactions
             if (!string.IsNullOrEmpty(qUpper))
             {
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
-                var isHex = ArgValidation.CheckBase16(qTrimmed);
-                var isFullHash = isHex && qUpper.Length >= 64;
+                var isHex = qIsHex;
+                var isFullHash = qIsFullHash;
                 var isHexPartial = isHex && !isFullHash;
                 var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
                 var treatAsHashPartial = !isNumber && !isAddress && !isFullHash;
