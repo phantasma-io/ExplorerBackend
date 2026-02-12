@@ -32,7 +32,6 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                 try
                 {
                     MarkBurnedNfts();
-                    EventUsdPricesFill();
 
                     Thread.Sleep(Settings.Default.EventsProcessingInterval *
                                  1000); // We process events every EventsProcessingInterval seconds
