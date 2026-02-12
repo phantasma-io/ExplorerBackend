@@ -52,6 +52,9 @@ pa:
 
 [group('publish')]
 pw:
+    # Recreate plugin output folder to avoid stale assemblies after framework/package upgrades.
+    rm -rf "$WORKER_BIN_DIR/Plugins"
+    mkdir -p "$WORKER_BIN_DIR/Plugins"
     dotnet publish ./Backend.Service.Worker/Backend.Service.Worker.csproj \
         --configuration "$RELEASE_MODE" \
         --output "$WORKER_BIN_DIR" \

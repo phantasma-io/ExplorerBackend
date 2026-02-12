@@ -162,7 +162,30 @@ public abstract class Plugin : IDisposable
 
     private static void LoadPlugin(Assembly assembly)
     {
-        foreach (var type in assembly.ExportedTypes)
+        Type[] exportedTypes;
+        try
+        {
+            exportedTypes = assembly.GetExportedTypes();
+        }
+        catch (ReflectionTypeLoadException e)
+        {
+            var loaderErrors = e.LoaderExceptions == null
+                ? string.Empty
+                : string.Join(" | ", e.LoaderExceptions.Where(x => x != null).Select(x => x.Message));
+            Log.Warning(e,
+                "Skipping assembly '{AssemblyName}' while scanning plugins due to type load errors. Loader errors: {LoaderErrors}",
+                assembly.FullName, loaderErrors);
+            return;
+        }
+        catch (TypeLoadException e)
+        {
+            Log.Warning(e,
+                "Skipping assembly '{AssemblyName}' while scanning plugins due to a type load error.",
+                assembly.FullName);
+            return;
+        }
+
+        foreach (var type in exportedTypes)
         {
             if (!type.IsSubclassOf(typeof(Plugin))) continue;
 
@@ -215,7 +238,15 @@ public abstract class Plugin : IDisposable
                 Log.Error(ex, "LoadPlugins(): Plugin load '{Filename}' exception", filename);
             }
 
-        foreach (var assembly in assemblies) LoadPlugin(assembly);
+        foreach (var assembly in assemblies)
+            try
+            {
+                LoadPlugin(assembly);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "LoadPlugins(): Plugin scan '{AssemblyName}' exception", assembly.FullName);
+            }
     }
 
 
