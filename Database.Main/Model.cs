@@ -30,6 +30,8 @@ public class MainDbContext : DbContext
     public DbSet<Event> Events { get; set; }
     public DbSet<Token> Tokens { get; set; }
     public DbSet<TokenDailyPrice> TokenDailyPrices { get; set; }
+    public DbSet<StakingProgressDaily> StakingProgressDailies { get; set; }
+    public DbSet<SoulMastersMonthly> SoulMastersMonthlies { get; set; }
     public DbSet<NftOwnership> NftOwnerships { get; set; }
     public DbSet<Nft> Nfts { get; set; }
     public DbSet<SeriesMode> SeriesModes { get; set; }
@@ -342,6 +344,9 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Address>()
             .HasIndex(x => new { x.ChainId, x.BALANCE_DIRTY_BLOCK });
 
+        modelBuilder.Entity<Address>()
+            .HasIndex(x => new { x.ChainId, x.FIRST_TX_UNIX_SECONDS });
+
         //////////////////////
         // Event
         //////////////////////
@@ -480,6 +485,42 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<TokenDailyPrice>()
             .HasIndex(x => new { x.DATE_UNIX_SECONDS });
+
+        //////////////////////
+        // StakingProgressDaily
+        //////////////////////
+
+        // FKs
+
+        modelBuilder.Entity<StakingProgressDaily>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.StakingProgressDailies)
+            .HasForeignKey(x => x.ChainId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Indexes
+
+        modelBuilder.Entity<StakingProgressDaily>()
+            .HasIndex(x => new { x.ChainId, x.DATE_UNIX_SECONDS })
+            .IsUnique();
+
+        //////////////////////
+        // SoulMastersMonthly
+        //////////////////////
+
+        // FKs
+
+        modelBuilder.Entity<SoulMastersMonthly>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.SoulMastersMonthlies)
+            .HasForeignKey(x => x.ChainId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Indexes
+
+        modelBuilder.Entity<SoulMastersMonthly>()
+            .HasIndex(x => new { x.ChainId, x.MONTH_UNIX_SECONDS })
+            .IsUnique();
 
         //////////////////////
         // NftOwnership
@@ -908,6 +949,8 @@ public class Chain
     public virtual List<Nft> Nfts { get; set; }
     public virtual List<Contract> Contracts { get; set; }
     public virtual List<Token> Tokens { get; set; }
+    public virtual List<StakingProgressDaily> StakingProgressDailies { get; set; }
+    public virtual List<SoulMastersMonthly> SoulMastersMonthlies { get; set; }
     public virtual List<Block> Blocks { get; set; }
     public virtual List<Address> Addresses { get; set; }
     public virtual List<EventKind> EventKinds { get; set; }
@@ -1011,6 +1054,7 @@ public class Address
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
     public long BALANCE_DIRTY_BLOCK { get; set; }
     public long STAKE_TIMESTAMP { get; set; }
+    public long? FIRST_TX_UNIX_SECONDS { get; set; }
     public string STAKED_AMOUNT { get; set; }
     public string STAKED_AMOUNT_RAW { get; set; }
     public string UNCLAIMED_AMOUNT { get; set; }
@@ -1146,6 +1190,32 @@ public class TokenDailyPrice
         return
             $"Token daily price '{Token.SYMBOL}' for {UnixSeconds.Log(DATE_UNIX_SECONDS)}: USD: {PRICE_USD}";
     }
+}
+
+public class StakingProgressDaily
+{
+    public int ID { get; set; }
+    public long DATE_UNIX_SECONDS { get; set; }
+    public string STAKED_SOUL_RAW { get; set; }
+    public string SOUL_SUPPLY_RAW { get; set; }
+    public int STAKERS_COUNT { get; set; }
+    public int MASTERS_COUNT { get; set; }
+    public decimal STAKING_RATIO { get; set; }
+    public long CAPTURED_AT_UNIX_SECONDS { get; set; }
+    public string SOURCE { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
+}
+
+public class SoulMastersMonthly
+{
+    public int ID { get; set; }
+    public long MONTH_UNIX_SECONDS { get; set; }
+    public int MASTERS_COUNT { get; set; }
+    public long CAPTURED_AT_UNIX_SECONDS { get; set; }
+    public string SOURCE { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
 }
 
 public class NftOwnership

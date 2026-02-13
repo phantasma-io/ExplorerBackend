@@ -123,9 +123,133 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         if (processed > 0)
         {
+            try
+            {
+                await using var snapshotContext = new MainDbContext();
+                var chainEntry = await ChainMethods.GetAsync(snapshotContext, chainName);
+                await UpsertStakeSnapshotsAsync(snapshotContext, chainEntry);
+            }
+            catch (Exception e)
+            {
+                LogEx.Exception("Stake snapshots sync", e);
+            }
+
             Log.Information("[{Name}][Balances] Updated {Count} addresses for chain {Chain}", Name, processed,
                 chainName);
         }
+    }
+
+    // Snapshot tables are forward-only: each sync rewrites current day/month rows and never rewinds history.
+    private static async Task UpsertStakeSnapshotsAsync(MainDbContext databaseContext, Chain chain)
+    {
+        var nowUnixSeconds = UnixSeconds.Now();
+        var dateUnixSeconds = UnixSeconds.GetDate(nowUnixSeconds);
+        var monthUnixSeconds = GetMonthStartUnixSeconds(nowUnixSeconds);
+
+        var soulSupplyRawText = await databaseContext.Tokens
+            .Where(x => x.ChainId == chain.ID && x.SYMBOL == "SOUL")
+            .Select(x => x.CURRENT_SUPPLY_RAW)
+            .FirstOrDefaultAsync();
+
+        if (!BigInteger.TryParse(soulSupplyRawText, out var soulSupplyRaw) || soulSupplyRaw <= 0)
+        {
+            Log.Warning("[{Name}][Balances] Skipping stake snapshot for {Chain}: missing/invalid SOUL supply raw",
+                nameof(PhantasmaPlugin), chain.NAME);
+            return;
+        }
+
+        var stakedRawValues = await databaseContext.Addresses
+            .Where(x => x.ChainId == chain.ID &&
+                        x.ADDRESS != "NULL" &&
+                        !string.IsNullOrEmpty(x.STAKED_AMOUNT_RAW) &&
+                        x.STAKED_AMOUNT_RAW != "0")
+            .Select(x => x.STAKED_AMOUNT_RAW)
+            .ToListAsync();
+
+        var totalStakedRaw = BigInteger.Zero;
+        foreach (var stakedRawValue in stakedRawValues)
+        {
+            if (BigInteger.TryParse(stakedRawValue, out var parsedStake) && parsedStake > 0)
+            {
+                totalStakedRaw += parsedStake;
+            }
+        }
+
+        var stakersCount = await CountOrganizationMembersAsync(databaseContext, chain.ID, "stakers");
+        var mastersCount = await CountOrganizationMembersAsync(databaseContext, chain.ID, "masters");
+
+        decimal stakingRatio = 0;
+        try
+        {
+            stakingRatio = (decimal)totalStakedRaw / (decimal)soulSupplyRaw;
+        }
+        catch (OverflowException)
+        {
+            // Keep writing raw values even if ratio conversion overflows decimal precision.
+            stakingRatio = 0;
+        }
+
+        var dailyEntry = await databaseContext.StakingProgressDailies
+            .FirstOrDefaultAsync(x => x.ChainId == chain.ID && x.DATE_UNIX_SECONDS == dateUnixSeconds);
+
+        if (dailyEntry == null)
+        {
+            dailyEntry = new StakingProgressDaily
+            {
+                ChainId = chain.ID,
+                DATE_UNIX_SECONDS = dateUnixSeconds,
+                SOURCE = "balance-sync.v1"
+            };
+            databaseContext.StakingProgressDailies.Add(dailyEntry);
+        }
+
+        dailyEntry.STAKED_SOUL_RAW = totalStakedRaw.ToString();
+        dailyEntry.SOUL_SUPPLY_RAW = soulSupplyRaw.ToString();
+        dailyEntry.STAKERS_COUNT = stakersCount;
+        dailyEntry.MASTERS_COUNT = mastersCount;
+        dailyEntry.STAKING_RATIO = stakingRatio;
+        dailyEntry.CAPTURED_AT_UNIX_SECONDS = nowUnixSeconds;
+
+        var monthlyEntry = await databaseContext.SoulMastersMonthlies
+            .FirstOrDefaultAsync(x => x.ChainId == chain.ID && x.MONTH_UNIX_SECONDS == monthUnixSeconds);
+
+        if (monthlyEntry == null)
+        {
+            monthlyEntry = new SoulMastersMonthly
+            {
+                ChainId = chain.ID,
+                MONTH_UNIX_SECONDS = monthUnixSeconds,
+                SOURCE = "balance-sync.v1"
+            };
+            databaseContext.SoulMastersMonthlies.Add(monthlyEntry);
+        }
+
+        monthlyEntry.MASTERS_COUNT = mastersCount;
+        monthlyEntry.CAPTURED_AT_UNIX_SECONDS = nowUnixSeconds;
+
+        await databaseContext.SaveChangesAsync();
+    }
+
+    private static async Task<int> CountOrganizationMembersAsync(MainDbContext databaseContext, int chainId,
+        string organizationName)
+    {
+        var organizationId = await databaseContext.Organizations
+            .Where(x => x.NAME == organizationName)
+            .Select(x => (int?)x.ID)
+            .FirstOrDefaultAsync();
+
+        if (!organizationId.HasValue)
+            return 0;
+
+        return await databaseContext.OrganizationAddresses
+            .Where(x => x.OrganizationId == organizationId.Value && x.Address.ChainId == chainId)
+            .CountAsync();
+    }
+
+    private static long GetMonthStartUnixSeconds(long unixSeconds)
+    {
+        var date = UnixSeconds.ToDateTime(unixSeconds);
+        return UnixSeconds.FromDateTime(new DateTime(date.Year, date.Month, 1, 0, 0, 0, DateTimeKind.Utc));
     }
 
     private static void UpdateStakeMemberships(MainDbContext databaseContext, List<Address> addresses)
