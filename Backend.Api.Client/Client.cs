@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -168,6 +169,34 @@ public static class Client
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
     private static int _maxAttempts = 5;
+
+    private static bool IsTransientRpcFailure(Exception exception)
+    {
+        while (exception != null)
+        {
+            if (exception is TimeoutException or TaskCanceledException or OperationCanceledException
+                or HttpRequestException or SocketException)
+                return true;
+
+            var message = exception.Message?.ToLowerInvariant() ?? "";
+            if (message.Contains("operation was canceled") ||
+                message.Contains("timed out") ||
+                message.Contains("connection refused") ||
+                message.Contains("response ended prematurely") ||
+                message.Contains("unable to connect") ||
+                message.Contains("no such host") ||
+                message.Contains("name or service not known") ||
+                message.Contains("error occurred while sending the request"))
+            {
+                return true;
+            }
+
+            exception = exception.InnerException;
+        }
+
+        return false;
+    }
+
     public static async Task<(T, int)> ApiRequestAsync<T>(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
     {
         Log.Debug("[API request]: url: " + url);
@@ -248,7 +277,19 @@ public static class Client
             {
                 var logMessage =
                     $"API request attempt {i}/{_maxAttempts} failed for {url}: {e.GetType().Name} {e.Message}";
-                Log.Error(e, logMessage);
+
+                var transientFailure = IsTransientRpcFailure(e);
+                if (transientFailure && !Log.IsEnabled(Serilog.Events.LogEventLevel.Debug))
+                {
+                    // High-volume block fetch retries can fail in bursts when RPC is unstable.
+                    // Keep per-request retries in debug only; caller-level handlers emit compact warnings.
+                    Log.Debug(logMessage);
+                }
+                else
+                {
+                    Log.Error(e, logMessage);
+                }
+
                 if (i < _maxAttempts)
                 {
                     Thread.Sleep(1000 * i);
