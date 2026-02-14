@@ -2063,6 +2063,27 @@ public class SoulMastersMonthlyStat
 }
 
 /// <summary>
+///     Daily newly discovered addresses statistics for a chain.
+/// </summary>
+public class NewAddressesDailyStat
+{
+    /// <summary>
+    ///     UTC day timestamp (unix seconds, day start).
+    /// </summary>
+    public long date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Number of addresses first seen on this day.
+    /// </summary>
+    public long new_addresses_count { get; set; }
+
+    /// <summary>
+    ///     Cumulative number of discovered addresses up to this day.
+    /// </summary>
+    public long cumulative_addresses_count { get; set; }
+}
+
+/// <summary>
 ///     Historical staking and masters statistics for dashboard charts.
 /// </summary>
 public class StakingStatsResult
@@ -2151,4 +2172,51 @@ public class StakingStatsResult
     ///     Monthly soul masters history points.
     /// </summary>
     public SoulMastersMonthlyStat[]? monthly { get; set; }
+
+}
+
+/// <summary>
+///     Historical address growth statistics for dashboard charts.
+/// </summary>
+public class AddressStatsResult
+{
+    /// <summary>
+    ///     Chain filter used in this response.
+    /// </summary>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Requested daily limit (0 means all points).
+    /// </summary>
+    public int daily_limit { get; set; }
+
+    /// <summary>
+    ///     Number of daily points returned for new-addresses series.
+    /// </summary>
+    public long new_addresses_points_total { get; set; }
+
+    /// <summary>
+    ///     First day timestamp returned for new-addresses daily series.
+    /// </summary>
+    public long? first_new_addresses_date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Last day timestamp returned for new-addresses daily series.
+    /// </summary>
+    public long? latest_new_addresses_date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Latest available daily new-addresses count.
+    /// </summary>
+    public long? latest_new_addresses_count { get; set; }
+
+    /// <summary>
+    ///     Latest available cumulative discovered-addresses count.
+    /// </summary>
+    public long? latest_cumulative_addresses_count { get; set; }
+
+    /// <summary>
+    ///     Daily new-addresses history points.
+    /// </summary>
+    public NewAddressesDailyStat[]? new_addresses_daily { get; set; }
 }
