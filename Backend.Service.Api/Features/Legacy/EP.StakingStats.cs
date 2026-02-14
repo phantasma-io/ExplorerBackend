@@ -1,6 +1,8 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Numerics;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
@@ -12,6 +14,13 @@ namespace Backend.Service.Api;
 
 public static class GetStakingStats
 {
+    private const long MigrationMintPhase1UnixSeconds = 1675728000; // 2023-02-07T00:00:00Z
+    private const long MigrationMintPhase2UnixSeconds = 1675987200; // 2023-02-10T00:00:00Z
+    private static readonly BigInteger SupplyAdjustmentBeforePhase1Raw =
+        BigInteger.Parse("5208119200000000", CultureInfo.InvariantCulture); // 52,081,192 SOUL
+    private static readonly BigInteger SupplyAdjustmentBeforePhase2Raw =
+        BigInteger.Parse("364999300000000", CultureInfo.InvariantCulture); // 3,649,993 SOUL
+
     [ProducesResponseType(typeof(StakingStatsResult), (int)HttpStatusCode.OK)]
     [HttpGet]
     [ApiInfo(typeof(StakingStatsResult),
@@ -106,10 +115,9 @@ public static class GetStakingStats
                     .ToArrayAsync();
             }
 
+            var applySupplyAdjustment = string.Equals(chain, "main", StringComparison.OrdinalIgnoreCase);
             foreach (var item in dailyData)
-            {
-                item.staking_percent = item.staking_ratio * 100m;
-            }
+                ApplyHistoricalSupplyAdjustment(item, applySupplyAdjustment);
 
             SoulMastersMonthlyStat[] monthlyData;
             if (monthly_limit > 0)
@@ -165,5 +173,67 @@ public static class GetStakingStats
             var logMessage = LogEx.Exception("StakingStats()", exception);
             throw new ApiUnexpectedException(logMessage, exception);
         }
+    }
+
+    private static void ApplyHistoricalSupplyAdjustment(StakingDailyStat item, bool applySupplyAdjustment)
+    {
+        if (!applySupplyAdjustment)
+        {
+            item.staking_percent = item.staking_ratio * 100m;
+            return;
+        }
+
+        var supplyAdjustmentRaw = GetHistoricalSupplyAdjustmentRaw(item.date_unix_seconds);
+        if (supplyAdjustmentRaw <= BigInteger.Zero)
+        {
+            item.staking_percent = item.staking_ratio * 100m;
+            return;
+        }
+
+        if (!TryParseRaw(item.soul_supply_raw, out var soulSupplyRaw) || soulSupplyRaw <= BigInteger.Zero)
+        {
+            item.staking_percent = item.staking_ratio * 100m;
+            return;
+        }
+
+        var adjustedSupplyRaw = soulSupplyRaw + supplyAdjustmentRaw;
+        item.soul_supply_raw = adjustedSupplyRaw.ToString(CultureInfo.InvariantCulture);
+
+        if (!TryParseRaw(item.staked_soul_raw, out var stakedSoulRaw) || stakedSoulRaw < BigInteger.Zero)
+        {
+            item.staking_percent = item.staking_ratio * 100m;
+            return;
+        }
+
+        try
+        {
+            item.staking_ratio = (decimal)stakedSoulRaw / (decimal)adjustedSupplyRaw;
+            item.staking_percent = item.staking_ratio * 100m;
+        }
+        catch (OverflowException)
+        {
+            item.staking_percent = item.staking_ratio * 100m;
+        }
+    }
+
+    private static BigInteger GetHistoricalSupplyAdjustmentRaw(long dateUnixSeconds)
+    {
+        if (dateUnixSeconds < MigrationMintPhase1UnixSeconds)
+            return SupplyAdjustmentBeforePhase1Raw;
+
+        return dateUnixSeconds < MigrationMintPhase2UnixSeconds
+            ? SupplyAdjustmentBeforePhase2Raw
+            : BigInteger.Zero;
+    }
+
+    private static bool TryParseRaw(string raw, out BigInteger value)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            value = BigInteger.Zero;
+            return false;
+        }
+
+        return BigInteger.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
     }
 }
