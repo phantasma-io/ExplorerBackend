@@ -1984,3 +1984,171 @@ public class OverviewStatsResult
     /// </summary>
     public long soul_masters_total { get; set; }
 }
+
+/// <summary>
+///     Daily staking progress snapshot for a chain.
+/// </summary>
+public class StakingDailyStat
+{
+    /// <summary>
+    ///     UTC day timestamp (unix seconds, day start).
+    /// </summary>
+    public long date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Total staked SOUL in raw units.
+    /// </summary>
+    public string? staked_soul_raw { get; set; }
+
+    /// <summary>
+    ///     Total SOUL supply in raw units.
+    /// </summary>
+    public string? soul_supply_raw { get; set; }
+
+    /// <summary>
+    ///     Number of staker addresses for the snapshot day.
+    /// </summary>
+    public int stakers_count { get; set; }
+
+    /// <summary>
+    ///     Number of master addresses for the snapshot day.
+    /// </summary>
+    public int masters_count { get; set; }
+
+    /// <summary>
+    ///     Staked/Supply ratio for the snapshot day.
+    /// </summary>
+    public decimal staking_ratio { get; set; }
+
+    /// <summary>
+    ///     Staked/Supply ratio in percent (0-100+).
+    /// </summary>
+    public decimal staking_percent { get; set; }
+
+    /// <summary>
+    ///     Capture timestamp (unix seconds).
+    /// </summary>
+    public long captured_at_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Source label for the snapshot row.
+    /// </summary>
+    public string? source { get; set; }
+}
+
+/// <summary>
+///     Monthly masters snapshot for a chain.
+/// </summary>
+public class SoulMastersMonthlyStat
+{
+    /// <summary>
+    ///     UTC month start timestamp (unix seconds).
+    /// </summary>
+    public long month_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Number of masters addresses at month-end snapshot.
+    /// </summary>
+    public int masters_count { get; set; }
+
+    /// <summary>
+    ///     Capture timestamp (unix seconds).
+    /// </summary>
+    public long captured_at_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Source label for the snapshot row.
+    /// </summary>
+    public string? source { get; set; }
+}
+
+/// <summary>
+///     Historical staking and masters statistics for dashboard charts.
+/// </summary>
+public class StakingStatsResult
+{
+    /// <summary>
+    ///     Chain filter used in this response.
+    /// </summary>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Requested daily limit (0 means all points).
+    /// </summary>
+    public int daily_limit { get; set; }
+
+    /// <summary>
+    ///     Requested monthly limit (0 means all points).
+    /// </summary>
+    public int monthly_limit { get; set; }
+
+    /// <summary>
+    ///     Number of daily points returned.
+    /// </summary>
+    public long daily_points_total { get; set; }
+
+    /// <summary>
+    ///     Number of monthly points returned.
+    /// </summary>
+    public long monthly_points_total { get; set; }
+
+    /// <summary>
+    ///     First day timestamp returned for daily series.
+    /// </summary>
+    public long? first_daily_date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Last day timestamp returned for daily series.
+    /// </summary>
+    public long? latest_daily_date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     First month timestamp returned for monthly series.
+    /// </summary>
+    public long? first_month_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Last month timestamp returned for monthly series.
+    /// </summary>
+    public long? latest_month_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Latest available staking ratio from daily data.
+    /// </summary>
+    public decimal? latest_staking_ratio { get; set; }
+
+    /// <summary>
+    ///     Latest available staking percent from daily data.
+    /// </summary>
+    public decimal? latest_staking_percent { get; set; }
+
+    /// <summary>
+    ///     Latest available staked SOUL raw value from daily data.
+    /// </summary>
+    public string? latest_staked_soul_raw { get; set; }
+
+    /// <summary>
+    ///     Latest available SOUL supply raw value from daily data.
+    /// </summary>
+    public string? latest_soul_supply_raw { get; set; }
+
+    /// <summary>
+    ///     Latest available stakers count from daily data.
+    /// </summary>
+    public int? latest_stakers_count { get; set; }
+
+    /// <summary>
+    ///     Latest available masters count from daily data.
+    /// </summary>
+    public int? latest_masters_count { get; set; }
+
+    /// <summary>
+    ///     Daily staking history points.
+    /// </summary>
+    public StakingDailyStat[]? daily { get; set; }
+
+    /// <summary>
+    ///     Monthly soul masters history points.
+    /// </summary>
+    public SoulMastersMonthlyStat[]? monthly { get; set; }
+}
