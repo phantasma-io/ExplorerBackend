@@ -127,7 +127,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 await using var snapshotContext = new MainDbContext();
                 var chainEntry = await ChainMethods.GetAsync(snapshotContext, chainName);
-                await UpsertStakeSnapshotsAsync(snapshotContext, chainEntry);
+                await UpsertStakeSnapshotsAsync(snapshotContext, chainEntry, IsHistoricalCatchupAllowed(chainEntry));
             }
             catch (Exception e)
             {
@@ -140,7 +140,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
     // Snapshot tables are forward-only: each sync rewrites current day/month rows and never rewinds history.
-    private static async Task UpsertStakeSnapshotsAsync(MainDbContext databaseContext, Chain chain)
+    private async Task UpsertStakeSnapshotsAsync(MainDbContext databaseContext, Chain chain,
+        bool allowHistoricalCatchup)
     {
         var nowUnixSeconds = UnixSeconds.Now();
         var dateUnixSeconds = UnixSeconds.GetDate(nowUnixSeconds);
@@ -228,6 +229,50 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         monthlyEntry.CAPTURED_AT_UNIX_SECONDS = nowUnixSeconds;
 
         await databaseContext.SaveChangesAsync();
+
+        if (!allowHistoricalCatchup)
+            return;
+
+        var catchupResult = await BackfillMissingStakeSnapshotsAsync(databaseContext, chain, nowUnixSeconds,
+            dateUnixSeconds, monthUnixSeconds);
+        if (catchupResult.DailyInserted > 0 || catchupResult.MonthlyInserted > 0)
+        {
+            Log.Information(
+                "[{Name}][Balances] Stake snapshots catch-up inserted daily={DailyInserted}, monthly={MonthlyInserted} for chain {Chain}",
+                Name, catchupResult.DailyInserted, catchupResult.MonthlyInserted, chain.NAME);
+        }
+    }
+
+    private bool IsHistoricalCatchupAllowed(Chain chain)
+    {
+        if (!BigInteger.TryParse(chain.CURRENT_HEIGHT, out var currentHeight))
+            return false;
+
+        // Align tip detection with block sync semantics: if heightLimit is active,
+        // reaching that limit is considered "at tip" for background jobs.
+        if (Settings.Default.HeightLimit != 0 && currentHeight >= Settings.Default.HeightLimit)
+            return true;
+
+        // The block loop computes lag and only requests balance sync when lag <= threshold.
+        // Reuse the same gate here to avoid races against a moving RPC tip.
+        if (IsBackgroundSyncAllowed(chain.ID))
+            return true;
+
+        try
+        {
+            var rpcHeight = GetCurrentBlockHeight(chain.NAME);
+            var targetHeight = rpcHeight;
+            if (Settings.Default.HeightLimit != 0 && targetHeight >= Settings.Default.HeightLimit)
+                targetHeight = Settings.Default.HeightLimit;
+
+            return currentHeight >= targetHeight;
+        }
+        catch (Exception exception)
+        {
+            Log.Warning("[{Name}][Balances] Unable to validate tip for {Chain}: {Reason}", Name, chain.NAME,
+                exception.Message);
+            return false;
+        }
     }
 
     private static async Task<int> CountOrganizationMembersAsync(MainDbContext databaseContext, int chainId,
