@@ -67,6 +67,42 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         return address;
     }
 
+    private static void ApplySeriesSupplyFromNftLifecycle(MainDbContext databaseContext, Nft nft, EventKind kind)
+    {
+        if (nft?.SeriesId == null)
+            return;
+
+        var series = nft.Series ??
+                     databaseContext.Serieses.FirstOrDefault(x => x.ID == nft.SeriesId.Value) ??
+                     DbHelper.GetTracked<Series>(databaseContext).FirstOrDefault(x => x.ID == nft.SeriesId.Value);
+
+        if (series == null)
+            return;
+
+        switch (kind)
+        {
+            case EventKind.TokenMint:
+                // Increment supply only when token becomes active.
+                // This guards against duplicate mint events for an already active NFT.
+                if (nft.BURNED == false)
+                    return;
+
+                nft.BURNED = false;
+                series.CURRENT_SUPPLY += 1;
+                break;
+
+            case EventKind.TokenBurn:
+                // Decrement supply only on first burn transition.
+                if (nft.BURNED == true)
+                    return;
+
+                nft.BURNED = true;
+                if (series.CURRENT_SUPPLY > 0)
+                    series.CURRENT_SUPPLY -= 1;
+                break;
+        }
+    }
+
     private static void FinalizePayload(Database.Main.Event eventEntry, Dictionary<string, object?> payload, string rawData)
     {
         if (eventEntry == null || payload == null)
@@ -935,6 +971,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 tokenSchemas.Value);
                                         }
                                     }
+
+                                    if (nft != null && (kind == EventKind.TokenMint || kind == EventKind.TokenBurn))
+                                        ApplySeriesSupplyFromNftLifecycle(databaseContext, nft, kind);
 
                                     break;
                                 }

@@ -152,7 +152,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 StartupBlockSync(chain.NAME);
                 StartupBalanceSync(chain);
                 StartupRomRamSync(chain);
-                StartupSeriesSync(chain);
                 StartupContractSync(chain);
                 StartupContractMethodsSync(chain);
             }
@@ -292,28 +291,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         romRamSyncThread.Start();
     }
 
-
-    private void StartupSeriesSync(Chain chain)
-    {
-        Thread seriesSyncThread = new(() =>
-        {
-            while (_running)
-                try
-                {
-                    NewSeriesLoad(chain.ID);
-
-                    Thread.Sleep(Settings.Default.SeriesProcessingInterval *
-                                 1000); // We check for new series every SeriesProcessingInterval seconds
-                }
-                catch (Exception e)
-                {
-                    LogEx.Exception("Series load", e);
-
-                    Thread.Sleep(Settings.Default.SeriesProcessingInterval * 1000);
-                }
-        });
-        seriesSyncThread.Start();
-    }
 
     private void StartupContractSync(Chain chain)
     {
