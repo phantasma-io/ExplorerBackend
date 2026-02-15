@@ -134,6 +134,29 @@ public class Series
     public string? creator { get; set; }
 
     /// <summary>
+    ///     Name of the chain the series belongs to
+    /// </summary>
+    /// <example>main</example>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Contract hash for the series token
+    /// </summary>
+    public string? contract { get; set; }
+
+    /// <summary>
+    ///     Token symbol of the series
+    /// </summary>
+    /// <example>TTRS</example>
+    public string? symbol { get; set; }
+
+    /// <summary>
+    ///     Derived creation timestamp in UTC unix seconds
+    /// </summary>
+    /// <example>1672149444</example>
+    public long? created_unix_seconds { get; set; }
+
+    /// <summary>
     ///     current available supply
     /// </summary>
     /// <example>2</example>

@@ -232,16 +232,7 @@ public static class GetSeries
             var pageQuery = query.Select(x => new SeriesPageItem
             {
                 Id = x.ID,
-                CreatedUnixSeconds =
-                    x.Nfts
-                        .Where(n => n.MINT_DATE_UNIX_SECONDS > 0)
-                        .Select(n => (long?)n.MINT_DATE_UNIX_SECONDS)
-                        .Min() ??
-                    x.Nfts
-                        .SelectMany(n => n.NftOwnerships)
-                        .Select(o => (long?)o.LAST_CHANGE_UNIX_SECONDS)
-                        .Min() ??
-                    0,
+                CreatedUnixSeconds = x.SERIES_CREATED_UNIX_SECONDS,
                 SeriesId = x.SERIES_ID ?? string.Empty,
                 Name = x.NAME,
                 ApiSeries = new Series
@@ -249,6 +240,10 @@ public static class GetSeries
                     id = x.ID,
                     series_id = x.SERIES_ID ?? "",
                     creator = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
+                    chain = x.Contract != null && x.Contract.Chain != null ? x.Contract.Chain.NAME : null,
+                    contract = x.Contract != null ? x.Contract.HASH : null,
+                    symbol = x.Contract != null ? x.Contract.SYMBOL : null,
+                    created_unix_seconds = null,
                     name = x.NAME,
                     description = x.DESCRIPTION,
                     image = x.IMAGE,
@@ -278,7 +273,12 @@ public static class GetSeries
                 foreach (var item in page.Items)
                 {
                     if (item.ApiSeries != null)
+                    {
+                        item.ApiSeries.created_unix_seconds = item.CreatedUnixSeconds > 0
+                            ? item.CreatedUnixSeconds
+                            : null;
                         item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
+                    }
                 }
 
                 seriesArray = page.Items.Select(x => x.ApiSeries).ToArray();
@@ -293,7 +293,12 @@ public static class GetSeries
                 foreach (var item in materializedPage)
                 {
                     if (item.ApiSeries != null)
+                    {
+                        item.ApiSeries.created_unix_seconds = item.CreatedUnixSeconds > 0
+                            ? item.CreatedUnixSeconds
+                            : null;
                         item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
+                    }
                 }
 
                 seriesArray = materializedPage.Select(x => x.ApiSeries).ToArray();

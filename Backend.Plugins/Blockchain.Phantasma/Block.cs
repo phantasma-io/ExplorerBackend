@@ -922,7 +922,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             if (!string.IsNullOrWhiteSpace(mintData.SeriesId))
                                             {
                                                 var seriesEntry = SeriesMethods.Upsert(databaseContext,
-                                                    contracts.GetId(chainId, tokenEventData.Symbol), mintData.SeriesId);
+                                                    contracts.GetId(chainId, tokenEventData.Symbol), mintData.SeriesId,
+                                                    seriesCreatedUnixSeconds: block.Timestamp);
                                                 nft.Series = seriesEntry;
                                                 nft.SeriesId = seriesEntry.ID;
                                             }
@@ -1019,7 +1020,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         var maxSupplyInt = maxSupply > int.MaxValue ? int.MaxValue : (int)maxSupply;
 
                                         var seriesEntry = SeriesMethods.Upsert(databaseContext, contractIdForSeries, seriesId,
-                                            addressEntry?.ID, null, maxSupplyInt, modeName);
+                                            addressEntry?.ID, null, maxSupplyInt, modeName,
+                                            seriesCreatedUnixSeconds: block.Timestamp);
 
                                         var carbonSeriesId = seriesCreateDataTx.Value.CarbonSeriesId > 0
                                             ? (uint)seriesCreateDataTx.Value.CarbonSeriesId

@@ -638,6 +638,9 @@ public class MainDbContext : DbContext
             .HasIndex(x => new { x.ContractId, x.SERIES_ID })
             .IsUnique();
 
+        modelBuilder.Entity<Series>()
+            .HasIndex(x => new { x.SERIES_CREATED_UNIX_SECONDS, x.ID });
+
 
         //////////////////////
         // Infusion
@@ -1291,6 +1294,7 @@ public class Series
     public int ContractId { get; set; }
     public virtual Contract Contract { get; set; }
     public string SERIES_ID { get; set; }
+    public long SERIES_CREATED_UNIX_SECONDS { get; set; }
     public int CURRENT_SUPPLY { get; set; }
     public int MAX_SUPPLY { get; set; }
     public int? SeriesModeId { get; set; }

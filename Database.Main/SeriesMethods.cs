@@ -11,7 +11,7 @@ public static class SeriesMethods
         int? creatorAddressId = null, int? currentSupply = null, int? maxSupply = null, string seriesModeName = null,
         string name = null, string description = null, string image = null, decimal? royalties = null,
         string attrType1 = null, string attrValue1 = null, string attrType2 = null, string attrValue2 = null,
-        string attrType3 = null, string attrValue3 = null)
+        string attrType3 = null, string attrValue3 = null, long? seriesCreatedUnixSeconds = null)
     {
         var series = databaseContext.Serieses
             .FirstOrDefault(x => x.ContractId == contractId && x.SERIES_ID == seriesId);
@@ -29,6 +29,10 @@ public static class SeriesMethods
         if (currentSupply != null) series.CURRENT_SUPPLY = (int)currentSupply;
 
         if (maxSupply != null) series.MAX_SUPPLY = (int)maxSupply;
+
+        if (seriesCreatedUnixSeconds is > 0 &&
+            (series.SERIES_CREATED_UNIX_SECONDS <= 0 || seriesCreatedUnixSeconds < series.SERIES_CREATED_UNIX_SECONDS))
+            series.SERIES_CREATED_UNIX_SECONDS = seriesCreatedUnixSeconds.Value;
 
         if (!string.IsNullOrEmpty(seriesModeName))
             series.SeriesMode = SeriesModeMethods.Upsert(databaseContext, seriesModeName, false);
