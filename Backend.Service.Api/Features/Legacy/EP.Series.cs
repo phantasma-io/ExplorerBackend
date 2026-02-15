@@ -18,6 +18,7 @@ public static class GetSeries
     private sealed class SeriesPageItem
     {
         public int Id { get; init; }
+        public long CreatedUnixSeconds { get; init; }
         public string SeriesId { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
         public Series ApiSeries { get; init; }
@@ -113,6 +114,14 @@ public static class GetSeries
                             new CursorOrderSegment<SeriesPageItem, int>(
                                 x => x.Id,
                                 value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "created",
+                        new CursorOrderDefinition<SeriesPageItem>(
+                            "created",
+                            new CursorOrderSegment<SeriesPageItem, long>(
+                                x => x.CreatedUnixSeconds,
+                                value => long.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
                     },
                     {
                         "series_id",
@@ -223,6 +232,16 @@ public static class GetSeries
             var pageQuery = query.Select(x => new SeriesPageItem
             {
                 Id = x.ID,
+                CreatedUnixSeconds =
+                    x.Nfts
+                        .Where(n => n.MINT_DATE_UNIX_SECONDS > 0)
+                        .Select(n => (long?)n.MINT_DATE_UNIX_SECONDS)
+                        .Min() ??
+                    x.Nfts
+                        .SelectMany(n => n.NftOwnerships)
+                        .Select(o => (long?)o.LAST_CHANGE_UNIX_SECONDS)
+                        .Min() ??
+                    0,
                 SeriesId = x.SERIES_ID ?? string.Empty,
                 Name = x.NAME,
                 ApiSeries = new Series

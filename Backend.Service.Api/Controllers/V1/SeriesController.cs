@@ -12,7 +12,7 @@ public class SeriesController : BaseControllerV1
     /// <remarks>
     ///     <a href='#model-Backend.Service.Api.SeriesResult'>SeriesResult</a>
     /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id, series_id or name</param>
+    /// <param name="order_by" example="created">accepted values are created, id, series_id or name</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
     /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
