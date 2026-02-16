@@ -127,9 +127,6 @@ public static class GetEvents
             if (!string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if (!string.IsNullOrEmpty(address) && string.IsNullOrEmpty(chain))
-                throw new ApiParameterException("Pass chain when using address filter.");
-
             if (!string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial))
                 throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
 
@@ -298,28 +295,20 @@ public static class GetEvents
 
             if (!string.IsNullOrEmpty(address))
             {
-                // IMPORTANT:
-                // This endpoint is used by the frontend address page, where the route parameter can be either
-                // a real on-chain address (P...) or an address name (e.g. "somename").
-                //
-                // Historically we filtered by `x.Address.ADDRESS == address` which:
-                // - does not work for address names (returns no rows),
-                // - and, worse, can trigger an extremely bad *generic* query plan on PostgreSQL for parameterized SQL
-                //   (scan the entire Events table ordered by timestamp and join to Addresses), taking 15-20s+ and
-                //   timing out on the frontend.
-                //
-                // Fix: resolve the address/name into an AddressId first (bounded lookup), then filter Events by AddressId.
-                // If no AddressId exists, return an empty page immediately.
                 var isValidAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(address);
 
-                var resolvedAddressId = await databaseContext.Addresses
+                var resolvedAddressIdsQuery = databaseContext.Addresses
                     .AsNoTracking()
-                    .Where(a => a.ChainId == chainId!.Value)
-                    .Where(a => isValidAddress ? a.ADDRESS == address : a.ADDRESS_NAME == address)
-                    .Select(a => (int?)a.ID)
-                    .FirstOrDefaultAsync();
+                    .Where(a => isValidAddress ? a.ADDRESS == address : a.ADDRESS_NAME == address);
 
-                if (!resolvedAddressId.HasValue)
+                if (chainId.HasValue)
+                    resolvedAddressIdsQuery = resolvedAddressIdsQuery.Where(a => a.ChainId == chainId.Value);
+
+                var resolvedAddressIds = await resolvedAddressIdsQuery
+                    .Select(a => a.ID)
+                    .ToArrayAsync();
+
+                if (resolvedAddressIds.Length == 0)
                 {
                     return new EventsResult
                     {
@@ -329,7 +318,9 @@ public static class GetEvents
                     };
                 }
 
-                query = query.Where(x => x.AddressId == resolvedAddressId.Value);
+                query = resolvedAddressIds.Length == 1
+                    ? query.Where(x => x.AddressId == resolvedAddressIds[0])
+                    : query.Where(x => resolvedAddressIds.Contains(x.AddressId));
             }
 
             if (!string.IsNullOrEmpty(address_partial))

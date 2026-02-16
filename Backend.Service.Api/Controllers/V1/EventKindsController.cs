@@ -31,7 +31,7 @@ public class EventKindsController : BaseControllerV1
         [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string event_kind = "",
-        [FromQuery] string chain = "main",
+        [FromQuery] string chain = "",
         [FromQuery] int with_total = 0
     // ReSharper enable InconsistentNaming
     )
@@ -62,7 +62,7 @@ public class EventKindsController : BaseControllerV1
         cacheTag: "eventKindsWithEvents")]
     public Task<EventKindResult> GetAvailableEventKinds(
         // ReSharper disable InconsistentNaming
-        [FromQuery] string chain = "main",
+        [FromQuery] string chain = "",
         [FromQuery] int with_total = 0
     // ReSharper enable InconsistentNaming
     )

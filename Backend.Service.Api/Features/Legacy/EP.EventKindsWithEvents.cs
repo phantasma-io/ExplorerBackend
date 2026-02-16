@@ -16,7 +16,7 @@ public static class GetEventKindsWithEvents
     [ApiInfo(typeof(EventKindResult), "Returns event kinds that have events on the backend.", false, 10)]
     public static async Task<EventKindResult> Execute(
         // ReSharper disable InconsistentNaming
-        string chain = "main",
+        string chain = "",
         int with_total = 0
     // ReSharper enable InconsistentNaming
     )
