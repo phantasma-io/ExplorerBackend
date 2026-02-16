@@ -29,7 +29,6 @@ public static class GetContracts
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string symbol = "",
@@ -39,15 +38,12 @@ public static class GetContracts
         int with_methods = 0,
         int with_script = 0,
         int with_token = 0,
-        int with_creation_event = 0,
-        int with_total = 0
+        int with_creation_event = 0
     // ReSharper enable InconsistentNaming
     )
     {
-        long totalResults = 0;
         Contract[] contractArray;
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -62,9 +58,6 @@ public static class GetContracts
 
             if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
@@ -116,8 +109,6 @@ public static class GetContracts
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
 
             await using MainDbContext databaseContext = new();
@@ -147,9 +138,6 @@ public static class GetContracts
             if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
 
             #endregion
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new ContractPageItem
             {
@@ -210,23 +198,14 @@ public static class GetContracts
                 }
             });
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                contractArray = page.Items.Select(x => x.ApiContract).ToArray();
-                nextCursor = page.NextCursor;
-            }
-            else
-            {
-                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                contractArray = (await pageItems.ToArrayAsync()).Select(x => x.ApiContract).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery =
+                CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            contractArray = page.Items.Select(x => x.ApiContract).ToArray();
+            nextCursor = page.NextCursor;
 
             var responseTime = DateTime.Now - startTime;
 
@@ -244,7 +223,7 @@ public static class GetContracts
 
         return new ContractResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             contracts = contractArray,
             next_cursor = nextCursor
         };

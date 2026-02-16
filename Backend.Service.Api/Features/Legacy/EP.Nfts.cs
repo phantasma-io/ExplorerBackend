@@ -31,7 +31,6 @@ public static class GetNfts
         // ReSharper disable InconsistentNaming
         string order_by = "mint_date",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string creator = "",
@@ -43,16 +42,13 @@ public static class GetNfts
         string symbol = "",
         string token_id = "",
         string series_id = "",
-        string status = "all",
-        int with_total = 0
+        string status = "all"
     // ReSharper enable InconsistentNaming
     )
     {
         // Results of the query
-        long totalResults = 0;
         Nft[] nftArray;
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -61,9 +57,6 @@ public static class GetNfts
 
             if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
@@ -134,8 +127,6 @@ public static class GetNfts
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Nfts.AsQueryable().AsNoTracking();
@@ -198,9 +189,6 @@ public static class GetNfts
             }
 
             #endregion
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             #region ResultArray
 
@@ -289,47 +277,24 @@ public static class GetNfts
                 }
             });
 
-            if (useCursor)
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            foreach (var item in page.Items)
             {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
-                    x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                foreach (var item in page.Items)
-                {
-                    if (item.ApiNft?.nft_metadata != null)
-                        item.ApiNft.nft_metadata.metadata =
-                            MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
+                if (item.ApiNft?.nft_metadata != null)
+                    item.ApiNft.nft_metadata.metadata =
+                        MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
 
-                    if (item.ApiNft?.series != null)
-                        item.ApiNft.series.metadata =
-                            MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
-                }
-
-                nftArray = page.Items.Select(x => x.ApiNft).ToArray();
-                nextCursor = page.NextCursor;
+                if (item.ApiNft?.series != null)
+                    item.ApiNft.series.metadata =
+                        MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
             }
-            else
-            {
-                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                var materializedPage = await pageItems.ToArrayAsync();
-
-                foreach (var item in materializedPage)
-                {
-                    if (item.ApiNft?.nft_metadata != null)
-                        item.ApiNft.nft_metadata.metadata =
-                            MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
-
-                    if (item.ApiNft?.series != null)
-                        item.ApiNft.series.metadata =
-                            MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
-                }
-
-                nftArray = materializedPage.Select(x => x.ApiNft).ToArray();
-            }
+            nftArray = page.Items.Select(x => x.ApiNft).ToArray();
+            nextCursor = page.NextCursor;
 
             #endregion
 
@@ -349,7 +314,7 @@ public static class GetNfts
 
         return new NftsResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             nfts = nftArray,
             next_cursor = nextCursor
         };

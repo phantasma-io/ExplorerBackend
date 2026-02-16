@@ -29,7 +29,6 @@ public static class GetOrganizations
         // ReSharper disable InconsistentNaming
         string order_by = "name",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string organization_id = "",
@@ -38,15 +37,12 @@ public static class GetOrganizations
         string organization_name_partial = "",
         string q = "",
         int with_creation_event = 0,
-        int with_address = 0,
-        int with_total = 0
+        int with_address = 0
     // ReSharper enable InconsistentNaming
     )
     {
-        long totalResults = 0;
         Organization[] organizationArray;
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -59,9 +55,6 @@ public static class GetOrganizations
 
             if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(organization_id) && !ArgValidation.CheckString(organization_id))
                 throw new ApiParameterException("Unsupported value for 'organization_id' parameter.");
@@ -116,8 +109,6 @@ public static class GetOrganizations
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Organizations.AsQueryable().AsNoTracking();
@@ -141,9 +132,6 @@ public static class GetOrganizations
 
             if (!string.IsNullOrEmpty(organization_name_partial))
                 query = query.Where(x => x.NAME.Contains(organization_name_partial));
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new OrganizationPageItem
             {
@@ -186,23 +174,14 @@ public static class GetOrganizations
                 }
             });
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
-                    x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                organizationArray = page.Items.Select(x => x.ApiOrganization).ToArray();
-                nextCursor = page.NextCursor;
-            }
-            else
-            {
-                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                organizationArray = (await pageItems.ToArrayAsync()).Select(x => x.ApiOrganization).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            organizationArray = page.Items.Select(x => x.ApiOrganization).ToArray();
+            nextCursor = page.NextCursor;
 
 
             var responseTime = DateTime.Now - startTime;
@@ -221,7 +200,7 @@ public static class GetOrganizations
 
         return new OrganizationResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             organizations = organizationArray,
             next_cursor = nextCursor
         };

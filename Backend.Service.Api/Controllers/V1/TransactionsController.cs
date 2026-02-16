@@ -14,7 +14,6 @@ public class TransactionsController : BaseControllerV1
     /// </remarks>
     /// <param name="order_by" example="date">accepted values are date, id, hash or index</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="hash"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash</param>
@@ -35,7 +34,6 @@ public class TransactionsController : BaseControllerV1
     /// </param>
     /// <param name="with_script" example="0">Return with script data</param>
     /// <param name="with_neighbors" example="0">Return hashes for previous/next transactions for navigation</param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
@@ -45,7 +43,6 @@ public class TransactionsController : BaseControllerV1
         // ReSharper disable InconsistentNaming
         [FromQuery] string order_by = "date",
         [FromQuery] string order_direction = "asc",
-        [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string cursor = "",
         [FromQuery] string hash = "",
@@ -62,15 +59,13 @@ public class TransactionsController : BaseControllerV1
         [FromQuery] int with_event_data = 0,
         [FromQuery] int with_fiat = 0,
         [FromQuery] int with_script = 0,
-        [FromQuery] int with_neighbors = 0,
-        [FromQuery] int with_total = 0
+        [FromQuery] int with_neighbors = 0
     // ReSharper enable InconsistentNaming
     )
     {
         return GetTransactions.Execute(
             order_by,
             order_direction,
-            offset,
             limit,
             cursor,
             hash,
@@ -87,7 +82,6 @@ public class TransactionsController : BaseControllerV1
             with_event_data,
             with_fiat,
             with_script,
-            with_neighbors,
-            with_total);
+            with_neighbors);
     }
 }

@@ -32,7 +32,6 @@ public static class GetAddresses
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string chain = "main",
@@ -44,19 +43,12 @@ public static class GetAddresses
         string validator_kind = "",
         int with_storage = 0,
         int with_stakes = 0,
-        int with_balance = 0,
-        int with_total = 0
+        int with_balance = 0
     // ReSharper enable InconsistentNaming
     )
     {
-        long totalResults = 0;
         Address[] addressArray;
         string? nextCursor = null;
-        var useCursor = false;
-
-        //chain is not considered a filter atm
-        var filter = !string.IsNullOrEmpty(address) || !string.IsNullOrEmpty(address_partial) ||
-                     !string.IsNullOrEmpty(organization_name) || !string.IsNullOrEmpty(validator_kind);
 
         try
         {
@@ -68,11 +60,8 @@ public static class GetAddresses
             if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if (!ArgValidation.CheckLimit(limit, filter))
+            if (!ArgValidation.CheckLimit(limit))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
@@ -144,8 +133,6 @@ public static class GetAddresses
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
 
             await using MainDbContext databaseContext = new();
@@ -183,9 +170,6 @@ public static class GetAddresses
             #endregion
 
             #region ResultArray
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new AddressPageItem
             {
@@ -258,23 +242,13 @@ public static class GetAddresses
                 }
             });
 
-            var cursorFiltered = useCursor
-                ? CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken, x => x.Id)
-                : pageQuery;
+            var cursorFiltered =
+                CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken, x => x.Id);
             var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
-
-            if (useCursor)
-            {
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                addressArray = page.Items.Select(x => x.ApiAddress).ToArray();
-                nextCursor = page.NextCursor;
-            }
-            else
-            {
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                addressArray = (await pageItems.ToArrayAsync()).Select(x => x.ApiAddress).ToArray();
-            }
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            addressArray = page.Items.Select(x => x.ApiAddress).ToArray();
+            nextCursor = page.NextCursor;
 
             #endregion
 
@@ -294,7 +268,7 @@ public static class GetAddresses
 
         return new AddressResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             addresses = addressArray,
             next_cursor = nextCursor
         };

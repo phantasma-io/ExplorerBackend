@@ -30,7 +30,6 @@ public static class GetEvents
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string chain = "",
@@ -55,37 +54,22 @@ public static class GetEvents
         int with_series = 0,
         int with_fiat = 0,
         int with_nsfw = 0,
-        int with_blacklisted = 0,
-        int with_total = 0
+        int with_blacklisted = 0
     // ReSharper enable InconsistentNaming
     )
     {
         // Results of the query
-        long totalResults = 0;
         Event[] eventsArray;
         const string fiatCurrency = "USD";
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
-
-        //chain is not considered a filter atm
-        var filter = !string.IsNullOrEmpty(contract) || !string.IsNullOrEmpty(token_id) ||
-                     !string.IsNullOrEmpty(date_day) || !string.IsNullOrEmpty(date_less) ||
-                     !string.IsNullOrEmpty(date_greater) || !string.IsNullOrEmpty(event_kind) ||
-                     !string.IsNullOrEmpty(event_kind_partial) || !string.IsNullOrEmpty(nft_name_partial) ||
-                     !string.IsNullOrEmpty(nft_description_partial) || !string.IsNullOrEmpty(address_partial) ||
-                     !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height) ||
-                     !string.IsNullOrEmpty(transaction_hash) || !string.IsNullOrEmpty(qTrimmed);
 
         try
         {
             #region ArgValidation
 
-            if (!ArgValidation.CheckLimit(limit, filter))
+            if (!ArgValidation.CheckLimit(limit))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
@@ -183,8 +167,6 @@ public static class GetEvents
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
@@ -278,7 +260,7 @@ public static class GetEvents
                 else
                     return new EventsResult
                     {
-                        total_results = !useCursor && with_total == 1 ? 0 : null,
+                        total_results = null,
                         events = Array.Empty<Event>(),
                         next_cursor = null
                     };
@@ -312,7 +294,7 @@ public static class GetEvents
                 {
                     return new EventsResult
                     {
-                        total_results = !useCursor && with_total == 1 ? 0 : null,
+                        total_results = null,
                         events = Array.Empty<Event>(),
                         next_cursor = null
                     };
@@ -341,9 +323,6 @@ public static class GetEvents
                 query = query.Where(x => x.ID == parsedEventId);
 
             #endregion
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             #region ResultArray
 
@@ -424,24 +403,14 @@ public static class GetEvents
 
             EventPayloadMapper.EventProjection[] eventProjections;
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                eventProjections = page.Items.Select(x => x.Projection).ToArray();
-                nextCursor = page.NextCursor;
-            }
-            else
-            {
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                eventProjections = (await pageItems.ToArrayAsync()).Select(x => x.Projection).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery =
+                CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            eventProjections = page.Items.Select(x => x.Projection).ToArray();
+            nextCursor = page.NextCursor;
 
             await EventPayloadMapper.ApplyAsync(databaseContext, eventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
@@ -480,7 +449,7 @@ public static class GetEvents
 
         return new EventsResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             events = eventsArray,
             next_cursor = nextCursor
         };

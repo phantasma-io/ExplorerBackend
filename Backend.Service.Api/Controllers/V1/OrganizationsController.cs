@@ -14,7 +14,6 @@ public class OrganizationsController : BaseControllerV1
     /// </remarks>
     /// <param name="order_by" example="id">accepted values are id, name or organization_id</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="cursor" example="eyJvcmRlcl9ieSI6Im5hbWUi...">pagination cursor</param>
     /// <param name="organization_id" example="validators">Organization id</param>
@@ -24,7 +23,6 @@ public class OrganizationsController : BaseControllerV1
     /// <param name="q" example="Block">Universal search filter</param>
     /// <param name="with_creation_event" example="0">Return data with <a href='#model-Backend.Service.Api.Event'>Event</a> of the creation</param>
     /// <param name="with_address" example="0">Return data with <a href='#model-Backend.Service.Api.Address'>Event</a> of the creation</param>
-    /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
@@ -34,7 +32,6 @@ public class OrganizationsController : BaseControllerV1
         // ReSharper disable InconsistentNaming
         [FromQuery] string order_by = "name",
         [FromQuery] string order_direction = "asc",
-        [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string cursor = "",
         [FromQuery] string organization_id = "",
@@ -43,15 +40,13 @@ public class OrganizationsController : BaseControllerV1
         [FromQuery] string organization_name_partial = "",
         [FromQuery] string q = "",
         [FromQuery] int with_creation_event = 0,
-        [FromQuery] int with_address = 0,
-        [FromQuery] int with_total = 0
+        [FromQuery] int with_address = 0
     // ReSharper enable InconsistentNaming
     )
     {
         return GetOrganizations.Execute(
             order_by: order_by,
             order_direction: order_direction,
-            offset: offset,
             limit: limit,
             cursor: cursor,
             organization_id: organization_id,
@@ -60,7 +55,6 @@ public class OrganizationsController : BaseControllerV1
             organization_name_partial: organization_name_partial,
             q: q,
             with_creation_event: with_creation_event,
-            with_address: with_address,
-            with_total: with_total);
+            with_address: with_address);
     }
 }

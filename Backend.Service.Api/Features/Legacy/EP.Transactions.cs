@@ -30,7 +30,6 @@ public static class GetTransactions
         // ReSharper disable InconsistentNaming
         string order_by = "date",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string hash = "",
@@ -47,17 +46,14 @@ public static class GetTransactions
         int with_event_data = 0,
         int with_fiat = 0,
         int with_script = 0,
-        int with_neighbors = 0,
-        int with_total = 0
+        int with_neighbors = 0
     // ReSharper enable InconsistentNaming
     )
     {
-        long totalResults = 0;
         Transaction[] transactions = null;
         string previousHash = null;
         string nextHash = null;
         string? nextCursor = null;
-        var useCursor = false;
         var hashUpper = string.IsNullOrEmpty(hash) ? string.Empty : hash.ToUpper();
         var hashPartialUpper = string.IsNullOrEmpty(hash_partial) ? string.Empty : hash_partial.ToUpper();
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
@@ -66,12 +62,6 @@ public static class GetTransactions
         var qIsFullHash = qIsHex && qUpper.Length >= 64;
 
         const string fiatCurrency = "USD";
-        var filter = !string.IsNullOrEmpty(hashUpper) || !string.IsNullOrEmpty(hashPartialUpper) ||
-                     !string.IsNullOrEmpty(address) || !string.IsNullOrEmpty(date_less) ||
-                     !string.IsNullOrEmpty(date_greater)
-                     || !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height)
-                     || !string.IsNullOrEmpty(qTrimmed);
-
         try
         {
             #region ArgValidation
@@ -82,11 +72,8 @@ public static class GetTransactions
             if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if (!ArgValidation.CheckLimit(limit, filter))
+            if (!ArgValidation.CheckLimit(limit))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(hashUpper) && !ArgValidation.CheckHash(hashUpper))
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
@@ -161,9 +148,6 @@ public static class GetTransactions
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            var useCursorForList = string.IsNullOrEmpty(hashUpper);
-            useCursor = useCursorForList && CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
@@ -229,9 +213,6 @@ public static class GetTransactions
             if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Block.Chain.NAME == chain);
 
             #endregion
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new TransactionPageItem
             {
@@ -369,35 +350,16 @@ public static class GetTransactions
             EventPayloadMapper.TransactionProjection[] transactionProjections;
             string queryString;
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                transactionProjections = page.Items.Select(x => x.Projection).ToArray();
-                nextCursor = page.NextCursor;
-                var pageSize = Math.Max(1, limit);
-                queryString = orderedQuery.Take(pageSize + 1).ToQueryString();
-            }
-            else
-            {
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                IQueryable<TransactionPageItem> pageItems;
-
-                if (!string.IsNullOrEmpty(hashUpper))
-                    pageItems = orderedQuery.Take(1);
-                else if (limit > 0)
-                    pageItems = orderedQuery.Skip(offset).Take(limit);
-                else
-                    pageItems = orderedQuery;
-
-                queryString = pageItems.ToQueryString();
-                transactionProjections = (await pageItems.ToArrayAsync()).Select(x => x.Projection).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery =
+                CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            transactionProjections = page.Items.Select(x => x.Projection).ToArray();
+            nextCursor = page.NextCursor;
+            var pageSize = Math.Max(1, limit);
+            queryString = orderedQuery.Take(pageSize + 1).ToQueryString();
 
             var allEventProjections = transactionProjections.SelectMany(x => x.EventProjections).ToArray();
             await EventPayloadMapper.ApplyAsync(databaseContext, allEventProjections, with_event_data == 1,
@@ -495,7 +457,7 @@ public static class GetTransactions
 
         return new TransactionResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             transactions = transactions,
             next_cursor = nextCursor
         };

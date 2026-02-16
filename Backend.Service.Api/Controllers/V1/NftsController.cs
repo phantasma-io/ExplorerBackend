@@ -14,7 +14,6 @@ public class NftsController : BaseControllerV1
     /// </remarks>
     /// <param name="order_by" example="id">accepted values are id or mint_date</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIn0">pagination cursor</param>
     /// <param name="creator">Address of asset creator</param>
@@ -27,7 +26,6 @@ public class NftsController : BaseControllerV1
     /// <param name="token_id">Token ID</param>
     /// <param name="series_id">Series ID</param>
     /// <param name="status" example="all">Infusion status (all/active/infused)</param>
-    /// <param name="with_total" example="0">Returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
@@ -37,7 +35,6 @@ public class NftsController : BaseControllerV1
         // ReSharper disable InconsistentNaming
         [FromQuery] string order_by = "mint_date",
         [FromQuery] string order_direction = "asc",
-        [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string cursor = "",
         [FromQuery] string creator = "",
@@ -49,15 +46,13 @@ public class NftsController : BaseControllerV1
         [FromQuery] string symbol = "",
         [FromQuery] string token_id = "",
         [FromQuery] string series_id = "",
-        [FromQuery] string status = "all",
-        [FromQuery] int with_total = 0
+        [FromQuery] string status = "all"
     // ReSharper enable InconsistentNaming
     )
     {
         return GetNfts.Execute(
             order_by,
             order_direction,
-            offset,
             limit,
             cursor,
             creator,
@@ -69,7 +64,6 @@ public class NftsController : BaseControllerV1
             symbol,
             token_id,
             series_id,
-            status,
-            with_total);
+            status);
     }
 }

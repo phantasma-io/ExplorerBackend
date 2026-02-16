@@ -30,7 +30,6 @@ public class TransactionController : BaseControllerV1
     ///     <a href='#model-Backend.Service.Api.MarketEvent'>market_event</a>)
     /// </param>
     /// <param name="with_script" example="0">Return with script data</param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
@@ -53,15 +52,13 @@ public class TransactionController : BaseControllerV1
         [FromQuery] int with_event_data = 0,
         [FromQuery] int with_fiat = 0,
         [FromQuery] int with_script = 0,
-        [FromQuery] string q = "",
-        [FromQuery] int with_total = 0
+        [FromQuery] string q = ""
     // ReSharper enable InconsistentNaming
     )
     {
         return GetTransactions.Execute(
             order_by,
             order_direction,
-            0,
             1,
             string.Empty,
             hash,
@@ -78,7 +75,6 @@ public class TransactionController : BaseControllerV1
             with_event_data,
             with_fiat,
             with_script,
-            0,
-            with_total);
+            0);
     }
 }

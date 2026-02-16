@@ -14,7 +14,6 @@ public class BlocksController : BaseControllerV1
     /// </remarks>
     /// <param name="order_by" example="id">accepted values are id or hash</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="id">block height or hash</param>
@@ -39,7 +38,6 @@ public class BlocksController : BaseControllerV1
     ///     Return with <a href='#model-Backend.Service.Api.FiatPrice'>fiat_prices</a> (only
     ///     <a href='#model-Backend.Service.Api.MarketEvent'>market_event</a>)
     /// </param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
@@ -49,7 +47,6 @@ public class BlocksController : BaseControllerV1
         // ReSharper disable InconsistentNaming
         [FromQuery] string order_by = "id",
         [FromQuery] string order_direction = "asc",
-        [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string cursor = "",
         [FromQuery] string id = "",
@@ -64,15 +61,13 @@ public class BlocksController : BaseControllerV1
         [FromQuery] int with_events = 0,
         [FromQuery] int with_event_data = 0,
         [FromQuery] int with_nft = 0,
-        [FromQuery] int with_fiat = 0,
-        [FromQuery] int with_total = 0
+        [FromQuery] int with_fiat = 0
     // ReSharper enable InconsistentNaming
     )
     {
         return GetBlocks.Execute(
             order_by,
             order_direction,
-            offset,
             limit,
             cursor,
             id,
@@ -87,7 +82,6 @@ public class BlocksController : BaseControllerV1
             with_events,
             with_event_data,
             with_nft,
-            with_fiat,
-            with_total);
+            with_fiat);
     }
 }

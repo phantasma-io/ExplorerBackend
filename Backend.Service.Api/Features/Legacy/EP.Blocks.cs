@@ -35,7 +35,6 @@ public static class GetBlocks
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string id = "",
@@ -50,22 +49,14 @@ public static class GetBlocks
         int with_events = 0,
         int with_event_data = 0,
         int with_nft = 0,
-        int with_fiat = 0,
-        int with_total = 0
+        int with_fiat = 0
     // ReSharper enable InconsistentNaming
     )
     {
-        long totalResults = 0;
         Block[] blockArray;
         const string fiatCurrency = "USD";
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
-
-        //chain is not considered a filter atm
-        var filter = !string.IsNullOrEmpty(id) || !string.IsNullOrEmpty(hash) || !string.IsNullOrEmpty(hash_partial) ||
-                     !string.IsNullOrEmpty(height) || !string.IsNullOrEmpty(date_less) ||
-                     !string.IsNullOrEmpty(date_greater) || !string.IsNullOrEmpty(qTrimmed);
 
         try
         {
@@ -77,11 +68,8 @@ public static class GetBlocks
             if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if (!ArgValidation.CheckLimit(limit, filter))
+            if (!ArgValidation.CheckLimit(limit))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash))
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
@@ -132,8 +120,6 @@ public static class GetBlocks
 
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
-
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
 
             var startTime = DateTime.Now;
 
@@ -191,9 +177,6 @@ public static class GetBlocks
             #endregion
 
             #region ResultArray
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             var blockQuery = query.Select(x => new BlockPageItem
             {
@@ -341,25 +324,14 @@ public static class GetBlocks
 
             BlockProjection[] blockProjections;
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(blockQuery, orderDefinition, sortDirection,
-                    cursorToken, x => x.Id);
-                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
-                    x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection,
-                    x => x.Id, limit);
-                blockProjections = page.Items.Select(x => x.Projection).ToArray();
-                nextCursor = page.NextCursor;
-            }
-            else
-            {
-                var orderedQuery = CursorPagination.ApplyOrdering(blockQuery, orderDefinition, sortDirection,
-                    x => x.Id);
-                var pageQuery = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                var items = await pageQuery.ToArrayAsync();
-                blockProjections = items.Select(x => x.Projection).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(blockQuery, orderDefinition, sortDirection,
+                cursorToken, x => x.Id);
+            var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection,
+                x => x.Id, limit);
+            blockProjections = page.Items.Select(x => x.Projection).ToArray();
+            nextCursor = page.NextCursor;
 
             var allEventProjections = blockProjections.SelectMany(b => b.TransactionProjections)
                 .SelectMany(t => t.EventProjections).ToArray();
@@ -415,7 +387,7 @@ public static class GetBlocks
 
         return new BlockResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             blocks = blockArray,
             next_cursor = nextCursor
         };

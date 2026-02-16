@@ -28,7 +28,6 @@ public static class GetTokens
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string symbol = "",
@@ -36,15 +35,12 @@ public static class GetTokens
         string chain = "main",
         int with_price = 0,
         int with_creation_event = 0,
-        int with_logo = 0,
-        int with_total = 0
+        int with_logo = 0
     // ReSharper enable InconsistentNaming
     )
     {
-        long totalResults = 0;
         Token[] tokenArray;
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -57,9 +53,6 @@ public static class GetTokens
 
             if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(symbol) && !ArgValidation.CheckSymbol(symbol))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
@@ -98,8 +91,6 @@ public static class GetTokens
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Tokens.AsQueryable().AsNoTracking();
@@ -116,9 +107,6 @@ public static class GetTokens
             if (!string.IsNullOrEmpty(symbol)) query = query.Where(x => x.SYMBOL == symbol.ToUpper());
 
             if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Chain.NAME == chain);
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new TokenPageItem
             {
@@ -183,23 +171,14 @@ public static class GetTokens
                 }
             });
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
-                    x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                tokenArray = page.Items.Select(x => x.ApiToken).ToArray();
-                nextCursor = page.NextCursor;
-            }
-            else
-            {
-                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                tokenArray = (await pageItems.ToArrayAsync()).Select(x => x.ApiToken).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            tokenArray = page.Items.Select(x => x.ApiToken).ToArray();
+            nextCursor = page.NextCursor;
 
             var responseTime = DateTime.Now - startTime;
             Log.Information("API result generated in {ResponseTime} sec", Math.Round(responseTime.TotalSeconds, 3));
@@ -216,7 +195,7 @@ public static class GetTokens
 
         return new TokenResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             tokens = tokenArray,
             next_cursor = nextCursor
         };

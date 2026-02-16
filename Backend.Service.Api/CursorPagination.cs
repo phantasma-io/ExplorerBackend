@@ -198,14 +198,6 @@ public static class CursorPagination
         }
     }
 
-    public static bool ShouldUseCursor(CursorToken? cursorToken, int offset, int withTotal = 0)
-    {
-        if (cursorToken != null && offset != 0)
-            throw new ApiParameterException("Cursor pagination cannot be combined with offset.");
-
-        return cursorToken != null || (offset == 0 && withTotal == 0);
-    }
-
     public static IOrderedQueryable<T> ApplyOrdering<T>(
         IQueryable<T> query,
         CursorOrderDefinition<T> orderDefinition,
