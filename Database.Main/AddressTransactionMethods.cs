@@ -7,7 +7,8 @@ namespace Database.Main;
 public static class AddressTransactionMethods
 {
     // Keep the earliest transaction timestamp per address as a monotonic minimum.
-    // Without historical backfill, we only initialize this for addresses created in current sync.
+    // This must also initialize pre-existing addresses when their first AddressTransaction
+    // link appears later (for example after legacy linkage backfills/recovery).
     private static void UpdateFirstTxUnixSeconds(MainDbContext databaseContext, Address address,
         Transaction transaction)
     {
@@ -23,10 +24,7 @@ public static class AddressTransactionMethods
             return;
         }
 
-        if (databaseContext.Entry(address).State == EntityState.Added)
-        {
-            address.FIRST_TX_UNIX_SECONDS = transaction.TIMESTAMP_UNIX_SECONDS;
-        }
+        address.FIRST_TX_UNIX_SECONDS = transaction.TIMESTAMP_UNIX_SECONDS;
     }
 
     public static async Task UpsertAsync(MainDbContext databaseContext, Address address,
