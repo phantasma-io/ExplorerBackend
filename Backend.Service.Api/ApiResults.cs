@@ -2003,6 +2003,11 @@ public class OverviewStatsResult
     public long addresses_total { get; set; }
 
     /// <summary>
+    ///     Total number of distinct current NFT owner addresses for requested scope.
+    /// </summary>
+    public long nft_owners_total { get; set; }
+
+    /// <summary>
     ///     Total number of addresses in masters organization for requested scope.
     /// </summary>
     public long soul_masters_total { get; set; }

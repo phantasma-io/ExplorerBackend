@@ -101,6 +101,22 @@ public static class GetOverviewStats
             var soulMastersTotal = await addressesQuery
                 .Where(x => x.OrganizationAddresses.Any(y => y.Organization.NAME == "masters"))
                 .LongCountAsync();
+            var nftOwnersQuery = databaseContext.NftOwnerships.AsQueryable().AsNoTracking()
+                .Where(x => x.AMOUNT > 0)
+                .Where(x => x.Nft.NSFW == false && x.Nft.BLACKLISTED == false);
+
+            if (!string.IsNullOrEmpty(chain))
+            {
+                if (chainId.HasValue)
+                    nftOwnersQuery = nftOwnersQuery.Where(x => x.Nft.ChainId == chainId.Value);
+                else
+                    nftOwnersQuery = nftOwnersQuery.Where(_ => false);
+            }
+
+            var nftOwnersTotal = await nftOwnersQuery
+                .Select(x => x.AddressId)
+                .Distinct()
+                .LongCountAsync();
 
             var nftCounters = await nftsQuery
                 .GroupBy(_ => 1)
@@ -130,6 +146,7 @@ public static class GetOverviewStats
                 nfts_burned_total = nftsBurnedTotal,
                 contracts_total = contractsTotal,
                 addresses_total = addressesTotal,
+                nft_owners_total = nftOwnersTotal,
                 soul_masters_total = soulMastersTotal
             };
         }
