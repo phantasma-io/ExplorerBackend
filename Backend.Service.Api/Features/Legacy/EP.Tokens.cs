@@ -9,6 +9,7 @@ using Database.Main;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using CommonsUtils = Backend.Commons.Utils;
 
 namespace Backend.Service.Api;
 
@@ -177,7 +178,14 @@ public static class GetTokens
                 x => x.Id);
             var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
                 limit);
-            tokenArray = page.Items.Select(x => x.ApiToken).ToArray();
+            tokenArray = page.Items
+                .Select(x =>
+                {
+                    var token = x.ApiToken;
+                    token.finite = CommonsUtils.HasPositiveMaxSupply(token.max_supply_raw);
+                    return token;
+                })
+                .ToArray();
             nextCursor = page.NextCursor;
 
             var responseTime = DateTime.Now - startTime;

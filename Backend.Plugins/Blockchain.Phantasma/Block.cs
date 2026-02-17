@@ -311,7 +311,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         var fungible = hasFlags ? HasFlag("Fungible") : defaultFungible;
         var transferable = hasFlags ? HasFlag("Transferable") : true;
-        var finite = hasFlags ? HasFlag("Finite") : tokenCreateData.MaxSupply != "-1";
+        // Legacy fallback used a "-1" sentinel, but chain payloads provide numeric maxSupply.
+        // Treat token as finite only when maxSupply is strictly positive.
+        var finite = hasFlags ? HasFlag("Finite") : CommonsUtils.HasPositiveMaxSupply(tokenCreateData.MaxSupply);
         var divisible = hasFlags ? HasFlag("Divisible") : fungible;
         var fuel = hasFlags && HasFlag("Fuel");
         var stakable = hasFlags && HasFlag("Stakable");
