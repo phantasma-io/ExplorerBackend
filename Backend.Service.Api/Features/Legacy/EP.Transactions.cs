@@ -397,37 +397,46 @@ public static class GetTransactions
                 var anchor = transactionProjections[0];
                 var constrainNeighborsToChain = !string.IsNullOrEmpty(chain);
 
-                // When hash lookup has no explicit chain filter, keep navigation global.
-                // This avoids expensive chain join scans on large legacy datasets and restores stable prev/next buttons.
-                var previousQuery = databaseContext.Transactions
-                    .AsNoTracking()
-                    .Where(x => x.TIMESTAMP_UNIX_SECONDS < anchor.TimestampUnixSeconds ||
-                                (x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
-                                 x.ID < anchor.TransactionId));
-
+                // Keep navigation global when chain is not explicitly requested.
+                // Use two-step seek (same timestamp, then nearest older/newer timestamp) to avoid
+                // the OR-based predicate that degrades into large backward scans on legacy data.
+                var scopedTransactions = databaseContext.Transactions.AsNoTracking();
                 if (constrainNeighborsToChain)
-                    previousQuery = previousQuery.Where(x => x.Block.ChainId == anchor.ChainId);
+                    scopedTransactions = scopedTransactions.Where(x => x.Block.ChainId == anchor.ChainId);
 
-                previousHash = await previousQuery
-                    .OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS)
-                    .ThenByDescending(x => x.ID)
+                previousHash = await scopedTransactions
+                    .Where(x => x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
+                                x.ID < anchor.TransactionId)
+                    .OrderByDescending(x => x.ID)
                     .Select(x => x.HASH)
                     .FirstOrDefaultAsync();
 
-                var nextQuery = databaseContext.Transactions
-                    .AsNoTracking()
-                    .Where(x => x.TIMESTAMP_UNIX_SECONDS > anchor.TimestampUnixSeconds ||
-                                (x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
-                                 x.ID > anchor.TransactionId));
+                if (string.IsNullOrEmpty(previousHash))
+                {
+                    previousHash = await scopedTransactions
+                        .Where(x => x.TIMESTAMP_UNIX_SECONDS < anchor.TimestampUnixSeconds)
+                        .OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS)
+                        .ThenByDescending(x => x.ID)
+                        .Select(x => x.HASH)
+                        .FirstOrDefaultAsync();
+                }
 
-                if (constrainNeighborsToChain)
-                    nextQuery = nextQuery.Where(x => x.Block.ChainId == anchor.ChainId);
-
-                nextHash = await nextQuery
-                    .OrderBy(x => x.TIMESTAMP_UNIX_SECONDS)
-                    .ThenBy(x => x.ID)
+                nextHash = await scopedTransactions
+                    .Where(x => x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
+                                x.ID > anchor.TransactionId)
+                    .OrderBy(x => x.ID)
                     .Select(x => x.HASH)
                     .FirstOrDefaultAsync();
+
+                if (string.IsNullOrEmpty(nextHash))
+                {
+                    nextHash = await scopedTransactions
+                        .Where(x => x.TIMESTAMP_UNIX_SECONDS > anchor.TimestampUnixSeconds)
+                        .OrderBy(x => x.TIMESTAMP_UNIX_SECONDS)
+                        .ThenBy(x => x.ID)
+                        .Select(x => x.HASH)
+                        .FirstOrDefaultAsync();
+                }
 
                 if (transactions.Length > 0)
                 {
