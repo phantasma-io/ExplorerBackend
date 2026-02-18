@@ -184,7 +184,7 @@ public static class GetEvents
                     throw new ApiParameterException("Unsupported value for 'chain' parameter.");
             }
 
-            Dictionary<string, int>? eventKindIds = null;
+            Dictionary<string, int[]>? eventKindIds = null;
 
             if (!string.IsNullOrEmpty(qTrimmed) || !string.IsNullOrEmpty(event_kind))
                 eventKindIds = await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
@@ -195,7 +195,7 @@ public static class GetEvents
             #region Filtering
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
             var detectedEventKind = string.Empty;
-            int? detectedEventKindId = null;
+            int[]? detectedEventKindIds = null;
 
             if (!string.IsNullOrEmpty(qTrimmed))
             {
@@ -206,11 +206,11 @@ public static class GetEvents
                                       string.Empty;
 
                 if (!string.IsNullOrEmpty(detectedEventKind))
-                    detectedEventKindId = eventKindIds[detectedEventKind];
+                    detectedEventKindIds = eventKindIds[detectedEventKind];
             }
 
-            if (detectedEventKindId.HasValue)
-                query = query.Where(x => x.EventKindId == detectedEventKindId.Value);
+            if (detectedEventKindIds is { Length: > 0 })
+                query = query.Where(x => detectedEventKindIds.Contains(x.EventKindId));
 
             if (string.IsNullOrEmpty(detectedEventKind) && !string.IsNullOrEmpty(qUpper))
             {
@@ -255,8 +255,8 @@ public static class GetEvents
             {
                 eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
 
-                if (eventKindIds.TryGetValue(event_kind, out var eventKindId))
-                    query = query.Where(x => x.EventKindId == eventKindId);
+                if (eventKindIds.TryGetValue(event_kind, out var eventKindIdSet) && eventKindIdSet.Length > 0)
+                    query = query.Where(x => eventKindIdSet.Contains(x.EventKindId));
                 else
                     return new EventsResult
                     {
