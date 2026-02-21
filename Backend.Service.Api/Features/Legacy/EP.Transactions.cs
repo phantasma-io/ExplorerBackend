@@ -14,6 +14,25 @@ namespace Backend.Service.Api;
 
 public static class GetTransactions
 {
+    private static bool TryResolveTransactionStateFilter(string stateFilter, out string[] stateNames)
+    {
+        switch (stateFilter.ToLowerInvariant())
+        {
+            case "halt":
+                stateNames = ["HALT"];
+                return true;
+            case "break":
+                stateNames = ["BREAK"];
+                return true;
+            case "fault":
+                stateNames = ["FAULT"];
+                return true;
+            default:
+                stateNames = Array.Empty<string>();
+                return false;
+        }
+    }
+
     private sealed class TransactionPageItem
     {
         public int Id { get; init; }
@@ -41,6 +60,7 @@ public static class GetTransactions
         string block_hash = "",
         string block_height = "",
         string chain = "",
+        string state = "",
         int with_nft = 0,
         int with_events = 0,
         int with_event_data = 0,
@@ -60,6 +80,7 @@ public static class GetTransactions
         var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
         var qIsHex = !string.IsNullOrEmpty(qTrimmed) && ArgValidation.CheckBase16(qTrimmed);
         var qIsFullHash = qIsHex && qUpper.Length >= 64;
+        var stateTrimmed = string.IsNullOrWhiteSpace(state) ? string.Empty : state.Trim();
 
         const string fiatCurrency = "USD";
         try
@@ -101,6 +122,9 @@ public static class GetTransactions
 
             if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
+
+            if (!string.IsNullOrEmpty(stateTrimmed) && !ArgValidation.CheckString(stateTrimmed, true))
+                throw new ApiParameterException("Unsupported value for 'state' parameter.");
 
             #endregion
 
@@ -211,6 +235,30 @@ public static class GetTransactions
                 query = query.Where(x => x.Block.HEIGHT == block_height);
 
             if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Block.Chain.NAME == chain);
+
+            if (!string.IsNullOrEmpty(stateTrimmed))
+            {
+                if (!TryResolveTransactionStateFilter(stateTrimmed, out var stateNames))
+                    throw new ApiParameterException("Unsupported value for 'state' parameter.");
+
+                var stateIds = await databaseContext.TransactionStates
+                    .AsNoTracking()
+                    .Where(x => stateNames.Contains(x.NAME.ToUpper()))
+                    .Select(x => x.ID)
+                    .ToArrayAsync();
+
+                if (stateIds.Length == 0)
+                {
+                    return new TransactionResult
+                    {
+                        total_results = null,
+                        transactions = Array.Empty<Transaction>(),
+                        next_cursor = null
+                    };
+                }
+
+                query = query.Where(x => stateIds.Contains(x.StateId));
+            }
 
             #endregion
 

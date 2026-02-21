@@ -22,6 +22,7 @@ public class TransactionController : BaseControllerV1
     /// <param name="block_hash"><a href='#model-Backend.Service.Api.Block'>Block</a> hash</param>
     /// <param name="block_height">height of the <a href='#model-Backend.Service.Api.Block'>Block</a></param>
     /// <param name="chain" example="main">Chain name</param>
+    /// <param name="state" example="halt">accepted values are halt, break or fault</param>
     /// <param name="with_nft" example="0">Return data with <a href='#model-Backend.Service.Api.NftMetadata'>nft metadata</a></param>
     /// <param name="with_events" example="0">Return event data of <a href='#model-Backend.Service.Api.EventsResult'>events</a></param>
     /// <param name="with_event_data" example="0">Return event data with more details, needs with_events to be set</param>
@@ -47,6 +48,7 @@ public class TransactionController : BaseControllerV1
         [FromQuery] string block_hash = "",
         [FromQuery] string block_height = "",
         [FromQuery] string chain = "",
+        [FromQuery] string state = "",
         [FromQuery] int with_nft = 0,
         [FromQuery] int with_events = 0,
         [FromQuery] int with_event_data = 0,
@@ -70,6 +72,7 @@ public class TransactionController : BaseControllerV1
             block_hash,
             block_height,
             chain,
+            state,
             with_nft,
             with_events,
             with_event_data,
