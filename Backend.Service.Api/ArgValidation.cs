@@ -310,4 +310,16 @@ public static class ArgValidation
     {
         return Regex.IsMatch(value, @"^[A-Za-z0-9:_\- ]+$") && value.Length <= 128;
     }
+
+
+    public static bool CheckTextSearch(string value)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > 128) return false;
+
+        foreach (var character in value)
+            if (char.IsControl(character))
+                return false;
+
+        return true;
+    }
 }

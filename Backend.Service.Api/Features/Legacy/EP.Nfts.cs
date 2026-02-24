@@ -15,6 +15,14 @@ namespace Backend.Service.Api;
 
 public static class GetNfts
 {
+    private static string EscapeLikePattern(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+    }
+
     private sealed class NftPageItem
     {
         public int Id { get; init; }
@@ -79,7 +87,7 @@ public static class GetNfts
             if (!string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name))
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
-            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckTextSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
             if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
@@ -136,26 +144,38 @@ public static class GetNfts
             query = query.Where(x =>
                 x.NSFW == false && (x.BURNED == null || x.BURNED == false) && x.BLACKLISTED == false);
 
-            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
-
-            if (!string.IsNullOrEmpty(qUpper))
+            if (!string.IsNullOrEmpty(qTrimmed))
             {
-                var isHex = ArgValidation.CheckBase16(qTrimmed);
-                var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
-                var isNumber = ArgValidation.CheckNumber(qTrimmed);
+                var searchTokens = qTrimmed
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
 
-                query = query.Where(x =>
-                    EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ||
-                    EF.Functions.ILike(x.DESCRIPTION, $"%{qTrimmed}%") ||
-                    EF.Functions.ILike(x.TOKEN_ID, $"%{qTrimmed}%") ||
-                    EF.Functions.ILike(x.Contract.SYMBOL, $"%{qTrimmed}%") ||
-                    (x.Series != null && EF.Functions.ILike(x.Series.SERIES_ID, $"%{qTrimmed}%")) ||
-                    (x.Series != null && EF.Functions.ILike(x.Series.NAME, $"%{qTrimmed}%")) ||
-                    (isHex && x.Contract.HASH.Contains(qUpper)) ||
-                    (isNumber && x.Series != null && x.Series.SERIES_ID == qTrimmed) ||
-                    (isAddress && (x.CreatorAddress.ADDRESS == qTrimmed ||
-                                     (x.NftOwnerships != null &&
-                                       x.NftOwnerships.Any(o => o.Address.ADDRESS == qTrimmed)))));
+                foreach (var token in searchTokens)
+                {
+                    var tokenEscaped = EscapeLikePattern(token);
+                    var tokenPattern = $"%{tokenEscaped}%";
+                    var tokenUpper = token.ToUpperInvariant();
+                    var tokenIsHex = ArgValidation.CheckBase16(token);
+                    var tokenIsAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(token);
+                    var tokenCanMatchContractHash = tokenIsHex && token.Length >= 6;
+
+                    // Require every token to be matched somewhere so mixed queries
+                    // like "Crown 2261" can match "Crown #2261".
+                    query = query.Where(x =>
+                        EF.Functions.ILike(x.NAME, tokenPattern, "\\") ||
+                        EF.Functions.ILike(x.DESCRIPTION, tokenPattern, "\\") ||
+                        x.TOKEN_ID == token ||
+                        EF.Functions.ILike(x.TOKEN_ID, tokenPattern, "\\") ||
+                        EF.Functions.ILike(x.Contract.SYMBOL, tokenPattern, "\\") ||
+                        (x.Series != null &&
+                         (EF.Functions.ILike(x.Series.SERIES_ID, tokenPattern, "\\") ||
+                          EF.Functions.ILike(x.Series.NAME, tokenPattern, "\\"))) ||
+                        (tokenCanMatchContractHash && x.Contract.HASH.Contains(tokenUpper)) ||
+                        (tokenIsAddress && (x.CreatorAddress.ADDRESS == token ||
+                                            (x.NftOwnerships != null &&
+                                             x.NftOwnerships.Any(o => o.Address.ADDRESS == token)))));
+                }
             }
 
             if (!string.IsNullOrEmpty(status))
