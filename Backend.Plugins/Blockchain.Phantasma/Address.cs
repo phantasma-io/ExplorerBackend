@@ -41,7 +41,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         return databaseContext.Database.ExecuteSqlRawAsync(@"
 UPDATE ""Addresses"" a
-SET ""BALANCE_DIRTY_BLOCK"" = CAST(c.""CURRENT_HEIGHT"" AS BIGINT)
+SET ""BALANCE_DIRTY_BLOCK"" = c.""CURRENT_HEIGHT""
 FROM ""Chains"" c
 WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
 ", chainId);

@@ -245,8 +245,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private bool IsHistoricalCatchupAllowed(Chain chain)
     {
-        if (!BigInteger.TryParse(chain.CURRENT_HEIGHT, out var currentHeight))
-            return false;
+        var currentHeight = new BigInteger(chain.CURRENT_HEIGHT);
 
         // Align tip detection with block sync semantics: if heightLimit is active,
         // reaching that limit is considered "at tip" for background jobs.

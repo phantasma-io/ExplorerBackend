@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -35,6 +36,8 @@ public static class GetOracles
 
         try
         {
+            long? parsedBlockHeightFilter = null;
+
             if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
@@ -53,6 +56,15 @@ public static class GetOracles
             if (!string.IsNullOrEmpty(block_height) && !ArgValidation.CheckNumber(block_height))
                 throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
 
+            if (!string.IsNullOrEmpty(block_height))
+            {
+                if (!long.TryParse(block_height, NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var blockHeightValue))
+                    throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
+
+                parsedBlockHeightFilter = blockHeightValue;
+            }
+
             if (string.IsNullOrEmpty(block_hash) && string.IsNullOrEmpty(block_height))
                 throw new ApiParameterException("Need either block_hash or block_height != null");
 
@@ -66,8 +78,8 @@ public static class GetOracles
             if (!string.IsNullOrEmpty(block_hash))
                 query = query.Where(x => x.Block.HASH == block_hash);
 
-            if (!string.IsNullOrEmpty(block_height))
-                query = query.Where(x => x.Block.HEIGHT == block_height);
+            if (parsedBlockHeightFilter.HasValue)
+                query = query.Where(x => x.Block.HEIGHT == parsedBlockHeightFilter.Value);
 
             if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Block.Chain.NAME == chain);
 

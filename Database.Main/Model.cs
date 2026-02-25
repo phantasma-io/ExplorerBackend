@@ -421,6 +421,9 @@ public class MainDbContext : DbContext
             .HasIndex(x => x.EventKindId);
 
         modelBuilder.Entity<Event>()
+            .HasIndex(x => new { x.EventKindId, x.ID });
+
+        modelBuilder.Entity<Event>()
             .HasIndex(x => new { x.ContractId, x.TOKEN_ID });
 
         modelBuilder.Entity<Event>()
@@ -823,7 +826,9 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.OrganizationId);
 
         // Indexes
-
+        modelBuilder.Entity<OrganizationAddress>()
+            .HasIndex(x => new { x.OrganizationId, x.AddressId })
+            .IsUnique();
 
         //////////////////////
         // AddressTransaction
@@ -864,6 +869,9 @@ public class MainDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes
+        modelBuilder.Entity<AddressBalance>()
+            .HasIndex(x => new { x.AddressId, x.TokenId })
+            .IsUnique();
 
 
         //////////////////////
@@ -948,7 +956,7 @@ public class Chain
 {
     public int ID { get; set; }
     public string NAME { get; set; }
-    public string CURRENT_HEIGHT { get; set; }
+    public long CURRENT_HEIGHT { get; set; }
     public virtual List<Nft> Nfts { get; set; }
     public virtual List<Contract> Contracts { get; set; }
     public virtual List<Token> Tokens { get; set; }
@@ -990,7 +998,7 @@ public class Contract
 public class Block
 {
     public int ID { get; set; }
-    public string HEIGHT { get; set; }
+    public long HEIGHT { get; set; }
     public long TIMESTAMP_UNIX_SECONDS { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }

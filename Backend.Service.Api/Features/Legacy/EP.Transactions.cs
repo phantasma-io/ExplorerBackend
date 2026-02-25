@@ -132,6 +132,16 @@ public static class GetTransactions
             var cursorToken = CursorPagination.ParseCursor(cursor);
             var sortDirection = CursorPagination.ParseSortDirection(order_direction);
             var orderBy = string.IsNullOrWhiteSpace(order_by) ? "date" : order_by;
+            long? parsedBlockHeightFilter = null;
+
+            if (!string.IsNullOrEmpty(block_height))
+            {
+                if (!long.TryParse(block_height, NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var blockHeightValue))
+                    throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
+
+                parsedBlockHeightFilter = blockHeightValue;
+            }
 
             var orderDefinitions =
                 new Dictionary<string, CursorOrderDefinition<TransactionPageItem>>(StringComparer.OrdinalIgnoreCase)
@@ -189,11 +199,20 @@ public static class GetTransactions
                 var isHexPartial = isHex && !isFullHash;
                 var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
                 var treatAsHashPartial = !isNumber && !isAddress && !isFullHash;
+                long? qHeight = null;
+
+                if (isNumber)
+                {
+                    if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedQHeight))
+                        throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
+                    qHeight = parsedQHeight;
+                }
 
                 query = query.Where(x =>
                     (isFullHash && x.HASH == qUpper) ||
                     (isHexPartial && x.HASH.Contains(qUpper)) ||
-                    (isNumber && x.Block.HEIGHT == qTrimmed) ||
+                    (qHeight.HasValue && x.Block.HEIGHT == qHeight.Value) ||
                     (isAddress && x.TransactionAddresses.Any(y => y.Address.ADDRESS == qTrimmed)) ||
                     (treatAsHashPartial && x.HASH.Contains(qUpper)));
             }
@@ -202,11 +221,15 @@ public static class GetTransactions
                 query = query.Where(x => x.HASH == hashUpper);
 
             if (!string.IsNullOrEmpty(hashPartialUpper))
+            {
+                var hasNumericPartialHeight = long.TryParse(hashPartialUpper, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var partialHeightValue);
+
                 query = query.Where(x =>
                     x.HASH.Contains(hashPartialUpper) ||
                     x.Block.HASH.Contains(hashPartialUpper) ||
-                    x.Block.HEIGHT == hashPartialUpper ||
-                    x.Block.HEIGHT.Contains(hashPartialUpper));
+                    (hasNumericPartialHeight && x.Block.HEIGHT == partialHeightValue));
+            }
 
             if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
@@ -232,8 +255,8 @@ public static class GetTransactions
             if (!string.IsNullOrEmpty(block_hash))
                 query = query.Where(x => x.Block.HASH == block_hash.ToUpper());
 
-            if (!string.IsNullOrEmpty(block_height))
-                query = query.Where(x => x.Block.HEIGHT == block_height);
+            if (parsedBlockHeightFilter.HasValue)
+                query = query.Where(x => x.Block.HEIGHT == parsedBlockHeightFilter.Value);
 
             if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Block.Chain.NAME == chain);
 
@@ -278,7 +301,7 @@ public static class GetTransactions
                     {
                         hash = x.HASH,
                         block_hash = x.Block.HASH,
-                        block_height = x.Block.HEIGHT,
+                        block_height = x.Block.HEIGHT.ToString(CultureInfo.InvariantCulture),
                         chain = x.Block.Chain.NAME.ToLower(),
                         index = x.INDEX,
                         date = x.TIMESTAMP_UNIX_SECONDS.ToString(),

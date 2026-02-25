@@ -4,6 +4,7 @@ using System.Text.Json;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Database.Main.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    partial class MainDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260225141250_Update30_AddAddressBalanceUniqueIndex")]
+    partial class Update30_AddAddressBalanceUniqueIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -195,8 +198,8 @@ namespace Database.Main.Migrations
                     b.Property<string>("HASH")
                         .HasColumnType("text");
 
-                    b.Property<long>("HEIGHT")
-                        .HasColumnType("bigint");
+                    b.Property<string>("HEIGHT")
+                        .HasColumnType("text");
 
                     b.Property<string>("PREVIOUS_HASH")
                         .HasColumnType("text");
@@ -267,8 +270,8 @@ namespace Database.Main.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
 
-                    b.Property<long>("CURRENT_HEIGHT")
-                        .HasColumnType("bigint");
+                    b.Property<string>("CURRENT_HEIGHT")
+                        .HasColumnType("text");
 
                     b.Property<string>("NAME")
                         .HasColumnType("text");
@@ -444,8 +447,6 @@ namespace Database.Main.Migrations
                     b.HasIndex("BURNED", "EventKindId");
 
                     b.HasIndex("ContractId", "TOKEN_ID");
-
-                    b.HasIndex("EventKindId", "ID");
 
                     b.HasIndex("EventKindId", "ChainId", "TIMESTAMP_UNIX_SECONDS", "ID")
                         .HasDatabaseName("IX_Events_EventKind_Chain_Timestamp_Id");
@@ -791,8 +792,7 @@ namespace Database.Main.Migrations
 
                     b.HasIndex("AddressId");
 
-                    b.HasIndex("OrganizationId", "AddressId")
-                        .IsUnique();
+                    b.HasIndex("OrganizationId");
 
                     b.ToTable("OrganizationAddresses");
                 });

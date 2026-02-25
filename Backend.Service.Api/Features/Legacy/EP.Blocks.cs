@@ -98,6 +98,15 @@ public static class GetBlocks
             var cursorToken = CursorPagination.ParseCursor(cursor);
             var sortDirection = CursorPagination.ParseSortDirection(order_direction);
             var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+            long? parsedHeightFilter = null;
+
+            if (!string.IsNullOrEmpty(height))
+            {
+                if (!long.TryParse(height, NumberStyles.None, CultureInfo.InvariantCulture, out var heightValue))
+                    throw new ApiParameterException("Unsupported value for 'height' parameter.");
+
+                parsedHeightFilter = heightValue;
+            }
 
             var orderDefinitions = new Dictionary<string, CursorOrderDefinition<BlockPageItem>>(StringComparer.OrdinalIgnoreCase)
             {
@@ -145,7 +154,10 @@ public static class GetBlocks
                 }
                 else if (isNumber)
                 {
-                    query = query.Where(x => x.HEIGHT == qTrimmed || x.HASH.Contains(qUpper));
+                    if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var qHeight))
+                        throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
+                    query = query.Where(x => x.HEIGHT == qHeight || x.HASH.Contains(qUpper));
                 }
                 else
                 {
@@ -155,7 +167,14 @@ public static class GetBlocks
 
             if (!string.IsNullOrEmpty(id))
             {
-                query = id.Length == 64 ? query.Where(x => x.HASH == id || x.HEIGHT == id) : query.Where(x => x.HEIGHT == id);
+                var idIsNumeric = long.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var idHeight);
+
+                if (id.Length == 64)
+                    query = idIsNumeric
+                        ? query.Where(x => x.HASH == id || x.HEIGHT == idHeight)
+                        : query.Where(x => x.HASH == id);
+                else
+                    query = idIsNumeric ? query.Where(x => x.HEIGHT == idHeight) : query.Where(_ => false);
             }
 
             if (!string.IsNullOrEmpty(hash))
@@ -164,8 +183,8 @@ public static class GetBlocks
             if (!string.IsNullOrEmpty(hash_partial))
                 query = query.Where(x => x.HASH.Contains(hash_partial));
 
-            if (!string.IsNullOrEmpty(height))
-                query = query.Where(x => x.HEIGHT == height);
+            if (parsedHeightFilter.HasValue)
+                query = query.Where(x => x.HEIGHT == parsedHeightFilter.Value);
 
             if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
@@ -187,7 +206,7 @@ public static class GetBlocks
                 {
                     ApiBlock = new Block
                     {
-                        height = x.HEIGHT,
+                        height = x.HEIGHT.ToString(CultureInfo.InvariantCulture),
                         hash = x.HASH,
                         previous_hash = x.PREVIOUS_HASH,
                         protocol = x.PROTOCOL,
@@ -203,7 +222,7 @@ public static class GetBlocks
                             {
                                 hash = t.HASH,
                                 block_hash = x.HASH,
-                                block_height = x.HEIGHT,
+                                block_height = x.HEIGHT.ToString(CultureInfo.InvariantCulture),
                                 chain = x.Chain.NAME.ToLower(),
                                 index = t.INDEX,
                                 date = t.TIMESTAMP_UNIX_SECONDS.ToString(),

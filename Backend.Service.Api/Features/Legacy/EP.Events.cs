@@ -135,6 +135,16 @@ public static class GetEvents
             var cursorToken = CursorPagination.ParseCursor(cursor);
             var sortDirection = CursorPagination.ParseSortDirection(order_direction);
             var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+            long? parsedBlockHeightFilter = null;
+
+            if (!string.IsNullOrEmpty(block_height))
+            {
+                if (!long.TryParse(block_height, NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var blockHeightValue))
+                    throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
+
+                parsedBlockHeightFilter = blockHeightValue;
+            }
 
             var orderDefinitions =
                 new Dictionary<string, CursorOrderDefinition<EventPageItem>>(StringComparer.OrdinalIgnoreCase)
@@ -279,7 +289,10 @@ public static class GetEvents
                 }
                 else if (isNumber)
                 {
-                    query = query.Where(x => x.Transaction.Block.HEIGHT == qTrimmed);
+                    if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var qHeight))
+                        throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
+                    query = query.Where(x => x.Transaction.Block.HEIGHT == qHeight);
                 }
                 else if (isHexPartial)
                 {
@@ -410,8 +423,8 @@ public static class GetEvents
             if (!string.IsNullOrEmpty(block_hash))
                 query = query.Where(x => x.Transaction.Block.HASH == block_hash);
 
-            if (!string.IsNullOrEmpty(block_height))
-                query = query.Where(x => x.Transaction.Block.HEIGHT == block_height);
+            if (parsedBlockHeightFilter.HasValue)
+                query = query.Where(x => x.Transaction.Block.HEIGHT == parsedBlockHeightFilter.Value);
 
             if (!string.IsNullOrEmpty(transaction_hash))
                 query = query.Where(x => x.Transaction.HASH == transaction_hash);

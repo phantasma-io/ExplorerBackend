@@ -4,6 +4,7 @@ using System.Text.Json;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Database.Main.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    partial class MainDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260225141333_Update32_AddEventKindIdIdIndex")]
+    partial class Update32_AddEventKindIdIdIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -195,8 +198,8 @@ namespace Database.Main.Migrations
                     b.Property<string>("HASH")
                         .HasColumnType("text");
 
-                    b.Property<long>("HEIGHT")
-                        .HasColumnType("bigint");
+                    b.Property<string>("HEIGHT")
+                        .HasColumnType("text");
 
                     b.Property<string>("PREVIOUS_HASH")
                         .HasColumnType("text");
@@ -267,8 +270,8 @@ namespace Database.Main.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
 
-                    b.Property<long>("CURRENT_HEIGHT")
-                        .HasColumnType("bigint");
+                    b.Property<string>("CURRENT_HEIGHT")
+                        .HasColumnType("text");
 
                     b.Property<string>("NAME")
                         .HasColumnType("text");
