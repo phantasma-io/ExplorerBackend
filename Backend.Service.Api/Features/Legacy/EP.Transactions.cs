@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -39,7 +40,7 @@ public static class GetTransactions
         public string Hash { get; init; } = string.Empty;
         public int Index { get; init; }
         public long TimestampUnixSeconds { get; init; }
-        public EventPayloadMapper.TransactionProjection Projection { get; init; }
+        public required EventPayloadMapper.TransactionProjection Projection { get; init; }
     }
 
     [ProducesResponseType(typeof(TransactionResult), (int)HttpStatusCode.OK)]
@@ -70,9 +71,9 @@ public static class GetTransactions
     // ReSharper enable InconsistentNaming
     )
     {
-        Transaction[] transactions = null;
-        string previousHash = null;
-        string nextHash = null;
+        Transaction[] transactions = Array.Empty<Transaction>();
+        string? previousHash = null;
+        string? nextHash = null;
         string? nextCursor = null;
         var hashUpper = string.IsNullOrEmpty(hash) ? string.Empty : hash.ToUpper();
         var hashPartialUpper = string.IsNullOrEmpty(hash_partial) ? string.Empty : hash_partial.ToUpper();
@@ -396,7 +397,7 @@ public static class GetTransactions
             });
 
             EventPayloadMapper.TransactionProjection[] transactionProjections;
-            string queryString;
+            string queryString = string.Empty;
 
             var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
                 x => x.Id);

@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -21,8 +22,8 @@ public static class GetSeries
         public long CreatedUnixSeconds { get; init; }
         public string SeriesId { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
-        public Series ApiSeries { get; init; }
-        public JsonDocument Metadata { get; init; }
+        public required Series ApiSeries { get; init; }
+        public JsonDocument? Metadata { get; init; }
     }
 
     [ProducesResponseType(typeof(SeriesResult), (int)HttpStatusCode.OK)]

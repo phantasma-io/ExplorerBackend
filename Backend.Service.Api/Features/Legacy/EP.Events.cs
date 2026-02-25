@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -20,7 +21,7 @@ public static class GetEvents
         public int Id { get; init; }
         public long TimestampUnixSeconds { get; init; }
         public string TokenId { get; init; } = string.Empty;
-        public EventPayloadMapper.EventProjection Projection { get; init; }
+        public required EventPayloadMapper.EventProjection Projection { get; init; }
     }
 
     [ProducesResponseType(typeof(EventsResult), (int)HttpStatusCode.OK)]

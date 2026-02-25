@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -27,9 +28,9 @@ public static class GetNfts
     {
         public int Id { get; init; }
         public long MintDate { get; init; }
-        public Nft ApiNft { get; init; }
-        public JsonDocument NftMetadata { get; init; }
-        public JsonDocument SeriesMetadata { get; init; }
+        public required Nft ApiNft { get; init; }
+        public JsonDocument? NftMetadata { get; init; }
+        public JsonDocument? SeriesMetadata { get; init; }
     }
 
     [ProducesResponseType(typeof(NftsResult), (int)HttpStatusCode.OK)]

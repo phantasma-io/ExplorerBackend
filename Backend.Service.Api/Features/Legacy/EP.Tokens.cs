@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -19,7 +20,7 @@ public static class GetTokens
     {
         public int Id { get; init; }
         public string Symbol { get; init; } = string.Empty;
-        public Token ApiToken { get; init; }
+        public required Token ApiToken { get; init; }
     }
 
     [ProducesResponseType(typeof(TokenResult), (int)HttpStatusCode.OK)]

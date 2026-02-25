@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -22,7 +23,7 @@ public static class GetAddresses
         public string AddressName { get; init; } = string.Empty;
         public int BalanceMissingScore { get; init; }
         public BigInteger BalanceRaw { get; init; }
-        public Address ApiAddress { get; init; }
+        public required Address ApiAddress { get; init; }
     }
 
     [ProducesResponseType(typeof(AddressResult), (int)HttpStatusCode.OK)]

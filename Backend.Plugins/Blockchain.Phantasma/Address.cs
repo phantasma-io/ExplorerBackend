@@ -222,7 +222,7 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
                 }
 
                 //do not process everything here, let the sync to that later, we just call it to make sure
-                string? name = "anonymous";
+                string name = "anonymous";
                 if (response.RootElement.TryGetProperty("name", out JsonElement jsonName))
                 {
                     name = jsonName.GetString();

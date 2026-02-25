@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -19,7 +20,7 @@ public static class GetContracts
         public int Id { get; init; }
         public string Symbol { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
-        public Contract ApiContract { get; init; }
+        public required Contract ApiContract { get; init; }
     }
 
     [ProducesResponseType(typeof(ContractResult), (int)HttpStatusCode.OK)]

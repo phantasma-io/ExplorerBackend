@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -19,7 +20,7 @@ public static class GetOrganizations
         public int Id { get; init; }
         public string OrganizationId { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
-        public Organization ApiOrganization { get; init; }
+        public required Organization ApiOrganization { get; init; }
     }
 
     [ProducesResponseType(typeof(OrganizationResult), (int)HttpStatusCode.OK)]

@@ -71,22 +71,21 @@ public class JsonTests
 
         if (node.RootElement.TryGetProperty("txs", out var txsProperty))
         {
-            var txs = txsProperty.EnumerateArray();
-            for (var txIndex = 0; txIndex < txs.Count(); txIndex++)
+            var addressResolved = false;
+            foreach (var tx in txsProperty.EnumerateArray())
             {
-                var tx = txs.ElementAt(txIndex);
-
-                var events = new JsonElement.ArrayEnumerator();
-                if (tx.TryGetProperty("events", out var eventsProperty)) events = eventsProperty.EnumerateArray();
-
-                for (var eventIndex = 0; eventIndex < events.Count(); eventIndex++)
+                if (tx.TryGetProperty("events", out var eventsProperty))
                 {
-                    var eventNode = events.ElementAt(eventIndex);
-                    address = eventNode.GetProperty("address").GetString();
-                    break;
+                    foreach (var eventNode in eventsProperty.EnumerateArray())
+                    {
+                        address = eventNode.GetProperty("address").GetString();
+                        addressResolved = true;
+                        break;
+                    }
                 }
 
-                break;
+                if (addressResolved)
+                    break;
             }
         }
 

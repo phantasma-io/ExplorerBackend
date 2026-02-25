@@ -134,8 +134,8 @@ public static class ContractMethods
             cmd.Parameters.Add(string.Format("@hash{0}", i), NpgsqlDbType.Text).Value = chunk.ElementAt(i).hash;
 
             // Others
-            cmd.Parameters.Add(string.Format("@name{0}", i), NpgsqlDbType.Text).Value = (object?)chunk.ElementAt(i).name ?? DBNull.Value;
-            cmd.Parameters.Add(string.Format("@symbol{0}", i), NpgsqlDbType.Text).Value = (object?)chunk.ElementAt(i).symbol ?? DBNull.Value;
+            cmd.Parameters.Add(string.Format("@name{0}", i), NpgsqlDbType.Text).Value = (object)chunk.ElementAt(i).name ?? DBNull.Value;
+            cmd.Parameters.Add(string.Format("@symbol{0}", i), NpgsqlDbType.Text).Value = (object)chunk.ElementAt(i).symbol ?? DBNull.Value;
         }
         cmd.Parameters.Add("@dm", NpgsqlDbType.Bigint).Value = UnixSeconds.Now();
 

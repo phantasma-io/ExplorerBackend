@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,7 +17,7 @@ public static class GetBlocks
 {
     private sealed class BlockProjection
     {
-        public Block ApiBlock { get; init; }
+        public required Block ApiBlock { get; init; }
         public EventPayloadMapper.TransactionProjection[] TransactionProjections { get; init; } =
             Array.Empty<EventPayloadMapper.TransactionProjection>();
     }
@@ -25,7 +26,7 @@ public static class GetBlocks
     {
         public int Id { get; init; }
         public string Hash { get; init; } = string.Empty;
-        public BlockProjection Projection { get; init; }
+        public required BlockProjection Projection { get; init; }
     }
 
     [ProducesResponseType(typeof(BlockResult), (int)HttpStatusCode.OK)]
