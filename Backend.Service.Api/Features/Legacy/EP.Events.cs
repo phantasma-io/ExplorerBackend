@@ -187,7 +187,7 @@ public static class GetEvents
 
             Dictionary<string, int[]>? eventKindIds = null;
 
-            if (!string.IsNullOrEmpty(qTrimmed) || !string.IsNullOrEmpty(event_kind))
+            if (!string.IsNullOrEmpty(event_kind))
                 eventKindIds = await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
 
             // Getting exchange rates in advance.
@@ -195,40 +195,136 @@ public static class GetEvents
 
             #region Filtering
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
-            var detectedEventKind = string.Empty;
-            int[]? detectedEventKindIds = null;
 
-            if (!string.IsNullOrEmpty(qTrimmed))
-            {
-                eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
-
-                detectedEventKind = eventKindIds.Keys.FirstOrDefault(x =>
-                                          string.Equals(x, qTrimmed, StringComparison.OrdinalIgnoreCase)) ??
-                                      string.Empty;
-
-                if (!string.IsNullOrEmpty(detectedEventKind))
-                    detectedEventKindIds = eventKindIds[detectedEventKind];
-            }
-
-            if (detectedEventKindIds is { Length: > 0 })
-                query = query.Where(x => detectedEventKindIds.Contains(x.EventKindId));
-
-            if (string.IsNullOrEmpty(detectedEventKind) && !string.IsNullOrEmpty(qUpper))
+            if (!string.IsNullOrEmpty(qUpper))
             {
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
                 var isFullHash = isHex && qUpper.Length >= 64;
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
                 var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
-                var isHexPartial = isHex && !isFullHash;
-                var matchEventKind = qTrimmed.Length >= 3;
+                // Keep short alphabetic queries (for example, event kind fragments) on the text path,
+                // and treat sufficiently long hex-like values as hash fragments.
+                var isHexPartial = isHex && !isFullHash && qUpper.Length >= 8;
+                var isTextSearch = qTrimmed.Length >= 3;
 
-                query = query.Where(x =>
-                    (matchEventKind && EF.Functions.ILike(x.EventKind.NAME, $"%{qTrimmed}%")) ||
-                    (isFullHash && (x.Transaction.HASH == qUpper || x.Transaction.Block.HASH == qUpper)) ||
-                    (isHexPartial && (x.Transaction.HASH.Contains(qUpper) || x.Transaction.Block.HASH.Contains(qUpper))) ||
-                    (isNumber && x.Transaction.Block.HEIGHT == qTrimmed) ||
-                    (isAddress && (x.Address.ADDRESS == qTrimmed ||
-                                     (x.TargetAddress != null && x.TargetAddress.ADDRESS == qTrimmed))));
+                // Use a single query strategy per input shape. This avoids the heavy OR predicate
+                // that mixes unrelated joins and prevents stable index usage on large event datasets.
+                if (isFullHash)
+                {
+                    var matchingTransactionIdsByHash = await databaseContext.Transactions
+                        .AsNoTracking()
+                        .Where(x => x.HASH == qUpper)
+                        .Select(x => x.ID)
+                        .ToArrayAsync();
+
+                    var matchingBlockIds = await databaseContext.Blocks
+                        .AsNoTracking()
+                        .Where(x => x.HASH == qUpper)
+                        .Select(x => x.ID)
+                        .ToArrayAsync();
+
+                    var matchingTransactionIdsByBlockHash = matchingBlockIds.Length == 0
+                        ? Array.Empty<int>()
+                        : await databaseContext.Transactions
+                            .AsNoTracking()
+                            .Where(x => matchingBlockIds.Contains(x.BlockId))
+                            .Select(x => x.ID)
+                            .ToArrayAsync();
+
+                    var matchingTransactionIds = matchingTransactionIdsByHash
+                        .Concat(matchingTransactionIdsByBlockHash)
+                        .Distinct()
+                        .ToArray();
+
+                    if (matchingTransactionIds.Length == 0)
+                    {
+                        return new EventsResult
+                        {
+                            total_results = null,
+                            events = Array.Empty<Event>(),
+                            next_cursor = null
+                        };
+                    }
+
+                    query = query.Where(x => matchingTransactionIds.Contains(x.TransactionId));
+                }
+                else if (isAddress)
+                {
+                    var resolvedAddressIdsQuery = databaseContext.Addresses
+                        .AsNoTracking()
+                        .Where(a => a.ADDRESS == qTrimmed);
+
+                    if (chainId.HasValue)
+                        resolvedAddressIdsQuery = resolvedAddressIdsQuery.Where(a => a.ChainId == chainId.Value);
+
+                    var resolvedAddressIds = await resolvedAddressIdsQuery
+                        .Select(a => a.ID)
+                        .ToArrayAsync();
+
+                    if (resolvedAddressIds.Length == 0)
+                    {
+                        return new EventsResult
+                        {
+                            total_results = null,
+                            events = Array.Empty<Event>(),
+                            next_cursor = null
+                        };
+                    }
+
+                    query = resolvedAddressIds.Length == 1
+                        ? query.Where(x => x.AddressId == resolvedAddressIds[0] || x.TargetAddressId == resolvedAddressIds[0])
+                        : query.Where(x =>
+                            resolvedAddressIds.Contains(x.AddressId) ||
+                            (x.TargetAddressId.HasValue && resolvedAddressIds.Contains(x.TargetAddressId.Value)));
+                }
+                else if (isNumber)
+                {
+                    query = query.Where(x => x.Transaction.Block.HEIGHT == qTrimmed);
+                }
+                else if (isHexPartial)
+                {
+                    query = query.Where(x =>
+                        x.Transaction.HASH.Contains(qUpper) ||
+                        x.Transaction.Block.HASH.Contains(qUpper));
+                }
+                else if (isTextSearch)
+                {
+                    eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
+
+                    if (eventKindIds.TryGetValue(qTrimmed, out var exactEventKindIds) && exactEventKindIds.Length > 0)
+                    {
+                        query = query.Where(x => exactEventKindIds.Contains(x.EventKindId));
+                    }
+                    else
+                    {
+                        var partialEventKindIds = eventKindIds
+                            .Where(x => x.Key.Contains(qTrimmed, StringComparison.OrdinalIgnoreCase))
+                            .SelectMany(x => x.Value)
+                            .Distinct()
+                            .ToArray();
+
+                        if (partialEventKindIds.Length == 0)
+                        {
+                            return new EventsResult
+                            {
+                                total_results = null,
+                                events = Array.Empty<Event>(),
+                                next_cursor = null
+                            };
+                        }
+
+                        query = query.Where(x => partialEventKindIds.Contains(x.EventKindId));
+                    }
+                }
+                else
+                {
+                    return new EventsResult
+                    {
+                        total_results = null,
+                        events = Array.Empty<Event>(),
+                        next_cursor = null
+                    };
+                }
             }
 
             if (with_nsfw == 0)
