@@ -436,7 +436,8 @@ WHERE ""NftId"" = {duplicateNftId}
         {
             // Series IDs can exceed Int64 (21+ digits on some chains). We store them as strings.
             nft.Series = SeriesMethods.Upsert(databaseContext, nft.ContractId, seriesId);
-            nft.SeriesId = nft.Series?.ID;
+            if (nft.Series?.ID > 0)
+                nft.SeriesId = nft.Series.ID;
         }
 
         if (responseRoot.TryGetProperty("mint", out var mintNode))

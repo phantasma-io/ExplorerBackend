@@ -15,7 +15,7 @@ public static class TransactionMethods
         string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
         byte? carbonTxType = null, string carbonTxData = null,
         Address senderAddress = null, Address gasPayerAddress = null, Address gasTargetAddress = null,
-        bool skipAddressTransactionExistsCheck = false)
+        bool skipAddressTransactionExistsCheck = false, bool createAddressTransactionLinks = true)
     {
         const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas
 
@@ -64,17 +64,20 @@ public static class TransactionMethods
 
         await databaseContext.Transactions.AddAsync(entry);
 
-        await AddressTransactionMethods.UpsertAsync(databaseContext, senderAddress, entry,
-            !skipAddressTransactionExistsCheck);
-        if (gasPayerAddress.ADDRESS != senderAddress.ADDRESS)
+        if (createAddressTransactionLinks)
         {
-            await AddressTransactionMethods.UpsertAsync(databaseContext, gasPayerAddress, entry,
+            await AddressTransactionMethods.UpsertAsync(databaseContext, senderAddress, entry,
                 !skipAddressTransactionExistsCheck);
-        }
-        if (gasTargetAddress.ADDRESS != gasPayerAddress.ADDRESS)
-        {
-            await AddressTransactionMethods.UpsertAsync(databaseContext, gasTargetAddress, entry,
-                !skipAddressTransactionExistsCheck);
+            if (gasPayerAddress.ADDRESS != senderAddress.ADDRESS)
+            {
+                await AddressTransactionMethods.UpsertAsync(databaseContext, gasPayerAddress, entry,
+                    !skipAddressTransactionExistsCheck);
+            }
+            if (gasTargetAddress.ADDRESS != gasPayerAddress.ADDRESS)
+            {
+                await AddressTransactionMethods.UpsertAsync(databaseContext, gasTargetAddress, entry,
+                    !skipAddressTransactionExistsCheck);
+            }
         }
 
         return entry;

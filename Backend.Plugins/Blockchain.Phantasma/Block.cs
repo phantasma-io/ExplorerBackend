@@ -12,6 +12,7 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using PhantasmaPhoenix.Cryptography;
 using PhantasmaPhoenix.Protocol;
@@ -561,15 +562,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Dictionary<string, Nft> nftsInThisBlock = new();
         Dictionary<string, bool> symbolsFungibility = new();
         var addressesInThisBlock = new Dictionary<string, Database.Main.Address>(StringComparer.Ordinal);
+        var transactionsInThisBlock = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
+        var addressTransactionLinks = new HashSet<(string Address, string TxHash)>();
 
         // TODO Hack until explorer can process events properly
         List<string> addressesToUpdate = new();
 
         await using MainDbContext databaseContext = new();
-
-        var connectionString = MainDbContext.GetConnectionString();
-        using var dbConnection = new NpgsqlConnection(connectionString);
-        dbConnection.Open();
+        // Block processing must stay atomic: either all writes for this block are committed,
+        // or all of them are rolled back. This transaction is the single commit boundary.
+        await using var blockTransaction = await databaseContext.Database.BeginTransactionAsync();
+        var dbConnection = (NpgsqlConnection)databaseContext.Database.GetDbConnection();
+        if (dbConnection.State != System.Data.ConnectionState.Open)
+            await dbConnection.OpenAsync();
+        var dbTransaction = (NpgsqlTransaction)blockTransaction.GetDbTransaction();
 
         AddAddress(ref addressesToUpdate, block.ChainAddress);
         AddAddress(ref addressesToUpdate, block.ValidatorAddress);
@@ -588,6 +594,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var resolvedAddress = await AddressMethods.UpsertAsync(databaseContext, chainEntry, normalizedAddress);
             addressesInThisBlock[normalizedAddress] = resolvedAddress;
             return resolvedAddress;
+        }
+
+        void QueueAddressTransactionLink(Database.Main.Address? addressEntry,
+            Database.Main.Transaction? transactionEntry)
+        {
+            if (addressEntry == null || transactionEntry == null)
+                return;
+
+            var normalizedAddress = NormalizeAddress(addressEntry.ADDRESS);
+            if (normalizedAddress.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            AddressTransactionMethods.UpdateFirstTxUnixSeconds(addressEntry, transactionEntry.TIMESTAMP_UNIX_SECONDS);
+            addressTransactionLinks.Add((normalizedAddress, transactionEntry.HASH));
         }
 
         // Block in main database
@@ -614,7 +634,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             // Log.Verbose("[{Name}][Blocks] Contracts in block: " + string.Join(",", contractHashes));
 
             var contracts = ContractMethods.BatchUpsert(dbConnection,
-                contractHashes.Select(c => (c, chainId, c, c)).ToList());
+                contractHashes.Select(c => (c, chainId, c, c)).ToList(),
+                dbTransaction: dbTransaction);
 
             for (var txIndex = 0; txIndex < block.Txs.Length; txIndex++)
             {
@@ -637,7 +658,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     tx.GasPayer, tx.GasTarget,
                     tx.CarbonTxType, tx.CarbonTxData,
                     senderAddress, gasPayerAddress, gasTargetAddress,
-                    skipAddressTransactionExistsCheck: true);
+                    skipAddressTransactionExistsCheck: true,
+                    createAddressTransactionLinks: false);
+
+                transactionsInThisBlock[tx.Hash] = transaction;
+                QueueAddressTransactionLink(senderAddress, transaction);
+                QueueAddressTransactionLink(gasPayerAddress, transaction);
+                QueueAddressTransactionLink(gasTargetAddress, transaction);
 
                 TokenSchemas? carbonSchemasForTx = null;
                 SeriesInfo? carbonSeriesInfo = null;
@@ -827,7 +854,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                         eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
                             block.Timestamp, eventIndex + 1, chainEntry, transaction, contractId,
-                            eventKindId, addressEntry, skipAddressTransactionExistsCheck: true);
+                            eventKindId, addressEntry, skipAddressTransactionExistsCheck: true,
+                            createAddressTransactionLink: false);
+
+                        QueueAddressTransactionLink(addressEntry, transaction);
 
                         if (eventAdded) eventsAddedCount++;
 
@@ -963,7 +993,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                     contracts.GetId(chainId, tokenEventData.Symbol), mintData.SeriesId,
                                                     seriesCreatedUnixSeconds: block.Timestamp);
                                                 nft.Series = seriesEntry;
-                                                nft.SeriesId = seriesEntry.ID;
+                                                if (seriesEntry.ID > 0)
+                                                    nft.SeriesId = seriesEntry.ID;
                                             }
 
                                             payload["token_mint_extended"] = new Dictionary<string, object?>
@@ -1516,6 +1547,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             Log.Information("[{Name}][Blocks] Cannot print eventNode data: {Exception}", Name,
                                 e2.Message);
                         }
+
+                        // Preserve legacy compatibility: skip a single malformed event
+                        // and continue processing remaining events in the block.
                     }
                     finally
                     {
@@ -1528,6 +1562,26 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
+        // Persist core entities first to obtain stable IDs for set-based link inserts.
+        await databaseContext.SaveChangesAsync();
+
+        if (addressTransactionLinks.Count > 0)
+        {
+            var linkRows = new List<(int AddressId, int TransactionId)>(addressTransactionLinks.Count);
+            foreach (var (addressValue, txHash) in addressTransactionLinks)
+            {
+                if (!addressesInThisBlock.TryGetValue(addressValue, out var addressEntry) || addressEntry.ID <= 0)
+                    continue;
+
+                if (!transactionsInThisBlock.TryGetValue(txHash, out var transactionEntry) || transactionEntry.ID <= 0)
+                    continue;
+
+                linkRows.Add((addressEntry.ID, transactionEntry.ID));
+            }
+
+            await AddressTransactionMethods.InsertBatchAsync(dbConnection, dbTransaction, linkRows);
+        }
+
         Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to mark dirty", Name, block.Height,
             addressesToUpdate.Count);
 
@@ -1536,6 +1590,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.Height, false);
 
         await databaseContext.SaveChangesAsync();
+        await blockTransaction.CommitAsync();
         saveTailStopwatch.Stop();
         saveTailDurationMs = saveTailStopwatch.ElapsedMilliseconds;
 

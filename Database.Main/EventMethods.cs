@@ -53,7 +53,8 @@ public static class EventMethods
         int contractId,
         int eventKindId,
         Address address,
-        bool skipAddressTransactionExistsCheck = false)
+        bool skipAddressTransactionExistsCheck = false,
+        bool createAddressTransactionLink = true)
     {
         newEventCreated = false;
 
@@ -74,8 +75,11 @@ public static class EventMethods
 
         newEventCreated = true;
 
-        AddressTransactionMethods.UpsertAsync(databaseContext, address, transaction, !skipAddressTransactionExistsCheck)
-            .GetAwaiter().GetResult();
+        if (createAddressTransactionLink)
+        {
+            AddressTransactionMethods.UpsertAsync(databaseContext, address, transaction, !skipAddressTransactionExistsCheck)
+                .GetAwaiter().GetResult();
+        }
 
         return eventEntry;
     }

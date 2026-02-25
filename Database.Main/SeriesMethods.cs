@@ -19,9 +19,9 @@ public static class SeriesMethods
         if (series == null)
         {
             series = new Series { ContractId = contractId, SERIES_ID = seriesId };
-
+            // Do not flush here: block ingest controls transaction boundaries and
+            // persists the full block atomically with a single commit point.
             databaseContext.Serieses.Add(series);
-            databaseContext.SaveChanges();
         }
 
         if (creatorAddressId != null) series.CreatorAddressId = (int)creatorAddressId;
