@@ -100,6 +100,10 @@ public static class EventKindMethodsExtensions
 {
     public static int GetId(this Dictionary<EventKindMethods.ChainEventKindKey, int> eventKinds, int chainId, PhantasmaPhoenix.Protocol.EventKind kind)
     {
-        return eventKinds.Where(x => x.Key.ChainId == chainId && x.Key.Kind == kind).Select(x => x.Value).First();
+        var key = new EventKindMethods.ChainEventKindKey(chainId, kind);
+        if (eventKinds.TryGetValue(key, out var id))
+            return id;
+
+        throw new KeyNotFoundException($"Event kind id not found for chain={chainId}, kind={kind}");
     }
 }

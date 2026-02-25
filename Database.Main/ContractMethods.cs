@@ -167,7 +167,9 @@ public static class ContractMethods
         foreach (var chunk in chunks)
         {
             var chunkRes = ChunkUpsert(dbConnection, chunk.ToList(), dbTransaction);
-            result = result.Union(chunkRes).ToDictionary(k => k.Key, v => v.Value);
+            // Merge chunk results in-place to avoid per-chunk dictionary reallocation.
+            foreach (var entry in chunkRes)
+                result[entry.Key] = entry.Value;
         }
 
         return result;
@@ -178,6 +180,10 @@ public static class ContractMethodsExtensions
 {
     public static int GetId(this Dictionary<ContractMethods.ChainHashKey, int> contracts, int chainId, string hash)
     {
-        return contracts.Where(x => x.Key.ChainId == chainId && x.Key.Hash == hash).Select(x => x.Value).First();
+        var key = new ContractMethods.ChainHashKey(chainId, hash);
+        if (contracts.TryGetValue(key, out var id))
+            return id;
+
+        throw new KeyNotFoundException($"Contract id not found for chain={chainId}, hash={hash}");
     }
 }

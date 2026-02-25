@@ -758,7 +758,33 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 txIngestDurationMs += txIngestStopwatch.ElapsedMilliseconds;
 
                 var eventIngestStopwatch = Stopwatch.StartNew();
-                var eventNodes = tx.Events?.ToList() ?? new List<EventResult>();
+                IReadOnlyList<EventResult> eventNodes = tx.Events ?? Array.Empty<EventResult>();
+
+                // Most transactions already have their final event array from RPC.
+                // Create a mutable copy only when we need to append synthetic events.
+                List<EventResult> EnsureMutableEventList()
+                {
+                    if (eventNodes is List<EventResult> existingList)
+                        return existingList;
+
+                    var mutableNodes = new List<EventResult>(eventNodes.Count + 2);
+                    for (var index = 0; index < eventNodes.Count; index++)
+                        mutableNodes.Add(eventNodes[index]);
+
+                    eventNodes = mutableNodes;
+                    return mutableNodes;
+                }
+
+                static bool ContainsEventKind(IReadOnlyList<EventResult> nodes, string expectedKind)
+                {
+                    for (var index = 0; index < nodes.Count; index++)
+                    {
+                        if (string.Equals(nodes[index].Kind, expectedKind, StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+
+                    return false;
+                }
 
                 // Synthesize TokenSeriesCreate event from extended data (RPC does not emit legacy event).
                 var seriesCreateDataTx = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
@@ -768,16 +794,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 if (tx.ExtendedEvents is { Length: > 0 })
                     specialResolutionDataTx = ExtendedEventParser.GetSpecialResolutionData(tx.ExtendedEvents);
 
+                var specialResolutionKindName = EventKind.SpecialResolution.ToString();
                 if (specialResolutionDataTx != null &&
-                     !eventNodes.Any(e =>
-                         string.Equals(e.Kind, EventKind.SpecialResolution.ToString(), StringComparison.OrdinalIgnoreCase)))
+                     !ContainsEventKind(eventNodes, specialResolutionKindName))
                 {
                     var specialResolutionData = specialResolutionDataTx.Value;
-                    eventNodes.Add(new EventResult
+                    EnsureMutableEventList().Add(new EventResult
                     {
                         Address = tx.GasPayer,
                         Contract = "governance",
-                        Kind = EventKind.SpecialResolution.ToString(),
+                        Kind = specialResolutionKindName,
                         Data = Convert.ToHexString(BitConverter.GetBytes(specialResolutionData.ResolutionId))
                     });
 
@@ -799,7 +825,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         throw new Exception("TokenSeriesCreate extended event missing symbol");
                     }
 
-                    eventNodes.Add(new EventResult
+                    EnsureMutableEventList().Add(new EventResult
                     {
                         Address = seriesCreateDataTx.Value.Owner,
                         Contract = seriesCreateDataTx.Value.Symbol,
