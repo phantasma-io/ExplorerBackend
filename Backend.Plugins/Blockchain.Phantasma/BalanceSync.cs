@@ -305,8 +305,23 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         if (stakersOrg == null && mastersOrg == null)
             return;
 
+        var scopedAddressIds = addresses
+            .Where(x => x != null && x.ID > 0)
+            .Select(x => x.ID)
+            .Distinct()
+            .ToList();
+
+        if (scopedAddressIds.Count == 0)
+            return;
+
+        var stakerIds = new HashSet<int>();
+        var masterIds = new HashSet<int>();
+
         foreach (var address in addresses)
         {
+            if (address == null || address.ID <= 0)
+                continue;
+
             var stakedAmount = BigInteger.Zero;
             if (!string.IsNullOrWhiteSpace(address.STAKED_AMOUNT_RAW))
                 BigInteger.TryParse(address.STAKED_AMOUNT_RAW, out stakedAmount);
@@ -314,11 +329,19 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var isStaker = stakedAmount > 0;
             var isMaster = stakedAmount >= MasterStakeThreshold;
 
-            if (stakersOrg != null)
-                OrganizationAddressMethods.SetMembership(databaseContext, stakersOrg, address, isStaker);
+            if (isStaker)
+                stakerIds.Add(address.ID);
 
-            if (mastersOrg != null)
-                OrganizationAddressMethods.SetMembership(databaseContext, mastersOrg, address, isMaster);
+            if (isMaster)
+                masterIds.Add(address.ID);
         }
+
+        if (stakersOrg != null)
+            OrganizationAddressMethods.ReconcileMemberships(databaseContext, stakersOrg.ID, scopedAddressIds,
+                stakerIds);
+
+        if (mastersOrg != null)
+            OrganizationAddressMethods.ReconcileMemberships(databaseContext, mastersOrg.ID, scopedAddressIds,
+                masterIds);
     }
 }

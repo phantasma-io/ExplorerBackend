@@ -13,44 +13,75 @@ public static class AddressBalanceMethods
     public static async Task InsertOrUpdateList(MainDbContext databaseContext, Address address,
         List<Tuple<string, string, string>> balances)
     {
-        var currentBalances = databaseContext.AddressBalances.Where(x => x.Address == address);
+        if (address == null)
+            return;
+
+        var chainId = address.ChainId != 0 ? address.ChainId : address.Chain?.ID ?? 0;
+        if (chainId == 0)
+            return;
+
+        var addressId = address.ID;
+        var currentBalances = addressId > 0
+            ? await databaseContext.AddressBalances
+                .Where(x => x.AddressId == addressId)
+                .ToListAsync()
+            : DbHelper.GetTracked<AddressBalance>(databaseContext)
+                .Where(x => x.Address == address)
+                .ToList();
+
+        var symbols = balances
+            .Select(x => x.Item2)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        // Resolve all tokens for this address chain in one query instead of per-balance point reads.
+        var tokensBySymbol = await databaseContext.Tokens
+            .Where(x => x.ChainId == chainId && symbols.Contains(x.SYMBOL))
+            .ToDictionaryAsync(x => x.SYMBOL, x => x, StringComparer.Ordinal);
+
+        var currentByTokenId = currentBalances
+            .GroupBy(x => x.TokenId)
+            .ToDictionary(x => x.Key, x => x.First());
 
         var balanceListToAdd = new List<AddressBalance>();
-        var balanceListAll = new List<AddressBalance>();
-        foreach (var (chainName, symbol, amount) in balances)
+        var keepTokenIds = new HashSet<int>();
+
+        foreach (var (_, symbol, amount) in balances)
         {
-            var token = await TokenMethods.GetAsync(databaseContext, address.Chain, symbol);
-            if (token == null) continue;
+            if (!tokensBySymbol.TryGetValue(symbol, out var token))
+                continue;
 
-            var entry = await databaseContext.AddressBalances.FirstOrDefaultAsync(x =>
-                x.Address == address && x.Token == token);
-
+            var amountRaw = BigInteger.TryParse(amount, out var parsedAmount) ? parsedAmount : BigInteger.Zero;
             var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
-            if (entry != null)
+
+            if (currentByTokenId.TryGetValue(token.ID, out var existingBalance))
             {
-                entry.AMOUNT = amountConverted;
-                entry.AMOUNT_RAW = BigInteger.TryParse(amount, out var result) ? result : BigInteger.Zero;
+                existingBalance.AMOUNT = amountConverted;
+                existingBalance.AMOUNT_RAW = amountRaw;
             }
             else
             {
-                entry = new AddressBalance
+                var newBalance = new AddressBalance
                 {
                     Token = token,
                     Address = address,
                     AMOUNT = amountConverted,
-                    AMOUNT_RAW = BigInteger.TryParse(amount, out var result) ? result : BigInteger.Zero
+                    AMOUNT_RAW = amountRaw
                 };
-                balanceListToAdd.Add(entry);
+                balanceListToAdd.Add(newBalance);
+                currentByTokenId[token.ID] = newBalance;
             }
-            balanceListAll.Add(entry);
+
+            keepTokenIds.Add(token.ID);
         }
 
-        await databaseContext.AddressBalances.AddRangeAsync(balanceListToAdd);
+        if (balanceListToAdd.Count > 0)
+            await databaseContext.AddressBalances.AddRangeAsync(balanceListToAdd);
 
-        var removeList = currentBalances
-            .Where(tokenBalance => !balanceListAll.Select(x => x.TokenId).Contains(tokenBalance.TokenId))
-            .ToList();
+        var removeList = currentBalances.Where(x => !keepTokenIds.Contains(x.TokenId)).ToList();
 
-        if (removeList.Any()) databaseContext.AddressBalances.RemoveRange(removeList);
+        if (removeList.Count > 0)
+            databaseContext.AddressBalances.RemoveRange(removeList);
     }
 }

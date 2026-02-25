@@ -52,7 +52,8 @@ public static class EventMethods
         Transaction transaction,
         int contractId,
         int eventKindId,
-        Address address)
+        Address address,
+        bool skipAddressTransactionExistsCheck = false)
     {
         newEventCreated = false;
 
@@ -73,7 +74,8 @@ public static class EventMethods
 
         newEventCreated = true;
 
-        AddressTransactionMethods.UpsertAsync(databaseContext, address, transaction).Wait();
+        AddressTransactionMethods.UpsertAsync(databaseContext, address, transaction, !skipAddressTransactionExistsCheck)
+            .GetAwaiter().GetResult();
 
         return eventEntry;
     }

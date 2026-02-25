@@ -13,7 +13,9 @@ public static class TransactionMethods
     public static async Task<Transaction> UpsertAsync(MainDbContext databaseContext, Block block, int txIndex, string hash,
         ulong timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, ulong expiration,
         string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
-        byte? carbonTxType = null, string carbonTxData = null)
+        byte? carbonTxType = null, string carbonTxData = null,
+        Address senderAddress = null, Address gasPayerAddress = null, Address gasTargetAddress = null,
+        bool skipAddressTransactionExistsCheck = false)
     {
         const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas
 
@@ -25,9 +27,9 @@ public static class TransactionMethods
         if (entry != null) return entry;
 
         var transactionState = TransactionStateMethods.Upsert(databaseContext, state, false);
-        var senderAddress = await AddressMethods.UpsertAsync(databaseContext, block.Chain, sender);
-        var gasPayerAddress = await AddressMethods.UpsertAsync(databaseContext, block.Chain, gasPayer);
-        var gasTargetAddress = await AddressMethods.UpsertAsync(databaseContext, block.Chain, gasTarget);
+        senderAddress ??= await AddressMethods.UpsertAsync(databaseContext, block.Chain, sender);
+        gasPayerAddress ??= await AddressMethods.UpsertAsync(databaseContext, block.Chain, gasPayer);
+        gasTargetAddress ??= await AddressMethods.UpsertAsync(databaseContext, block.Chain, gasTarget);
 
         var kcalDecimals = TokenMethods.GetKcalDecimals(databaseContext, block.Chain);
 
@@ -62,14 +64,17 @@ public static class TransactionMethods
 
         await databaseContext.Transactions.AddAsync(entry);
 
-        await AddressTransactionMethods.UpsertAsync(databaseContext, senderAddress, entry);
+        await AddressTransactionMethods.UpsertAsync(databaseContext, senderAddress, entry,
+            !skipAddressTransactionExistsCheck);
         if (gasPayerAddress.ADDRESS != senderAddress.ADDRESS)
         {
-            await AddressTransactionMethods.UpsertAsync(databaseContext, gasPayerAddress, entry);
+            await AddressTransactionMethods.UpsertAsync(databaseContext, gasPayerAddress, entry,
+                !skipAddressTransactionExistsCheck);
         }
         if (gasTargetAddress.ADDRESS != gasPayerAddress.ADDRESS)
         {
-            await AddressTransactionMethods.UpsertAsync(databaseContext, gasTargetAddress, entry);
+            await AddressTransactionMethods.UpsertAsync(databaseContext, gasTargetAddress, entry,
+                !skipAddressTransactionExistsCheck);
         }
 
         return entry;

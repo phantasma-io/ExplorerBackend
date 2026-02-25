@@ -53,8 +53,17 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
 
         var processed = 0;
 
-        var addressesToUpdate = await databaseContext.Addresses.Where(x =>
-            x.Chain == chain && addresses.Contains(x.ADDRESS)).ToListAsync();
+        var chainId = chain.ID;
+        var normalizedAddresses = addresses
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var addressesToUpdate = await databaseContext.Addresses
+            .Where(x => x.ChainId == chainId && normalizedAddresses.Contains(x.ADDRESS))
+            .ToListAsync();
+        var addressesToUpdateByValue = addressesToUpdate
+            .ToDictionary(x => x.ADDRESS, x => x, StringComparer.Ordinal);
         Log.Verbose("[{Name}] got {Count} Addresses to check", Name, addressesToUpdate.Count);
 
         var soulDecimals = TokenMethods.GetSoulDecimals(databaseContext, chain);
@@ -103,12 +112,15 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
                 var accounts = response.RootElement.EnumerateArray().ToList();
                 foreach (var account in accounts)
                 {
-                    var address =
-                        addressesToUpdate.FirstOrDefault(x => x.ADDRESS == account.GetProperty("address").GetString());
-                    if (address == null) continue;
+                    var accountAddress = account.GetProperty("address").GetString();
+                    if (string.IsNullOrWhiteSpace(accountAddress))
+                        continue;
+
+                    if (!addressesToUpdateByValue.TryGetValue(accountAddress, out var address))
+                        continue;
 
                     var name = account.GetProperty("name").GetString();
-                    if (name.ToLowerInvariant() == "anonymous")
+                    if (string.Equals(name, "anonymous", StringComparison.OrdinalIgnoreCase))
                     {
                         name = null;
                     }

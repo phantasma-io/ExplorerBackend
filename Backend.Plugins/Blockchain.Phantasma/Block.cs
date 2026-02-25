@@ -1,6 +1,7 @@
 using System;
 #nullable enable
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -549,6 +550,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private async Task ProcessBlock(RpcBlockResult block, string chainName)
     {
         var startTime = DateTime.Now;
+        var txIngestDurationMs = 0L;
+        var eventIngestDurationMs = 0L;
+        var saveTailDurationMs = 0L;
 
         var eventsAddedCount = 0;
 
@@ -556,6 +560,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         // and avoid some unpleasant situations leading to bugs.
         Dictionary<string, Nft> nftsInThisBlock = new();
         Dictionary<string, bool> symbolsFungibility = new();
+        var addressesInThisBlock = new Dictionary<string, Database.Main.Address>(StringComparer.Ordinal);
 
         // TODO Hack until explorer can process events properly
         List<string> addressesToUpdate = new();
@@ -571,6 +576,19 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
         var chainId = chainEntry.ID;
+
+        // Address upserts are one of the hottest ingest paths.
+        // Keep a per-block cache so each normalized address is resolved once.
+        async Task<Database.Main.Address> ResolveAddressAsync(string rawAddress)
+        {
+            var normalizedAddress = NormalizeAddress(rawAddress);
+            if (addressesInThisBlock.TryGetValue(normalizedAddress, out var cachedAddress))
+                return cachedAddress;
+
+            var resolvedAddress = await AddressMethods.UpsertAsync(databaseContext, chainEntry, normalizedAddress);
+            addressesInThisBlock[normalizedAddress] = resolvedAddress;
+            return resolvedAddress;
+        }
 
         // Block in main database
         Log.Information("[{Name}][Blocks] Storing block #{BlockHeight} / {Hash}", Name, block.Height, block.Hash);
@@ -605,6 +623,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 AddAddress(ref addressesToUpdate, tx.GasPayer);
                 AddAddress(ref addressesToUpdate, tx.GasTarget);
 
+                var txIngestStopwatch = Stopwatch.StartNew();
+                var senderAddress = await ResolveAddressAsync(tx.Sender);
+                var gasPayerAddress = await ResolveAddressAsync(tx.GasPayer);
+                var gasTargetAddress = await ResolveAddressAsync(tx.GasTarget);
+
                 var transaction = await TransactionMethods.UpsertAsync(databaseContext, blockEntity, txIndex,
                     tx.Hash, tx.Timestamp,
                     tx.Payload, tx.Script, tx.Result,
@@ -612,7 +635,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     tx.GasPrice, tx.GasLimit,
                     tx.State.ToString(), tx.Sender,
                     tx.GasPayer, tx.GasTarget,
-                    tx.CarbonTxType, tx.CarbonTxData);
+                    tx.CarbonTxType, tx.CarbonTxData,
+                    senderAddress, gasPayerAddress, gasTargetAddress,
+                    skipAddressTransactionExistsCheck: true);
 
                 TokenSchemas? carbonSchemasForTx = null;
                 SeriesInfo? carbonSeriesInfo = null;
@@ -630,6 +655,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         {
                             Log.Warning("[{Name}][Metadata] Failed to decode carbon tx data for {TxHash}: invalid hex payload",
                                 Name, tx.Hash);
+                            txIngestStopwatch.Stop();
+                            txIngestDurationMs += txIngestStopwatch.ElapsedMilliseconds;
                             continue;
                         }
 
@@ -700,6 +727,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction);
                 }
 
+                txIngestStopwatch.Stop();
+                txIngestDurationMs += txIngestStopwatch.ElapsedMilliseconds;
+
+                var eventIngestStopwatch = Stopwatch.StartNew();
                 var eventNodes = tx.Events?.ToList() ?? new List<EventResult>();
 
                 // Synthesize TokenSeriesCreate event from extended data (RPC does not emit legacy event).
@@ -759,7 +790,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
 
                 if (eventNodes.Count == 0)
+                {
+                    eventIngestStopwatch.Stop();
+                    eventIngestDurationMs += eventIngestStopwatch.ElapsedMilliseconds;
                     continue;
+                }
 
                 for (var eventIndex = 0; eventIndex < eventNodes.Count; eventIndex++)
                 {
@@ -788,11 +823,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         //create here the event, and below update the data if needed
                         var contractId = contracts.GetId(chainId, contract);
 
-                        var addressEntry = await AddressMethods.UpsertAsync(databaseContext, chainEntry, addressString);
+                        var addressEntry = await ResolveAddressAsync(addressString);
 
                         eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
                             block.Timestamp, eventIndex + 1, chainEntry, transaction, contractId,
-                            eventKindId, addressEntry);
+                            eventKindId, addressEntry, skipAddressTransactionExistsCheck: true);
 
                         if (eventAdded) eventsAddedCount++;
 
@@ -1366,7 +1401,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     //databaseEvent we need it here, so check it
                                     if (eventEntry != null)
-                                        eventEntry.TargetAddress = await AddressMethods.UpsertAsync(databaseContext, chainEntry, address);
+                                        eventEntry.TargetAddress = await ResolveAddressAsync(address);
                                     payload["address_event"] = new Dictionary<string, object?>
                                     {
                                         ["address"] = address
@@ -1487,16 +1522,22 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         FinalizePayload(eventEntry, payload, eventNode.Data);
                     }
                 }
+
+                eventIngestStopwatch.Stop();
+                eventIngestDurationMs += eventIngestStopwatch.ElapsedMilliseconds;
             }
         }
 
         Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to mark dirty", Name, block.Height,
             addressesToUpdate.Count);
 
+        var saveTailStopwatch = Stopwatch.StartNew();
         MarkAddressesDirty(databaseContext, chainEntry, addressesToUpdate, (long)block.Height);
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.Height, false);
 
         await databaseContext.SaveChangesAsync();
+        saveTailStopwatch.Stop();
+        saveTailDurationMs = saveTailStopwatch.ElapsedMilliseconds;
 
         var processingTime = DateTime.Now - startTime;
         if (processingTime.TotalSeconds > 1) // Log only if processing of the block took > 1 second
@@ -1505,6 +1546,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 "[{Name}][Blocks] Block #{BlockHeight} processed in {ProcessingTime} sec, {EventsAddedCount} events, {NftsInThisBlock} NFTs",
                 Name, block.Height, Math.Round(processingTime.TotalSeconds, 3),
                 eventsAddedCount, nftsInThisBlock.Count);
+            Log.Information(
+                "[{Name}][Blocks] Block #{BlockHeight} phase timings: tx_ingest={TxIngestMs}ms, event_ingest={EventIngestMs}ms, save_tail={SaveTailMs}ms",
+                Name, block.Height, txIngestDurationMs, eventIngestDurationMs, saveTailDurationMs);
         }
 
     }

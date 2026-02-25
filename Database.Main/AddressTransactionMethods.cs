@@ -28,12 +28,16 @@ public static class AddressTransactionMethods
     }
 
     public static async Task UpsertAsync(MainDbContext databaseContext, Address address,
-        Transaction transaction)
+        Transaction transaction, bool checkDatabaseForExistingLink = true)
     {
         UpdateFirstTxUnixSeconds(databaseContext, address, transaction);
 
-        if (databaseContext.AddressTransactions
-            .Any(x => x.Address == address && x.Transaction == transaction))
+        var addressId = address.ID;
+        var transactionId = transaction.ID;
+
+        if (checkDatabaseForExistingLink && addressId > 0 && transactionId > 0 &&
+            await databaseContext.AddressTransactions
+                .AnyAsync(x => x.AddressId == addressId && x.TransactionId == transactionId))
         {
             return;
         }
@@ -41,7 +45,9 @@ public static class AddressTransactionMethods
         // Checking if entry has been added already
         // but not yet inserted into database.
         if (DbHelper.GetTracked<AddressTransaction>(databaseContext)
-            .Any(x => x.Address == address && x.Transaction == transaction))
+            .Any(x =>
+                (x.Address == address && x.Transaction == transaction) ||
+                (addressId > 0 && transactionId > 0 && x.AddressId == addressId && x.TransactionId == transactionId)))
         {
             return;
         }
