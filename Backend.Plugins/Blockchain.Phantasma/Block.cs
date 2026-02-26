@@ -570,8 +570,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var tokensBySymbol = new Dictionary<string, Token>(StringComparer.OrdinalIgnoreCase);
         var addressesInThisBlock = new Dictionary<string, Database.Main.Address>(StringComparer.Ordinal);
         var addressesToPrefetch = new HashSet<string>(StringComparer.Ordinal);
+        // Collect token symbols touched by this block so token reads stay batched.
+        var tokenSymbolsToPrefetch = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var transactionsInThisBlock = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
         var addressTransactionLinks = new HashSet<(string Address, string TxHash)>();
+        // Per-block ownership cache avoids repeated ownership queries for NFTs touched multiple times.
+        var ownershipByNft = new Dictionary<Nft, Database.Main.NftOwnership>();
 
         // TODO Hack until explorer can process events properly
         List<string> addressesToUpdate = new();
@@ -611,6 +615,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 return;
 
             addressesToPrefetch.Add(normalizedAddress);
+        }
+
+        void QueueTokenSymbolForPrefetch(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+                return;
+
+            tokenSymbolsToPrefetch.Add(symbol);
         }
 
         void QueueAddressTransactionLink(Database.Main.Address? addressEntry,
@@ -678,15 +690,59 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 {
                     for (var eventIndex = 0; eventIndex < tx.Events.Length; eventIndex++)
                     {
-                        QueueAddressForPrefetch(tx.Events[eventIndex].Address);
+                        var eventNode = tx.Events[eventIndex];
+                        QueueAddressForPrefetch(eventNode.Address);
+
+                        var parsedKind = eventNode.GetParsedKind();
+                        if (parsedKind == null)
+                            continue;
+
+                        // Pre-collect symbols from legacy event payloads before the hot ingest loop.
+                        switch (parsedKind.Value)
+                        {
+                            case EventKind.Infusion:
+                                {
+                                    var infusionData = eventNode.GetParsedData<InfusionEventData>();
+                                    QueueTokenSymbolForPrefetch(infusionData.BaseSymbol);
+                                    QueueTokenSymbolForPrefetch(infusionData.InfusedSymbol);
+                                    break;
+                                }
+                            case EventKind.TokenMint or EventKind.TokenClaim or EventKind.TokenBurn
+                                or EventKind.TokenSend or EventKind.TokenReceive or EventKind.TokenStake
+                                or EventKind.CrownRewards or EventKind.Inflation:
+                                {
+                                    var tokenData = eventNode.GetParsedData<TokenEventData>();
+                                    QueueTokenSymbolForPrefetch(tokenData.Symbol);
+                                    break;
+                                }
+                            case EventKind.OrderCancelled or EventKind.OrderClosed or EventKind.OrderCreated
+                                or EventKind.OrderFilled or EventKind.OrderBid:
+                                {
+                                    var marketData = eventNode.GetParsedData<MarketEventData>();
+                                    QueueTokenSymbolForPrefetch(marketData.BaseSymbol);
+                                    QueueTokenSymbolForPrefetch(marketData.QuoteSymbol);
+                                    break;
+                                }
+                        }
                     }
                 }
 
                 if (tx.ExtendedEvents is { Length: > 0 })
                 {
+                    var tokenCreateData = ExtendedEventParser.GetTokenCreateData(tx.ExtendedEvents);
+                    if (tokenCreateData != null)
+                        QueueTokenSymbolForPrefetch(tokenCreateData.Value.Symbol);
+
                     var seriesCreateData = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
                     if (seriesCreateData != null)
+                    {
                         QueueAddressForPrefetch(seriesCreateData.Value.Owner);
+                        QueueTokenSymbolForPrefetch(seriesCreateData.Value.Symbol);
+                    }
+
+                    var tokenMintData = ExtendedEventParser.GetTokenMintData(tx.ExtendedEvents);
+                    if (tokenMintData != null)
+                        QueueTokenSymbolForPrefetch(tokenMintData.Value.Symbol);
                 }
             }
 
@@ -705,16 +761,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 contractHashes.Select(c => (c, chainId, c, c)).ToList(),
                 dbTransaction: dbTransaction);
 
-            // Preload token metadata for symbols seen in the block contracts.
-            // This avoids repeated per-event token point lookups inside the hot loop.
-            var tokenSymbolsToPrefetch = contractHashes
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            // Preload token metadata for symbols from contracts/events/extended payloads.
+            // This keeps hot-path event handling mostly in-memory.
+            foreach (var contractHash in contractHashes)
+                QueueTokenSymbolForPrefetch(contractHash);
+
             if (tokenSymbolsToPrefetch.Count > 0)
             {
+                // Materialize to list once so EF can generate a single SQL IN query.
+                var tokenSymbols = tokenSymbolsToPrefetch.ToList();
                 var prefetchedTokens = await databaseContext.Tokens
-                    .Where(x => x.ChainId == chainId && tokenSymbolsToPrefetch.Contains(x.SYMBOL))
+                    .Where(x => x.ChainId == chainId && tokenSymbols.Contains(x.SYMBOL))
                     .ToListAsync();
 
                 foreach (var token in prefetchedTokens)
@@ -1123,7 +1180,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     if (nft != null)
                                         // Update NFTs owner address on new event.
                                         NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
-                                            block.Timestamp, addressEntry, false);
+                                            block.Timestamp, addressEntry, false, ownershipByNft);
 
                                     payload["token_id"] = tokenValue;
                                     payload["token_event"] = new Dictionary<string, object?>
@@ -1291,7 +1348,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         if (kind == EventKind.OrderFilled)
                                             // Update NFTs owner address on new sale event.
                                             NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
-                                                block.Timestamp, addressEntry, false);
+                                                block.Timestamp, addressEntry, false, ownershipByNft);
                                     }
 
                                     //parse also a new contract, just in case

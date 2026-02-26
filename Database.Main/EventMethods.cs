@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Backend.Commons;
@@ -23,18 +24,26 @@ public static class EventMethods
 
     private static void ProcessBurnedNft(MainDbContext databaseContext, Nft nft)
     {
-        //cache might need checking as well
-        var nftList = databaseContext.Nfts.Where(x =>
-            x.InfusedInto == nft && x.TOKEN_ID == databaseContext.Nfts.Where(y => y.TOKEN_ID == x.TOKEN_ID)
-                .Select(y => y.TOKEN_ID).First());
+        // Burn must detach any infused children from the burned parent NFT.
+        // Query persisted children by FK and merge unsaved tracked children as a fallback.
+        var persistedInfusedNfts = nft.ID > 0
+            ? databaseContext.Nfts.Where(x => x.InfusedIntoId == nft.ID).ToList()
+            : new List<Nft>();
+        var trackedInfusedNfts = DbHelper.GetTracked<Nft>(databaseContext)
+            .Where(x => x.InfusedInto == nft)
+            .ToList();
 
-        Log.Verbose("Got {Count} Ntfs to defuse", nftList.Count());
+        // Detach is idempotent, so duplicated references are safe if an entity is both
+        // persisted and currently tracked in the DbContext.
+        if (trackedInfusedNfts.Count > 0)
+            persistedInfusedNfts.AddRange(trackedInfusedNfts);
 
-        foreach (var item in nftList)
+        Log.Verbose("Got {Count} Ntfs to defuse", persistedInfusedNfts.Count);
+
+        foreach (var item in persistedInfusedNfts)
         {
             item.InfusedInto = null;
-            if (nft != null)
-                Log.Information("NFT defused: {DefusedNft} from NFT {Nft}", item.TOKEN_ID, nft.TOKEN_ID);
+            Log.Information("NFT defused: {DefusedNft} from NFT {Nft}", item.TOKEN_ID, nft.TOKEN_ID);
         }
     }
 
