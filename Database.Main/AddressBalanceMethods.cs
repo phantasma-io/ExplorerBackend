@@ -20,16 +20,17 @@ public static class AddressBalanceMethods
         if (chainId == 0)
             return;
 
-        if (address.ID <= 0 || balances == null || balances.Count == 0)
+        if (address.ID <= 0)
             return;
 
-        var normalized = balances
-            .Where(x => !string.IsNullOrWhiteSpace(x.Item2) && !string.IsNullOrWhiteSpace(x.Item3))
-            .Select(x => (x.Item2, x.Item3))
-            .ToList();
-
-        if (normalized.Count == 0)
-            return;
+        // Null/empty balances are a valid sync result for an address.
+        // We must forward that state to batch sync so stale rows are removed.
+        var normalized = balances == null
+            ? new List<(string Symbol, string AmountRaw)>()
+            : balances
+                .Where(x => !string.IsNullOrWhiteSpace(x.Item2) && !string.IsNullOrWhiteSpace(x.Item3))
+                .Select(x => (x.Item2, x.Item3))
+                .ToList();
 
         var batch = new Dictionary<int, IReadOnlyList<(string Symbol, string AmountRaw)>> { [address.ID] = normalized };
         await InsertOrUpdateBatchAsync(databaseContext, chainId, batch);
@@ -59,13 +60,20 @@ public static class AddressBalanceMethods
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        if (symbols.Count == 0)
-            return;
-
-        // Resolve all token ids once for this chunk.
-        var tokensBySymbol = await databaseContext.Tokens
-            .Where(x => x.ChainId == chainId && symbols.Contains(x.SYMBOL))
-            .ToDictionaryAsync(x => x.SYMBOL, x => x, StringComparer.Ordinal);
+        Dictionary<string, Token> tokensBySymbol;
+        if (symbols.Count > 0)
+        {
+            // Resolve all token ids once for this chunk.
+            tokensBySymbol = await databaseContext.Tokens
+                .Where(x => x.ChainId == chainId && symbols.Contains(x.SYMBOL))
+                .ToDictionaryAsync(x => x.SYMBOL, x => x, StringComparer.Ordinal);
+        }
+        else
+        {
+            // No symbols in payload still means we might need deletions for addresses
+            // that were returned with an explicit empty balance list.
+            tokensBySymbol = new Dictionary<string, Token>(StringComparer.Ordinal);
+        }
 
         // Load existing balances for the whole chunk once and merge in-memory.
         var currentBalances = await databaseContext.AddressBalances
@@ -76,19 +84,20 @@ public static class AddressBalanceMethods
             .GroupBy(x => (x.AddressId, x.TokenId))
             .ToDictionary(x => x.Key, x => x.First());
 
-        var keepTokenIdsByAddress = new Dictionary<int, HashSet<int>>();
+        // Initialize keep-sets for every requested address.
+        // Empty set means "address is known in this batch and should end up with zero balances".
+        var keepTokenIdsByAddress = addressIds.ToDictionary(x => x, _ => new HashSet<int>());
         var toInsert = new List<AddressBalance>();
 
         foreach (var (addressId, balanceItems) in balancesByAddressId)
         {
-            if (addressId <= 0 || balanceItems == null || balanceItems.Count == 0)
+            if (addressId <= 0)
                 continue;
 
-            if (!keepTokenIdsByAddress.TryGetValue(addressId, out var keepTokenIds))
-            {
-                keepTokenIds = new HashSet<int>();
-                keepTokenIdsByAddress[addressId] = keepTokenIds;
-            }
+            var keepTokenIds = keepTokenIdsByAddress[addressId];
+            if (balanceItems == null || balanceItems.Count == 0)
+                // Explicitly empty payload keeps the set empty, so all existing balances are removed below.
+                continue;
 
             foreach (var (symbol, amountRawString) in balanceItems)
             {
@@ -130,6 +139,8 @@ public static class AddressBalanceMethods
         if (toInsert.Count > 0)
             await databaseContext.AddressBalances.AddRangeAsync(toInsert);
 
+        // Remove balances not present in the authoritative keep-set per address.
+        // For addresses with explicit empty balance payload this removes all current rows.
         var toRemove = currentBalances
             .Where(x => keepTokenIdsByAddress.TryGetValue(x.AddressId, out var keep) && !keep.Contains(x.TokenId))
             .ToList();

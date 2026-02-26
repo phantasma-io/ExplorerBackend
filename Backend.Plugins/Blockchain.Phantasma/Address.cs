@@ -187,8 +187,10 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
                                 soulBalance = BigInteger.TryParse(amountRaw, out var parsedSoul) ? parsedSoul : BigInteger.Zero;
                         }
 
-                        if (parsedBalances.Count > 0)
-                            chunkBalancesByAddressId[address.ID] = parsedBalances;
+                        // Persist even explicit empty balance arrays.
+                        // This lets AddressBalanceMethods interpret "account is present with no balances"
+                        // as authoritative state and delete stale DB rows for that address.
+                        chunkBalancesByAddressId[address.ID] = parsedBalances;
                     }
 
                     address.TOTAL_SOUL_AMOUNT = soulBalance + soulStakedBalance;
