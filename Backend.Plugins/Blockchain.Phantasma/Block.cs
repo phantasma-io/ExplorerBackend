@@ -562,6 +562,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         Dictionary<string, Nft> nftsInThisBlock = new();
         Dictionary<string, bool> symbolsFungibility = new();
         var addressesInThisBlock = new Dictionary<string, Database.Main.Address>(StringComparer.Ordinal);
+        var addressesToPrefetch = new HashSet<string>(StringComparer.Ordinal);
         var transactionsInThisBlock = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
         var addressTransactionLinks = new HashSet<(string Address, string TxHash)>();
 
@@ -596,6 +597,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             return resolvedAddress;
         }
 
+        void QueueAddressForPrefetch(string rawAddress)
+        {
+            var normalizedAddress = NormalizeAddress(rawAddress);
+            if (normalizedAddress.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            addressesToPrefetch.Add(normalizedAddress);
+        }
+
         void QueueAddressTransactionLink(Database.Main.Address? addressEntry,
             Database.Main.Transaction? transactionEntry)
         {
@@ -616,6 +626,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, block.Height,
             block.Timestamp, block.Hash, block.PreviousHash, block.Protocol, block.ChainAddress, block.ValidatorAddress, block.Reward);
 
+        QueueAddressForPrefetch(block.ChainAddress);
+        QueueAddressForPrefetch(block.ValidatorAddress);
+
         if (block.Oracles?.Length > 0)
         {
             var oracles = block.Oracles.Select(oracle =>
@@ -630,6 +643,39 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 block.Txs.Length);
 
             block.ParseData();
+
+            // Pre-resolve block addresses in one set-based pass so hot-path address resolution
+            // becomes an in-memory lookup for most tx/event records.
+            foreach (var tx in block.Txs)
+            {
+                QueueAddressForPrefetch(tx.Sender);
+                QueueAddressForPrefetch(tx.GasPayer);
+                QueueAddressForPrefetch(tx.GasTarget);
+
+                if (tx.Events != null)
+                {
+                    for (var eventIndex = 0; eventIndex < tx.Events.Length; eventIndex++)
+                    {
+                        QueueAddressForPrefetch(tx.Events[eventIndex].Address);
+                    }
+                }
+
+                if (tx.ExtendedEvents is { Length: > 0 })
+                {
+                    var seriesCreateData = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
+                    if (seriesCreateData != null)
+                        QueueAddressForPrefetch(seriesCreateData.Value.Owner);
+                }
+            }
+
+            var prefetchedAddresses = AddressMethods.InsertIfNotExists(databaseContext, chainEntry,
+                addressesToPrefetch.ToList());
+            if (prefetchedAddresses != null)
+            {
+                foreach (var entry in prefetchedAddresses)
+                    addressesInThisBlock[entry.Key] = entry.Value;
+            }
+
             var contractHashes = block.GetContracts();
             // Log.Verbose("[{Name}][Blocks] Contracts in block: " + string.Join(",", contractHashes));
 

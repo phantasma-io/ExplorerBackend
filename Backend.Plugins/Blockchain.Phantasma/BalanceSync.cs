@@ -9,6 +9,8 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using NpgsqlTypes;
 using Serilog;
 
 namespace Backend.Blockchain;
@@ -106,16 +108,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressList, 100);
             UpdateStakeMemberships(databaseContext, dirtyAddresses);
-
-            foreach (var address in dirtyAddresses)
-            {
-                if (!dirtySnapshot.TryGetValue(address.ID, out var dirtyBlock))
-                    continue;
-
-                await databaseContext.Database.ExecuteSqlRawAsync(
-                    "UPDATE \"Addresses\" SET \"BALANCE_DIRTY_BLOCK\" = 0 WHERE \"ID\" = {0} AND \"BALANCE_DIRTY_BLOCK\" = {1}",
-                    address.ID, dirtyBlock);
-            }
+            await ResetDirtyBalanceFlagsAsync(databaseContext, dirtySnapshot);
 
             await databaseContext.SaveChangesAsync();
             processed += dirtyAddresses.Count;
@@ -137,6 +130,41 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             Log.Information("[{Name}][Balances] Updated {Count} addresses for chain {Chain}", Name, processed,
                 chainName);
         }
+    }
+
+    private static async Task ResetDirtyBalanceFlagsAsync(MainDbContext databaseContext,
+        IReadOnlyDictionary<int, long> dirtySnapshot)
+    {
+        if (dirtySnapshot == null || dirtySnapshot.Count == 0)
+            return;
+
+        var addressIds = new int[dirtySnapshot.Count];
+        var dirtyBlocks = new long[dirtySnapshot.Count];
+
+        var index = 0;
+        foreach (var (addressId, dirtyBlock) in dirtySnapshot)
+        {
+            addressIds[index] = addressId;
+            dirtyBlocks[index] = dirtyBlock;
+            index++;
+        }
+
+        var dbConnection = (NpgsqlConnection)databaseContext.Database.GetDbConnection();
+        if (dbConnection.State != System.Data.ConnectionState.Open)
+            await dbConnection.OpenAsync();
+
+        await using var cmd = new NpgsqlCommand(@"
+UPDATE ""Addresses"" address_row
+SET ""BALANCE_DIRTY_BLOCK"" = 0
+FROM UNNEST(@address_ids, @dirty_blocks) AS dirty(""AddressId"", ""DirtyBlock"")
+WHERE address_row.""ID"" = dirty.""AddressId""
+  AND address_row.""BALANCE_DIRTY_BLOCK"" = dirty.""DirtyBlock"";
+", dbConnection);
+
+        cmd.Parameters.Add("@address_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = addressIds;
+        cmd.Parameters.Add("@dirty_blocks", NpgsqlDbType.Array | NpgsqlDbType.Bigint).Value = dirtyBlocks;
+
+        await cmd.ExecuteNonQueryAsync();
     }
 
     // Snapshot tables are forward-only: each sync rewrites current day/month rows and never rewinds history.
