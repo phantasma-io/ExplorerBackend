@@ -20,68 +20,121 @@ public static class AddressBalanceMethods
         if (chainId == 0)
             return;
 
-        var addressId = address.ID;
-        var currentBalances = addressId > 0
-            ? await databaseContext.AddressBalances
-                .Where(x => x.AddressId == addressId)
-                .ToListAsync()
-            : DbHelper.GetTracked<AddressBalance>(databaseContext)
-                .Where(x => x.Address == address)
-                .ToList();
+        if (address.ID <= 0 || balances == null || balances.Count == 0)
+            return;
 
-        var symbols = balances
-            .Select(x => x.Item2)
+        var normalized = balances
+            .Where(x => !string.IsNullOrWhiteSpace(x.Item2) && !string.IsNullOrWhiteSpace(x.Item3))
+            .Select(x => (x.Item2, x.Item3))
+            .ToList();
+
+        if (normalized.Count == 0)
+            return;
+
+        var batch = new Dictionary<int, IReadOnlyList<(string Symbol, string AmountRaw)>> { [address.ID] = normalized };
+        await InsertOrUpdateBatchAsync(databaseContext, chainId, batch);
+    }
+
+    public static async Task InsertOrUpdateBatchAsync(
+        MainDbContext databaseContext,
+        int chainId,
+        IReadOnlyDictionary<int, IReadOnlyList<(string Symbol, string AmountRaw)>> balancesByAddressId)
+    {
+        if (chainId == 0 || balancesByAddressId == null || balancesByAddressId.Count == 0)
+            return;
+
+        var addressIds = balancesByAddressId.Keys
+            .Where(x => x > 0)
+            .Distinct()
+            .ToList();
+
+        if (addressIds.Count == 0)
+            return;
+
+        var symbols = balancesByAddressId.Values
+            .Where(x => x != null)
+            .SelectMany(x => x)
+            .Select(x => x.Symbol)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        // Resolve all tokens for this address chain in one query instead of per-balance point reads.
+        if (symbols.Count == 0)
+            return;
+
+        // Resolve all token ids once for this chunk.
         var tokensBySymbol = await databaseContext.Tokens
             .Where(x => x.ChainId == chainId && symbols.Contains(x.SYMBOL))
             .ToDictionaryAsync(x => x.SYMBOL, x => x, StringComparer.Ordinal);
 
-        var currentByTokenId = currentBalances
-            .GroupBy(x => x.TokenId)
+        // Load existing balances for the whole chunk once and merge in-memory.
+        var currentBalances = await databaseContext.AddressBalances
+            .Where(x => addressIds.Contains(x.AddressId))
+            .ToListAsync();
+
+        var currentByAddressToken = currentBalances
+            .GroupBy(x => (x.AddressId, x.TokenId))
             .ToDictionary(x => x.Key, x => x.First());
 
-        var balanceListToAdd = new List<AddressBalance>();
-        var keepTokenIds = new HashSet<int>();
+        var keepTokenIdsByAddress = new Dictionary<int, HashSet<int>>();
+        var toInsert = new List<AddressBalance>();
 
-        foreach (var (_, symbol, amount) in balances)
+        foreach (var (addressId, balanceItems) in balancesByAddressId)
         {
-            if (!tokensBySymbol.TryGetValue(symbol, out var token))
+            if (addressId <= 0 || balanceItems == null || balanceItems.Count == 0)
                 continue;
 
-            var amountRaw = BigInteger.TryParse(amount, out var parsedAmount) ? parsedAmount : BigInteger.Zero;
-            var amountConverted = Utils.ToDecimal(amount, token.DECIMALS);
-
-            if (currentByTokenId.TryGetValue(token.ID, out var existingBalance))
+            if (!keepTokenIdsByAddress.TryGetValue(addressId, out var keepTokenIds))
             {
-                existingBalance.AMOUNT = amountConverted;
-                existingBalance.AMOUNT_RAW = amountRaw;
+                keepTokenIds = new HashSet<int>();
+                keepTokenIdsByAddress[addressId] = keepTokenIds;
             }
-            else
+
+            foreach (var (symbol, amountRawString) in balanceItems)
             {
-                var newBalance = new AddressBalance
+                if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(amountRawString))
+                    continue;
+
+                if (!tokensBySymbol.TryGetValue(symbol, out var token))
+                    continue;
+
+                var amountRaw = BigInteger.TryParse(amountRawString, out var parsedAmount)
+                    ? parsedAmount
+                    : BigInteger.Zero;
+                var amountConverted = Utils.ToDecimal(amountRawString, token.DECIMALS);
+                var key = (addressId, token.ID);
+
+                if (currentByAddressToken.TryGetValue(key, out var existing))
                 {
-                    Token = token,
-                    Address = address,
-                    AMOUNT = amountConverted,
-                    AMOUNT_RAW = amountRaw
-                };
-                balanceListToAdd.Add(newBalance);
-                currentByTokenId[token.ID] = newBalance;
-            }
+                    existing.AMOUNT = amountConverted;
+                    existing.AMOUNT_RAW = amountRaw;
+                }
+                else
+                {
+                    var newBalance = new AddressBalance
+                    {
+                        AddressId = addressId,
+                        TokenId = token.ID,
+                        AMOUNT = amountConverted,
+                        AMOUNT_RAW = amountRaw
+                    };
 
-            keepTokenIds.Add(token.ID);
+                    toInsert.Add(newBalance);
+                    currentByAddressToken[key] = newBalance;
+                }
+
+                keepTokenIds.Add(token.ID);
+            }
         }
 
-        if (balanceListToAdd.Count > 0)
-            await databaseContext.AddressBalances.AddRangeAsync(balanceListToAdd);
+        if (toInsert.Count > 0)
+            await databaseContext.AddressBalances.AddRangeAsync(toInsert);
 
-        var removeList = currentBalances.Where(x => !keepTokenIds.Contains(x.TokenId)).ToList();
+        var toRemove = currentBalances
+            .Where(x => keepTokenIdsByAddress.TryGetValue(x.AddressId, out var keep) && !keep.Contains(x.TokenId))
+            .ToList();
 
-        if (removeList.Count > 0)
-            databaseContext.AddressBalances.RemoveRange(removeList);
+        if (toRemove.Count > 0)
+            databaseContext.AddressBalances.RemoveRange(toRemove);
     }
 }

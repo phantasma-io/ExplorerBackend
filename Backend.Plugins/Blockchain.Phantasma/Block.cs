@@ -198,7 +198,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
     private async Task ApplyInfusionAsync(MainDbContext databaseContext, Chain chain, Nft? nft,
-        string infusedSymbol, string infusedValueRaw)
+        string infusedSymbol, string infusedValueRaw, Dictionary<string, Token> tokensBySymbol)
     {
         if (nft == null)
         {
@@ -206,7 +206,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             return;
         }
 
-        var infusedToken = await TokenMethods.GetAsync(databaseContext, chain, infusedSymbol);
+        if (!tokensBySymbol.TryGetValue(infusedSymbol, out var infusedToken))
+        {
+            infusedToken = await TokenMethods.GetAsync(databaseContext, chain, infusedSymbol);
+            if (infusedToken != null)
+                tokensBySymbol[infusedSymbol] = infusedToken;
+        }
+
         if (infusedToken == null)
         {
             Log.Warning("[{Name}][Blocks] Token {Symbol} not found for infusion on chain {Chain}", Name, infusedSymbol,
@@ -561,6 +567,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         // and avoid some unpleasant situations leading to bugs.
         Dictionary<string, Nft> nftsInThisBlock = new();
         Dictionary<string, bool> symbolsFungibility = new();
+        var tokensBySymbol = new Dictionary<string, Token>(StringComparer.OrdinalIgnoreCase);
         var addressesInThisBlock = new Dictionary<string, Database.Main.Address>(StringComparer.Ordinal);
         var addressesToPrefetch = new HashSet<string>(StringComparer.Ordinal);
         var transactionsInThisBlock = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
@@ -618,6 +625,21 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
             AddressTransactionMethods.UpdateFirstTxUnixSeconds(addressEntry, transactionEntry.TIMESTAMP_UNIX_SECONDS);
             addressTransactionLinks.Add((normalizedAddress, transactionEntry.HASH));
+        }
+
+        async Task<Token?> ResolveTokenBySymbolAsync(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+                return null;
+
+            if (tokensBySymbol.TryGetValue(symbol, out var cachedToken))
+                return cachedToken;
+
+            var resolvedToken = await TokenMethods.GetAsync(databaseContext, chainEntry, symbol);
+            if (resolvedToken != null)
+                tokensBySymbol[symbol] = resolvedToken;
+
+            return resolvedToken;
         }
 
         // Block in main database
@@ -682,6 +704,22 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             var contracts = ContractMethods.BatchUpsert(dbConnection,
                 contractHashes.Select(c => (c, chainId, c, c)).ToList(),
                 dbTransaction: dbTransaction);
+
+            // Preload token metadata for symbols seen in the block contracts.
+            // This avoids repeated per-event token point lookups inside the hot loop.
+            var tokenSymbolsToPrefetch = contractHashes
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (tokenSymbolsToPrefetch.Count > 0)
+            {
+                var prefetchedTokens = await databaseContext.Tokens
+                    .Where(x => x.ChainId == chainId && tokenSymbolsToPrefetch.Contains(x.SYMBOL))
+                    .ToListAsync();
+
+                foreach (var token in prefetchedTokens)
+                    tokensBySymbol[token.SYMBOL] = token;
+            }
 
             for (var txIndex = 0; txIndex < block.Txs.Length; txIndex++)
             {
@@ -944,8 +982,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         fungible = symbolsFungibility.GetValueOrDefault(infusionEventData.BaseSymbol);
                                     else
                                     {
-                                        var baseToken = await TokenMethods.GetAsync(databaseContext, chainEntry,
-                                            infusionEventData.BaseSymbol);
+                                        var baseToken = await ResolveTokenBySymbolAsync(infusionEventData.BaseSymbol);
                                         if (baseToken == null)
                                             throw new Exception($"Token {infusionEventData.BaseSymbol} not found on chain {chainEntry.NAME}");
 
@@ -969,10 +1006,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             nft = cachedNft;
                                         else
                                         {
-                                            (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
+                                            (nft, _) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
                                                 tokenId, null, contracts.GetId(chainId, infusionEventData.BaseSymbol));
 
-                                            if (newNftCreated) nftsInThisBlock.Add(tokenId, nft);
+                                            nftsInThisBlock[tokenId] = nft;
                                         }
                                     }
 
@@ -982,7 +1019,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         eventEntry, nft, tokenId, chainEntry, kind, eventKindId, contracts.GetId(chainId, infusionEventData.BaseSymbol));
 
                                     await ApplyInfusionAsync(databaseContext, chainEntry, nft, infusionEventData.InfusedSymbol,
-                                        infusedValueRaw);
+                                        infusedValueRaw, tokensBySymbol);
                                     payload["token_id"] = tokenId;
                                     payload["infusion_event"] = new Dictionary<string, object?>
                                     {
@@ -1004,7 +1041,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         fungible = symbolsFungibility.GetValueOrDefault(tokenEventData.Symbol);
                                     else
                                     {
-                                        var token = await TokenMethods.GetAsync(databaseContext, chainEntry, tokenEventData.Symbol);
+                                        var token = await ResolveTokenBySymbolAsync(tokenEventData.Symbol);
 
                                         if (token == null)
                                             throw new Exception($"Token {tokenEventData.Symbol} not found on chain {chainEntry.NAME}");
@@ -1026,10 +1063,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             nft = cachedNft;
                                         else
                                         {
-                                            (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
+                                            (nft, _) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
                                                 tokenValue, null, contracts.GetId(chainId, tokenEventData.Symbol));
 
-                                            if (newNftCreated) nftsInThisBlock.Add(tokenValue, nft);
+                                            nftsInThisBlock[tokenValue] = nft;
                                         }
 
                                         // We should always properly check mint event and update mint date,
@@ -1222,8 +1259,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         fungible = symbolsFungibility.GetValueOrDefault(marketEventData.BaseSymbol);
                                     else
                                     {
-                                        fungible = (await TokenMethods.GetAsync(databaseContext, chainEntry,
-                                            marketEventData.BaseSymbol)).FUNGIBLE;
+                                        var marketToken = await ResolveTokenBySymbolAsync(marketEventData.BaseSymbol);
+                                        if (marketToken == null)
+                                            throw new Exception(
+                                                $"Token {marketEventData.BaseSymbol} not found on chain {chainEntry.NAME}");
+
+                                        fungible = marketToken.FUNGIBLE;
                                         symbolsFungibility.Add(marketEventData.BaseSymbol, fungible);
                                     }
 
@@ -1241,10 +1282,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             nft = cachedNft;
                                         else
                                         {
-                                            (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
+                                            (nft, _) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
                                                 tokenId, null, contracts.GetId(chainId, marketEventData.BaseSymbol));
 
-                                            if (newNftCreated) nftsInThisBlock.Add(tokenId, nft);
+                                            nftsInThisBlock[tokenId] = nft;
                                         }
 
                                         if (kind == EventKind.OrderFilled)
@@ -1331,7 +1372,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 }
                                                 else if (eventEntry != null)
                                                 {
-                                                    var token = await TokenMethods.GetAsync(databaseContext, chainEntry, symbol);
+                                                    var token = await ResolveTokenBySymbolAsync(symbol);
                                                     if (token != null)
                                                         token.CreateEvent = eventEntry;
                                                 }
@@ -1658,7 +1699,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressesToUpdate.Count);
 
         var saveTailStopwatch = Stopwatch.StartNew();
-        MarkAddressesDirty(databaseContext, chainEntry, addressesToUpdate, (long)block.Height);
+        MarkAddressesDirty(databaseContext, chainEntry, addressesToUpdate, (long)block.Height, addressesInThisBlock);
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.Height, false);
 
         await databaseContext.SaveChangesAsync();

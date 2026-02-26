@@ -19,15 +19,44 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private static void MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
         long blockHeight)
     {
+        MarkAddressesDirty(databaseContext, chain, addresses, blockHeight, null);
+    }
+
+    private static void MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
+        long blockHeight, IReadOnlyDictionary<string, Address> cachedAddressMap)
+    {
         if (addresses == null || addresses.Count == 0)
             return;
 
-        var distinct = addresses.Distinct().ToList();
-        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, distinct);
-        if (addressMap == null)
-            return;
+        var distinct = addresses.Distinct(StringComparer.Ordinal).ToList();
+        var touchedAddresses = new Dictionary<string, Address>(StringComparer.Ordinal);
+        var missingAddresses = new List<string>();
 
-        foreach (var entry in addressMap.Values)
+        foreach (var addressValue in distinct)
+        {
+            if (cachedAddressMap != null && cachedAddressMap.TryGetValue(addressValue, out var cachedAddress))
+            {
+                touchedAddresses[addressValue] = cachedAddress;
+            }
+            else
+            {
+                missingAddresses.Add(addressValue);
+            }
+        }
+
+        // Fallback only for addresses not seen in the block-scoped cache.
+        // This keeps behavior complete while removing a redundant full second pass.
+        if (missingAddresses.Count > 0)
+        {
+            var inserted = AddressMethods.InsertIfNotExists(databaseContext, chain, missingAddresses);
+            if (inserted != null)
+            {
+                foreach (var (addressValue, addressEntry) in inserted)
+                    touchedAddresses[addressValue] = addressEntry;
+            }
+        }
+
+        foreach (var entry in touchedAddresses.Values)
         {
             if (entry == null)
                 continue;
@@ -110,6 +139,7 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
                 }
 
                 var accounts = response.RootElement.EnumerateArray().ToList();
+                var chunkBalancesByAddressId = new Dictionary<int, IReadOnlyList<(string Symbol, string AmountRaw)>>();
                 foreach (var account in accounts)
                 {
                     var accountAddress = account.GetProperty("address").GetString();
@@ -144,20 +174,21 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
 
                     if (account.TryGetProperty("balances", out var balancesProperty))
                     {
-                        var balancesList0 = balancesProperty.EnumerateArray();
-
-                        if (balancesList0.Count() > 0)
+                        var parsedBalances = new List<(string Symbol, string AmountRaw)>();
+                        foreach (var balance in balancesProperty.EnumerateArray())
                         {
-                            var balancesList = balancesList0.Select(balance =>
-                                    new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
-                                        balance.GetProperty("symbol").GetString(),
-                                        balance.GetProperty("amount").GetString()))
-                                .ToList();
+                            var symbol = balance.GetProperty("symbol").GetString();
+                            var amountRaw = balance.GetProperty("amount").GetString();
+                            if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(amountRaw))
+                                continue;
 
-                            soulBalance = balancesList.Where(x => x.Item2 == "SOUL").Select(x => BigInteger.Parse(x.Item3)).FirstOrDefault();
-
-                            await AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
+                            parsedBalances.Add((symbol, amountRaw));
+                            if (symbol == "SOUL")
+                                soulBalance = BigInteger.TryParse(amountRaw, out var parsedSoul) ? parsedSoul : BigInteger.Zero;
                         }
+
+                        if (parsedBalances.Count > 0)
+                            chunkBalancesByAddressId[address.ID] = parsedBalances;
                     }
 
                     address.TOTAL_SOUL_AMOUNT = soulBalance + soulStakedBalance;
@@ -183,6 +214,10 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
 
                     processed++;
                 }
+
+                if (chunkBalancesByAddressId.Count > 0)
+                    await AddressBalanceMethods.InsertOrUpdateBatchAsync(databaseContext, chainId,
+                        chunkBalancesByAddressId);
             }
             catch
             {
