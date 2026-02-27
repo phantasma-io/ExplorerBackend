@@ -5,6 +5,9 @@ using System.Numerics;
 using System.Threading.Tasks;
 using Backend.Commons;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
+using NpgsqlTypes;
 
 namespace Database.Main;
 
@@ -75,28 +78,20 @@ public static class AddressBalanceMethods
             tokensBySymbol = new Dictionary<string, Token>(StringComparer.Ordinal);
         }
 
-        // Load existing balances for the whole chunk once and merge in-memory.
-        var currentBalances = await databaseContext.AddressBalances
-            .Where(x => addressIds.Contains(x.AddressId))
-            .ToListAsync();
-
-        var currentByAddressToken = currentBalances
-            .GroupBy(x => (x.AddressId, x.TokenId))
-            .ToDictionary(x => x.Key, x => x.First());
-
-        // Initialize keep-sets for every requested address.
-        // Empty set means "address is known in this batch and should end up with zero balances".
-        var keepTokenIdsByAddress = addressIds.ToDictionary(x => x, _ => new HashSet<int>());
-        var toInsert = new List<AddressBalance>();
+        // Build one authoritative set for this chunk:
+        // - upsert rows (address, token -> amount),
+        // - keep pairs (address, token) used to remove stale balances.
+        // Last value wins if payload contains duplicate symbol entries for one address.
+        var upsertsByAddressToken = new Dictionary<(int AddressId, int TokenId), (string Amount, BigInteger AmountRaw)>();
+        var keepAddressTokenPairs = new HashSet<(int AddressId, int TokenId)>();
 
         foreach (var (addressId, balanceItems) in balancesByAddressId)
         {
             if (addressId <= 0)
                 continue;
 
-            var keepTokenIds = keepTokenIdsByAddress[addressId];
             if (balanceItems == null || balanceItems.Count == 0)
-                // Explicitly empty payload keeps the set empty, so all existing balances are removed below.
+                // Explicitly empty payload means "delete all balances for this address".
                 continue;
 
             foreach (var (symbol, amountRawString) in balanceItems)
@@ -112,40 +107,82 @@ public static class AddressBalanceMethods
                     : BigInteger.Zero;
                 var amountConverted = Utils.ToDecimal(amountRawString, token.DECIMALS);
                 var key = (addressId, token.ID);
-
-                if (currentByAddressToken.TryGetValue(key, out var existing))
-                {
-                    existing.AMOUNT = amountConverted;
-                    existing.AMOUNT_RAW = amountRaw;
-                }
-                else
-                {
-                    var newBalance = new AddressBalance
-                    {
-                        AddressId = addressId,
-                        TokenId = token.ID,
-                        AMOUNT = amountConverted,
-                        AMOUNT_RAW = amountRaw
-                    };
-
-                    toInsert.Add(newBalance);
-                    currentByAddressToken[key] = newBalance;
-                }
-
-                keepTokenIds.Add(token.ID);
+                upsertsByAddressToken[key] = (amountConverted, amountRaw);
+                keepAddressTokenPairs.Add(key);
             }
         }
 
-        if (toInsert.Count > 0)
-            await databaseContext.AddressBalances.AddRangeAsync(toInsert);
+        var dbConnection = (NpgsqlConnection)databaseContext.Database.GetDbConnection();
+        if (dbConnection.State != System.Data.ConnectionState.Open)
+            await dbConnection.OpenAsync();
 
-        // Remove balances not present in the authoritative keep-set per address.
-        // For addresses with explicit empty balance payload this removes all current rows.
-        var toRemove = currentBalances
-            .Where(x => keepTokenIdsByAddress.TryGetValue(x.AddressId, out var keep) && !keep.Contains(x.TokenId))
-            .ToList();
+        var dbTransaction = databaseContext.Database.CurrentTransaction?.GetDbTransaction() as NpgsqlTransaction;
 
-        if (toRemove.Count > 0)
-            databaseContext.AddressBalances.RemoveRange(toRemove);
+        if (upsertsByAddressToken.Count > 0)
+        {
+            var upsertAddressIds = new int[upsertsByAddressToken.Count];
+            var upsertTokenIds = new int[upsertsByAddressToken.Count];
+            var upsertAmounts = new string[upsertsByAddressToken.Count];
+            var upsertAmountRaws = new string[upsertsByAddressToken.Count];
+
+            var index = 0;
+            foreach (var (key, value) in upsertsByAddressToken)
+            {
+                upsertAddressIds[index] = key.AddressId;
+                upsertTokenIds[index] = key.TokenId;
+                upsertAmounts[index] = value.Amount;
+                upsertAmountRaws[index] = value.AmountRaw.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                index++;
+            }
+
+            // Set-based upsert keeps write amplification low and avoids EF tracking work
+            // when syncing large balance chunks.
+            await using var upsertCmd = new NpgsqlCommand(@"
+INSERT INTO ""AddressBalances"" (""AddressId"", ""TokenId"", ""AMOUNT"", ""AMOUNT_RAW"")
+SELECT row.""AddressId"", row.""TokenId"", row.""AMOUNT"", row.""AMOUNT_RAW""::numeric
+FROM UNNEST(@address_ids, @token_ids, @amounts, @amount_raws)
+AS row(""AddressId"", ""TokenId"", ""AMOUNT"", ""AMOUNT_RAW"")
+ON CONFLICT (""AddressId"", ""TokenId"")
+DO UPDATE SET
+    ""AMOUNT"" = EXCLUDED.""AMOUNT"",
+    ""AMOUNT_RAW"" = EXCLUDED.""AMOUNT_RAW"";
+", dbConnection, dbTransaction);
+
+            upsertCmd.Parameters.Add("@address_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = upsertAddressIds;
+            upsertCmd.Parameters.Add("@token_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = upsertTokenIds;
+            upsertCmd.Parameters.Add("@amounts", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = upsertAmounts;
+            upsertCmd.Parameters.Add("@amount_raws", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = upsertAmountRaws;
+
+            await upsertCmd.ExecuteNonQueryAsync();
+        }
+
+        var keepAddressIds = new int[keepAddressTokenPairs.Count];
+        var keepTokenIds = new int[keepAddressTokenPairs.Count];
+        var keepIndex = 0;
+        foreach (var keepPair in keepAddressTokenPairs)
+        {
+            keepAddressIds[keepIndex] = keepPair.AddressId;
+            keepTokenIds[keepIndex] = keepPair.TokenId;
+            keepIndex++;
+        }
+
+        // Remove stale rows for all addresses in this chunk.
+        // If an address has no keep-pairs (explicit empty payload), this deletes all its balances.
+        await using var deleteCmd = new NpgsqlCommand(@"
+DELETE FROM ""AddressBalances"" AS balance_row
+WHERE balance_row.""AddressId"" = ANY(@target_address_ids)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM UNNEST(@keep_address_ids, @keep_token_ids) AS keep(""AddressId"", ""TokenId"")
+      WHERE keep.""AddressId"" = balance_row.""AddressId""
+        AND keep.""TokenId"" = balance_row.""TokenId""
+  );
+", dbConnection, dbTransaction);
+
+        deleteCmd.Parameters.Add("@target_address_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = addressIds.ToArray();
+        deleteCmd.Parameters.Add("@keep_address_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = keepAddressIds;
+        deleteCmd.Parameters.Add("@keep_token_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = keepTokenIds;
+
+        await deleteCmd.ExecuteNonQueryAsync();
     }
 }
