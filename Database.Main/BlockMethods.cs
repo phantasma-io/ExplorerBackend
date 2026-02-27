@@ -19,12 +19,19 @@ public static class BlockMethods
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
     public static async Task<Block> UpsertAsync(MainDbContext databaseContext, Chain chain, BigInteger height, long timestampUnixSeconds,
-        string hash, string previousHash, uint protocol, string chainAddress, string validatorAddress, string reward)
+        string hash, string previousHash, uint protocol, string chainAddress, string validatorAddress, string reward,
+        bool skipDatabaseExistsCheck = false)
     {
         var heightValue = ToLongHeight(height);
 
-        var entry = await databaseContext.Blocks.FirstOrDefaultAsync(x =>
-            x.Chain == chain && x.TIMESTAMP_UNIX_SECONDS == timestampUnixSeconds && x.HEIGHT == heightValue);
+        var entry = DbHelper.GetTracked<Block>(databaseContext).FirstOrDefault(x =>
+            x.Chain == chain && x.HEIGHT == heightValue);
+
+        if (!skipDatabaseExistsCheck && entry == null)
+        {
+            entry = await databaseContext.Blocks.FirstOrDefaultAsync(x =>
+                x.ChainId == chain.ID && x.HEIGHT == heightValue);
+        }
 
         /*if (entry == null)
         {

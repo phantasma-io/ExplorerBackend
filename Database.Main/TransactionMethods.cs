@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Backend.Commons;
@@ -15,16 +16,31 @@ public static class TransactionMethods
         string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
         byte? carbonTxType = null, string carbonTxData = null,
         Address senderAddress = null, Address gasPayerAddress = null, Address gasTargetAddress = null,
-        bool skipAddressTransactionExistsCheck = false, bool createAddressTransactionLinks = true)
+        bool skipAddressTransactionExistsCheck = false, bool createAddressTransactionLinks = true,
+        IDictionary<string, Transaction> existingTransactionsByHash = null)
     {
         const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas
 
-        var entry = await databaseContext.Transactions
-            .FirstOrDefaultAsync(x => x.Block == block && x.HASH == hash) ?? DbHelper
+        if (existingTransactionsByHash != null && existingTransactionsByHash.TryGetValue(hash, out var existingByHash))
+            return existingByHash;
+
+        var entry = DbHelper
             .GetTracked<Transaction>(databaseContext)
             .FirstOrDefault(x => x.Block == block && x.HASH == hash);
 
-        if (entry != null) return entry;
+        if (entry != null)
+        {
+            existingTransactionsByHash?[hash] = entry;
+            return entry;
+        }
+
+        if (existingTransactionsByHash == null)
+        {
+            entry = await databaseContext.Transactions
+                .FirstOrDefaultAsync(x => x.Block == block && x.HASH == hash);
+            if (entry != null)
+                return entry;
+        }
 
         var transactionState = TransactionStateMethods.Upsert(databaseContext, state, false);
         senderAddress ??= await AddressMethods.UpsertAsync(databaseContext, block.Chain, sender);
@@ -63,6 +79,7 @@ public static class TransactionMethods
         };
 
         await databaseContext.Transactions.AddAsync(entry);
+        existingTransactionsByHash?[hash] = entry;
 
         if (createAddressTransactionLinks)
         {

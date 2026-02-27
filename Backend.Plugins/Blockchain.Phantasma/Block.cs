@@ -679,8 +679,26 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         // Block in main database
         Log.Information("[{Name}][Blocks] Storing block #{BlockHeight} / {Hash}", Name, block.Height, block.Hash);
 
+        // Normal forward sync always ingests a new height (CURRENT_HEIGHT + 1).
+        // Skip the extra existence query in this dominant path and keep fallback checks
+        // for recovery/replay paths where height can already exist.
+        var skipBlockExistsCheck = block.Height > new BigInteger(chainEntry.CURRENT_HEIGHT);
         var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, block.Height,
-            block.Timestamp, block.Hash, block.PreviousHash, block.Protocol, block.ChainAddress, block.ValidatorAddress, block.Reward);
+            block.Timestamp, block.Hash, block.PreviousHash, block.Protocol, block.ChainAddress, block.ValidatorAddress,
+            block.Reward, skipDatabaseExistsCheck: skipBlockExistsCheck);
+
+        // When reprocessing an already persisted block, preload all its transactions once.
+        // TransactionMethods.UpsertAsync will then reuse this map instead of issuing one
+        // SELECT per transaction hash.
+        var existingTransactionsByHash = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
+        if (blockEntity.ID > 0 && block.Txs?.Length > 0)
+        {
+            var persistedTransactions = await databaseContext.Transactions
+                .Where(x => x.BlockId == blockEntity.ID)
+                .ToListAsync();
+            foreach (var persistedTransaction in persistedTransactions)
+                existingTransactionsByHash[persistedTransaction.HASH] = persistedTransaction;
+        }
 
         QueueAddressForPrefetch(block.ChainAddress);
         QueueAddressForPrefetch(block.ValidatorAddress);
@@ -823,7 +841,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     tx.CarbonTxType, tx.CarbonTxData,
                     senderAddress, gasPayerAddress, gasTargetAddress,
                     skipAddressTransactionExistsCheck: true,
-                    createAddressTransactionLinks: false);
+                    createAddressTransactionLinks: false,
+                    existingTransactionsByHash: existingTransactionsByHash);
 
                 transactionsInThisBlock[tx.Hash] = transaction;
                 QueueAddressTransactionLink(senderAddress, transaction);
