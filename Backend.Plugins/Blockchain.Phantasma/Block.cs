@@ -1793,31 +1793,43 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         if (bufferedEvents.Count > 0)
         {
             await EventMethods.InsertBatchAsync(dbConnection, dbTransaction, bufferedEvents);
-
-            foreach (var (token, eventEntry) in tokenCreateEventLinks)
-            {
-                if (eventEntry.ID > 0)
-                    token.CreateEventId = eventEntry.ID;
-            }
-
-            foreach (var (platform, eventEntry) in platformCreateEventLinks)
-            {
-                if (eventEntry.ID > 0)
-                    platform.CreateEventId = eventEntry.ID;
-            }
-
-            foreach (var (contract, eventEntry) in contractCreateEventLinks)
-            {
-                if (eventEntry.ID > 0)
-                    contract.CreateEventId = eventEntry.ID;
-            }
-
-            foreach (var (organization, eventEntry) in organizationCreateEventLinks)
-            {
-                if (eventEntry.ID > 0)
-                    organization.CreateEventId = eventEntry.ID;
-            }
         }
+
+        // Preserve existing behavior where the last create-event assignment wins
+        // when the same entity appears multiple times in one block.
+        var tokenCreateEventByTokenId = new Dictionary<int, int>();
+        foreach (var (token, eventEntry) in tokenCreateEventLinks)
+        {
+            if (token.ID > 0 && eventEntry.ID > 0)
+                tokenCreateEventByTokenId[token.ID] = eventEntry.ID;
+        }
+
+        var platformCreateEventByPlatformId = new Dictionary<int, int>();
+        foreach (var (platform, eventEntry) in platformCreateEventLinks)
+        {
+            if (platform.ID > 0 && eventEntry.ID > 0)
+                platformCreateEventByPlatformId[platform.ID] = eventEntry.ID;
+        }
+
+        var contractCreateEventByContractId = new Dictionary<int, int>();
+        foreach (var (contract, eventEntry) in contractCreateEventLinks)
+        {
+            if (contract.ID > 0 && eventEntry.ID > 0)
+                contractCreateEventByContractId[contract.ID] = eventEntry.ID;
+        }
+
+        var organizationCreateEventByOrganizationId = new Dictionary<int, int>();
+        foreach (var (organization, eventEntry) in organizationCreateEventLinks)
+        {
+            if (organization.ID > 0 && eventEntry.ID > 0)
+                organizationCreateEventByOrganizationId[organization.ID] = eventEntry.ID;
+        }
+
+        await EventMethods.ApplyCreateEventLinksAsync(dbConnection, dbTransaction,
+            tokenCreateEventByTokenId,
+            platformCreateEventByPlatformId,
+            contractCreateEventByContractId,
+            organizationCreateEventByOrganizationId);
 
         if (addressTransactionLinks.Count > 0)
         {

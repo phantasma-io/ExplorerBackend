@@ -355,4 +355,72 @@ FROM UNNEST(
 
         await insertCmd.ExecuteNonQueryAsync();
     }
+
+    private static async Task UpdateCreateEventLinksAsync(NpgsqlConnection dbConnection, NpgsqlTransaction dbTransaction,
+        IReadOnlyDictionary<int, int> linksByEntityId, string sql)
+    {
+        if (linksByEntityId == null || linksByEntityId.Count == 0)
+            return;
+
+        var entityIds = new int[linksByEntityId.Count];
+        var eventIds = new int[linksByEntityId.Count];
+        var index = 0;
+
+        foreach (var (entityId, eventId) in linksByEntityId)
+        {
+            if (entityId <= 0 || eventId <= 0)
+                continue;
+
+            entityIds[index] = entityId;
+            eventIds[index] = eventId;
+            index++;
+        }
+
+        if (index == 0)
+            return;
+
+        if (index != linksByEntityId.Count)
+        {
+            Array.Resize(ref entityIds, index);
+            Array.Resize(ref eventIds, index);
+        }
+
+        await using var cmd = new NpgsqlCommand(sql, dbConnection, dbTransaction);
+        cmd.Parameters.Add("@entity_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = entityIds;
+        cmd.Parameters.Add("@event_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = eventIds;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    // Create-event relations are sparse compared to the full events stream.
+    // Still keep them set-based so block commit does not fall back to per-row EF UPDATE calls.
+    public static async Task ApplyCreateEventLinksAsync(NpgsqlConnection dbConnection, NpgsqlTransaction dbTransaction,
+        IReadOnlyDictionary<int, int> tokenCreateEventByTokenId,
+        IReadOnlyDictionary<int, int> platformCreateEventByPlatformId,
+        IReadOnlyDictionary<int, int> contractCreateEventByContractId,
+        IReadOnlyDictionary<int, int> organizationCreateEventByOrganizationId)
+    {
+        await UpdateCreateEventLinksAsync(dbConnection, dbTransaction, tokenCreateEventByTokenId, @"
+UPDATE ""Tokens"" AS target
+SET ""CreateEventId"" = src.""CreateEventId""
+FROM UNNEST(@entity_ids, @event_ids) AS src(""ID"", ""CreateEventId"")
+WHERE target.""ID"" = src.""ID"";");
+
+        await UpdateCreateEventLinksAsync(dbConnection, dbTransaction, platformCreateEventByPlatformId, @"
+UPDATE ""Platforms"" AS target
+SET ""CreateEventId"" = src.""CreateEventId""
+FROM UNNEST(@entity_ids, @event_ids) AS src(""ID"", ""CreateEventId"")
+WHERE target.""ID"" = src.""ID"";");
+
+        await UpdateCreateEventLinksAsync(dbConnection, dbTransaction, contractCreateEventByContractId, @"
+UPDATE ""Contracts"" AS target
+SET ""CreateEventId"" = src.""CreateEventId""
+FROM UNNEST(@entity_ids, @event_ids) AS src(""ID"", ""CreateEventId"")
+WHERE target.""ID"" = src.""ID"";");
+
+        await UpdateCreateEventLinksAsync(dbConnection, dbTransaction, organizationCreateEventByOrganizationId, @"
+UPDATE ""Organizations"" AS target
+SET ""CreateEventId"" = src.""CreateEventId""
+FROM UNNEST(@entity_ids, @event_ids) AS src(""ID"", ""CreateEventId"")
+WHERE target.""ID"" = src.""ID"";");
+    }
 }
