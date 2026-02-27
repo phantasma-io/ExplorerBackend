@@ -41,11 +41,31 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private const int FetchBlocksPerIterationMax = 50;
     private long _balanceRefetchDate = 0;
     private string _balanceRefetchTimestampKey = "BALANCE_REFETCH_TIMESTAMP";
+    private readonly record struct TxExtendedEventCache(
+        TokenCreateData? TokenCreate,
+        TokenSeriesCreateData? TokenSeriesCreate,
+        TokenMintData? TokenMint,
+        SpecialResolutionData? SpecialResolution);
+
     private static readonly JsonSerializerOptions _payloadJsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         PropertyNamingPolicy = null
     };
+
+    private static TxExtendedEventCache ParseExtendedEvents(EventExResult[]? extendedEvents)
+    {
+        if (extendedEvents == null || extendedEvents.Length == 0)
+            return default;
+
+        // Parse each extended payload type once per tx and reuse it in both
+        // prefetch and ingest stages.
+        return new TxExtendedEventCache(
+            ExtendedEventParser.GetTokenCreateData(extendedEvents),
+            ExtendedEventParser.GetTokenSeriesCreateData(extendedEvents),
+            ExtendedEventParser.GetTokenMintData(extendedEvents),
+            ExtendedEventParser.GetSpecialResolutionData(extendedEvents));
+    }
 
     private static Dictionary<string, object?> InitPayload(string eventKind, string chainName, string contractHash, string address)
     {
@@ -576,6 +596,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var addressTransactionLinks = new HashSet<(string Address, string TxHash)>();
         // Per-block ownership cache avoids repeated ownership queries for NFTs touched multiple times.
         var ownershipByNft = new Dictionary<Nft, Database.Main.NftOwnership>();
+        // Reused across prefetch and ingest loops to avoid reparsing tx.ExtendedEvents.
+        var extendedEventDataByTxHash = new Dictionary<string, TxExtendedEventCache>(StringComparer.Ordinal);
 
         // TODO Hack until explorer can process events properly
         List<string> addressesToUpdate = new();
@@ -727,22 +749,23 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     }
                 }
 
-                if (tx.ExtendedEvents is { Length: > 0 })
+                var txExtendedData = ParseExtendedEvents(tx.ExtendedEvents);
+                extendedEventDataByTxHash[tx.Hash] = txExtendedData;
+
+                if (txExtendedData.TokenCreate is { } tokenCreateData)
                 {
-                    var tokenCreateData = ExtendedEventParser.GetTokenCreateData(tx.ExtendedEvents);
-                    if (tokenCreateData != null)
-                        QueueTokenSymbolForPrefetch(tokenCreateData.Value.Symbol);
+                    QueueTokenSymbolForPrefetch(tokenCreateData.Symbol);
+                }
 
-                    var seriesCreateData = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
-                    if (seriesCreateData != null)
-                    {
-                        QueueAddressForPrefetch(seriesCreateData.Value.Owner);
-                        QueueTokenSymbolForPrefetch(seriesCreateData.Value.Symbol);
-                    }
+                if (txExtendedData.TokenSeriesCreate is { } seriesCreateData)
+                {
+                    QueueAddressForPrefetch(seriesCreateData.Owner);
+                    QueueTokenSymbolForPrefetch(seriesCreateData.Symbol);
+                }
 
-                    var tokenMintData = ExtendedEventParser.GetTokenMintData(tx.ExtendedEvents);
-                    if (tokenMintData != null)
-                        QueueTokenSymbolForPrefetch(tokenMintData.Value.Symbol);
+                if (txExtendedData.TokenMint is { } tokenMintData)
+                {
+                    QueueTokenSymbolForPrefetch(tokenMintData.Symbol);
                 }
             }
 
@@ -928,12 +951,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
 
                 // Synthesize TokenSeriesCreate event from extended data (RPC does not emit legacy event).
-                var seriesCreateDataTx = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
-                var tokenMintDataTx = ExtendedEventParser.GetTokenMintData(tx.ExtendedEvents);
-                SpecialResolutionData? specialResolutionDataTx = null;
-
-                if (tx.ExtendedEvents is { Length: > 0 })
-                    specialResolutionDataTx = ExtendedEventParser.GetSpecialResolutionData(tx.ExtendedEvents);
+                // If prefetch stage did not cache this tx (unexpected), default cache keeps behavior unchanged.
+                extendedEventDataByTxHash.TryGetValue(tx.Hash, out var txExtendedData);
+                var seriesCreateDataTx = txExtendedData.TokenSeriesCreate;
+                var tokenMintDataTx = txExtendedData.TokenMint;
+                var specialResolutionDataTx = txExtendedData.SpecialResolution;
 
                 var specialResolutionKindName = EventKind.SpecialResolution.ToString();
                 if (specialResolutionDataTx != null &&
@@ -1377,8 +1399,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         case EventKind.TokenCreate:
                                             {
                                                 var tokenEventData = eventNode.GetParsedData<TokenEventData>();
-                                                var tokenCreateDataNullable =
-                                                    ExtendedEventParser.GetTokenCreateData(tx.ExtendedEvents);
+                                                var tokenCreateDataNullable = txExtendedData.TokenCreate;
 
                                                 var symbol = !string.IsNullOrWhiteSpace(tokenEventData.Symbol)
                                                     ? tokenEventData.Symbol
