@@ -593,6 +593,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         // Collect token symbols touched by this block so token reads stay batched.
         var tokenSymbolsToPrefetch = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var transactionsInThisBlock = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
+        var bufferedEvents = new List<Database.Main.Event>();
+        var tokenCreateEventLinks = new List<(Token Token, Database.Main.Event EventEntry)>();
+        var platformCreateEventLinks = new List<(Database.Main.Platform Platform, Database.Main.Event EventEntry)>();
+        var contractCreateEventLinks = new List<(Database.Main.Contract Contract, Database.Main.Event EventEntry)>();
+        var organizationCreateEventLinks = new List<(Database.Main.Organization Organization, Database.Main.Event EventEntry)>();
         var addressTransactionLinks = new HashSet<(string Address, string TxHash)>();
         // Per-block ownership cache avoids repeated ownership queries for NFTs touched multiple times.
         var ownershipByNft = new Dictionary<Nft, Database.Main.NftOwnership>();
@@ -1063,7 +1068,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
                             block.Timestamp, eventIndex + 1, chainEntry, transaction, contractId,
                             eventKindId, addressEntry, skipAddressTransactionExistsCheck: true,
-                            createAddressTransactionLink: false);
+                            createAddressTransactionLink: false,
+                            trackInContext: false);
+                        bufferedEvents.Add(eventEntry);
 
                         QueueAddressTransactionLink(addressEntry, transaction);
 
@@ -1451,7 +1458,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                                     if (token != null && eventEntry != null)
                                                     {
-                                                        token.CreateEvent = eventEntry;
+                                                        tokenCreateEventLinks.Add((token, eventEntry));
                                                     }
 
                                                     var tokenCreatePayload = new Dictionary<string, object?>
@@ -1471,7 +1478,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 {
                                                     var token = await ResolveTokenBySymbolAsync(symbol);
                                                     if (token != null)
-                                                        token.CreateEvent = eventEntry;
+                                                        tokenCreateEventLinks.Add((token, eventEntry));
                                                 }
 
                                                 break;
@@ -1506,7 +1513,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 var platform = PlatformMethods.Get(databaseContext, stringData);
                                                 if (platform != null)
                                                 {
-                                                    platform.CreateEvent = eventEntry;
+                                                    platformCreateEventLinks.Add((platform, eventEntry));
                                                 }
 
                                                 break;
@@ -1525,7 +1532,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                     chainEntry, stringData,
                                                     null);
                                                 //we do it like this, to be sure it is only set here
-                                                contractItem.CreateEvent = eventEntry;
+                                                if (eventEntry != null)
+                                                    contractCreateEventLinks.Add((contractItem, eventEntry));
 
                                                 break;
                                             }
@@ -1541,7 +1549,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 var organization = OrganizationMethods.Get(databaseContext, stringData);
                                                 if (organization != null)
                                                 {
-                                                    organization.CreateEvent = eventEntry;
+                                                    organizationCreateEventLinks.Add((organization, eventEntry));
                                                 }
 
                                                 break;
@@ -1642,7 +1650,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     //databaseEvent we need it here, so check it
                                     if (eventEntry != null)
-                                        eventEntry.TargetAddress = await ResolveAddressAsync(address);
+                                    {
+                                        var targetAddressEntry = await ResolveAddressAsync(address);
+                                        eventEntry.TargetAddress = targetAddressEntry;
+                                        eventEntry.TargetAddressId = targetAddressEntry.ID > 0
+                                            ? targetAddressEntry.ID
+                                            : eventEntry.TargetAddressId;
+                                    }
                                     payload["address_event"] = new Dictionary<string, object?>
                                     {
                                         ["address"] = address
@@ -1772,8 +1786,38 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
-        // Persist core entities first to obtain stable IDs for set-based link inserts.
+        // Persist core entities first so buffered events can resolve FK ids (tx/nft/address),
+        // then insert events set-based and wire create-event references by inserted event ids.
         await databaseContext.SaveChangesAsync();
+
+        if (bufferedEvents.Count > 0)
+        {
+            await EventMethods.InsertBatchAsync(dbConnection, dbTransaction, bufferedEvents);
+
+            foreach (var (token, eventEntry) in tokenCreateEventLinks)
+            {
+                if (eventEntry.ID > 0)
+                    token.CreateEventId = eventEntry.ID;
+            }
+
+            foreach (var (platform, eventEntry) in platformCreateEventLinks)
+            {
+                if (eventEntry.ID > 0)
+                    platform.CreateEventId = eventEntry.ID;
+            }
+
+            foreach (var (contract, eventEntry) in contractCreateEventLinks)
+            {
+                if (eventEntry.ID > 0)
+                    contract.CreateEventId = eventEntry.ID;
+            }
+
+            foreach (var (organization, eventEntry) in organizationCreateEventLinks)
+            {
+                if (eventEntry.ID > 0)
+                    organization.CreateEventId = eventEntry.ID;
+            }
+        }
 
         if (addressTransactionLinks.Count > 0)
         {
