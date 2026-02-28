@@ -31,6 +31,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private Dictionary<EventKindMethods.ChainEventKindKey, int> _eventKinds;
     private readonly ConcurrentDictionary<int, SyncLagState> _syncLagStates = new();
     private readonly ConcurrentDictionary<int, bool> _lastPersistedCatchupReadyByChain = new();
+    // Reuse one client instance for height polling to avoid per-call socket churn.
     private static readonly HttpClient BlockHeightHttpClient = CreateBlockHeightHttpClient();
 
     private sealed class SyncLagState
@@ -108,21 +109,38 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var processedHeight = ChainMethods.GetLastProcessedBlock(databaseContext, chainName);
         var lag = ComputeLagValue(chainHeight, processedHeight);
         UpdateSyncLagState(chainId, lag);
+        UpdateBalanceSyncMode(chainId, chainName, lag);
     }
 
-    private bool IsBackgroundSyncAllowed(int chainId)
+    private bool TryGetRecentLag(int chainId, out long lag)
     {
         var state = GetSyncLagState(chainId);
         var lastUpdated = Interlocked.Read(ref state.LastUpdatedAtUnixSeconds);
         if (lastUpdated == 0)
+        {
+            lag = 0;
             return false;
+        }
 
         var now = UnixSeconds.Now();
+        // Treat old lag snapshot as invalid: background jobs should not make decisions
+        // from stale lag values after long pauses or transient loop stalls.
         var staleThreshold = Math.Max(1, Settings.Default.BlocksProcessingInterval * 2);
         if (now - lastUpdated > staleThreshold)
+        {
+            lag = 0;
+            return false;
+        }
+
+        lag = Interlocked.Read(ref state.LastLag);
+        return true;
+    }
+
+    private bool IsBackgroundSyncAllowed(int chainId)
+    {
+        if (!TryGetRecentLag(chainId, out var lag))
             return false;
 
-        var lag = Interlocked.Read(ref state.LastLag);
         return lag <= BalanceSyncLagThreshold;
     }
 
@@ -242,61 +260,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     /// </summary>
     private void StartupBlockSync(string chainName)
     {
-        Thread blocksSyncThread = new(async () =>
-        {
-            var chainId = 0;
-            using (MainDbContext databaseContext = new())
-            {
-                chainId = ChainMethods.GetId(databaseContext, chainName);
-            }
-
-            while (_running)
-                try
-                {
-                    BigInteger currentHeight;
-                    using (MainDbContext databaseContext = new())
-                    {
-                        currentHeight = ChainMethods.GetLastProcessedBlock(databaseContext, chainName);
-                    }
-
-                    height = GetCurrentBlockHeight(chainName);
-                    Log.Information("[Blocks] Chain height: {Height}, explorer's height {explorerHeight}", height, currentHeight);
-
-                    if (currentHeight > height)
-                    {
-                        Log.Warning("[Blocks] RPC is out of sync, RPC: {Height}, explorer: {explorerHeight}", height, currentHeight);
-                        UpdateSyncLagState(chainId, long.MaxValue);
-                    }
-                    else if (Settings.Default.HeightLimit != 0 && currentHeight >= Settings.Default.HeightLimit)
-                    {
-                        Log.Warning("[Blocks] Height limit is reached {Height} >= {HeightLimit}", currentHeight, Settings.Default.HeightLimit);
-                        UpdateSyncLagState(chainId, 0);
-                    }
-                    else
-                    {
-                        var targetHeight = height;
-                        if (Settings.Default.HeightLimit != 0 && targetHeight >= Settings.Default.HeightLimit)
-                        {
-                            targetHeight = Settings.Default.HeightLimit;
-                        }
-
-                        var lag = ComputeLagValue(targetHeight, currentHeight);
-                        var allowBalanceSync = lag <= BalanceSyncLagThreshold;
-                        FetchBlocksRange(chainName, currentHeight, targetHeight, allowBalanceSync).Wait();
-                        UpdateSyncLagStateFromDb(chainId, chainName, targetHeight);
-                    }
-
-                    Thread.Sleep(Settings.Default.BlocksProcessingInterval *
-                                 1000); // We sync blocks every BlocksProcessingInterval seconds
-                }
-                catch (Exception e)
-                {
-                    LogEx.Exception("Block fetch", e);
-
-                    Thread.Sleep(Settings.Default.BlocksProcessingInterval * 1000);
-                }
-        });
-        blocksSyncThread.Start();
+        StartBlockPipeline(chainName);
     }
 
 

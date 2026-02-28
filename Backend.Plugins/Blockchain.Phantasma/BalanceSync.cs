@@ -20,6 +20,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private sealed class BalanceSyncState
     {
         public readonly SemaphoreSlim Signal = new(0, 1);
+        // Coalesces multiple wake-up requests into one pending pass.
         public int Pending;
     }
 
@@ -47,6 +48,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private void RequestBalanceSync(string chainName)
     {
         var state = GetBalanceSyncState(chainName);
+        // Keep at most one pending signal so high-frequency callers do not build
+        // an unbounded queue of balance passes while sync is busy.
         if (Interlocked.Exchange(ref state.Pending, 1) == 0)
         {
             state.Signal.Release();
@@ -87,31 +90,53 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private async Task ProcessDirtyBalancesAsync(string chainName, int chainId)
     {
+        if (!TryGetRecentLag(chainId, out var lag))
+            return;
+
+        // During catch-up we intentionally do not process balances:
+        // dirty rows accumulate and are drained once we return to normal mode.
+        if (IsBalanceCatchupMode(chainId))
+            return;
+
+        var dirtyCount = await GetDirtyAddressCountAsync(chainId);
+        if (dirtyCount == 0)
+            return;
+
+        var plan = BuildBalanceDrainPlan(dirtyCount, lag);
+        var freshDirtyCutoff = await GetFreshDirtyCutoffAsync(chainName);
         var processed = 0;
 
-        while (_running)
+        // 1) Always prioritize recently dirtied addresses for tip responsiveness.
+        processed += await ProcessDirtyBatchWindowAsync(
+            chainName,
+            chainId,
+            minDirtyInclusive: freshDirtyCutoff,
+            maxDirtyExclusive: null,
+            newestFirst: true,
+            batchSize: plan.FreshBatchSize,
+            maxBatches: plan.FreshBatchLimit);
+
+        // 2) Drain older backlog with larger adaptive batches.
+        processed += await ProcessDirtyBatchWindowAsync(
+            chainName,
+            chainId,
+            minDirtyInclusive: null,
+            maxDirtyExclusive: freshDirtyCutoff,
+            newestFirst: false,
+            batchSize: plan.BacklogBatchSize,
+            maxBatches: plan.BacklogBatchLimit);
+
+        // 3) Fallback for edge cases where cutoff split misses rows.
+        if (processed == 0)
         {
-            await using var databaseContext = new MainDbContext();
-            var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
-
-            var dirtyAddresses = await databaseContext.Addresses
-                .Where(x => x.ChainId == chainId && x.BALANCE_DIRTY_BLOCK > 0 && x.ADDRESS != "NULL")
-                .OrderBy(x => x.BALANCE_DIRTY_BLOCK)
-                .Take(BalanceDirtyBatchSize)
-                .ToListAsync();
-
-            if (dirtyAddresses.Count == 0)
-                break;
-
-            var dirtySnapshot = dirtyAddresses.ToDictionary(x => x.ID, x => x.BALANCE_DIRTY_BLOCK);
-            var addressList = dirtyAddresses.Select(x => x.ADDRESS).ToList();
-
-            await UpdateAddressesBalancesAsync(databaseContext, chainEntry, addressList, 100);
-            UpdateStakeMemberships(databaseContext, dirtyAddresses);
-            await ResetDirtyBalanceFlagsAsync(databaseContext, dirtySnapshot);
-
-            await databaseContext.SaveChangesAsync();
-            processed += dirtyAddresses.Count;
+            processed += await ProcessDirtyBatchWindowAsync(
+                chainName,
+                chainId,
+                minDirtyInclusive: null,
+                maxDirtyExclusive: null,
+                newestFirst: false,
+                batchSize: plan.FallbackBatchSize,
+                maxBatches: plan.FallbackBatchLimit);
         }
 
         if (processed > 0)
@@ -127,8 +152,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 LogEx.Exception("Stake snapshots sync", e);
             }
 
-            Log.Information("[{Name}][Balances] Updated {Count} addresses for chain {Chain}", Name, processed,
-                chainName);
+            Log.Information(
+                "[{Name}][Balances] Updated {Count} addresses for chain {Chain} (dirty before pass={DirtyBefore}, lag={Lag})",
+                Name,
+                processed,
+                chainName,
+                dirtyCount,
+                lag);
         }
     }
 

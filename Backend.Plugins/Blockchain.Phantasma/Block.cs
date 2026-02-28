@@ -39,8 +39,6 @@ namespace Backend.Blockchain;
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private const int FetchBlocksPerIterationMax = 50;
-    private long _balanceRefetchDate = 0;
-    private string _balanceRefetchTimestampKey = "BALANCE_REFETCH_TIMESTAMP";
     private readonly record struct TxExtendedEventCache(
         TokenCreateData? TokenCreate,
         TokenSeriesCreateData? TokenSeriesCreate,
@@ -426,117 +424,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             return seriesMode;
 
         return null;
-    }
-
-    private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight,
-        bool allowBalanceSync)
-    {
-        await using (MainDbContext databaseContext = new())
-        {
-            _balanceRefetchDate = await GlobalVariableMethods.GetLongAsync(databaseContext, _balanceRefetchTimestampKey);
-            if (_balanceRefetchDate == 0)
-            {
-                Log.Information("[{Name}][Blocks] Marking all addresses for balance refresh", Name);
-                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
-                await MarkAllBalancesDirtyAsync(databaseContext, chainEntry.ID);
-                await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now(),
-                    false);
-                await databaseContext.SaveChangesAsync();
-                Log.Information("[{Name}][Blocks] Finished marking addresses for balance refresh", Name);
-            }
-        }
-
-        Log.Information("[{Name}][Blocks] Fetching blocks ({From}-{To}) for chain {Chain}...",
-                Name,
-                fromHeight,
-                toHeight,
-                chainName);
-
-        BigInteger i;
-        await using (MainDbContext databaseContext = new())
-        {
-            i = ChainMethods.GetLastProcessedBlock(databaseContext, chainName) + 1;
-        }
-
-        if (i < fromHeight) i = fromHeight;
-
-        if (i > toHeight)
-        {
-            if (allowBalanceSync)
-                RequestBalanceSync(chainName);
-
-            return;
-        }
-
-        var currentBatchStart = i;
-        var currentBatchSize = BigInteger.Min(FetchBlocksPerIterationMax, toHeight - currentBatchStart + 1);
-
-        Log.Information("[{Name}][Blocks] Fetching batch of {Count} blocks starting from {StartHeight} for chain {Chain}...",
-            Name,
-            currentBatchSize,
-            currentBatchStart,
-            chainName);
-
-        var currentFetchStopwatch = Stopwatch.StartNew();
-        var currentFetchTask = GetBlockRange(chainName, currentBatchStart, currentBatchSize);
-
-        while (true)
-        {
-            var blocks = await currentFetchTask;
-            currentFetchStopwatch.Stop();
-            var fetchTime = currentFetchStopwatch.Elapsed;
-
-            var nextBatchStart = currentBatchStart + currentBatchSize;
-            Task<List<RpcBlockResult>>? nextFetchTask = null;
-            Stopwatch? nextFetchStopwatch = null;
-            BigInteger nextBatchSize = 0;
-
-            if (nextBatchStart <= toHeight)
-            {
-                nextBatchSize = BigInteger.Min(FetchBlocksPerIterationMax, toHeight - nextBatchStart + 1);
-                Log.Information(
-                    "[{Name}][Blocks] Fetching batch of {Count} blocks starting from {StartHeight} for chain {Chain}...",
-                    Name,
-                    nextBatchSize,
-                    nextBatchStart,
-                    chainName);
-
-                nextFetchStopwatch = Stopwatch.StartNew();
-                nextFetchTask = GetBlockRange(chainName, nextBatchStart, nextBatchSize);
-            }
-
-            var processStopwatch = Stopwatch.StartNew();
-            foreach (var block in blocks)
-                await ProcessBlock(block, chainName);
-            processStopwatch.Stop();
-            var processTime = processStopwatch.Elapsed;
-
-            var elapsedSeconds = fetchTime.TotalSeconds + processTime.TotalSeconds;
-            var blocksPerSecond = elapsedSeconds > 0
-                ? Math.Round(blocks.Count / elapsedSeconds, 2)
-                : 0;
-
-            Log.Information(
-                "[{Name}][Blocks] {Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec, {BlocksPerSecond} bps",
-                Name,
-                blocks.Count,
-                currentBatchStart,
-                currentBatchStart + blocks.Count - 1,
-                Math.Round(fetchTime.TotalSeconds, 3),
-                Math.Round(processTime.TotalSeconds, 3),
-                blocksPerSecond);
-
-            if (allowBalanceSync)
-                RequestBalanceSync(chainName);
-
-            if (nextFetchTask == null)
-                break;
-
-            currentBatchStart = nextBatchStart;
-            currentBatchSize = nextBatchSize;
-            currentFetchTask = nextFetchTask;
-            currentFetchStopwatch = nextFetchStopwatch!;
-        }
     }
 
     private static double _kilobyte = 1024.0;
