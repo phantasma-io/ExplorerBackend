@@ -65,8 +65,10 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
             var burnCursorKey = $"{BurnCursorKeyPrefix}_{chainId}";
             previousCursor = GlobalVariableMethods.GetLongAsync(databaseContext, burnCursorKey).GetAwaiter().GetResult();
 
-            // Process burns in cursor-ordered chunks to avoid full-table rescans every interval.
-            const int burnEventsBatchSize = 2000;
+            // Process burns in bounded cursor chunks.
+            // 2000-sized batches can exceed default DB command timeout on dense histories;
+            // use smaller slices to keep each cycle deterministic and avoid stream timeouts.
+            const int burnEventsBatchSize = 500;
 
             // TODO: instead of checking for "KCAL", we must add fungible flag to "Contracts" table.
             // Keep the behavior equivalent to previous code (exclude KCAL burns, which are fungible).
@@ -115,55 +117,44 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                 if (dbConnection.State != ConnectionState.Open)
                     dbConnection.Open();
 
-                // Filter to token pairs that still have non-burned rows first.
-                // This avoids spending UPDATE work on no-op pairs when burn batches contain
-                // already-processed tokens (a common case on dense histories).
+                // Keep one set-based SQL batch for both tables so we avoid per-token loops and
+                // avoid extra EXISTS probes that can dominate runtime on heavy histories.
                 using var updateCommand = new NpgsqlCommand(@"
 WITH burned_tokens AS (
     SELECT DISTINCT token.""ContractId"", token.""TokenId""
     FROM UNNEST(@contract_ids, @token_ids) AS token(""ContractId"", ""TokenId"")
 ),
-active_tokens AS (
-    SELECT bt.""ContractId"", bt.""TokenId""
-    FROM burned_tokens bt
-    WHERE EXISTS (
-        SELECT 1
-        FROM ""Events"" e
-        WHERE e.""ContractId"" = bt.""ContractId""
-          AND e.""TOKEN_ID"" IS NOT DISTINCT FROM bt.""TokenId""
-          AND e.""BURNED"" IS DISTINCT FROM TRUE
-    )
-    OR EXISTS (
-        SELECT 1
-        FROM ""Nfts"" n
-        WHERE n.""ContractId"" = bt.""ContractId""
-          AND n.""TOKEN_ID"" IS NOT DISTINCT FROM bt.""TokenId""
-          AND n.""BURNED"" IS DISTINCT FROM TRUE
-    )
-),
 updated_events AS (
     UPDATE ""Events"" e
     SET ""BURNED"" = TRUE
-    FROM active_tokens at
-    WHERE e.""ContractId"" = at.""ContractId""
-      AND e.""TOKEN_ID"" IS NOT DISTINCT FROM at.""TokenId""
+    FROM burned_tokens bt
+    WHERE e.""ContractId"" = bt.""ContractId""
+      AND e.""TOKEN_ID"" IS NOT DISTINCT FROM bt.""TokenId""
       AND e.""BURNED"" IS DISTINCT FROM TRUE
-    RETURNING 1
+    RETURNING e.""ContractId"", e.""TOKEN_ID""
 ),
 updated_nfts AS (
     UPDATE ""Nfts"" n
     SET ""BURNED"" = TRUE
-    FROM active_tokens at
-    WHERE n.""ContractId"" = at.""ContractId""
-      AND n.""TOKEN_ID"" IS NOT DISTINCT FROM at.""TokenId""
+    FROM burned_tokens bt
+    WHERE n.""ContractId"" = bt.""ContractId""
+      AND n.""TOKEN_ID"" IS NOT DISTINCT FROM bt.""TokenId""
       AND n.""BURNED"" IS DISTINCT FROM TRUE
-    RETURNING 1
+    RETURNING n.""ContractId"", n.""TOKEN_ID""
+),
+affected_tokens AS (
+    SELECT DISTINCT ue.""ContractId"", ue.""TOKEN_ID"" AS ""TokenId""
+    FROM updated_events ue
+    UNION
+    SELECT DISTINCT un.""ContractId"", un.""TOKEN_ID"" AS ""TokenId""
+    FROM updated_nfts un
 )
 SELECT
-    COALESCE((SELECT COUNT(*) FROM active_tokens), 0)::bigint AS ""ActiveTokenCount"",
+    COALESCE((SELECT COUNT(*) FROM affected_tokens), 0)::bigint AS ""ActiveTokenCount"",
     COALESCE((SELECT COUNT(*) FROM updated_events), 0)::bigint AS ""MarkedEventCount"",
     COALESCE((SELECT COUNT(*) FROM updated_nfts), 0)::bigint AS ""MarkedNftCount"";
 ", dbConnection);
+                updateCommand.CommandTimeout = 120;
 
                 updateCommand.Parameters.Add("@contract_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = contractIds;
                 updateCommand.Parameters.Add("@token_ids", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = tokenIds;

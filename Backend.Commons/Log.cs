@@ -9,6 +9,25 @@ namespace Backend.Commons;
 
 public static class LogEx
 {
+    private static bool IsDatabaseConnectivityIssue(Exception ex)
+    {
+        while (ex != null)
+        {
+            var type = ex.GetType();
+            var fullName = type.FullName ?? "";
+            var ns = type.Namespace ?? "";
+            if (fullName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ||
+                ns.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            ex = ex.InnerException;
+        }
+
+        return false;
+    }
+
     private static bool IsRpcConnectivityIssue(Exception ex)
     {
         while (ex != null)
@@ -20,14 +39,11 @@ public static class LogEx
             var message = ex.Message?.ToLowerInvariant() ?? "";
             if (message.Contains("rpc request timeout") ||
                 message.Contains("api request failed after") ||
-                message.Contains("operation was canceled") ||
-                message.Contains("timed out") ||
                 message.Contains("connection refused") ||
                 message.Contains("response ended prematurely") ||
                 message.Contains("unable to connect") ||
                 message.Contains("no such host") ||
-                message.Contains("name or service not known") ||
-                message.Contains("error occurred while sending the request"))
+                message.Contains("name or service not known"))
             {
                 return true;
             }
@@ -53,10 +69,16 @@ public static class LogEx
     public static string Exception(string module, Exception ex, string rpc = null, bool warningMode = false)
     {
         string logMessage;
-        if ((ex.Message.Contains("Rpc timeout after") || // Nethereum exception
-               ex.Message.Contains("Error occurred when trying to send rpc requests") ||
-               IsRpcConnectivityIssue(ex)) && // Generic HTTP/RPC transport failures
-             !Log.IsEnabled(LogEventLevel.Debug))
+        if (IsDatabaseConnectivityIssue(ex) && !Log.IsEnabled(LogEventLevel.Debug))
+        {
+            // Keep DB transport/transient failures visible but avoid mislabeling them as RPC issues.
+            logMessage = $"{module}: Database request issue ({ex.GetType().Name}: {ToSingleLine(ex.Message)})";
+            warningMode = true;
+        }
+        else if ((ex.Message.Contains("Rpc timeout after") || // Nethereum exception
+                  ex.Message.Contains("Error occurred when trying to send rpc requests") ||
+                  IsRpcConnectivityIssue(ex)) && // Generic HTTP/RPC transport failures
+                 !Log.IsEnabled(LogEventLevel.Debug))
         {
             logMessage = $"{module}: RPC request issue ({ex.GetType().Name}: {ToSingleLine(ex.Message)})";
             warningMode = true;
