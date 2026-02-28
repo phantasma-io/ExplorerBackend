@@ -580,6 +580,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         // Candidate NFT ids observed in block events; filtered by non-fungible symbols before DB prefetch.
         var nftCandidatesBySymbol = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         var transactionsInThisBlock = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
+        var bufferedTransactions = new List<Database.Main.Transaction>();
         var bufferedEvents = new List<Database.Main.Event>();
         var tokenCreateEventLinks = new List<(Token Token, Database.Main.Event EventEntry)>();
         var platformCreateEventLinks = new List<(Database.Main.Platform Platform, Database.Main.Event EventEntry)>();
@@ -714,6 +715,22 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 .ToListAsync();
             foreach (var persistedTransaction in persistedTransactions)
                 existingTransactionsByHash[persistedTransaction.HASH] = persistedTransaction;
+        }
+
+        Queue<int>? reservedTransactionIds = null;
+        if (block.Txs?.Length > 0)
+        {
+            // Reserve IDs once per block so tx rows can be written set-based while
+            // events/signatures still reference stable transaction IDs during parsing.
+            var missingTxCount = block.Txs
+                .Select(x => x.Hash)
+                .Where(x => !existingTransactionsByHash.ContainsKey(x))
+                .Distinct(StringComparer.Ordinal)
+                .Count();
+
+            if (missingTxCount > 0)
+                reservedTransactionIds =
+                    await TransactionMethods.ReserveIdsAsync(dbConnection, dbTransaction, missingTxCount);
         }
 
         QueueAddressForPrefetch(block.ChainAddress);
@@ -902,6 +919,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 return nft;
             }
 
+            // Set-based transaction insert requires resolved FK IDs (block + sender/gas addresses).
+            // Flush preloaded entities once here while staying inside the same block transaction.
+            await databaseContext.SaveChangesAsync();
+
             for (var txIndex = 0; txIndex < block.Txs.Length; txIndex++)
             {
                 var tx = block.Txs[txIndex];
@@ -925,7 +946,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     senderAddress, gasPayerAddress, gasTargetAddress,
                     skipAddressTransactionExistsCheck: true,
                     createAddressTransactionLinks: false,
-                    existingTransactionsByHash: existingTransactionsByHash);
+                    existingTransactionsByHash: existingTransactionsByHash,
+                    reservedTransactionIds: reservedTransactionIds,
+                    bufferedTransactions: bufferedTransactions);
 
                 transactionsInThisBlock[tx.Hash] = transaction;
                 QueueAddressTransactionLink(senderAddress, transaction);
@@ -1832,8 +1855,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
-        // Persist core entities first so buffered events can resolve FK ids (tx/nft/address),
-        // then insert events set-based and wire create-event references by inserted event ids.
+        if (bufferedTransactions.Count > 0)
+            await TransactionMethods.InsertBatchAsync(dbConnection, dbTransaction, bufferedTransactions);
+
+        // Persist tracked entities (addresses/contracts/signatures/NFT updates) after
+        // set-based transaction flush, so FK-dependent rows can commit in one block transaction.
         await databaseContext.SaveChangesAsync();
 
         if (bufferedEvents.Count > 0)

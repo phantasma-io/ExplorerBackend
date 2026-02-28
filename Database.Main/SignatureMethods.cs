@@ -23,7 +23,9 @@ public static class SignatureMethods
             {
                 SignatureKind = kindMap.GetValueOrDefault(kind),
                 DATA = data,
-                Transaction = transaction
+                // Transaction can be inserted set-based before SaveChanges.
+                // Keep FK assignment explicit to avoid attaching detached transaction entities.
+                TransactionId = transaction.ID
             };
             signatureList.Add(signature);
         }
