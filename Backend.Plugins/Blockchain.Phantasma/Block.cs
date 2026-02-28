@@ -1852,7 +1852,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             addressesToUpdate.Count);
 
         var saveTailStopwatch = Stopwatch.StartNew();
-        MarkAddressesDirty(databaseContext, chainEntry, addressesToUpdate, (long)block.Height, addressesInThisBlock);
+        await MarkAddressesDirty(databaseContext, chainEntry, addressesToUpdate, (long)block.Height,
+            addressesInThisBlock);
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.Height, false);
 
         await databaseContext.SaveChangesAsync();

@@ -9,6 +9,9 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
+using NpgsqlTypes;
 using PhantasmaPhoenix.Core.Extensions;
 using Serilog;
 
@@ -16,13 +19,13 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private static void MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
+    private static Task MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
         long blockHeight)
     {
-        MarkAddressesDirty(databaseContext, chain, addresses, blockHeight, null);
+        return MarkAddressesDirty(databaseContext, chain, addresses, blockHeight, null);
     }
 
-    private static void MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
+    private static async Task MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
         long blockHeight, IReadOnlyDictionary<string, Address> cachedAddressMap)
     {
         if (addresses == null || addresses.Count == 0)
@@ -56,14 +59,46 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
         }
 
+        var persistedAddressIds = new HashSet<int>();
         foreach (var entry in touchedAddresses.Values)
         {
             if (entry == null)
                 continue;
 
+            if (entry.ID > 0)
+            {
+                persistedAddressIds.Add(entry.ID);
+                continue;
+            }
+
+            // Keep legacy behavior for newly added addresses that do not have DB ids yet:
+            // mark dirty on the tracked entity so the upcoming SaveChanges persists it.
             if (entry.BALANCE_DIRTY_BLOCK < blockHeight)
                 entry.BALANCE_DIRTY_BLOCK = blockHeight;
         }
+
+        if (persistedAddressIds.Count == 0)
+            return;
+
+        var addressIds = persistedAddressIds.ToArray();
+        var dirtyBlocks = Enumerable.Repeat(blockHeight, addressIds.Length).ToArray();
+
+        var dbConnection = (NpgsqlConnection)databaseContext.Database.GetDbConnection();
+        if (dbConnection.State != System.Data.ConnectionState.Open)
+            await dbConnection.OpenAsync();
+
+        var dbTransaction = databaseContext.Database.CurrentTransaction?.GetDbTransaction() as NpgsqlTransaction;
+        await using var cmd = new NpgsqlCommand(@"
+UPDATE ""Addresses"" AS address_row
+SET ""BALANCE_DIRTY_BLOCK"" = src.""DirtyBlock""
+FROM UNNEST(@address_ids, @dirty_blocks) AS src(""AddressId"", ""DirtyBlock"")
+WHERE address_row.""ID"" = src.""AddressId""
+  AND address_row.""BALANCE_DIRTY_BLOCK"" < src.""DirtyBlock"";
+", dbConnection, dbTransaction);
+
+        cmd.Parameters.Add("@address_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = addressIds;
+        cmd.Parameters.Add("@dirty_blocks", NpgsqlDbType.Array | NpgsqlDbType.Bigint).Value = dirtyBlocks;
+        await cmd.ExecuteNonQueryAsync();
     }
 
     private static Task MarkAllBalancesDirtyAsync(MainDbContext databaseContext, int chainId)
