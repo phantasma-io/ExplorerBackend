@@ -194,27 +194,47 @@ public static class GetTransactions
             if (!string.IsNullOrEmpty(qUpper))
             {
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
-                var isHex = qIsHex;
                 var isFullHash = qIsFullHash;
-                var isHexPartial = isHex && !isFullHash;
                 var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
-                var treatAsHashPartial = !isNumber && !isAddress && !isFullHash;
-                long? qHeight = null;
 
-                if (isNumber)
+                if (isFullHash)
+                {
+                    query = query.Where(x => x.HASH == qUpper);
+                }
+                else if (isNumber)
                 {
                     if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedQHeight))
                         throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-                    qHeight = parsedQHeight;
+                    query = query.Where(x => x.Block.HEIGHT == parsedQHeight);
                 }
+                else if (isAddress)
+                {
+                    var resolvedAddressIds = await databaseContext.Addresses
+                        .AsNoTracking()
+                        .Where(a => a.ADDRESS == qTrimmed)
+                        .Select(a => a.ID)
+                        .ToArrayAsync();
 
-                query = query.Where(x =>
-                    (isFullHash && x.HASH == qUpper) ||
-                    (isHexPartial && x.HASH.Contains(qUpper)) ||
-                    (qHeight.HasValue && x.Block.HEIGHT == qHeight.Value) ||
-                    (isAddress && x.TransactionAddresses.Any(y => y.Address.ADDRESS == qTrimmed)) ||
-                    (treatAsHashPartial && x.HASH.Contains(qUpper)));
+                    if (resolvedAddressIds.Length == 0)
+                    {
+                        return new TransactionResult
+                        {
+                            total_results = null,
+                            transactions = Array.Empty<Transaction>(),
+                            next_cursor = null
+                        };
+                    }
+
+                    query = resolvedAddressIds.Length == 1
+                        ? query.Where(x => x.TransactionAddresses.Any(y => y.AddressId == resolvedAddressIds[0]))
+                        : query.Where(x => x.TransactionAddresses.Any(y => resolvedAddressIds.Contains(y.AddressId)));
+                }
+                else
+                {
+                    // Partial hash search through q was intentionally removed to avoid wide LIKE scans.
+                    query = query.Where(_ => false);
+                }
             }
 
             if (!string.IsNullOrEmpty(hashUpper))

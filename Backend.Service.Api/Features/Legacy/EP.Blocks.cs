@@ -157,11 +157,12 @@ public static class GetBlocks
                     if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var qHeight))
                         throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-                    query = query.Where(x => x.HEIGHT == qHeight || x.HASH.Contains(qUpper));
+                    query = query.Where(x => x.HEIGHT == qHeight);
                 }
                 else
                 {
-                    query = query.Where(x => x.HASH.Contains(qUpper));
+                    // Partial hash lookup via q is intentionally disabled to avoid broad HASH LIKE scans.
+                    query = query.Where(_ => false);
                 }
             }
 

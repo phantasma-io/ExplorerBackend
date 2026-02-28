@@ -64,6 +64,8 @@ public static class GetEvents
         const string fiatCurrency = "USD";
         string? nextCursor = null;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
+        var qIsAddress = !string.IsNullOrEmpty(qTrimmed) &&
+                         PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
 
         try
         {
@@ -135,6 +137,15 @@ public static class GetEvents
             var cursorToken = CursorPagination.ParseCursor(cursor);
             var sortDirection = CursorPagination.ParseSortDirection(order_direction);
             var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+            var addressScopedRequest = !string.IsNullOrWhiteSpace(address) || qIsAddress;
+
+            if (addressScopedRequest && string.Equals(orderBy, "id", StringComparison.OrdinalIgnoreCase))
+            {
+                // Address timelines are consumed chronologically; id ordering adds unstable scans
+                // and conflicts with the frontend default that switches to date immediately after mount.
+                orderBy = "date";
+            }
+
             long? parsedBlockHeightFilter = null;
 
             if (!string.IsNullOrEmpty(block_height))
@@ -211,10 +222,8 @@ public static class GetEvents
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
                 var isFullHash = isHex && qUpper.Length >= 64;
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
-                var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
-                // Keep short alphabetic queries (for example, event kind fragments) on the text path,
-                // and treat sufficiently long hex-like values as hash fragments.
-                var isHexPartial = isHex && !isFullHash && qUpper.Length >= 8;
+                var isAddress = qIsAddress;
+                var isHashFragment = isHex && !isFullHash && qUpper.Length >= 8;
                 var isTextSearch = qTrimmed.Length >= 3;
 
                 // Use a single query strategy per input shape. This avoids the heavy OR predicate
@@ -294,11 +303,15 @@ public static class GetEvents
 
                     query = query.Where(x => x.Transaction.Block.HEIGHT == qHeight);
                 }
-                else if (isHexPartial)
+                else if (isHashFragment)
                 {
-                    query = query.Where(x =>
-                        x.Transaction.HASH.Contains(qUpper) ||
-                        x.Transaction.Block.HASH.Contains(qUpper));
+                    // Partial hash lookup via q is intentionally disabled to avoid full-scan hash predicates.
+                    return new EventsResult
+                    {
+                        total_results = null,
+                        events = Array.Empty<Event>(),
+                        next_cursor = null
+                    };
                 }
                 else if (isTextSearch)
                 {
