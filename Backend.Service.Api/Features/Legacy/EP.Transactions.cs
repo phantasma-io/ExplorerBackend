@@ -206,7 +206,13 @@ public static class GetTransactions
                     if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedQHeight))
                         throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-                    query = query.Where(x => x.Block.HEIGHT == parsedQHeight);
+                    // Keep numeric q on an indexed BlockId path to avoid broad joins over Block/Chain navigation.
+                    var blockIdsByHeight = databaseContext.Blocks
+                        .AsNoTracking()
+                        .Where(b => b.HEIGHT == parsedQHeight)
+                        .Select(b => b.ID);
+
+                    query = query.Where(x => blockIdsByHeight.Contains(x.BlockId));
                 }
                 else if (isAddress)
                 {
@@ -226,9 +232,15 @@ public static class GetTransactions
                         };
                     }
 
-                    query = resolvedAddressIds.Length == 1
-                        ? query.Where(x => x.TransactionAddresses.Any(y => y.AddressId == resolvedAddressIds[0]))
-                        : query.Where(x => x.TransactionAddresses.Any(y => resolvedAddressIds.Contains(y.AddressId)));
+                    // Drive address q by link-table ids first, so the planner can use
+                    // the (AddressId, TransactionId) index directly on AddressTransactions.
+                    var transactionIdsByAddress = databaseContext.AddressTransactions
+                        .AsNoTracking()
+                        .Where(x => resolvedAddressIds.Contains(x.AddressId))
+                        .Select(x => x.TransactionId)
+                        .Distinct();
+
+                    query = query.Where(x => transactionIdsByAddress.Contains(x.ID));
                 }
                 else
                 {
@@ -269,16 +281,66 @@ public static class GetTransactions
                     addressId = await databaseContext.Addresses.Where(x => x.ADDRESS_NAME == address).Select(x => x.ID).FirstOrDefaultAsync();
                 }
 
-                query = query.Where(x => x.TransactionAddresses.Any(y => y.AddressId == addressId));
+                if (addressId <= 0)
+                {
+                    return new TransactionResult
+                    {
+                        total_results = null,
+                        transactions = Array.Empty<Transaction>(),
+                        next_cursor = null
+                    };
+                }
+
+                var transactionIdsByAddress = databaseContext.AddressTransactions
+                    .AsNoTracking()
+                    .Where(x => x.AddressId == addressId)
+                    .Select(x => x.TransactionId)
+                    .Distinct();
+
+                query = query.Where(x => transactionIdsByAddress.Contains(x.ID));
             }
 
             if (!string.IsNullOrEmpty(block_hash))
-                query = query.Where(x => x.Block.HASH == block_hash.ToUpper());
+            {
+                var blockHashUpper = block_hash.ToUpperInvariant();
+                var blockIdsByHash = databaseContext.Blocks
+                    .AsNoTracking()
+                    .Where(x => x.HASH == blockHashUpper)
+                    .Select(x => x.ID);
+
+                query = query.Where(x => blockIdsByHash.Contains(x.BlockId));
+            }
 
             if (parsedBlockHeightFilter.HasValue)
-                query = query.Where(x => x.Block.HEIGHT == parsedBlockHeightFilter.Value);
+            {
+                var blockIdsByHeight = databaseContext.Blocks
+                    .AsNoTracking()
+                    .Where(x => x.HEIGHT == parsedBlockHeightFilter.Value)
+                    .Select(x => x.ID);
 
-            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Block.Chain.NAME == chain);
+                query = query.Where(x => blockIdsByHeight.Contains(x.BlockId));
+            }
+
+            if (!string.IsNullOrEmpty(chain))
+            {
+                var chainId = await databaseContext.Chains
+                    .AsNoTracking()
+                    .Where(x => x.NAME == chain)
+                    .Select(x => (int?)x.ID)
+                    .FirstOrDefaultAsync();
+
+                if (!chainId.HasValue)
+                {
+                    return new TransactionResult
+                    {
+                        total_results = null,
+                        transactions = Array.Empty<Transaction>(),
+                        next_cursor = null
+                    };
+                }
+
+                query = query.Where(x => x.Block.ChainId == chainId.Value);
+            }
 
             if (!string.IsNullOrEmpty(stateTrimmed))
             {

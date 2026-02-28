@@ -290,18 +290,56 @@ public static class GetEvents
                         };
                     }
 
-                    query = resolvedAddressIds.Length == 1
-                        ? query.Where(x => x.AddressId == resolvedAddressIds[0] || x.TargetAddressId == resolvedAddressIds[0])
-                        : query.Where(x =>
-                            resolvedAddressIds.Contains(x.AddressId) ||
-                            (x.TargetAddressId.HasValue && resolvedAddressIds.Contains(x.TargetAddressId.Value)));
+                    // Address q uses two indexed branches (AddressId and TargetAddressId) merged by ID.
+                    // This avoids a wide OR predicate that can degrade into PK scans for sparse addresses.
+                    var sourceEventIdsQuery = databaseContext.Events
+                        .AsNoTracking()
+                        .Where(x => resolvedAddressIds.Contains(x.AddressId))
+                        .Select(x => x.ID);
+
+                    var targetEventIdsQuery = databaseContext.Events
+                        .AsNoTracking()
+                        .Where(x => x.TargetAddressId.HasValue && resolvedAddressIds.Contains(x.TargetAddressId.Value))
+                        .Select(x => x.ID);
+
+                    if (chainId.HasValue)
+                    {
+                        sourceEventIdsQuery = databaseContext.Events
+                            .AsNoTracking()
+                            .Where(x => x.ChainId == chainId.Value && resolvedAddressIds.Contains(x.AddressId))
+                            .Select(x => x.ID);
+
+                        targetEventIdsQuery = databaseContext.Events
+                            .AsNoTracking()
+                            .Where(x => x.ChainId == chainId.Value && x.TargetAddressId.HasValue &&
+                                        resolvedAddressIds.Contains(x.TargetAddressId.Value))
+                            .Select(x => x.ID);
+                    }
+
+                    var matchingEventIds = sourceEventIdsQuery
+                        .Concat(targetEventIdsQuery)
+                        .Distinct();
+
+                    query = query.Where(x => matchingEventIds.Contains(x.ID));
                 }
                 else if (isNumber)
                 {
                     if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var qHeight))
                         throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
-                    query = query.Where(x => x.Transaction.Block.HEIGHT == qHeight);
+                    var blockIdsByHeight = databaseContext.Blocks
+                        .AsNoTracking()
+                        .Where(x => x.HEIGHT == qHeight);
+
+                    if (chainId.HasValue)
+                        blockIdsByHeight = blockIdsByHeight.Where(x => x.ChainId == chainId.Value);
+
+                    var transactionIdsByHeight = databaseContext.Transactions
+                        .AsNoTracking()
+                        .Where(x => blockIdsByHeight.Select(b => b.ID).Contains(x.BlockId))
+                        .Select(x => x.ID);
+
+                    query = query.Where(x => transactionIdsByHeight.Contains(x.TransactionId));
                 }
                 else if (isHashFragment)
                 {
