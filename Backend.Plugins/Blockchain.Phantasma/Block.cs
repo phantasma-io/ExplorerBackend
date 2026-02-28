@@ -47,6 +47,59 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         TokenMintData? TokenMint,
         SpecialResolutionData? SpecialResolution);
 
+    // Hot-path payload fragments are modeled as typed objects instead of nested dictionaries.
+    // This keeps JSON shape unchanged while reducing per-event allocation pressure.
+    private sealed class TokenEventPayload
+    {
+        [JsonPropertyName("token")]
+        public string Token { get; init; } = string.Empty;
+
+        [JsonPropertyName("value")]
+        public string Value { get; init; } = string.Empty;
+
+        [JsonPropertyName("value_raw")]
+        public string ValueRaw { get; init; } = string.Empty;
+
+        [JsonPropertyName("chain_name")]
+        public string ChainName { get; init; } = string.Empty;
+    }
+
+    private sealed class TokenMintExtendedPayload
+    {
+        [JsonPropertyName("token_id")]
+        public string TokenId { get; init; } = string.Empty;
+
+        [JsonPropertyName("series_id")]
+        public string? SeriesId { get; init; }
+
+        [JsonPropertyName("mint_number")]
+        public string MintNumber { get; init; } = string.Empty;
+
+        [JsonPropertyName("carbon_token_id")]
+        public string CarbonTokenId { get; init; } = string.Empty;
+
+        [JsonPropertyName("carbon_series_id")]
+        public string CarbonSeriesId { get; init; } = string.Empty;
+
+        [JsonPropertyName("carbon_instance_id")]
+        public string CarbonInstanceId { get; init; } = string.Empty;
+
+        [JsonPropertyName("owner")]
+        public string Owner { get; init; } = string.Empty;
+    }
+
+    private sealed class GasEventPayload
+    {
+        [JsonPropertyName("price")]
+        public string Price { get; init; } = string.Empty;
+
+        [JsonPropertyName("amount")]
+        public string? Amount { get; init; }
+
+        [JsonPropertyName("address")]
+        public string Address { get; init; } = string.Empty;
+    }
+
     private static readonly JsonSerializerOptions _payloadJsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -69,7 +122,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private static Dictionary<string, object?> InitPayload(string eventKind, string chainName, string contractHash, string address)
     {
-        return new Dictionary<string, object?>
+        return new Dictionary<string, object?>(8)
         {
             ["event_kind"] = eventKind,
             ["chain"] = chainName,
@@ -1293,15 +1346,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                     nft.SeriesId = seriesEntry.ID;
                                             }
 
-                                            payload["token_mint_extended"] = new Dictionary<string, object?>
+                                            payload["token_mint_extended"] = new TokenMintExtendedPayload
                                             {
-                                                ["token_id"] = mintData.TokenId,
-                                                ["series_id"] = mintData.SeriesId,
-                                                ["mint_number"] = mintData.MintNumber.ToString(),
-                                                ["carbon_token_id"] = mintData.CarbonTokenId.ToString(),
-                                                ["carbon_series_id"] = mintData.CarbonSeriesId.ToString(),
-                                                ["carbon_instance_id"] = mintData.CarbonInstanceId.ToString(),
-                                                ["owner"] = mintData.Owner
+                                                TokenId = mintData.TokenId,
+                                                SeriesId = mintData.SeriesId,
+                                                MintNumber = mintData.MintNumber.ToString(),
+                                                CarbonTokenId = mintData.CarbonTokenId.ToString(),
+                                                CarbonSeriesId = mintData.CarbonSeriesId.ToString(),
+                                                CarbonInstanceId = mintData.CarbonInstanceId.ToString(),
+                                                Owner = mintData.Owner
                                             };
                                         }
                                     }
@@ -1313,12 +1366,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             block.Timestamp, addressEntry, false, ownershipByNft);
 
                                     payload["token_id"] = tokenValue;
-                                    payload["token_event"] = new Dictionary<string, object?>
+                                    payload["token_event"] = new TokenEventPayload
                                     {
-                                        ["token"] = tokenEventData.Symbol,
-                                        ["value"] = tokenValue,
-                                        ["value_raw"] = tokenValueRaw,
-                                        ["chain_name"] = tokenEventData.ChainName
+                                        Token = tokenEventData.Symbol,
+                                        Value = tokenValue,
+                                        ValueRaw = tokenValueRaw,
+                                        ChainName = tokenEventData.ChainName
                                     };
 
                                     if (kind == EventKind.TokenMint && carbonMintTx.HasValue && nft != null)
@@ -1767,11 +1820,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     var hasUnlimitedGas = amount == ulong.MaxValue.ToString();
                                     var amountForPayload = hasUnlimitedGas ? null : amount;
 
-                                    payload["gas_event"] = new Dictionary<string, object?>
+                                    payload["gas_event"] = new GasEventPayload
                                     {
-                                        ["price"] = price,
-                                        ["amount"] = amountForPayload,
-                                        ["address"] = address
+                                        Price = price,
+                                        Amount = amountForPayload,
+                                        Address = address
                                     };
 
                                     break;
