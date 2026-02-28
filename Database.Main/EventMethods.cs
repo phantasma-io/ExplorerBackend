@@ -101,7 +101,7 @@ public static class EventMethods
     }
 
 
-    public static async Task<bool> UpdateValuesAsync(MainDbContext databaseContext, Event eventItem, Nft nft,
+    public static bool UpdateValues(MainDbContext databaseContext, Event eventItem, Nft nft,
         string tokenId, Chain chain, PhantasmaPhoenix.Protocol.EventKind eventKind, int eventKindId, int contractId)
     {
         var eventUpdated = false;
