@@ -9,6 +9,7 @@ namespace Backend.Blockchain;
 public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
 {
     private bool _running = true;
+    private bool _burnDeferredDueCatchup = false;
     public override string Name => "Blockchain.Common";
 
 

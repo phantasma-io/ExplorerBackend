@@ -30,11 +30,23 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private BigInteger height = 0;
     private Dictionary<EventKindMethods.ChainEventKindKey, int> _eventKinds;
     private readonly ConcurrentDictionary<int, SyncLagState> _syncLagStates = new();
+    private readonly ConcurrentDictionary<int, bool> _lastPersistedCatchupReadyByChain = new();
+    private static readonly HttpClient BlockHeightHttpClient = CreateBlockHeightHttpClient();
 
     private sealed class SyncLagState
     {
         public long LastLag;
         public long LastUpdatedAtUnixSeconds;
+    }
+
+    private static HttpClient CreateBlockHeightHttpClient()
+    {
+        var httpClient = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan
+        };
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Other");
+        return httpClient;
     }
 
     public void Fetch()
@@ -51,6 +63,31 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var state = GetSyncLagState(chainId);
         Interlocked.Exchange(ref state.LastLag, lag);
         Interlocked.Exchange(ref state.LastUpdatedAtUnixSeconds, UnixSeconds.Now());
+        PersistCatchupReadyState(chainId, lag);
+    }
+
+    private void PersistCatchupReadyState(int chainId, long lag)
+    {
+        // Burn/price background jobs should run only when block sync is fully caught up.
+        var isCatchupReady = lag == 0;
+        if (_lastPersistedCatchupReadyByChain.TryGetValue(chainId, out var previousState) &&
+            previousState == isCatchupReady)
+        {
+            return;
+        }
+
+        try
+        {
+            using var databaseContext = new MainDbContext();
+            CatchupGateMethods.SetCatchupReady(databaseContext, chainId, isCatchupReady, saveChanges: false);
+            databaseContext.SaveChanges();
+            _lastPersistedCatchupReadyByChain[chainId] = isCatchupReady;
+        }
+        catch (Exception e)
+        {
+            Log.Warning("[{Name}] Failed to persist catch-up state for chainId {ChainId}: {Reason}",
+                Name, chainId, e.Message);
+        }
     }
 
     private static long ComputeLagValue(BigInteger chainHeight, BigInteger currentHeight)
@@ -434,10 +471,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var encodedChain = Uri.EscapeDataString(chain);
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockHeight?chainInput={encodedChain}";
 
-        HttpClient httpClient = new();
-        var response = httpClient.GetAsync(url).Result;
+        using var response = BlockHeightHttpClient.GetAsync(url).GetAwaiter().GetResult();
         using var content = response.Content;
-        var reply = content.ReadAsStringAsync().Result;
+        var reply = content.ReadAsStringAsync().GetAwaiter().GetResult();
 
         if (!response.IsSuccessStatusCode)
         {

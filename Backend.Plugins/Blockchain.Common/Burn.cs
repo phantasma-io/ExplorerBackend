@@ -32,6 +32,29 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
             if (chainId <= 0)
                 return;
 
+            // During block catch-up we defer burn marking to reduce write contention on Events/Nfts.
+            if (CatchupGateMethods.TryGetCatchupReady(databaseContext, chainId, out var isCatchupReady) &&
+                !isCatchupReady)
+            {
+                if (!_burnDeferredDueCatchup)
+                {
+                    Log.Information(
+                        "{Name} plugin: Deferring burn events processing while explorer catch-up is in progress",
+                        Name);
+                    _burnDeferredDueCatchup = true;
+                }
+
+                return;
+            }
+
+            if (_burnDeferredDueCatchup)
+            {
+                Log.Information(
+                    "{Name} plugin: Resuming burn events processing after explorer reached zero-lag",
+                    Name);
+                _burnDeferredDueCatchup = false;
+            }
+
             var burnEventId = databaseContext.EventKinds
                 .Where(x => x.ChainId == chainId && x.NAME == "TokenBurn")
                 .Select(x => x.ID)
