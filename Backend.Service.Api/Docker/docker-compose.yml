@@ -24,8 +24,8 @@ services:
         max-size: "20m"
 
 networks:
-   api:
-      name: api-${DEPLOY_ENV:-production}-network
-   postgresql:
-      name: postgresql-network
-      external: true
+  api:
+    name: api-${DEPLOY_ENV:-production}-network
+  postgresql:
+    name: postgresql-network
+    external: true

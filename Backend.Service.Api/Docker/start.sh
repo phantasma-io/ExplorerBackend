@@ -1,9 +1,7 @@
-# Export env vars
+#!/usr/bin/env bash
+set -euo pipefail
 if [ -f .env ]; then
   export $(grep -v '^#' .env | xargs)
 fi
-
-# Avoid compose project name collisions across stacks.
 export COMPOSE_PROJECT_NAME="explorer-backend-api-${DEPLOY_ENV:-production}"
-
 docker compose up -d --force-recreate --remove-orphans
