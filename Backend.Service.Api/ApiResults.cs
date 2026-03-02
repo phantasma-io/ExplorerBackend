@@ -134,6 +134,29 @@ public class Series
     public string? creator { get; set; }
 
     /// <summary>
+    ///     Name of the chain the series belongs to
+    /// </summary>
+    /// <example>main</example>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Contract hash for the series token
+    /// </summary>
+    public string? contract { get; set; }
+
+    /// <summary>
+    ///     Token symbol of the series
+    /// </summary>
+    /// <example>TTRS</example>
+    public string? symbol { get; set; }
+
+    /// <summary>
+    ///     Derived creation timestamp in UTC unix seconds
+    /// </summary>
+    /// <example>1672149444</example>
+    public long? created_unix_seconds { get; set; }
+
+    /// <summary>
     ///     current available supply
     /// </summary>
     /// <example>2</example>
@@ -804,6 +827,11 @@ public class Transaction
     ///     Height of the Block from the transaction
     /// </summary>
     public string? block_height { get; set; }
+
+    /// <summary>
+    ///     Chain name where the transaction is included
+    /// </summary>
+    public string? chain { get; set; }
 
     /// <summary>
     ///     index in the Block from the transaction
@@ -1917,4 +1945,306 @@ public class SearchResult
     ///     Search Result List
     /// </summary>
     public Search[]? result { get; set; }
+}
+
+/// <summary>
+///     Aggregated counters used by explorer overview pages.
+/// </summary>
+public class OverviewStatsResult
+{
+    /// <summary>
+    ///     Chain filter used for chain-scoped counters.
+    /// </summary>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Whether burned NFTs were included in nft counters.
+    /// </summary>
+    public int include_burned { get; set; }
+
+    /// <summary>
+    ///     Whether legacy transaction chains were included in transaction counters.
+    /// </summary>
+    public int include_legacy_transactions { get; set; }
+
+    /// <summary>
+    ///     Total number of transactions for requested scope.
+    /// </summary>
+    public long transactions_total { get; set; }
+
+    /// <summary>
+    ///     Total number of tokens for requested scope.
+    /// </summary>
+    public long tokens_total { get; set; }
+
+    /// <summary>
+    ///     Total number of NFTs for requested scope and include_burned option.
+    /// </summary>
+    public long nfts_total { get; set; }
+
+    /// <summary>
+    ///     Total number of unburned NFTs for requested scope.
+    /// </summary>
+    public long nfts_unburned_total { get; set; }
+
+    /// <summary>
+    ///     Total number of burned NFTs for requested scope.
+    /// </summary>
+    public long nfts_burned_total { get; set; }
+
+    /// <summary>
+    ///     Total number of contracts for requested scope.
+    /// </summary>
+    public long contracts_total { get; set; }
+
+    /// <summary>
+    ///     Total number of addresses for requested scope.
+    /// </summary>
+    public long addresses_total { get; set; }
+
+    /// <summary>
+    ///     Total number of distinct current NFT owner addresses for requested scope.
+    /// </summary>
+    public long nft_owners_total { get; set; }
+
+    /// <summary>
+    ///     Total number of addresses in masters organization for requested scope.
+    /// </summary>
+    public long soul_masters_total { get; set; }
+}
+
+/// <summary>
+///     Daily staking progress snapshot for a chain.
+/// </summary>
+public class StakingDailyStat
+{
+    /// <summary>
+    ///     UTC day timestamp (unix seconds, day start).
+    /// </summary>
+    public long date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Total staked SOUL in raw units.
+    /// </summary>
+    public string? staked_soul_raw { get; set; }
+
+    /// <summary>
+    ///     Total SOUL supply in raw units.
+    /// </summary>
+    public string? soul_supply_raw { get; set; }
+
+    /// <summary>
+    ///     Number of staker addresses for the snapshot day.
+    /// </summary>
+    public int stakers_count { get; set; }
+
+    /// <summary>
+    ///     Number of master addresses for the snapshot day.
+    /// </summary>
+    public int masters_count { get; set; }
+
+    /// <summary>
+    ///     Staked/Supply ratio for the snapshot day.
+    /// </summary>
+    public decimal staking_ratio { get; set; }
+
+    /// <summary>
+    ///     Staked/Supply ratio in percent (0-100+).
+    /// </summary>
+    public decimal staking_percent { get; set; }
+
+    /// <summary>
+    ///     Capture timestamp (unix seconds).
+    /// </summary>
+    public long captured_at_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Source label for the snapshot row.
+    /// </summary>
+    public string? source { get; set; }
+}
+
+/// <summary>
+///     Monthly masters snapshot for a chain.
+/// </summary>
+public class SoulMastersMonthlyStat
+{
+    /// <summary>
+    ///     UTC month start timestamp (unix seconds).
+    /// </summary>
+    public long month_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Number of masters addresses at month-end snapshot.
+    /// </summary>
+    public int masters_count { get; set; }
+
+    /// <summary>
+    ///     Capture timestamp (unix seconds).
+    /// </summary>
+    public long captured_at_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Source label for the snapshot row.
+    /// </summary>
+    public string? source { get; set; }
+}
+
+/// <summary>
+///     Daily newly discovered addresses statistics for a chain.
+/// </summary>
+public class NewAddressesDailyStat
+{
+    /// <summary>
+    ///     UTC day timestamp (unix seconds, day start).
+    /// </summary>
+    public long date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Number of addresses first seen on this day.
+    /// </summary>
+    public long new_addresses_count { get; set; }
+
+    /// <summary>
+    ///     Cumulative number of discovered addresses up to this day.
+    /// </summary>
+    public long cumulative_addresses_count { get; set; }
+}
+
+/// <summary>
+///     Historical staking and masters statistics for dashboard charts.
+/// </summary>
+public class StakingStatsResult
+{
+    /// <summary>
+    ///     Chain filter used in this response.
+    /// </summary>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Requested daily limit (0 means all points).
+    /// </summary>
+    public int daily_limit { get; set; }
+
+    /// <summary>
+    ///     Requested monthly limit (0 means all points).
+    /// </summary>
+    public int monthly_limit { get; set; }
+
+    /// <summary>
+    ///     Number of daily points returned.
+    /// </summary>
+    public long daily_points_total { get; set; }
+
+    /// <summary>
+    ///     Number of monthly points returned.
+    /// </summary>
+    public long monthly_points_total { get; set; }
+
+    /// <summary>
+    ///     First day timestamp returned for daily series.
+    /// </summary>
+    public long? first_daily_date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Last day timestamp returned for daily series.
+    /// </summary>
+    public long? latest_daily_date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     First month timestamp returned for monthly series.
+    /// </summary>
+    public long? first_month_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Last month timestamp returned for monthly series.
+    /// </summary>
+    public long? latest_month_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Latest available staking ratio from daily data.
+    /// </summary>
+    public decimal? latest_staking_ratio { get; set; }
+
+    /// <summary>
+    ///     Latest available staking percent from daily data.
+    /// </summary>
+    public decimal? latest_staking_percent { get; set; }
+
+    /// <summary>
+    ///     Latest available staked SOUL raw value from daily data.
+    /// </summary>
+    public string? latest_staked_soul_raw { get; set; }
+
+    /// <summary>
+    ///     Latest available SOUL supply raw value from daily data.
+    /// </summary>
+    public string? latest_soul_supply_raw { get; set; }
+
+    /// <summary>
+    ///     Latest available stakers count from daily data.
+    /// </summary>
+    public int? latest_stakers_count { get; set; }
+
+    /// <summary>
+    ///     Latest available masters count from daily data.
+    /// </summary>
+    public int? latest_masters_count { get; set; }
+
+    /// <summary>
+    ///     Daily staking history points.
+    /// </summary>
+    public StakingDailyStat[]? daily { get; set; }
+
+    /// <summary>
+    ///     Monthly soul masters history points.
+    /// </summary>
+    public SoulMastersMonthlyStat[]? monthly { get; set; }
+
+}
+
+/// <summary>
+///     Historical address growth statistics for dashboard charts.
+/// </summary>
+public class AddressStatsResult
+{
+    /// <summary>
+    ///     Chain filter used in this response.
+    /// </summary>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Requested daily limit (0 means all points).
+    /// </summary>
+    public int daily_limit { get; set; }
+
+    /// <summary>
+    ///     Number of daily points returned for new-addresses series.
+    /// </summary>
+    public long new_addresses_points_total { get; set; }
+
+    /// <summary>
+    ///     First day timestamp returned for new-addresses daily series.
+    /// </summary>
+    public long? first_new_addresses_date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Last day timestamp returned for new-addresses daily series.
+    /// </summary>
+    public long? latest_new_addresses_date_unix_seconds { get; set; }
+
+    /// <summary>
+    ///     Latest available daily new-addresses count.
+    /// </summary>
+    public long? latest_new_addresses_count { get; set; }
+
+    /// <summary>
+    ///     Latest available cumulative discovered-addresses count.
+    /// </summary>
+    public long? latest_cumulative_addresses_count { get; set; }
+
+    /// <summary>
+    ///     Daily new-addresses history points.
+    /// </summary>
+    public NewAddressesDailyStat[]? new_addresses_daily { get; set; }
 }

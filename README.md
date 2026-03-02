@@ -82,22 +82,29 @@ dotnet tool install --global dotnet-ef
 
 ### Backend: Step 1: Prepare folders
 
-Create following folders:
+Clone the repo (or pull updates when you want to rebuild):
 ```
-mkdir -p /home/pha/docker/explorer-backend/api
+git clone https://github.com/phantasma-io/ExplorerBackend.git /home/pha/explorer/ExplorerBackend
+```
+
+Create following folder:
+```
 mkdir -p /home/pha/docker/explorer-backend/database-migration
-mkdir -p /home/pha/docker/explorer-backend/worker
 ```
 
-Copy content of ExplorerBackend/Backend.Service.Api/Docker folder into /home/pha/docker/explorer-backend/api.
+Create config/log folders inside the repo:
+```
+mkdir -p /home/pha/explorer/ExplorerBackend/Backend.Service.Api/Docker/logs
+mkdir -p /home/pha/explorer/ExplorerBackend/Backend.Service.Api/Docker/config
+mkdir -p /home/pha/explorer/ExplorerBackend/Backend.Service.Worker/Docker/logs
+mkdir -p /home/pha/explorer/ExplorerBackend/Backend.Service.Worker/Docker/config
+```
 
-Copy content of ExplorerBackend/Backend.Service.Worker/Docker folder into /home/pha/docker/explorer-backend/worker.
-
-Copy backend's configuration file ExplorerBackend/explorer-backend-config.json to 'api/config' and 'worker/config' folders, ensuring that DatabaseConfiguration->Main section of config contains correct settings, specifically database user name and password.
+Copy backend's configuration file ExplorerBackend/explorer-backend-config.json to the `Backend.Service.Api/Docker/config` and `Backend.Service.Worker/Docker/config` folders, ensuring that DatabaseConfiguration->Main section of config contains correct settings, specifically database user name and password.
 
 Create link to config for database-migration folder using command:
 ```
-ln -s /home/pha/docker/explorer-backend/worker/config/explorer-backend-config.json /home/pha/docker/explorer-backend/database-migration/explorer-backend-config.json
+ln -s /home/pha/explorer/ExplorerBackend/Backend.Service.Worker/Docker/config/explorer-backend-config.json /home/pha/docker/explorer-backend/database-migration/explorer-backend-config.json
 ```
 
 Copy files ExplorerBackend/database-api-cache-update.sh and ExplorerBackend/database-update.sh into /home/pha/docker/explorer-backend/database-migration.
@@ -120,20 +127,19 @@ sh database-update.sh
 
 ### Backend: Step 3: Finish deployment
 
-Add files /home/pha/docker/explorer-backend/api/.env and /home/pha/docker/explorer-backend/worker/.env with the following content:
+Add files /home/pha/explorer/ExplorerBackend/Backend.Service.Api/Docker/.env and /home/pha/explorer/ExplorerBackend/Backend.Service.Worker/Docker/.env with the following content (optional):
 ```
-# Github branch to be used
-BUILD_BRANCH=main
+BUILD_CONFIGURATION=Release
 ```
-where 'main' is main github branch of backend project which we use for production deployment.
+Defaults to Release if omitted.
 
-Launch both API and Worker services from corresponding folders /home/pha/docker/explorer-backend/api and /home/pha/docker/explorer-backend/worker by either using sh script 'deploy.sh'
+Launch both API and Worker services from corresponding folders /home/pha/explorer/ExplorerBackend/Backend.Service.Api/Docker and /home/pha/explorer/ExplorerBackend/Backend.Service.Worker/Docker by either using sh script 'deploy.sh'
 ```
 deploy.sh
 ```
 or by running commands
 ```
-docker compose pull
+docker compose build
 docker compose up -d
 ```
 

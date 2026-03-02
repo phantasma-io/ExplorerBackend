@@ -3,22 +3,25 @@ just:
     just -l
 
 set dotenv-load
-API_TMUX_SESSION_NAME := env("API_TMUX_SESSION_NAME")
-WORKER_TMUX_SESSION_NAME := env("WORKER_TMUX_SESSION_NAME")
-API_BIN_DIR := env("API_BIN_DIR")
-WORKER_BIN_DIR := env("WORKER_BIN_DIR")
-RELEASE_MODE := env("RELEASE_MODE")
 
-DB_HOST_PORT := env("DB_HOST_PORT")
-DB_USER := env("DB_USER")
-DB_PWD := env("DB_PWD")
-DB_NAME := env("DB_NAME")
-DB_CLONE_NAME := env("DB_CLONE_NAME")
-PG_CONTAINER := env("PG_CONTAINER")
-DB_STATE_ZERO_BACKUP := env("DB_STATE_ZERO_BACKUP")
-DB_BACKUP_DIR := env("DB_BACKUP_DIR")
+# Defaults keep `just` usable without env; set variables in `.env` when needed.
+HOME_DIR := env("HOME", "")
+API_TMUX_SESSION_NAME := env("API_TMUX_SESSION_NAME", "explorer_api_session")
+WORKER_TMUX_SESSION_NAME := env("WORKER_TMUX_SESSION_NAME", "explorer_worker_session")
+API_BIN_DIR := env("API_BIN_DIR", HOME_DIR + "/pha-explorer/bin")
+WORKER_BIN_DIR := env("WORKER_BIN_DIR", HOME_DIR + "/pha-explorer/bin")
+RELEASE_MODE := env("RELEASE_MODE", "Release")
 
-FUNGIBLE_BALANCES_V1_EXPORT := env("FUNGIBLE_BALANCES_V1_EXPORT")
+DB_HOST_PORT := env("DB_HOST_PORT", "5432")
+DB_USER := env("DB_USER", "postgres")
+DB_PWD := env("DB_PWD", "")
+DB_NAME := env("DB_NAME", "explorer-backend")
+DB_CLONE_NAME := env("DB_CLONE_NAME", "explorer-backend-block-6422526")
+PG_CONTAINER := env("PG_CONTAINER", "postgres")
+DB_STATE_ZERO_BACKUP := env("DB_STATE_ZERO_BACKUP", HOME_DIR + "/pha-explorer/backups/explorer-backend.block-6422526.bak")
+DB_BACKUP_DIR := env("DB_BACKUP_DIR", HOME_DIR + "/backups")
+
+FUNGIBLE_BALANCES_V1_EXPORT := env("FUNGIBLE_BALANCES_V1_EXPORT", HOME_DIR + "/phantasma-data/dumps/dump_20250306/fungible_balances.json")
 
 TIMESTAMP := `date "+%Y%m%d%H%M"`
 
@@ -49,6 +52,9 @@ pa:
 
 [group('publish')]
 pw:
+    # Recreate plugin output folder to avoid stale assemblies after framework/package upgrades.
+    rm -rf "$WORKER_BIN_DIR/Plugins"
+    mkdir -p "$WORKER_BIN_DIR/Plugins"
     dotnet publish ./Backend.Service.Worker/Backend.Service.Worker.csproj \
         --configuration "$RELEASE_MODE" \
         --output "$WORKER_BIN_DIR" \
@@ -106,6 +112,45 @@ stop-worker:
 stop:
     just stop-api
     just stop-worker
+
+[group('docker')]
+docker-deploy:
+    cd Backend.Service.Api/Docker && sh ./deploy.sh
+    cd Backend.Service.Worker/Docker && sh ./deploy.sh
+
+[group('docker')]
+docker-start:
+    cd Backend.Service.Api/Docker && sh ./start.sh
+    cd Backend.Service.Worker/Docker && sh ./start.sh
+
+[group('docker')]
+docker-stop:
+    cd Backend.Service.Api/Docker && sh ./stop.sh
+    cd Backend.Service.Worker/Docker && sh ./stop.sh
+
+[group('docker')]
+docker-prepare:
+    mkdir -p Backend.Service.Api/Docker/config Backend.Service.Api/Docker/logs
+    mkdir -p Backend.Service.Worker/Docker/config Backend.Service.Worker/Docker/logs
+
+[group('podman')]
+podman-deploy:
+    cd Backend.Service.Api/Docker && sh ./podman-deploy.sh
+    cd Backend.Service.Worker/Docker && sh ./podman-deploy.sh
+
+[group('podman')]
+podman-start:
+    cd Backend.Service.Api/Docker && sh ./podman-start.sh
+    cd Backend.Service.Worker/Docker && sh ./podman-start.sh
+
+[group('podman')]
+podman-stop:
+    cd Backend.Service.Api/Docker && sh ./stop.sh
+    cd Backend.Service.Worker/Docker && sh ./stop.sh
+
+[group('podman')]
+podman-prepare:
+    just docker-prepare
 
 # Danger! Resets db to backed up initial one!
 [group('manage')]

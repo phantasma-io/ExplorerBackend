@@ -1,6 +1,7 @@
 using System;
 #nullable enable
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -11,6 +12,7 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using PhantasmaPhoenix.Cryptography;
 using PhantasmaPhoenix.Protocol;
@@ -37,17 +39,88 @@ namespace Backend.Blockchain;
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private const int FetchBlocksPerIterationMax = 50;
-    private long _balanceRefetchDate = 0;
-    private string _balanceRefetchTimestampKey = "BALANCE_REFETCH_TIMESTAMP";
+    private readonly record struct TxExtendedEventCache(
+        TokenCreateData? TokenCreate,
+        TokenSeriesCreateData? TokenSeriesCreate,
+        TokenMintData? TokenMint,
+        SpecialResolutionData? SpecialResolution);
+
+    // Hot-path payload fragments are modeled as typed objects instead of nested dictionaries.
+    // This keeps JSON shape unchanged while reducing per-event allocation pressure.
+    private sealed class TokenEventPayload
+    {
+        [JsonPropertyName("token")]
+        public string Token { get; init; } = string.Empty;
+
+        [JsonPropertyName("value")]
+        public string Value { get; init; } = string.Empty;
+
+        [JsonPropertyName("value_raw")]
+        public string ValueRaw { get; init; } = string.Empty;
+
+        [JsonPropertyName("chain_name")]
+        public string ChainName { get; init; } = string.Empty;
+    }
+
+    private sealed class TokenMintExtendedPayload
+    {
+        [JsonPropertyName("token_id")]
+        public string TokenId { get; init; } = string.Empty;
+
+        [JsonPropertyName("series_id")]
+        public string? SeriesId { get; init; }
+
+        [JsonPropertyName("mint_number")]
+        public string MintNumber { get; init; } = string.Empty;
+
+        [JsonPropertyName("carbon_token_id")]
+        public string CarbonTokenId { get; init; } = string.Empty;
+
+        [JsonPropertyName("carbon_series_id")]
+        public string CarbonSeriesId { get; init; } = string.Empty;
+
+        [JsonPropertyName("carbon_instance_id")]
+        public string CarbonInstanceId { get; init; } = string.Empty;
+
+        [JsonPropertyName("owner")]
+        public string Owner { get; init; } = string.Empty;
+    }
+
+    private sealed class GasEventPayload
+    {
+        [JsonPropertyName("price")]
+        public string Price { get; init; } = string.Empty;
+
+        [JsonPropertyName("amount")]
+        public string? Amount { get; init; }
+
+        [JsonPropertyName("address")]
+        public string Address { get; init; } = string.Empty;
+    }
+
     private static readonly JsonSerializerOptions _payloadJsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         PropertyNamingPolicy = null
     };
 
+    private static TxExtendedEventCache ParseExtendedEvents(EventExResult[]? extendedEvents)
+    {
+        if (extendedEvents == null || extendedEvents.Length == 0)
+            return default;
+
+        // Parse each extended payload type once per tx and reuse it in both
+        // prefetch and ingest stages.
+        return new TxExtendedEventCache(
+            ExtendedEventParser.GetTokenCreateData(extendedEvents),
+            ExtendedEventParser.GetTokenSeriesCreateData(extendedEvents),
+            ExtendedEventParser.GetTokenMintData(extendedEvents),
+            ExtendedEventParser.GetSpecialResolutionData(extendedEvents));
+    }
+
     private static Dictionary<string, object?> InitPayload(string eventKind, string chainName, string contractHash, string address)
     {
-        return new Dictionary<string, object?>
+        return new Dictionary<string, object?>(8)
         {
             ["event_kind"] = eventKind,
             ["chain"] = chainName,
@@ -67,7 +140,44 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         return address;
     }
 
-    private static void FinalizePayload(Database.Main.Event eventEntry, Dictionary<string, object?> payload, string rawData)
+    private static void ApplySeriesSupplyFromNftLifecycle(MainDbContext databaseContext, Nft nft, EventKind kind)
+    {
+        if (nft?.SeriesId == null)
+            return;
+
+        var series = nft.Series ??
+                     databaseContext.Serieses.FirstOrDefault(x => x.ID == nft.SeriesId.Value) ??
+                     DbHelper.GetTracked<Series>(databaseContext).FirstOrDefault(x => x.ID == nft.SeriesId.Value);
+
+        if (series == null)
+            return;
+
+        switch (kind)
+        {
+            case EventKind.TokenMint:
+                // Increment supply only when token becomes active.
+                // This guards against duplicate mint events for an already active NFT.
+                if (nft.BURNED == false)
+                    return;
+
+                nft.BURNED = false;
+                series.CURRENT_SUPPLY += 1;
+                break;
+
+            case EventKind.TokenBurn:
+                // Decrement supply only on first burn transition.
+                if (nft.BURNED == true)
+                    return;
+
+                nft.BURNED = true;
+                if (series.CURRENT_SUPPLY > 0)
+                    series.CURRENT_SUPPLY -= 1;
+                break;
+        }
+    }
+
+    private static void FinalizePayload(Database.Main.Event? eventEntry, Dictionary<string, object?>? payload,
+        string rawData)
     {
         if (eventEntry == null || payload == null)
         {
@@ -158,8 +268,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }).ToArray();
     }
 
-    private async Task ApplyInfusionAsync(MainDbContext databaseContext, Chain chain, Nft nft,
-        string infusedSymbol, string infusedValueRaw)
+    private async Task ApplyInfusionAsync(MainDbContext databaseContext, Chain chain, Nft? nft,
+        string infusedSymbol, string infusedValueRaw, Dictionary<string, Token> tokensBySymbol)
     {
         if (nft == null)
         {
@@ -167,7 +277,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             return;
         }
 
-        var infusedToken = await TokenMethods.GetAsync(databaseContext, chain, infusedSymbol);
+        if (!tokensBySymbol.TryGetValue(infusedSymbol, out var infusedToken))
+        {
+            infusedToken = await TokenMethods.GetAsync(databaseContext, chain, infusedSymbol);
+            if (infusedToken != null)
+                tokensBySymbol[infusedSymbol] = infusedToken;
+        }
+
         if (infusedToken == null)
         {
             Log.Warning("[{Name}][Blocks] Token {Symbol} not found for infusion on chain {Chain}", Name, infusedSymbol,
@@ -248,11 +364,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         bool burnable,
         bool mintable);
 
-    private static (TokenCreateFlags flags, string tokenName) ParseTokenCreateFlags(TokenCreateData tokenCreateData,
+    private static (TokenCreateFlags flags, string? tokenName) ParseTokenCreateFlags(TokenCreateData tokenCreateData,
         bool defaultFungible)
     {
         var metadata = tokenCreateData.Metadata ?? new Dictionary<string, string>();
-        string tokenName = null;
+        string? tokenName = null;
 
         tokenName = metadata.FirstOrDefault(kv =>
                 kv.Key.Equals("name", StringComparison.OrdinalIgnoreCase) ||
@@ -275,7 +391,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         var fungible = hasFlags ? HasFlag("Fungible") : defaultFungible;
         var transferable = hasFlags ? HasFlag("Transferable") : true;
-        var finite = hasFlags ? HasFlag("Finite") : tokenCreateData.MaxSupply != "-1";
+        // Legacy fallback used a "-1" sentinel, but chain payloads provide numeric maxSupply.
+        // Treat token as finite only when maxSupply is strictly positive.
+        var finite = hasFlags ? HasFlag("Finite") : CommonsUtils.HasPositiveMaxSupply(tokenCreateData.MaxSupply);
         var divisible = hasFlags ? HasFlag("Divisible") : fungible;
         var fuel = hasFlags && HasFlag("Fuel");
         var stakable = hasFlags && HasFlag("Stakable");
@@ -288,7 +406,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             burnable, mintable), tokenName);
     }
 
-    private static string ParseSeriesMode(Dictionary<string, string> metadata)
+    private static string? ParseSeriesMode(Dictionary<string, string>? metadata)
     {
         if (metadata == null)
             return null;
@@ -306,84 +424,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             return seriesMode;
 
         return null;
-    }
-
-    private async Task FetchBlocksRange(string chainName, BigInteger fromHeight, BigInteger toHeight,
-        bool allowBalanceSync)
-    {
-        await using (MainDbContext databaseContext = new())
-        {
-            _balanceRefetchDate = await GlobalVariableMethods.GetLongAsync(databaseContext, _balanceRefetchTimestampKey);
-            if (_balanceRefetchDate == 0)
-            {
-                Log.Information("[{Name}][Blocks] Marking all addresses for balance refresh", Name);
-                var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
-                await MarkAllBalancesDirtyAsync(databaseContext, chainEntry.ID);
-                await GlobalVariableMethods.UpsertAsync(databaseContext, _balanceRefetchTimestampKey, UnixSeconds.Now(),
-                    false);
-                await databaseContext.SaveChangesAsync();
-                Log.Information("[{Name}][Blocks] Finished marking addresses for balance refresh", Name);
-            }
-        }
-
-        Log.Information("[{Name}][Blocks] Fetching blocks ({From}-{To}) for chain {Chain}...",
-                Name,
-                fromHeight,
-                toHeight,
-                chainName);
-
-        BigInteger i;
-        await using (MainDbContext databaseContext = new())
-        {
-            i = ChainMethods.GetLastProcessedBlock(databaseContext, chainName) + 1;
-        }
-
-        if (i < fromHeight) i = fromHeight;
-
-        var processedAny = false;
-        while (i <= toHeight)
-        {
-            var fetchPerIteration = BigInteger.Min(FetchBlocksPerIterationMax, toHeight - i + 1);
-            Log.Information("[{Name}][Blocks] Fetching batch of {Count} blocks starting from {StartHeight} for chain {Chain}...",
-                Name,
-                fetchPerIteration,
-                i,
-                chainName);
-
-            processedAny = true;
-            var startTime = DateTime.Now;
-            var blocks = await GetBlockRange(chainName, i, fetchPerIteration);
-            var fetchTime = DateTime.Now - startTime;
-
-            startTime = DateTime.Now;
-            foreach (var block in blocks)
-            {
-                // Log.Information("PROCESSING HEIGHT " + blockHeight);
-                await ProcessBlock(block, chainName);
-            }
-            var processTime = DateTime.Now - startTime;
-
-            Log.Information("[{Name}][Blocks] {Count} blocks loaded ({From}-{To}) in {FetchTime} sec, processed in {ProcessTime} sec, {BlocksPerSecond} bps",
-                Name,
-                blocks.Count,
-                i,
-                i + blocks.Count - 1,
-                Math.Round(fetchTime.TotalSeconds, 3),
-                Math.Round(processTime.TotalSeconds, 3),
-                Math.Round(blocks.Count / (fetchTime.TotalSeconds + processTime.TotalSeconds), 2));
-
-            if (allowBalanceSync)
-            {
-                RequestBalanceSync(chainName);
-            }
-
-            i += fetchPerIteration;
-        }
-
-        if (allowBalanceSync && !processedAny)
-        {
-            RequestBalanceSync(chainName);
-        }
     }
 
     private static double _kilobyte = 1024.0;
@@ -432,103 +472,77 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     private async Task<List<RpcBlockResult>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
     {
-        // Log.Information("FETCHING RANGE " + fromHeight + " - " + (fromHeight + blockCount - 1));
-        var tasks = new List<Task<RpcBlockResult>>();
-        var taskGroup = new List<Task<RpcBlockResult>>();
-        for (var i = fromHeight; i < fromHeight + blockCount; i++)
+        var count = (int)blockCount;
+        var fetchTasks = new Task<RpcBlockResult>[count];
+
+        for (var offset = 0; offset < count; offset++)
+            fetchTasks[offset] = GetBlockAsync(chainName, fromHeight + offset);
+
+        var fetchedBlocks = await Task.WhenAll(fetchTasks);
+        for (var index = 0; index < fetchedBlocks.Length; index++)
         {
-            var task = GetBlockAsync(chainName, i);
-            tasks.Add(task);
-            taskGroup.Add(task);
-
-            if (taskGroup.Count == 50)
-            {
-                await Task.WhenAll(taskGroup.ToArray());
-
-                foreach (var t in taskGroup)
-                {
-                    if (t.IsFaulted)
-                    {
-                        throw new($"Task failed: {t.Exception?.Flatten().Message}");
-                    }
-                    if (t.Result == default)
-                    {
-                        throw new($"Task failed, no result");
-                    }
-                }
-
-                taskGroup.Clear();
-                await Task.Delay(100);
-            }
+            if (fetchedBlocks[index] == default)
+                throw new Exception($"Task failed, no result at offset {index} for chain {chainName}");
         }
 
-        if (taskGroup.Count > 0)
-        {
-            await Task.WhenAll(taskGroup.ToArray());
-
-            foreach (var t in taskGroup)
-            {
-                if (t.IsFaulted)
-                {
-                    throw new($"Task failed: {t.Exception?.Flatten().Message}");
-                }
-                if (t.Result == default)
-                {
-                    throw new($"Task failed, no result");
-                }
-            }
-        }
-
-        await Task.WhenAll(tasks.ToArray());
-
-        foreach (var t in tasks)
-        {
-            if (t.IsFaulted)
-            {
-                throw new($"Task failed: {t.Exception?.Flatten().Message}");
-            }
-            if (t.Result == default)
-            {
-                throw new($"Task failed, no result");
-            }
-        }
-
-        return tasks.Select(task => task.Result).OrderBy(b => b.Height).ToList();
+        return fetchedBlocks.OrderBy(block => block.Height).ToList();
     }
 
     private void AddAddress(ref List<string> addresses, string address)
     {
-        if (string.IsNullOrEmpty(address))
-        {
-            throw new("Trying to add empty address");
-        }
+        var normalizedAddress = NormalizeAddress(address);
 
-        // Skip placeholder address to avoid invalid balance queries later.
-        if (address.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+        // Skip placeholder/null-like addresses to avoid invalid storage and balance queries.
+        if (normalizedAddress.Equals("NULL", StringComparison.OrdinalIgnoreCase))
             return;
 
-        addresses.Add(address);
+        addresses.Add(normalizedAddress);
     }
 
     private async Task ProcessBlock(RpcBlockResult block, string chainName)
     {
         var startTime = DateTime.Now;
+        var txIngestDurationMs = 0L;
+        var eventIngestDurationMs = 0L;
+        var saveTailDurationMs = 0L;
 
         var eventsAddedCount = 0;
 
-        // We cache NFTs in this block to speed up code
-        // and avoid some unpleasant situations leading to bugs.
-        Dictionary<string, Nft> nftsInThisBlock = new();
+        // We cache NFTs by (contract, tokenId) so repeated events in the same block
+        // reuse one tracked entity and avoid duplicate NFT lookups/upserts.
+        var nftsInThisBlock = new Dictionary<(int ContractId, string TokenId), Nft>();
         Dictionary<string, bool> symbolsFungibility = new();
+        var tokensBySymbol = new Dictionary<string, Token>(StringComparer.OrdinalIgnoreCase);
+        var addressesInThisBlock = new Dictionary<string, Database.Main.Address>(StringComparer.Ordinal);
+        var addressesToPrefetch = new HashSet<string>(StringComparer.Ordinal);
+        // Collect token symbols touched by this block so token reads stay batched.
+        var tokenSymbolsToPrefetch = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Candidate NFT ids observed in block events; filtered by non-fungible symbols before DB prefetch.
+        var nftCandidatesBySymbol = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var transactionsInThisBlock = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
+        var bufferedTransactions = new List<Database.Main.Transaction>();
+        var bufferedEvents = new List<Database.Main.Event>();
+        var tokenCreateEventLinks = new List<(Token Token, Database.Main.Event EventEntry)>();
+        var platformCreateEventLinks = new List<(Database.Main.Platform Platform, Database.Main.Event EventEntry)>();
+        var contractCreateEventLinks = new List<(Database.Main.Contract Contract, Database.Main.Event EventEntry)>();
+        var organizationCreateEventLinks = new List<(Database.Main.Organization Organization, Database.Main.Event EventEntry)>();
+        var addressTransactionLinks = new HashSet<(string Address, string TxHash)>();
+        // Per-block ownership cache avoids repeated ownership queries for NFTs touched multiple times.
+        var ownershipByNft = new Dictionary<Nft, Database.Main.NftOwnership>();
+        // Reused across prefetch and ingest loops to avoid reparsing tx.ExtendedEvents.
+        var extendedEventDataByTxHash = new Dictionary<string, TxExtendedEventCache>(StringComparer.Ordinal);
 
         // TODO Hack until explorer can process events properly
         List<string> addressesToUpdate = new();
 
         await using MainDbContext databaseContext = new();
-
-        var connectionString = MainDbContext.GetConnectionString();
-        using var dbConnection = new NpgsqlConnection(connectionString);
-        dbConnection.Open();
+        // Block processing must stay atomic: either all writes for this block are committed,
+        // or all of them are rolled back. This transaction is the single commit boundary.
+        await using var blockTransaction = await databaseContext.Database.BeginTransactionAsync();
+        var dbConnection = (NpgsqlConnection)databaseContext.Database.GetDbConnection();
+        if (dbConnection.State != System.Data.ConnectionState.Open)
+            await dbConnection.OpenAsync();
+        var dbTransaction = (NpgsqlTransaction)blockTransaction.GetDbTransaction();
 
         AddAddress(ref addressesToUpdate, block.ChainAddress);
         AddAddress(ref addressesToUpdate, block.ValidatorAddress);
@@ -536,11 +550,131 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var chainEntry = await ChainMethods.GetAsync(databaseContext, chainName);
         var chainId = chainEntry.ID;
 
+        // Address upserts are one of the hottest ingest paths.
+        // Keep a per-block cache so each normalized address is resolved once.
+        ValueTask<Database.Main.Address> ResolveAddressAsync(string rawAddress)
+        {
+            var normalizedAddress = NormalizeAddress(rawAddress);
+            if (addressesInThisBlock.TryGetValue(normalizedAddress, out var cachedAddress))
+                return ValueTask.FromResult(cachedAddress);
+
+            return ResolveAddressCoreAsync(normalizedAddress);
+        }
+
+        async ValueTask<Database.Main.Address> ResolveAddressCoreAsync(string normalizedAddress)
+        {
+            var resolvedAddress = await AddressMethods.UpsertAsync(databaseContext, chainEntry, normalizedAddress);
+            addressesInThisBlock[normalizedAddress] = resolvedAddress;
+            return resolvedAddress;
+        }
+
+        void QueueAddressForPrefetch(string rawAddress)
+        {
+            var normalizedAddress = NormalizeAddress(rawAddress);
+            if (normalizedAddress.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            addressesToPrefetch.Add(normalizedAddress);
+        }
+
+        void QueueTokenSymbolForPrefetch(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+                return;
+
+            tokenSymbolsToPrefetch.Add(symbol);
+        }
+
+        void QueueNftCandidate(string symbol, string tokenId)
+        {
+            if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(tokenId))
+                return;
+
+            if (!nftCandidatesBySymbol.TryGetValue(symbol, out var tokenIds))
+            {
+                tokenIds = new HashSet<string>(StringComparer.Ordinal);
+                nftCandidatesBySymbol[symbol] = tokenIds;
+            }
+
+            tokenIds.Add(tokenId);
+        }
+
+        void QueueAddressTransactionLink(Database.Main.Address? addressEntry,
+            Database.Main.Transaction? transactionEntry)
+        {
+            if (addressEntry == null || transactionEntry == null)
+                return;
+
+            var normalizedAddress = NormalizeAddress(addressEntry.ADDRESS);
+            if (normalizedAddress.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            AddressTransactionMethods.UpdateFirstTxUnixSeconds(addressEntry, transactionEntry.TIMESTAMP_UNIX_SECONDS);
+            addressTransactionLinks.Add((normalizedAddress, transactionEntry.HASH));
+        }
+
+        ValueTask<Token?> ResolveTokenBySymbolAsync(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+                return ValueTask.FromResult<Token?>(null);
+
+            if (tokensBySymbol.TryGetValue(symbol, out var cachedToken))
+                return ValueTask.FromResult<Token?>(cachedToken);
+
+            return ResolveTokenBySymbolCoreAsync(symbol);
+        }
+
+        async ValueTask<Token?> ResolveTokenBySymbolCoreAsync(string symbol)
+        {
+            var resolvedToken = await TokenMethods.GetAsync(databaseContext, chainEntry, symbol);
+            if (resolvedToken != null)
+                tokensBySymbol[symbol] = resolvedToken;
+
+            return resolvedToken;
+        }
+
         // Block in main database
         Log.Information("[{Name}][Blocks] Storing block #{BlockHeight} / {Hash}", Name, block.Height, block.Hash);
 
+        // Normal forward sync always ingests a new height (CURRENT_HEIGHT + 1).
+        // Skip the extra existence query in this dominant path and keep fallback checks
+        // for recovery/replay paths where height can already exist.
+        var skipBlockExistsCheck = block.Height > new BigInteger(chainEntry.CURRENT_HEIGHT);
         var blockEntity = await Database.Main.BlockMethods.UpsertAsync(databaseContext, chainEntry, block.Height,
-            block.Timestamp, block.Hash, block.PreviousHash, block.Protocol, block.ChainAddress, block.ValidatorAddress, block.Reward);
+            block.Timestamp, block.Hash, block.PreviousHash, block.Protocol, block.ChainAddress, block.ValidatorAddress,
+            block.Reward, skipDatabaseExistsCheck: skipBlockExistsCheck);
+
+        // When reprocessing an already persisted block, preload all its transactions once.
+        // TransactionMethods.UpsertAsync will then reuse this map instead of issuing one
+        // SELECT per transaction hash.
+        var existingTransactionsByHash = new Dictionary<string, Database.Main.Transaction>(StringComparer.Ordinal);
+        if (blockEntity.ID > 0 && block.Txs?.Length > 0)
+        {
+            var persistedTransactions = await databaseContext.Transactions
+                .Where(x => x.BlockId == blockEntity.ID)
+                .ToListAsync();
+            foreach (var persistedTransaction in persistedTransactions)
+                existingTransactionsByHash[persistedTransaction.HASH] = persistedTransaction;
+        }
+
+        Queue<int>? reservedTransactionIds = null;
+        if (block.Txs?.Length > 0)
+        {
+            // Reserve IDs once per block so tx rows can be written set-based while
+            // events/signatures still reference stable transaction IDs during parsing.
+            var missingTxCount = block.Txs
+                .Select(x => x.Hash)
+                .Where(x => !existingTransactionsByHash.ContainsKey(x))
+                .Distinct(StringComparer.Ordinal)
+                .Count();
+
+            if (missingTxCount > 0)
+                reservedTransactionIds =
+                    await TransactionMethods.ReserveIdsAsync(dbConnection, dbTransaction, missingTxCount);
+        }
+
+        QueueAddressForPrefetch(block.ChainAddress);
+        QueueAddressForPrefetch(block.ValidatorAddress);
 
         if (block.Oracles?.Length > 0)
         {
@@ -556,11 +690,178 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 block.Txs.Length);
 
             block.ParseData();
+
+            // Pre-resolve block addresses in one set-based pass so hot-path address resolution
+            // becomes an in-memory lookup for most tx/event records.
+            foreach (var tx in block.Txs)
+            {
+                QueueAddressForPrefetch(tx.Sender);
+                QueueAddressForPrefetch(tx.GasPayer);
+                QueueAddressForPrefetch(tx.GasTarget);
+
+                if (tx.Events != null)
+                {
+                    for (var eventIndex = 0; eventIndex < tx.Events.Length; eventIndex++)
+                    {
+                        var eventNode = tx.Events[eventIndex];
+                        QueueAddressForPrefetch(eventNode.Address);
+
+                        var parsedKind = eventNode.GetParsedKind();
+                        if (parsedKind == null)
+                            continue;
+
+                        // Pre-collect symbols from legacy event payloads before the hot ingest loop.
+                        switch (parsedKind.Value)
+                        {
+                            case EventKind.Infusion:
+                                {
+                                    var infusionData = eventNode.GetParsedData<InfusionEventData>();
+                                    QueueTokenSymbolForPrefetch(infusionData.BaseSymbol);
+                                    QueueTokenSymbolForPrefetch(infusionData.InfusedSymbol);
+                                    QueueNftCandidate(infusionData.BaseSymbol, NormalizeTokenId(infusionData.TokenID));
+                                    break;
+                                }
+                            case EventKind.TokenMint or EventKind.TokenClaim or EventKind.TokenBurn
+                                or EventKind.TokenSend or EventKind.TokenReceive or EventKind.TokenStake
+                                or EventKind.CrownRewards or EventKind.Inflation:
+                                {
+                                    var tokenData = eventNode.GetParsedData<TokenEventData>();
+                                    QueueTokenSymbolForPrefetch(tokenData.Symbol);
+                                    QueueNftCandidate(tokenData.Symbol, NormalizeTokenId(tokenData.Value));
+                                    break;
+                                }
+                            case EventKind.OrderCancelled or EventKind.OrderClosed or EventKind.OrderCreated
+                                or EventKind.OrderFilled or EventKind.OrderBid:
+                                {
+                                    var marketData = eventNode.GetParsedData<MarketEventData>();
+                                    QueueTokenSymbolForPrefetch(marketData.BaseSymbol);
+                                    QueueTokenSymbolForPrefetch(marketData.QuoteSymbol);
+                                    QueueNftCandidate(marketData.BaseSymbol, marketData.ID.ToString());
+                                    break;
+                                }
+                        }
+                    }
+                }
+
+                var txExtendedData = ParseExtendedEvents(tx.ExtendedEvents);
+                extendedEventDataByTxHash[tx.Hash] = txExtendedData;
+
+                if (txExtendedData.TokenCreate is { } tokenCreateData)
+                {
+                    QueueTokenSymbolForPrefetch(tokenCreateData.Symbol);
+                }
+
+                if (txExtendedData.TokenSeriesCreate is { } seriesCreateData)
+                {
+                    QueueAddressForPrefetch(seriesCreateData.Owner);
+                    QueueTokenSymbolForPrefetch(seriesCreateData.Symbol);
+                }
+
+                if (txExtendedData.TokenMint is { } tokenMintData)
+                {
+                    QueueTokenSymbolForPrefetch(tokenMintData.Symbol);
+                }
+            }
+
+            var prefetchedAddresses = AddressMethods.InsertIfNotExists(databaseContext, chainEntry,
+                addressesToPrefetch.ToList());
+            if (prefetchedAddresses != null)
+            {
+                foreach (var entry in prefetchedAddresses)
+                    addressesInThisBlock[entry.Key] = entry.Value;
+            }
+
             var contractHashes = block.GetContracts();
             // Log.Verbose("[{Name}][Blocks] Contracts in block: " + string.Join(",", contractHashes));
 
             var contracts = ContractMethods.BatchUpsert(dbConnection,
-                contractHashes.Select(c => (c, chainId, c, c)).ToList());
+                contractHashes.Select(c => (c, chainId, c, c)).ToList(),
+                dbTransaction: dbTransaction);
+
+            // Preload token metadata for symbols from contracts/events/extended payloads.
+            // This keeps hot-path event handling mostly in-memory.
+            foreach (var contractHash in contractHashes)
+                QueueTokenSymbolForPrefetch(contractHash);
+
+            if (tokenSymbolsToPrefetch.Count > 0)
+            {
+                // Materialize to list once so EF can generate a single SQL IN query.
+                var tokenSymbols = tokenSymbolsToPrefetch.ToList();
+                var prefetchedTokens = await databaseContext.Tokens
+                    .Where(x => x.ChainId == chainId && tokenSymbols.Contains(x.SYMBOL))
+                    .ToListAsync();
+
+                foreach (var token in prefetchedTokens)
+                    tokensBySymbol[token.SYMBOL] = token;
+            }
+
+            if (nftCandidatesBySymbol.Count > 0)
+            {
+                // Filter candidate ids to non-fungible symbols and prefetch existing NFTs
+                // per contract, so hot event ingest reuses tracked entities.
+                var nftCandidatesByContractId = new Dictionary<int, HashSet<string>>();
+                foreach (var (symbol, tokenIds) in nftCandidatesBySymbol)
+                {
+                    if (tokenIds.Count == 0)
+                        continue;
+
+                    if (!tokensBySymbol.TryGetValue(symbol, out var tokenMetadata) || tokenMetadata.FUNGIBLE)
+                        continue;
+
+                    if (!contracts.TryGetValue(new ContractMethods.ChainHashKey(chainId, symbol), out var contractId))
+                        continue;
+
+                    if (!nftCandidatesByContractId.TryGetValue(contractId, out var contractTokenIds))
+                    {
+                        contractTokenIds = new HashSet<string>(StringComparer.Ordinal);
+                        nftCandidatesByContractId[contractId] = contractTokenIds;
+                    }
+
+                    contractTokenIds.UnionWith(tokenIds);
+                }
+
+                foreach (var (contractId, tokenIds) in nftCandidatesByContractId)
+                {
+                    var candidateTokenIds = tokenIds.ToList();
+                    if (candidateTokenIds.Count == 0)
+                        continue;
+
+                    var prefetchedNfts = await databaseContext.Nfts
+                        .Where(x => x.ChainId == chainId
+                                    && x.ContractId == contractId
+                                    && candidateTokenIds.Contains(x.TOKEN_ID))
+                        .ToListAsync();
+
+                    foreach (var nft in prefetchedNfts)
+                        nftsInThisBlock[(contractId, nft.TOKEN_ID)] = nft;
+                }
+            }
+
+            ValueTask<Nft?> ResolveNftAsync(string contractHash, string tokenId)
+            {
+                if (string.IsNullOrWhiteSpace(tokenId))
+                    return ValueTask.FromResult<Nft?>(null);
+
+                var contractId = contracts.GetId(chainId, contractHash);
+                var key = (contractId, tokenId);
+                if (nftsInThisBlock.TryGetValue(key, out var cachedNft))
+                    return ValueTask.FromResult<Nft?>(cachedNft);
+
+                return ResolveNftCoreAsync(contractId, tokenId);
+            }
+
+            async ValueTask<Nft?> ResolveNftCoreAsync(int contractId, string tokenId)
+            {
+                var (nft, _) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
+                    tokenId, null, contractId);
+
+                nftsInThisBlock[(contractId, tokenId)] = nft;
+                return nft;
+            }
+
+            // Set-based transaction insert requires resolved FK IDs (block + sender/gas addresses).
+            // Flush preloaded entities once here while staying inside the same block transaction.
+            await databaseContext.SaveChangesAsync();
 
             for (var txIndex = 0; txIndex < block.Txs.Length; txIndex++)
             {
@@ -569,6 +870,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 AddAddress(ref addressesToUpdate, tx.GasPayer);
                 AddAddress(ref addressesToUpdate, tx.GasTarget);
 
+                var txIngestStopwatch = Stopwatch.StartNew();
+                var senderAddress = await ResolveAddressAsync(tx.Sender);
+                var gasPayerAddress = await ResolveAddressAsync(tx.GasPayer);
+                var gasTargetAddress = await ResolveAddressAsync(tx.GasTarget);
+
                 var transaction = await TransactionMethods.UpsertAsync(databaseContext, blockEntity, txIndex,
                     tx.Hash, tx.Timestamp,
                     tx.Payload, tx.Script, tx.Result,
@@ -576,7 +882,18 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     tx.GasPrice, tx.GasLimit,
                     tx.State.ToString(), tx.Sender,
                     tx.GasPayer, tx.GasTarget,
-                    tx.CarbonTxType, tx.CarbonTxData);
+                    tx.CarbonTxType, tx.CarbonTxData,
+                    senderAddress, gasPayerAddress, gasTargetAddress,
+                    skipAddressTransactionExistsCheck: true,
+                    createAddressTransactionLinks: false,
+                    existingTransactionsByHash: existingTransactionsByHash,
+                    reservedTransactionIds: reservedTransactionIds,
+                    bufferedTransactions: bufferedTransactions);
+
+                transactionsInThisBlock[tx.Hash] = transaction;
+                QueueAddressTransactionLink(senderAddress, transaction);
+                QueueAddressTransactionLink(gasPayerAddress, transaction);
+                QueueAddressTransactionLink(gasTargetAddress, transaction);
 
                 TokenSchemas? carbonSchemasForTx = null;
                 SeriesInfo? carbonSeriesInfo = null;
@@ -594,6 +911,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         {
                             Log.Warning("[{Name}][Metadata] Failed to decode carbon tx data for {TxHash}: invalid hex payload",
                                 Name, tx.Hash);
+                            txIngestStopwatch.Stop();
+                            txIngestDurationMs += txIngestStopwatch.ElapsedMilliseconds;
                             continue;
                         }
 
@@ -664,26 +983,55 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     SignatureMethods.InsertIfNotExists(databaseContext, signatures, transaction);
                 }
 
-                var eventNodes = tx.Events?.ToList() ?? new List<EventResult>();
+                txIngestStopwatch.Stop();
+                txIngestDurationMs += txIngestStopwatch.ElapsedMilliseconds;
+
+                var eventIngestStopwatch = Stopwatch.StartNew();
+                IReadOnlyList<EventResult> eventNodes = tx.Events ?? Array.Empty<EventResult>();
+
+                // Most transactions already have their final event array from RPC.
+                // Create a mutable copy only when we need to append synthetic events.
+                List<EventResult> EnsureMutableEventList()
+                {
+                    if (eventNodes is List<EventResult> existingList)
+                        return existingList;
+
+                    var mutableNodes = new List<EventResult>(eventNodes.Count + 2);
+                    for (var index = 0; index < eventNodes.Count; index++)
+                        mutableNodes.Add(eventNodes[index]);
+
+                    eventNodes = mutableNodes;
+                    return mutableNodes;
+                }
+
+                static bool ContainsEventKind(IReadOnlyList<EventResult> nodes, string expectedKind)
+                {
+                    for (var index = 0; index < nodes.Count; index++)
+                    {
+                        if (string.Equals(nodes[index].Kind, expectedKind, StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+
+                    return false;
+                }
 
                 // Synthesize TokenSeriesCreate event from extended data (RPC does not emit legacy event).
-                var seriesCreateDataTx = ExtendedEventParser.GetTokenSeriesCreateData(tx.ExtendedEvents);
-                var tokenMintDataTx = ExtendedEventParser.GetTokenMintData(tx.ExtendedEvents);
-                SpecialResolutionData? specialResolutionDataTx = null;
+                // If prefetch stage did not cache this tx (unexpected), default cache keeps behavior unchanged.
+                extendedEventDataByTxHash.TryGetValue(tx.Hash, out var txExtendedData);
+                var seriesCreateDataTx = txExtendedData.TokenSeriesCreate;
+                var tokenMintDataTx = txExtendedData.TokenMint;
+                var specialResolutionDataTx = txExtendedData.SpecialResolution;
 
-                if (tx.ExtendedEvents is { Length: > 0 })
-                    specialResolutionDataTx = ExtendedEventParser.GetSpecialResolutionData(tx.ExtendedEvents);
-
+                var specialResolutionKindName = EventKind.SpecialResolution.ToString();
                 if (specialResolutionDataTx != null &&
-                     !eventNodes.Any(e =>
-                         string.Equals(e.Kind, EventKind.SpecialResolution.ToString(), StringComparison.OrdinalIgnoreCase)))
+                     !ContainsEventKind(eventNodes, specialResolutionKindName))
                 {
                     var specialResolutionData = specialResolutionDataTx.Value;
-                    eventNodes.Add(new EventResult
+                    EnsureMutableEventList().Add(new EventResult
                     {
                         Address = tx.GasPayer,
                         Contract = "governance",
-                        Kind = EventKind.SpecialResolution.ToString(),
+                        Kind = specialResolutionKindName,
                         Data = Convert.ToHexString(BitConverter.GetBytes(specialResolutionData.ResolutionId))
                     });
 
@@ -705,7 +1053,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         throw new Exception("TokenSeriesCreate extended event missing symbol");
                     }
 
-                    eventNodes.Add(new EventResult
+                    EnsureMutableEventList().Add(new EventResult
                     {
                         Address = seriesCreateDataTx.Value.Owner,
                         Contract = seriesCreateDataTx.Value.Symbol,
@@ -723,13 +1071,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 }
 
                 if (eventNodes.Count == 0)
+                {
+                    eventIngestStopwatch.Stop();
+                    eventIngestDurationMs += eventIngestStopwatch.ElapsedMilliseconds;
                     continue;
+                }
 
                 for (var eventIndex = 0; eventIndex < eventNodes.Count; eventIndex++)
                 {
                     var eventNode = eventNodes[eventIndex];
-                    Database.Main.Event eventEntry = null;
-                    Dictionary<string, object?> payload = null;
+                    Database.Main.Event? eventEntry = null;
+                    Dictionary<string, object?>? payload = null;
 
                     try
                     {
@@ -752,11 +1104,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         //create here the event, and below update the data if needed
                         var contractId = contracts.GetId(chainId, contract);
 
-                        var addressEntry = await AddressMethods.UpsertAsync(databaseContext, chainEntry, addressString);
+                        var addressEntry = await ResolveAddressAsync(addressString);
 
                         eventEntry = EventMethods.Upsert(databaseContext, out var eventAdded,
                             block.Timestamp, eventIndex + 1, chainEntry, transaction, contractId,
-                            eventKindId, addressEntry);
+                            eventKindId, addressEntry, skipAddressTransactionExistsCheck: true,
+                            createAddressTransactionLink: false,
+                            trackInContext: false);
+                        bufferedEvents.Add(eventEntry);
+
+                        QueueAddressTransactionLink(addressEntry, transaction);
 
                         if (eventAdded) eventsAddedCount++;
 
@@ -771,8 +1128,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         fungible = symbolsFungibility.GetValueOrDefault(infusionEventData.BaseSymbol);
                                     else
                                     {
-                                        var baseToken = await TokenMethods.GetAsync(databaseContext, chainEntry,
-                                            infusionEventData.BaseSymbol);
+                                        var baseToken = await ResolveTokenBySymbolAsync(infusionEventData.BaseSymbol);
                                         if (baseToken == null)
                                             throw new Exception($"Token {infusionEventData.BaseSymbol} not found on chain {chainEntry.NAME}");
 
@@ -781,33 +1137,24 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         symbolsFungibility.Add(infusionEventData.BaseSymbol, fungible);
                                     }
 
-                                    var tokenId = infusionEventData.TokenID.ToString();
+                                    // TODO(legacy): Remove NormalizeTokenId once we stop seeing negative TOKEN_ID values
+                                    // from decoded events and all legacy DB rows are normalized.
+                                    var tokenId = NormalizeTokenId(infusionEventData.TokenID);
                                     var infusedValueRaw = infusionEventData.InfusedValue.ToString();
 
-                                    Nft nft = null;
+                                    Nft? nft = null;
                                     if (!fungible)
                                     {
-                                        // Searching for corresponding NFT.
-                                        // If it's available, we will set up relation.
-                                        // If not, we will create it first.
-                                        if (nftsInThisBlock.ContainsKey(tokenId))
-                                            nft = nftsInThisBlock.GetValueOrDefault(tokenId);
-                                        else
-                                        {
-                                            (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
-                                                tokenId, null, contracts.GetId(chainId, infusionEventData.BaseSymbol));
-
-                                            if (newNftCreated) nftsInThisBlock.Add(tokenId, nft);
-                                        }
+                                        nft = await ResolveNftAsync(infusionEventData.BaseSymbol, tokenId);
                                     }
 
 
                                     //parse also a new contract, just in case
-                                    var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
+                                    EventMethods.UpdateValues(databaseContext,
                                         eventEntry, nft, tokenId, chainEntry, kind, eventKindId, contracts.GetId(chainId, infusionEventData.BaseSymbol));
 
                                     await ApplyInfusionAsync(databaseContext, chainEntry, nft, infusionEventData.InfusedSymbol,
-                                        infusedValueRaw);
+                                        infusedValueRaw, tokensBySymbol);
                                     payload["token_id"] = tokenId;
                                     payload["infusion_event"] = new Dictionary<string, object?>
                                     {
@@ -829,7 +1176,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         fungible = symbolsFungibility.GetValueOrDefault(tokenEventData.Symbol);
                                     else
                                     {
-                                        var token = await TokenMethods.GetAsync(databaseContext, chainEntry, tokenEventData.Symbol);
+                                        var token = await ResolveTokenBySymbolAsync(tokenEventData.Symbol);
 
                                         if (token == null)
                                             throw new Exception($"Token {tokenEventData.Symbol} not found on chain {chainEntry.NAME}");
@@ -839,30 +1186,25 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         symbolsFungibility.Add(tokenEventData.Symbol, fungible);
                                     }
 
-                                    var tokenValue = tokenEventData.Value.ToString();
+                                    var tokenValueRaw = tokenEventData.Value.ToString();
+                                    // TODO(legacy): Remove NormalizeTokenId once we stop seeing negative TOKEN_ID values
+                                    // from decoded events and all legacy DB rows are normalized.
+                                    var tokenValue = fungible ? tokenValueRaw : NormalizeTokenId(tokenEventData.Value);
 
-                                    Nft nft = null;
+                                    Nft? nft = null;
                                     if (!fungible)
                                     {
-                                        if (nftsInThisBlock.ContainsKey(tokenValue))
-                                            nft = nftsInThisBlock.GetValueOrDefault(tokenValue);
-                                        else
-                                        {
-                                            (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
-                                                tokenValue, null, contracts.GetId(chainId, tokenEventData.Symbol));
-
-                                            if (newNftCreated) nftsInThisBlock.Add(tokenValue, nft);
-                                        }
+                                        nft = await ResolveNftAsync(tokenEventData.Symbol, tokenValue);
 
                                         // We should always properly check mint event and update mint date,
                                         // because nft can be created by auction thread without mint date,
                                         // so we can't update dates only for just created NFTs using newNftCreated flag.
-                                        if (kind == EventKind.TokenMint)
+                                        if (kind == EventKind.TokenMint && nft != null)
                                             nft.MINT_DATE_UNIX_SECONDS = block.Timestamp;
                                     }
 
                                     //parse also a new contract, just in case
-                                    var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
+                                    EventMethods.UpdateValues(databaseContext,
                                         eventEntry, nft, tokenValue, chainEntry, kind, eventKindId, contracts.GetId(chainId, tokenEventData.Symbol));
 
                                     if (kind == EventKind.TokenMint && !fungible && nft != null &&
@@ -884,20 +1226,22 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                             if (!string.IsNullOrWhiteSpace(mintData.SeriesId))
                                             {
                                                 var seriesEntry = SeriesMethods.Upsert(databaseContext,
-                                                    contracts.GetId(chainId, tokenEventData.Symbol), mintData.SeriesId);
+                                                    contracts.GetId(chainId, tokenEventData.Symbol), mintData.SeriesId,
+                                                    seriesCreatedUnixSeconds: block.Timestamp);
                                                 nft.Series = seriesEntry;
-                                                nft.SeriesId = seriesEntry.ID;
+                                                if (seriesEntry.ID > 0)
+                                                    nft.SeriesId = seriesEntry.ID;
                                             }
 
-                                            payload["token_mint_extended"] = new Dictionary<string, object?>
+                                            payload["token_mint_extended"] = new TokenMintExtendedPayload
                                             {
-                                                ["token_id"] = mintData.TokenId,
-                                                ["series_id"] = mintData.SeriesId,
-                                                ["mint_number"] = mintData.MintNumber.ToString(),
-                                                ["carbon_token_id"] = mintData.CarbonTokenId.ToString(),
-                                                ["carbon_series_id"] = mintData.CarbonSeriesId.ToString(),
-                                                ["carbon_instance_id"] = mintData.CarbonInstanceId.ToString(),
-                                                ["owner"] = mintData.Owner
+                                                TokenId = mintData.TokenId,
+                                                SeriesId = mintData.SeriesId,
+                                                MintNumber = mintData.MintNumber.ToString(),
+                                                CarbonTokenId = mintData.CarbonTokenId.ToString(),
+                                                CarbonSeriesId = mintData.CarbonSeriesId.ToString(),
+                                                CarbonInstanceId = mintData.CarbonInstanceId.ToString(),
+                                                Owner = mintData.Owner
                                             };
                                         }
                                     }
@@ -906,15 +1250,15 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     if (nft != null)
                                         // Update NFTs owner address on new event.
                                         NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
-                                            block.Timestamp, addressEntry, false);
+                                            block.Timestamp, addressEntry, false, ownershipByNft);
 
                                     payload["token_id"] = tokenValue;
-                                    payload["token_event"] = new Dictionary<string, object?>
+                                    payload["token_event"] = new TokenEventPayload
                                     {
-                                        ["token"] = tokenEventData.Symbol,
-                                        ["value"] = tokenValue,
-                                        ["value_raw"] = tokenEventData.Value.ToString(),
-                                        ["chain_name"] = tokenEventData.ChainName
+                                        Token = tokenEventData.Symbol,
+                                        Value = tokenValue,
+                                        ValueRaw = tokenValueRaw,
+                                        ChainName = tokenEventData.ChainName
                                     };
 
                                     if (kind == EventKind.TokenMint && carbonMintTx.HasValue && nft != null)
@@ -933,6 +1277,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 tokenSchemas.Value);
                                         }
                                     }
+
+                                    if (nft != null && (kind == EventKind.TokenMint || kind == EventKind.TokenBurn))
+                                        ApplySeriesSupplyFromNftLifecycle(databaseContext, nft, kind);
 
                                     break;
                                 }
@@ -968,7 +1315,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     // use pre-created contractId for this event
                                     var contractIdForSeries = contracts.GetId(chainId, symbol);
 
-                                    await EventMethods.UpdateValuesAsync(databaseContext,
+                                    EventMethods.UpdateValues(databaseContext,
                                         eventEntry, null, seriesId, chainEntry, kind, eventKindId, contractIdForSeries);
 
                                     if (!string.IsNullOrWhiteSpace(seriesId))
@@ -978,7 +1325,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         var maxSupplyInt = maxSupply > int.MaxValue ? int.MaxValue : (int)maxSupply;
 
                                         var seriesEntry = SeriesMethods.Upsert(databaseContext, contractIdForSeries, seriesId,
-                                            addressEntry?.ID, null, maxSupplyInt, modeName);
+                                            addressEntry?.ID, null, maxSupplyInt, modeName,
+                                            seriesCreatedUnixSeconds: block.Timestamp);
 
                                         var carbonSeriesId = seriesCreateDataTx.Value.CarbonSeriesId > 0
                                             ? (uint)seriesCreateDataTx.Value.CarbonSeriesId
@@ -1038,39 +1386,30 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         fungible = symbolsFungibility.GetValueOrDefault(marketEventData.BaseSymbol);
                                     else
                                     {
-                                        fungible = (await TokenMethods.GetAsync(databaseContext, chainEntry,
-                                            marketEventData.BaseSymbol)).FUNGIBLE;
+                                        var marketToken = await ResolveTokenBySymbolAsync(marketEventData.BaseSymbol);
+                                        if (marketToken == null)
+                                            throw new Exception(
+                                                $"Token {marketEventData.BaseSymbol} not found on chain {chainEntry.NAME}");
+
+                                        fungible = marketToken.FUNGIBLE;
                                         symbolsFungibility.Add(marketEventData.BaseSymbol, fungible);
                                     }
 
                                     var tokenId = marketEventData.ID.ToString();
 
-                                    Nft nft = null;
+                                    Nft? nft = null;
                                     if (!fungible)
                                     {
-                                        var ntfStartTime = DateTime.Now;
-
-                                        // Searching for corresponding NFT.
-                                        // If it's available, we will set up relation.
-                                        // If not, we will create it first.
-                                        if (nftsInThisBlock.ContainsKey(tokenId))
-                                            nft = nftsInThisBlock.GetValueOrDefault(tokenId);
-                                        else
-                                        {
-                                            (nft, var newNftCreated) = await NftMethods.UpsertAsync(databaseContext, chainEntry,
-                                                tokenId, null, contracts.GetId(chainId, marketEventData.BaseSymbol));
-
-                                            if (newNftCreated) nftsInThisBlock.Add(tokenId, nft);
-                                        }
+                                        nft = await ResolveNftAsync(marketEventData.BaseSymbol, tokenId);
 
                                         if (kind == EventKind.OrderFilled)
                                             // Update NFTs owner address on new sale event.
                                             NftMethods.ProcessOwnershipChange(databaseContext, chainEntry, nft,
-                                                block.Timestamp, addressEntry, false);
+                                                block.Timestamp, addressEntry, false, ownershipByNft);
                                     }
 
                                     //parse also a new contract, just in case
-                                    var eventUpdated = await EventMethods.UpdateValuesAsync(databaseContext,
+                                    EventMethods.UpdateValues(databaseContext,
                                         eventEntry, nft, tokenId, chainEntry, kind, eventKindId, contracts.GetId(chainId, marketEventData.BaseSymbol));
 
                                     payload["token_id"] = tokenId;
@@ -1095,8 +1434,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                         case EventKind.TokenCreate:
                                             {
                                                 var tokenEventData = eventNode.GetParsedData<TokenEventData>();
-                                                var tokenCreateDataNullable =
-                                                    ExtendedEventParser.GetTokenCreateData(tx.ExtendedEvents);
+                                                var tokenCreateDataNullable = txExtendedData.TokenCreate;
 
                                                 var symbol = !string.IsNullOrWhiteSpace(tokenEventData.Symbol)
                                                     ? tokenEventData.Symbol
@@ -1129,7 +1467,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                                     if (token != null && eventEntry != null)
                                                     {
-                                                        token.CreateEvent = eventEntry;
+                                                        tokenCreateEventLinks.Add((token, eventEntry));
                                                     }
 
                                                     var tokenCreatePayload = new Dictionary<string, object?>
@@ -1147,9 +1485,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 }
                                                 else if (eventEntry != null)
                                                 {
-                                                    var token = await TokenMethods.GetAsync(databaseContext, chainEntry, symbol);
+                                                    var token = await ResolveTokenBySymbolAsync(symbol);
                                                     if (token != null)
-                                                        token.CreateEvent = eventEntry;
+                                                        tokenCreateEventLinks.Add((token, eventEntry));
                                                 }
 
                                                 break;
@@ -1184,7 +1522,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 var platform = PlatformMethods.Get(databaseContext, stringData);
                                                 if (platform != null)
                                                 {
-                                                    platform.CreateEvent = eventEntry;
+                                                    platformCreateEventLinks.Add((platform, eventEntry));
                                                 }
 
                                                 break;
@@ -1203,7 +1541,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                     chainEntry, stringData,
                                                     null);
                                                 //we do it like this, to be sure it is only set here
-                                                contractItem.CreateEvent = eventEntry;
+                                                if (eventEntry != null)
+                                                    contractCreateEventLinks.Add((contractItem, eventEntry));
 
                                                 break;
                                             }
@@ -1219,7 +1558,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 var organization = OrganizationMethods.Get(databaseContext, stringData);
                                                 if (organization != null)
                                                 {
-                                                    organization.CreateEvent = eventEntry;
+                                                    organizationCreateEventLinks.Add((organization, eventEntry));
                                                 }
 
                                                 break;
@@ -1320,7 +1659,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                     //databaseEvent we need it here, so check it
                                     if (eventEntry != null)
-                                        eventEntry.TargetAddress = await AddressMethods.UpsertAsync(databaseContext, chainEntry, address);
+                                    {
+                                        var targetAddressEntry = await ResolveAddressAsync(address);
+                                        eventEntry.TargetAddress = targetAddressEntry;
+                                        eventEntry.TargetAddressId = targetAddressEntry.ID > 0
+                                            ? targetAddressEntry.ID
+                                            : eventEntry.TargetAddressId;
+                                    }
                                     payload["address_event"] = new Dictionary<string, object?>
                                     {
                                         ["address"] = address
@@ -1362,11 +1707,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                     var hasUnlimitedGas = amount == ulong.MaxValue.ToString();
                                     var amountForPayload = hasUnlimitedGas ? null : amount;
 
-                                    payload["gas_event"] = new Dictionary<string, object?>
+                                    payload["gas_event"] = new GasEventPayload
                                     {
-                                        ["price"] = price,
-                                        ["amount"] = amountForPayload,
-                                        ["address"] = address
+                                        Price = price,
+                                        Amount = amountForPayload,
+                                        Address = address
                                     };
 
                                     break;
@@ -1435,22 +1780,98 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                             Log.Information("[{Name}][Blocks] Cannot print eventNode data: {Exception}", Name,
                                 e2.Message);
                         }
+
+                        // Preserve legacy compatibility: skip a single malformed event
+                        // and continue processing remaining events in the block.
                     }
                     finally
                     {
                         FinalizePayload(eventEntry, payload, eventNode.Data);
                     }
                 }
+
+                eventIngestStopwatch.Stop();
+                eventIngestDurationMs += eventIngestStopwatch.ElapsedMilliseconds;
             }
+        }
+
+        if (bufferedTransactions.Count > 0)
+            await TransactionMethods.InsertBatchAsync(dbConnection, dbTransaction, bufferedTransactions);
+
+        // Persist tracked entities (addresses/contracts/signatures/NFT updates) after
+        // set-based transaction flush, so FK-dependent rows can commit in one block transaction.
+        await databaseContext.SaveChangesAsync();
+
+        if (bufferedEvents.Count > 0)
+        {
+            await EventMethods.InsertBatchAsync(dbConnection, dbTransaction, bufferedEvents);
+        }
+
+        // Preserve existing behavior where the last create-event assignment wins
+        // when the same entity appears multiple times in one block.
+        var tokenCreateEventByTokenId = new Dictionary<int, int>();
+        foreach (var (token, eventEntry) in tokenCreateEventLinks)
+        {
+            if (token.ID > 0 && eventEntry.ID > 0)
+                tokenCreateEventByTokenId[token.ID] = eventEntry.ID;
+        }
+
+        var platformCreateEventByPlatformId = new Dictionary<int, int>();
+        foreach (var (platform, eventEntry) in platformCreateEventLinks)
+        {
+            if (platform.ID > 0 && eventEntry.ID > 0)
+                platformCreateEventByPlatformId[platform.ID] = eventEntry.ID;
+        }
+
+        var contractCreateEventByContractId = new Dictionary<int, int>();
+        foreach (var (contract, eventEntry) in contractCreateEventLinks)
+        {
+            if (contract.ID > 0 && eventEntry.ID > 0)
+                contractCreateEventByContractId[contract.ID] = eventEntry.ID;
+        }
+
+        var organizationCreateEventByOrganizationId = new Dictionary<int, int>();
+        foreach (var (organization, eventEntry) in organizationCreateEventLinks)
+        {
+            if (organization.ID > 0 && eventEntry.ID > 0)
+                organizationCreateEventByOrganizationId[organization.ID] = eventEntry.ID;
+        }
+
+        await EventMethods.ApplyCreateEventLinksAsync(dbConnection, dbTransaction,
+            tokenCreateEventByTokenId,
+            platformCreateEventByPlatformId,
+            contractCreateEventByContractId,
+            organizationCreateEventByOrganizationId);
+
+        if (addressTransactionLinks.Count > 0)
+        {
+            var linkRows = new List<(int AddressId, int TransactionId)>(addressTransactionLinks.Count);
+            foreach (var (addressValue, txHash) in addressTransactionLinks)
+            {
+                if (!addressesInThisBlock.TryGetValue(addressValue, out var addressEntry) || addressEntry.ID <= 0)
+                    continue;
+
+                if (!transactionsInThisBlock.TryGetValue(txHash, out var transactionEntry) || transactionEntry.ID <= 0)
+                    continue;
+
+                linkRows.Add((addressEntry.ID, transactionEntry.ID));
+            }
+
+            await AddressTransactionMethods.InsertBatchAsync(dbConnection, dbTransaction, linkRows);
         }
 
         Log.Verbose("[{Name}][Blocks] Block #{BlockHeight} Found {Count} addresses to mark dirty", Name, block.Height,
             addressesToUpdate.Count);
 
-        MarkAddressesDirty(databaseContext, chainEntry, addressesToUpdate, (long)block.Height);
+        var saveTailStopwatch = Stopwatch.StartNew();
+        await MarkAddressesDirty(databaseContext, chainEntry, addressesToUpdate, (long)block.Height,
+            addressesInThisBlock);
         ChainMethods.SetLastProcessedBlock(databaseContext, chainName, block.Height, false);
 
         await databaseContext.SaveChangesAsync();
+        await blockTransaction.CommitAsync();
+        saveTailStopwatch.Stop();
+        saveTailDurationMs = saveTailStopwatch.ElapsedMilliseconds;
 
         var processingTime = DateTime.Now - startTime;
         if (processingTime.TotalSeconds > 1) // Log only if processing of the block took > 1 second
@@ -1459,6 +1880,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 "[{Name}][Blocks] Block #{BlockHeight} processed in {ProcessingTime} sec, {EventsAddedCount} events, {NftsInThisBlock} NFTs",
                 Name, block.Height, Math.Round(processingTime.TotalSeconds, 3),
                 eventsAddedCount, nftsInThisBlock.Count);
+            Log.Information(
+                "[{Name}][Blocks] Block #{BlockHeight} phase timings: tx_ingest={TxIngestMs}ms, event_ingest={EventIngestMs}ms, save_tail={SaveTailMs}ms",
+                Name, block.Height, txIngestDurationMs, eventIngestDurationMs, saveTailDurationMs);
         }
 
     }

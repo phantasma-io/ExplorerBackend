@@ -62,6 +62,39 @@ public static class OrganizationAddressMethods
         }
     }
 
+    public static void ReconcileMemberships(MainDbContext databaseContext, int organizationId,
+        IReadOnlyCollection<int> scopedAddressIds, IReadOnlyCollection<int> targetAddressIds)
+    {
+        if (organizationId <= 0 || scopedAddressIds == null || scopedAddressIds.Count == 0)
+            return;
+
+        var scopedIds = scopedAddressIds.Distinct().ToList();
+        var targetIds = targetAddressIds?.Distinct().ToHashSet() ?? new HashSet<int>();
+
+        // Reconcile membership in a bounded scope to avoid per-address probes during sync batches.
+        var existingMemberships = databaseContext.OrganizationAddresses
+            .Where(x => x.OrganizationId == organizationId && scopedIds.Contains(x.AddressId))
+            .ToList();
+
+        var existingIds = existingMemberships.Select(x => x.AddressId).ToHashSet();
+
+        foreach (var addressId in targetIds)
+        {
+            if (!existingIds.Contains(addressId))
+            {
+                databaseContext.OrganizationAddresses.Add(new OrganizationAddress
+                {
+                    OrganizationId = organizationId,
+                    AddressId = addressId
+                });
+            }
+        }
+
+        var membershipsToRemove = existingMemberships.Where(x => !targetIds.Contains(x.AddressId)).ToList();
+        if (membershipsToRemove.Count > 0)
+            databaseContext.OrganizationAddresses.RemoveRange(membershipsToRemove);
+    }
+
     public static IEnumerable<Organization> GetOrganizationsByAddress(MainDbContext databaseContext, string address)
     {
         return string.IsNullOrEmpty(address)

@@ -18,28 +18,13 @@ namespace Database.Main.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.11")
+                .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Proxies:ChangeTracking", false)
                 .HasAnnotation("Proxies:CheckEquality", false)
                 .HasAnnotation("Proxies:LazyLoading", true)
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("AddressOrganization", b =>
-                {
-                    b.Property<int>("AddressesID")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("OrganizationsID")
-                        .HasColumnType("integer");
-
-                    b.HasKey("AddressesID", "OrganizationsID");
-
-                    b.HasIndex("OrganizationsID");
-
-                    b.ToTable("AddressOrganization");
-                });
 
             modelBuilder.Entity("Database.Main.Address", b =>
                 {
@@ -61,10 +46,13 @@ namespace Database.Main.Migrations
                     b.Property<int?>("AddressValidatorKindId")
                         .HasColumnType("integer");
 
+                    b.Property<long>("BALANCE_DIRTY_BLOCK")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("ChainId")
                         .HasColumnType("integer");
 
-                    b.Property<long>("BALANCE_DIRTY_BLOCK")
+                    b.Property<long?>("FIRST_TX_UNIX_SECONDS")
                         .HasColumnType("bigint");
 
                     b.Property<long>("NAME_LAST_UPDATED_UNIX_SECONDS")
@@ -109,9 +97,11 @@ namespace Database.Main.Migrations
                     b.HasIndex("ChainId", "ADDRESS")
                         .IsUnique();
 
-                    b.HasIndex("ChainId", "NAME_LAST_UPDATED_UNIX_SECONDS");
-
                     b.HasIndex("ChainId", "BALANCE_DIRTY_BLOCK");
+
+                    b.HasIndex("ChainId", "FIRST_TX_UNIX_SECONDS");
+
+                    b.HasIndex("ChainId", "NAME_LAST_UPDATED_UNIX_SECONDS");
 
                     b.ToTable("Addresses");
                 });
@@ -138,9 +128,10 @@ namespace Database.Main.Migrations
 
                     b.HasKey("ID");
 
-                    b.HasIndex("AddressId");
-
                     b.HasIndex("TokenId");
+
+                    b.HasIndex("AddressId", "TokenId")
+                        .IsUnique();
 
                     b.ToTable("AddressBalances");
                 });
@@ -204,8 +195,8 @@ namespace Database.Main.Migrations
                     b.Property<string>("HASH")
                         .HasColumnType("text");
 
-                    b.Property<string>("HEIGHT")
-                        .HasColumnType("text");
+                    b.Property<long>("HEIGHT")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("PREVIOUS_HASH")
                         .HasColumnType("text");
@@ -276,8 +267,8 @@ namespace Database.Main.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
 
-                    b.Property<string>("CURRENT_HEIGHT")
-                        .HasColumnType("text");
+                    b.Property<long>("CURRENT_HEIGHT")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("NAME")
                         .HasColumnType("text");
@@ -288,36 +279,6 @@ namespace Database.Main.Migrations
                         .IsUnique();
 
                     b.ToTable("Chains");
-                });
-
-            modelBuilder.Entity("Database.Main.ChainEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("ChainId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("NAME")
-                        .HasColumnType("text");
-
-                    b.Property<string>("VALUE")
-                        .HasColumnType("text");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("ChainId");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.ToTable("ChainEvents");
                 });
 
             modelBuilder.Entity("Database.Main.Contract", b =>
@@ -484,6 +445,8 @@ namespace Database.Main.Migrations
 
                     b.HasIndex("ContractId", "TOKEN_ID");
 
+                    b.HasIndex("EventKindId", "ID");
+
                     b.HasIndex("EventKindId", "ChainId", "TIMESTAMP_UNIX_SECONDS", "ID")
                         .HasDatabaseName("IX_Events_EventKind_Chain_Timestamp_Id");
 
@@ -562,39 +525,6 @@ namespace Database.Main.Migrations
                     b.ToTable("FiatExchangeRates");
                 });
 
-            modelBuilder.Entity("Database.Main.GasEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<string>("AMOUNT")
-                        .HasColumnType("text");
-
-                    b.Property<int>("AddressId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("FEE")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PRICE")
-                        .HasColumnType("text");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("AddressId");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.ToTable("GasEvents");
-                });
-
             modelBuilder.Entity("Database.Main.GlobalVariable", b =>
                 {
                     b.Property<int>("ID")
@@ -618,28 +548,6 @@ namespace Database.Main.Migrations
                         .IsUnique();
 
                     b.ToTable("GlobalVariables");
-                });
-
-            modelBuilder.Entity("Database.Main.HashEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("HASH")
-                        .HasColumnType("text");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.ToTable("HashEvents");
                 });
 
             modelBuilder.Entity("Database.Main.Infusion", b =>
@@ -671,148 +579,6 @@ namespace Database.Main.Migrations
                     b.HasIndex("TokenId");
 
                     b.ToTable("Infusions");
-                });
-
-            modelBuilder.Entity("Database.Main.InfusionEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("BaseTokenId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("INFUSED_VALUE")
-                        .HasColumnType("text");
-
-                    b.Property<string>("INFUSED_VALUE_RAW")
-                        .HasColumnType("text");
-
-                    b.Property<int>("InfusedTokenId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("InfusionId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TOKEN_ID")
-                        .HasColumnType("text");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("BaseTokenId");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.HasIndex("InfusedTokenId");
-
-                    b.HasIndex("InfusionId");
-
-                    b.HasIndex("TOKEN_ID");
-
-                    b.ToTable("InfusionEvents");
-                });
-
-            modelBuilder.Entity("Database.Main.MarketEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("BaseTokenId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("END_PRICE")
-                        .HasColumnType("text");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("MARKET_ID")
-                        .HasColumnType("text");
-
-                    b.Property<int>("MarketEventKindId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("PRICE")
-                        .HasColumnType("text");
-
-                    b.Property<int>("QuoteTokenId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("BaseTokenId");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.HasIndex("MarketEventKindId");
-
-                    b.HasIndex("QuoteTokenId");
-
-                    b.ToTable("MarketEvents");
-                });
-
-            modelBuilder.Entity("Database.Main.MarketEventFiatPrice", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<string>("FIAT_NAME")
-                        .HasColumnType("text");
-
-                    b.Property<int>("MarketEventId")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("PRICE_END_USD")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("PRICE_USD")
-                        .HasColumnType("numeric");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("MarketEventId")
-                        .IsUnique();
-
-                    b.HasIndex("PRICE_END_USD", "PRICE_USD");
-
-                    b.ToTable("MarketEventFiatPrices");
-                });
-
-            modelBuilder.Entity("Database.Main.MarketEventKind", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("ChainId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("NAME")
-                        .HasColumnType("text");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("NAME");
-
-                    b.HasIndex("ChainId", "NAME")
-                        .IsUnique();
-
-                    b.ToTable("MarketEventKinds");
                 });
 
             modelBuilder.Entity("Database.Main.Nft", b =>
@@ -1025,38 +791,10 @@ namespace Database.Main.Migrations
 
                     b.HasIndex("AddressId");
 
-                    b.HasIndex("OrganizationId");
-
-                    b.ToTable("OrganizationAddresses");
-                });
-
-            modelBuilder.Entity("Database.Main.OrganizationEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("AddressId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("OrganizationId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("AddressId");
-
-                    b.HasIndex("EventId")
+                    b.HasIndex("OrganizationId", "AddressId")
                         .IsUnique();
 
-                    b.HasIndex("OrganizationId");
-
-                    b.ToTable("OrganizationEvents");
+                    b.ToTable("OrganizationAddresses");
                 });
 
             modelBuilder.Entity("Database.Main.Platform", b =>
@@ -1142,57 +880,6 @@ namespace Database.Main.Migrations
                     b.ToTable("PlatformTokens");
                 });
 
-            modelBuilder.Entity("Database.Main.SaleEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("HASH")
-                        .HasColumnType("text");
-
-                    b.Property<int>("SaleEventKindId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.HasIndex("SaleEventKindId");
-
-                    b.ToTable("SaleEvents");
-                });
-
-            modelBuilder.Entity("Database.Main.SaleEventKind", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("ChainId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("NAME")
-                        .HasColumnType("text");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("NAME");
-
-                    b.HasIndex("ChainId", "NAME")
-                        .IsUnique();
-
-                    b.ToTable("SaleEventKinds");
-                });
-
             modelBuilder.Entity("Database.Main.Series", b =>
                 {
                     b.Property<int>("ID")
@@ -1258,6 +945,9 @@ namespace Database.Main.Migrations
                     b.Property<decimal>("ROYALTIES")
                         .HasColumnType("numeric");
 
+                    b.Property<long>("SERIES_CREATED_UNIX_SECONDS")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("SERIES_ID")
                         .HasColumnType("text");
 
@@ -1277,6 +967,8 @@ namespace Database.Main.Migrations
 
                     b.HasIndex("ContractId", "SERIES_ID")
                         .IsUnique();
+
+                    b.HasIndex("SERIES_CREATED_UNIX_SECONDS", "ID");
 
                     b.ToTable("Serieses");
                 });
@@ -1344,7 +1036,7 @@ namespace Database.Main.Migrations
                     b.ToTable("SignatureKinds");
                 });
 
-            modelBuilder.Entity("Database.Main.StringEvent", b =>
+            modelBuilder.Entity("Database.Main.SoulMastersMonthly", b =>
                 {
                     b.Property<int>("ID")
                         .ValueGeneratedOnAdd()
@@ -1352,18 +1044,70 @@ namespace Database.Main.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
 
-                    b.Property<int>("EventId")
+                    b.Property<long>("CAPTURED_AT_UNIX_SECONDS")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ChainId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("STRING_VALUE")
+                    b.Property<int>("MASTERS_COUNT")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("MONTH_UNIX_SECONDS")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SOURCE")
                         .HasColumnType("text");
 
                     b.HasKey("ID");
 
-                    b.HasIndex("EventId")
+                    b.HasIndex("ChainId", "MONTH_UNIX_SECONDS")
                         .IsUnique();
 
-                    b.ToTable("StringEvents");
+                    b.ToTable("SoulMastersMonthlies");
+                });
+
+            modelBuilder.Entity("Database.Main.StakingProgressDaily", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+
+                    b.Property<long>("CAPTURED_AT_UNIX_SECONDS")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ChainId")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("DATE_UNIX_SECONDS")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("MASTERS_COUNT")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SOUL_SUPPLY_RAW")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SOURCE")
+                        .HasColumnType("text");
+
+                    b.Property<string>("STAKED_SOUL_RAW")
+                        .HasColumnType("text");
+
+                    b.Property<int>("STAKERS_COUNT")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("STAKING_RATIO")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("ChainId", "DATE_UNIX_SECONDS")
+                        .IsUnique();
+
+                    b.ToTable("StakingProgressDailies");
                 });
 
             modelBuilder.Entity("Database.Main.Token", b =>
@@ -1519,39 +1263,6 @@ namespace Database.Main.Migrations
                     b.ToTable("TokenDailyPrices");
                 });
 
-            modelBuilder.Entity("Database.Main.TokenEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<string>("CHAIN_NAME")
-                        .HasColumnType("text");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TokenId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("VALUE")
-                        .HasColumnType("text");
-
-                    b.Property<string>("VALUE_RAW")
-                        .HasColumnType("text");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.HasIndex("TokenId");
-
-                    b.ToTable("TokenEvents");
-                });
-
             modelBuilder.Entity("Database.Main.TokenLogo", b =>
                 {
                     b.Property<int>("ID")
@@ -1685,34 +1396,9 @@ namespace Database.Main.Migrations
 
                     b.HasIndex("BlockId", "INDEX");
 
+                    b.HasIndex("TIMESTAMP_UNIX_SECONDS", "ID");
+
                     b.ToTable("Transactions");
-                });
-
-            modelBuilder.Entity("Database.Main.TransactionSettleEvent", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("HASH")
-                        .HasColumnType("text");
-
-                    b.Property<int>("PlatformId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("EventId")
-                        .IsUnique();
-
-                    b.HasIndex("PlatformId");
-
-                    b.ToTable("TransactionSettleEvents");
                 });
 
             modelBuilder.Entity("Database.Main.TransactionState", b =>
@@ -1731,21 +1417,6 @@ namespace Database.Main.Migrations
                     b.HasIndex("NAME");
 
                     b.ToTable("TransactionStates");
-                });
-
-            modelBuilder.Entity("AddressOrganization", b =>
-                {
-                    b.HasOne("Database.Main.Address", null)
-                        .WithMany()
-                        .HasForeignKey("AddressesID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Organization", null)
-                        .WithMany()
-                        .HasForeignKey("OrganizationsID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Database.Main.Address", b =>
@@ -1847,25 +1518,6 @@ namespace Database.Main.Migrations
                     b.Navigation("Block");
 
                     b.Navigation("Oracle");
-                });
-
-            modelBuilder.Entity("Database.Main.ChainEvent", b =>
-                {
-                    b.HasOne("Database.Main.Chain", "Chain")
-                        .WithMany("ChainEvents")
-                        .HasForeignKey("ChainId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("ChainEvent")
-                        .HasForeignKey("Database.Main.ChainEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Chain");
-
-                    b.Navigation("Event");
                 });
 
             modelBuilder.Entity("Database.Main.Contract", b =>
@@ -2000,36 +1652,6 @@ namespace Database.Main.Migrations
                     b.Navigation("Token");
                 });
 
-            modelBuilder.Entity("Database.Main.GasEvent", b =>
-                {
-                    b.HasOne("Database.Main.Address", "Address")
-                        .WithMany("GasEvents")
-                        .HasForeignKey("AddressId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("GasEvent")
-                        .HasForeignKey("Database.Main.GasEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Address");
-
-                    b.Navigation("Event");
-                });
-
-            modelBuilder.Entity("Database.Main.HashEvent", b =>
-                {
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("HashEvent")
-                        .HasForeignKey("Database.Main.HashEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Event");
-                });
-
             modelBuilder.Entity("Database.Main.Infusion", b =>
                 {
                     b.HasOne("Database.Main.Nft", "Nft")
@@ -2045,96 +1667,6 @@ namespace Database.Main.Migrations
                     b.Navigation("Nft");
 
                     b.Navigation("Token");
-                });
-
-            modelBuilder.Entity("Database.Main.InfusionEvent", b =>
-                {
-                    b.HasOne("Database.Main.Token", "BaseToken")
-                        .WithMany("BaseSymbolInfusionEvents")
-                        .HasForeignKey("BaseTokenId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("InfusionEvent")
-                        .HasForeignKey("Database.Main.InfusionEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Token", "InfusedToken")
-                        .WithMany("InfusedSymbolInfusionEvents")
-                        .HasForeignKey("InfusedTokenId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Infusion", "Infusion")
-                        .WithMany("InfusionEvents")
-                        .HasForeignKey("InfusionId");
-
-                    b.Navigation("BaseToken");
-
-                    b.Navigation("Event");
-
-                    b.Navigation("InfusedToken");
-
-                    b.Navigation("Infusion");
-                });
-
-            modelBuilder.Entity("Database.Main.MarketEvent", b =>
-                {
-                    b.HasOne("Database.Main.Token", "BaseToken")
-                        .WithMany("BaseSymbolMarketEvents")
-                        .HasForeignKey("BaseTokenId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("MarketEvent")
-                        .HasForeignKey("Database.Main.MarketEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.MarketEventKind", "MarketEventKind")
-                        .WithMany("MarketEvents")
-                        .HasForeignKey("MarketEventKindId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Token", "QuoteToken")
-                        .WithMany("QuoteSymbolMarketEvents")
-                        .HasForeignKey("QuoteTokenId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BaseToken");
-
-                    b.Navigation("Event");
-
-                    b.Navigation("MarketEventKind");
-
-                    b.Navigation("QuoteToken");
-                });
-
-            modelBuilder.Entity("Database.Main.MarketEventFiatPrice", b =>
-                {
-                    b.HasOne("Database.Main.MarketEvent", "MarketEvent")
-                        .WithOne("MarketEventFiatPrice")
-                        .HasForeignKey("Database.Main.MarketEventFiatPrice", "MarketEventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MarketEvent");
-                });
-
-            modelBuilder.Entity("Database.Main.MarketEventKind", b =>
-                {
-                    b.HasOne("Database.Main.Chain", "Chain")
-                        .WithMany("MarketEventKinds")
-                        .HasForeignKey("ChainId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Chain");
                 });
 
             modelBuilder.Entity("Database.Main.Nft", b =>
@@ -2221,33 +1753,6 @@ namespace Database.Main.Migrations
                     b.Navigation("Organization");
                 });
 
-            modelBuilder.Entity("Database.Main.OrganizationEvent", b =>
-                {
-                    b.HasOne("Database.Main.Address", "Address")
-                        .WithMany("OrganizationEvents")
-                        .HasForeignKey("AddressId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("OrganizationEvent")
-                        .HasForeignKey("Database.Main.OrganizationEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Organization", "Organization")
-                        .WithMany("OrganizationEvents")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Address");
-
-                    b.Navigation("Event");
-
-                    b.Navigation("Organization");
-                });
-
             modelBuilder.Entity("Database.Main.Platform", b =>
                 {
                     b.HasOne("Database.Main.Event", "CreateEvent")
@@ -2285,36 +1790,6 @@ namespace Database.Main.Migrations
                         .IsRequired();
 
                     b.Navigation("Platform");
-                });
-
-            modelBuilder.Entity("Database.Main.SaleEvent", b =>
-                {
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("SaleEvent")
-                        .HasForeignKey("Database.Main.SaleEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.SaleEventKind", "SaleEventKind")
-                        .WithMany("SaleEvents")
-                        .HasForeignKey("SaleEventKindId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Event");
-
-                    b.Navigation("SaleEventKind");
-                });
-
-            modelBuilder.Entity("Database.Main.SaleEventKind", b =>
-                {
-                    b.HasOne("Database.Main.Chain", "Chain")
-                        .WithMany("SaleEventKinds")
-                        .HasForeignKey("ChainId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Chain");
                 });
 
             modelBuilder.Entity("Database.Main.Series", b =>
@@ -2359,15 +1834,26 @@ namespace Database.Main.Migrations
                     b.Navigation("Transaction");
                 });
 
-            modelBuilder.Entity("Database.Main.StringEvent", b =>
+            modelBuilder.Entity("Database.Main.SoulMastersMonthly", b =>
                 {
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("StringEvent")
-                        .HasForeignKey("Database.Main.StringEvent", "EventId")
+                    b.HasOne("Database.Main.Chain", "Chain")
+                        .WithMany("SoulMastersMonthlies")
+                        .HasForeignKey("ChainId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Event");
+                    b.Navigation("Chain");
+                });
+
+            modelBuilder.Entity("Database.Main.StakingProgressDaily", b =>
+                {
+                    b.HasOne("Database.Main.Chain", "Chain")
+                        .WithMany("StakingProgressDailies")
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Chain");
                 });
 
             modelBuilder.Entity("Database.Main.Token", b =>
@@ -2410,25 +1896,6 @@ namespace Database.Main.Migrations
                         .HasForeignKey("TokenId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Token");
-                });
-
-            modelBuilder.Entity("Database.Main.TokenEvent", b =>
-                {
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("TokenEvent")
-                        .HasForeignKey("Database.Main.TokenEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Token", "Token")
-                        .WithMany("TokenEvents")
-                        .HasForeignKey("TokenId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Event");
 
                     b.Navigation("Token");
                 });
@@ -2495,25 +1962,6 @@ namespace Database.Main.Migrations
                     b.Navigation("State");
                 });
 
-            modelBuilder.Entity("Database.Main.TransactionSettleEvent", b =>
-                {
-                    b.HasOne("Database.Main.Event", "Event")
-                        .WithOne("TransactionSettleEvent")
-                        .HasForeignKey("Database.Main.TransactionSettleEvent", "EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Database.Main.Platform", "Platform")
-                        .WithMany("TransactionSettleEvents")
-                        .HasForeignKey("PlatformId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Event");
-
-                    b.Navigation("Platform");
-                });
-
             modelBuilder.Entity("Database.Main.Address", b =>
                 {
                     b.Navigation("AddressBalances");
@@ -2526,15 +1974,11 @@ namespace Database.Main.Migrations
 
                     b.Navigation("Events");
 
-                    b.Navigation("GasEvents");
-
                     b.Navigation("NftOwnerships");
 
                     b.Navigation("Nfts");
 
                     b.Navigation("OrganizationAddresses");
-
-                    b.Navigation("OrganizationEvents");
 
                     b.Navigation("PlatformInterops");
 
@@ -2573,19 +2017,17 @@ namespace Database.Main.Migrations
 
                     b.Navigation("Blocks");
 
-                    b.Navigation("ChainEvents");
-
                     b.Navigation("Contracts");
 
                     b.Navigation("EventKinds");
 
                     b.Navigation("Events");
 
-                    b.Navigation("MarketEventKinds");
-
                     b.Navigation("Nfts");
 
-                    b.Navigation("SaleEventKinds");
+                    b.Navigation("SoulMastersMonthlies");
+
+                    b.Navigation("StakingProgressDailies");
 
                     b.Navigation("Tokens");
                 });
@@ -2608,8 +2050,6 @@ namespace Database.Main.Migrations
 
             modelBuilder.Entity("Database.Main.Event", b =>
                 {
-                    b.Navigation("ChainEvent");
-
                     b.Navigation("CreateContract");
 
                     b.Navigation("CreateOrganization");
@@ -2617,44 +2057,11 @@ namespace Database.Main.Migrations
                     b.Navigation("CreatePlatform");
 
                     b.Navigation("CreateToken");
-
-                    b.Navigation("GasEvent");
-
-                    b.Navigation("HashEvent");
-
-                    b.Navigation("InfusionEvent");
-
-                    b.Navigation("MarketEvent");
-
-                    b.Navigation("OrganizationEvent");
-
-                    b.Navigation("SaleEvent");
-
-                    b.Navigation("StringEvent");
-
-                    b.Navigation("TokenEvent");
-
-                    b.Navigation("TransactionSettleEvent");
                 });
 
             modelBuilder.Entity("Database.Main.EventKind", b =>
                 {
                     b.Navigation("Events");
-                });
-
-            modelBuilder.Entity("Database.Main.Infusion", b =>
-                {
-                    b.Navigation("InfusionEvents");
-                });
-
-            modelBuilder.Entity("Database.Main.MarketEvent", b =>
-                {
-                    b.Navigation("MarketEventFiatPrice");
-                });
-
-            modelBuilder.Entity("Database.Main.MarketEventKind", b =>
-                {
-                    b.Navigation("MarketEvents");
                 });
 
             modelBuilder.Entity("Database.Main.Nft", b =>
@@ -2676,8 +2083,6 @@ namespace Database.Main.Migrations
             modelBuilder.Entity("Database.Main.Organization", b =>
                 {
                     b.Navigation("OrganizationAddresses");
-
-                    b.Navigation("OrganizationEvents");
                 });
 
             modelBuilder.Entity("Database.Main.Platform", b =>
@@ -2687,13 +2092,6 @@ namespace Database.Main.Migrations
                     b.Navigation("PlatformInterops");
 
                     b.Navigation("PlatformTokens");
-
-                    b.Navigation("TransactionSettleEvents");
-                });
-
-            modelBuilder.Entity("Database.Main.SaleEventKind", b =>
-                {
-                    b.Navigation("SaleEvents");
                 });
 
             modelBuilder.Entity("Database.Main.Series", b =>
@@ -2715,23 +2113,13 @@ namespace Database.Main.Migrations
                 {
                     b.Navigation("AddressBalances");
 
-                    b.Navigation("BaseSymbolInfusionEvents");
-
-                    b.Navigation("BaseSymbolMarketEvents");
-
                     b.Navigation("Contract");
 
                     b.Navigation("Externals");
 
-                    b.Navigation("InfusedSymbolInfusionEvents");
-
                     b.Navigation("Infusions");
 
-                    b.Navigation("QuoteSymbolMarketEvents");
-
                     b.Navigation("TokenDailyPrices");
-
-                    b.Navigation("TokenEvents");
 
                     b.Navigation("TokenLogos");
                 });

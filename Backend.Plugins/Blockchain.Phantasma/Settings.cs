@@ -37,7 +37,6 @@ internal class Settings
         EventsProcessingInterval = section.GetValue<int>("eventsProcessingInterval");
         RomRamProcessingEnabled = section.GetValue<bool>("romRamProcessingEnabled");
         RomRamProcessingInterval = section.GetValue<int>("romRamProcessingInterval");
-        SeriesProcessingInterval = section.GetValue<int>("seriesProcessingInterval");
         NamesSyncInterval = section.GetValue<int>("namesSyncInterval");
         BalanceResyncOnStartup = section.GetValue("balanceResyncOnStartup", true);
         ChangeNodesInterval = 30; //30 mins
@@ -61,7 +60,6 @@ internal class Settings
     public int EventsProcessingInterval { get; }
     public bool RomRamProcessingEnabled { get; }
     public int RomRamProcessingInterval { get; }
-    public int SeriesProcessingInterval { get; }
     public int NamesSyncInterval { get; }
     public bool BalanceResyncOnStartup { get; }
 

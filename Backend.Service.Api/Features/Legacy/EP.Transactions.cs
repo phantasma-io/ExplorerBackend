@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -14,12 +15,32 @@ namespace Backend.Service.Api;
 
 public static class GetTransactions
 {
+    private static bool TryResolveTransactionStateFilter(string stateFilter, out string[] stateNames)
+    {
+        switch (stateFilter.ToLowerInvariant())
+        {
+            case "halt":
+                stateNames = ["HALT"];
+                return true;
+            case "break":
+                stateNames = ["BREAK"];
+                return true;
+            case "fault":
+                stateNames = ["FAULT"];
+                return true;
+            default:
+                stateNames = Array.Empty<string>();
+                return false;
+        }
+    }
+
     private sealed class TransactionPageItem
     {
         public int Id { get; init; }
         public string Hash { get; init; } = string.Empty;
         public int Index { get; init; }
-        public EventPayloadMapper.TransactionProjection Projection { get; init; }
+        public long TimestampUnixSeconds { get; init; }
+        public required EventPayloadMapper.TransactionProjection Projection { get; init; }
     }
 
     [ProducesResponseType(typeof(TransactionResult), (int)HttpStatusCode.OK)]
@@ -27,9 +48,8 @@ public static class GetTransactions
     [ApiInfo(typeof(TransactionResult), "Returns the transaction on the backend.", false, 60, cacheTag: "transactions")]
     public static async Task<TransactionResult> Execute(
         // ReSharper disable InconsistentNaming
-        string order_by = "id",
+        string order_by = "date",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string hash = "",
@@ -40,35 +60,30 @@ public static class GetTransactions
         string date_greater = "",
         string block_hash = "",
         string block_height = "",
-        string chain = "main",
+        string chain = "",
+        string state = "",
         int with_nft = 0,
         int with_events = 0,
         int with_event_data = 0,
         int with_fiat = 0,
         int with_script = 0,
-        int with_neighbors = 0,
-        int with_total = 0
+        int with_neighbors = 0
     // ReSharper enable InconsistentNaming
     )
     {
-        long totalResults = 0;
-        Transaction[] transactions = null;
-        string previousHash = null;
-        string nextHash = null;
+        Transaction[] transactions = Array.Empty<Transaction>();
+        string? previousHash = null;
+        string? nextHash = null;
         string? nextCursor = null;
-        var useCursor = false;
         var hashUpper = string.IsNullOrEmpty(hash) ? string.Empty : hash.ToUpper();
         var hashPartialUpper = string.IsNullOrEmpty(hash_partial) ? string.Empty : hash_partial.ToUpper();
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
         var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
+        var qIsHex = !string.IsNullOrEmpty(qTrimmed) && ArgValidation.CheckBase16(qTrimmed);
+        var qIsFullHash = qIsHex && qUpper.Length >= 64;
+        var stateTrimmed = string.IsNullOrWhiteSpace(state) ? string.Empty : state.Trim();
 
         const string fiatCurrency = "USD";
-        var filter = !string.IsNullOrEmpty(hashUpper) || !string.IsNullOrEmpty(hashPartialUpper) ||
-                     !string.IsNullOrEmpty(address) || !string.IsNullOrEmpty(date_less) ||
-                     !string.IsNullOrEmpty(date_greater)
-                     || !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height)
-                     || !string.IsNullOrEmpty(qTrimmed);
-
         try
         {
             #region ArgValidation
@@ -79,11 +94,8 @@ public static class GetTransactions
             if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if (!ArgValidation.CheckLimit(limit, filter))
+            if (!ArgValidation.CheckLimit(limit))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(hashUpper) && !ArgValidation.CheckHash(hashUpper))
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
@@ -112,11 +124,24 @@ public static class GetTransactions
             if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
                 throw new ApiParameterException("Unsupported value for 'chain' parameter.");
 
+            if (!string.IsNullOrEmpty(stateTrimmed) && !ArgValidation.CheckString(stateTrimmed, true))
+                throw new ApiParameterException("Unsupported value for 'state' parameter.");
+
             #endregion
 
             var cursorToken = CursorPagination.ParseCursor(cursor);
             var sortDirection = CursorPagination.ParseSortDirection(order_direction);
-            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+            var orderBy = string.IsNullOrWhiteSpace(order_by) ? "date" : order_by;
+            long? parsedBlockHeightFilter = null;
+
+            if (!string.IsNullOrEmpty(block_height))
+            {
+                if (!long.TryParse(block_height, NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var blockHeightValue))
+                    throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
+
+                parsedBlockHeightFilter = blockHeightValue;
+            }
 
             var orderDefinitions =
                 new Dictionary<string, CursorOrderDefinition<TransactionPageItem>>(StringComparer.OrdinalIgnoreCase)
@@ -144,14 +169,19 @@ public static class GetTransactions
                             new CursorOrderSegment<TransactionPageItem, int>(
                                 x => x.Index,
                                 value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
+                        "date",
+                        new CursorOrderDefinition<TransactionPageItem>(
+                            "date",
+                            new CursorOrderSegment<TransactionPageItem, long>(
+                                x => x.TimestampUnixSeconds,
+                                value => long.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
                     }
                 };
 
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
-
-            var useCursorForList = string.IsNullOrEmpty(hashUpper);
-            useCursor = useCursorForList && CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
 
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
@@ -164,29 +194,74 @@ public static class GetTransactions
             if (!string.IsNullOrEmpty(qUpper))
             {
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
-                var isHex = ArgValidation.CheckBase16(qTrimmed);
-                var isFullHash = isHex && qUpper.Length >= 64;
-                var isHexPartial = isHex && !isFullHash;
+                var isFullHash = qIsFullHash;
                 var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
-                var treatAsHashPartial = !isNumber && !isAddress && !isFullHash;
 
-                query = query.Where(x =>
-                    (isFullHash && x.HASH == qUpper) ||
-                    (isHexPartial && x.HASH.Contains(qUpper)) ||
-                    (isNumber && x.Block.HEIGHT == qTrimmed) ||
-                    (isAddress && x.TransactionAddresses.Any(y => y.Address.ADDRESS == qTrimmed)) ||
-                    (treatAsHashPartial && x.HASH.Contains(qUpper)));
+                if (isFullHash)
+                {
+                    query = query.Where(x => x.HASH == qUpper);
+                }
+                else if (isNumber)
+                {
+                    if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedQHeight))
+                        throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
+                    // Keep numeric q on an indexed BlockId path to avoid broad joins over Block/Chain navigation.
+                    var blockIdsByHeight = databaseContext.Blocks
+                        .AsNoTracking()
+                        .Where(b => b.HEIGHT == parsedQHeight)
+                        .Select(b => b.ID);
+
+                    query = query.Where(x => blockIdsByHeight.Contains(x.BlockId));
+                }
+                else if (isAddress)
+                {
+                    var resolvedAddressIds = await databaseContext.Addresses
+                        .AsNoTracking()
+                        .Where(a => a.ADDRESS == qTrimmed)
+                        .Select(a => a.ID)
+                        .ToArrayAsync();
+
+                    if (resolvedAddressIds.Length == 0)
+                    {
+                        return new TransactionResult
+                        {
+                            total_results = null,
+                            transactions = Array.Empty<Transaction>(),
+                            next_cursor = null
+                        };
+                    }
+
+                    // Drive address q by link-table ids first, so the planner can use
+                    // the (AddressId, TransactionId) index directly on AddressTransactions.
+                    var transactionIdsByAddress = databaseContext.AddressTransactions
+                        .AsNoTracking()
+                        .Where(x => resolvedAddressIds.Contains(x.AddressId))
+                        .Select(x => x.TransactionId)
+                        .Distinct();
+
+                    query = query.Where(x => transactionIdsByAddress.Contains(x.ID));
+                }
+                else
+                {
+                    // Partial hash search through q was intentionally removed to avoid wide LIKE scans.
+                    query = query.Where(_ => false);
+                }
             }
 
             if (!string.IsNullOrEmpty(hashUpper))
                 query = query.Where(x => x.HASH == hashUpper);
 
             if (!string.IsNullOrEmpty(hashPartialUpper))
+            {
+                var hasNumericPartialHeight = long.TryParse(hashPartialUpper, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var partialHeightValue);
+
                 query = query.Where(x =>
                     x.HASH.Contains(hashPartialUpper) ||
                     x.Block.HASH.Contains(hashPartialUpper) ||
-                    x.Block.HEIGHT == hashPartialUpper ||
-                    x.Block.HEIGHT.Contains(hashPartialUpper));
+                    (hasNumericPartialHeight && x.Block.HEIGHT == partialHeightValue));
+            }
 
             if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
@@ -206,36 +281,110 @@ public static class GetTransactions
                     addressId = await databaseContext.Addresses.Where(x => x.ADDRESS_NAME == address).Select(x => x.ID).FirstOrDefaultAsync();
                 }
 
-                query = query.Where(x => x.TransactionAddresses.Any(y => y.AddressId == addressId));
+                if (addressId <= 0)
+                {
+                    return new TransactionResult
+                    {
+                        total_results = null,
+                        transactions = Array.Empty<Transaction>(),
+                        next_cursor = null
+                    };
+                }
+
+                var transactionIdsByAddress = databaseContext.AddressTransactions
+                    .AsNoTracking()
+                    .Where(x => x.AddressId == addressId)
+                    .Select(x => x.TransactionId)
+                    .Distinct();
+
+                query = query.Where(x => transactionIdsByAddress.Contains(x.ID));
             }
 
             if (!string.IsNullOrEmpty(block_hash))
-                query = query.Where(x => x.Block.HASH == block_hash.ToUpper());
+            {
+                var blockHashUpper = block_hash.ToUpperInvariant();
+                var blockIdsByHash = databaseContext.Blocks
+                    .AsNoTracking()
+                    .Where(x => x.HASH == blockHashUpper)
+                    .Select(x => x.ID);
 
-            if (!string.IsNullOrEmpty(block_height))
-                query = query.Where(x => x.Block.HEIGHT == block_height);
+                query = query.Where(x => blockIdsByHash.Contains(x.BlockId));
+            }
 
-            if (!string.IsNullOrEmpty(chain)) query = query.Where(x => x.Block.Chain.NAME == chain);
+            if (parsedBlockHeightFilter.HasValue)
+            {
+                var blockIdsByHeight = databaseContext.Blocks
+                    .AsNoTracking()
+                    .Where(x => x.HEIGHT == parsedBlockHeightFilter.Value)
+                    .Select(x => x.ID);
+
+                query = query.Where(x => blockIdsByHeight.Contains(x.BlockId));
+            }
+
+            if (!string.IsNullOrEmpty(chain))
+            {
+                var chainId = await databaseContext.Chains
+                    .AsNoTracking()
+                    .Where(x => x.NAME == chain)
+                    .Select(x => (int?)x.ID)
+                    .FirstOrDefaultAsync();
+
+                if (!chainId.HasValue)
+                {
+                    return new TransactionResult
+                    {
+                        total_results = null,
+                        transactions = Array.Empty<Transaction>(),
+                        next_cursor = null
+                    };
+                }
+
+                query = query.Where(x => x.Block.ChainId == chainId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(stateTrimmed))
+            {
+                if (!TryResolveTransactionStateFilter(stateTrimmed, out var stateNames))
+                    throw new ApiParameterException("Unsupported value for 'state' parameter.");
+
+                var stateIds = await databaseContext.TransactionStates
+                    .AsNoTracking()
+                    .Where(x => stateNames.Contains(x.NAME.ToUpper()))
+                    .Select(x => x.ID)
+                    .ToArrayAsync();
+
+                if (stateIds.Length == 0)
+                {
+                    return new TransactionResult
+                    {
+                        total_results = null,
+                        transactions = Array.Empty<Transaction>(),
+                        next_cursor = null
+                    };
+                }
+
+                query = query.Where(x => stateIds.Contains(x.StateId));
+            }
 
             #endregion
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             var pageQuery = query.Select(x => new TransactionPageItem
             {
                 Id = x.ID,
                 Hash = x.HASH,
                 Index = x.INDEX,
+                TimestampUnixSeconds = x.TIMESTAMP_UNIX_SECONDS,
                 Projection = new EventPayloadMapper.TransactionProjection
                 {
                     TransactionId = x.ID,
                     ChainId = x.Block.ChainId,
+                    TimestampUnixSeconds = x.TIMESTAMP_UNIX_SECONDS,
                     ApiTransaction = new Transaction
                     {
                         hash = x.HASH,
                         block_hash = x.Block.HASH,
-                        block_height = x.Block.HEIGHT,
+                        block_height = x.Block.HEIGHT.ToString(CultureInfo.InvariantCulture),
+                        chain = x.Block.Chain.NAME.ToLower(),
                         index = x.INDEX,
                         date = x.TIMESTAMP_UNIX_SECONDS.ToString(),
                         fee = x.FEE,
@@ -353,37 +502,18 @@ public static class GetTransactions
             });
 
             EventPayloadMapper.TransactionProjection[] transactionProjections;
-            string queryString;
+            string queryString = string.Empty;
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                transactionProjections = page.Items.Select(x => x.Projection).ToArray();
-                nextCursor = page.NextCursor;
-                var pageSize = Math.Max(1, limit);
-                queryString = orderedQuery.Take(pageSize + 1).ToQueryString();
-            }
-            else
-            {
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                IQueryable<TransactionPageItem> pageItems;
-
-                if (!string.IsNullOrEmpty(hashUpper))
-                    pageItems = orderedQuery.Take(1);
-                else if (limit > 0)
-                    pageItems = orderedQuery.Skip(offset).Take(limit);
-                else
-                    pageItems = orderedQuery;
-
-                queryString = pageItems.ToQueryString();
-                transactionProjections = (await pageItems.ToArrayAsync()).Select(x => x.Projection).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery =
+                CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            transactionProjections = page.Items.Select(x => x.Projection).ToArray();
+            nextCursor = page.NextCursor;
+            var pageSize = Math.Max(1, limit);
+            queryString = orderedQuery.Take(pageSize + 1).ToQueryString();
 
             var allEventProjections = transactionProjections.SelectMany(x => x.EventProjections).ToArray();
             await EventPayloadMapper.ApplyAsync(databaseContext, allEventProjections, with_event_data == 1,
@@ -416,23 +546,51 @@ public static class GetTransactions
 
             transactions = transactionProjections.Select(x => x.ApiTransaction).ToArray();
 
-            if (!string.IsNullOrEmpty(hashUpper) && transactionProjections?.Length == 1)
+            if (with_neighbors == 1 && !string.IsNullOrEmpty(hashUpper) && transactionProjections?.Length == 1)
             {
                 var anchor = transactionProjections[0];
+                var constrainNeighborsToChain = !string.IsNullOrEmpty(chain);
 
-                previousHash = await databaseContext.Transactions
-                    .AsNoTracking()
-                    .Where(x => x.Block.ChainId == anchor.ChainId && x.ID < anchor.TransactionId)
+                // Keep navigation global when chain is not explicitly requested.
+                // Use two-step seek (same timestamp, then nearest older/newer timestamp) to avoid
+                // the OR-based predicate that degrades into large backward scans on legacy data.
+                var scopedTransactions = databaseContext.Transactions.AsNoTracking();
+                if (constrainNeighborsToChain)
+                    scopedTransactions = scopedTransactions.Where(x => x.Block.ChainId == anchor.ChainId);
+
+                previousHash = await scopedTransactions
+                    .Where(x => x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
+                                x.ID < anchor.TransactionId)
                     .OrderByDescending(x => x.ID)
                     .Select(x => x.HASH)
                     .FirstOrDefaultAsync();
 
-                nextHash = await databaseContext.Transactions
-                    .AsNoTracking()
-                    .Where(x => x.Block.ChainId == anchor.ChainId && x.ID > anchor.TransactionId)
+                if (string.IsNullOrEmpty(previousHash))
+                {
+                    previousHash = await scopedTransactions
+                        .Where(x => x.TIMESTAMP_UNIX_SECONDS < anchor.TimestampUnixSeconds)
+                        .OrderByDescending(x => x.TIMESTAMP_UNIX_SECONDS)
+                        .ThenByDescending(x => x.ID)
+                        .Select(x => x.HASH)
+                        .FirstOrDefaultAsync();
+                }
+
+                nextHash = await scopedTransactions
+                    .Where(x => x.TIMESTAMP_UNIX_SECONDS == anchor.TimestampUnixSeconds &&
+                                x.ID > anchor.TransactionId)
                     .OrderBy(x => x.ID)
                     .Select(x => x.HASH)
                     .FirstOrDefaultAsync();
+
+                if (string.IsNullOrEmpty(nextHash))
+                {
+                    nextHash = await scopedTransactions
+                        .Where(x => x.TIMESTAMP_UNIX_SECONDS > anchor.TimestampUnixSeconds)
+                        .OrderBy(x => x.TIMESTAMP_UNIX_SECONDS)
+                        .ThenBy(x => x.ID)
+                        .Select(x => x.HASH)
+                        .FirstOrDefaultAsync();
+                }
 
                 if (transactions.Length > 0)
                 {
@@ -462,7 +620,7 @@ public static class GetTransactions
 
         return new TransactionResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             transactions = transactions,
             next_cursor = nextCursor
         };

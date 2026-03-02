@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,7 +17,7 @@ public static class GetBlocks
 {
     private sealed class BlockProjection
     {
-        public Block ApiBlock { get; init; }
+        public required Block ApiBlock { get; init; }
         public EventPayloadMapper.TransactionProjection[] TransactionProjections { get; init; } =
             Array.Empty<EventPayloadMapper.TransactionProjection>();
     }
@@ -25,7 +26,7 @@ public static class GetBlocks
     {
         public int Id { get; init; }
         public string Hash { get; init; } = string.Empty;
-        public BlockProjection Projection { get; init; }
+        public required BlockProjection Projection { get; init; }
     }
 
     [ProducesResponseType(typeof(BlockResult), (int)HttpStatusCode.OK)]
@@ -35,7 +36,6 @@ public static class GetBlocks
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string id = "",
@@ -50,22 +50,14 @@ public static class GetBlocks
         int with_events = 0,
         int with_event_data = 0,
         int with_nft = 0,
-        int with_fiat = 0,
-        int with_total = 0
+        int with_fiat = 0
     // ReSharper enable InconsistentNaming
     )
     {
-        long totalResults = 0;
         Block[] blockArray;
         const string fiatCurrency = "USD";
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
-
-        //chain is not considered a filter atm
-        var filter = !string.IsNullOrEmpty(id) || !string.IsNullOrEmpty(hash) || !string.IsNullOrEmpty(hash_partial) ||
-                     !string.IsNullOrEmpty(height) || !string.IsNullOrEmpty(date_less) ||
-                     !string.IsNullOrEmpty(date_greater) || !string.IsNullOrEmpty(qTrimmed);
 
         try
         {
@@ -77,11 +69,8 @@ public static class GetBlocks
             if (!ArgValidation.CheckOrderDirection(order_direction))
                 throw new ApiParameterException("Unsupported value for 'order_direction' parameter.");
 
-            if (!ArgValidation.CheckLimit(limit, filter))
+            if (!ArgValidation.CheckLimit(limit))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(hash) && !ArgValidation.CheckHash(hash))
                 throw new ApiParameterException("Unsupported value for 'hash' parameter.");
@@ -109,6 +98,15 @@ public static class GetBlocks
             var cursorToken = CursorPagination.ParseCursor(cursor);
             var sortDirection = CursorPagination.ParseSortDirection(order_direction);
             var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+            long? parsedHeightFilter = null;
+
+            if (!string.IsNullOrEmpty(height))
+            {
+                if (!long.TryParse(height, NumberStyles.None, CultureInfo.InvariantCulture, out var heightValue))
+                    throw new ApiParameterException("Unsupported value for 'height' parameter.");
+
+                parsedHeightFilter = heightValue;
+            }
 
             var orderDefinitions = new Dictionary<string, CursorOrderDefinition<BlockPageItem>>(StringComparer.OrdinalIgnoreCase)
             {
@@ -133,8 +131,6 @@ public static class GetBlocks
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
 
             await using MainDbContext databaseContext = new();
@@ -158,17 +154,28 @@ public static class GetBlocks
                 }
                 else if (isNumber)
                 {
-                    query = query.Where(x => x.HEIGHT == qTrimmed || x.HASH.Contains(qUpper));
+                    if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var qHeight))
+                        throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
+                    query = query.Where(x => x.HEIGHT == qHeight);
                 }
                 else
                 {
-                    query = query.Where(x => x.HASH.Contains(qUpper));
+                    // Partial hash lookup via q is intentionally disabled to avoid broad HASH LIKE scans.
+                    query = query.Where(_ => false);
                 }
             }
 
             if (!string.IsNullOrEmpty(id))
             {
-                query = id.Length == 64 ? query.Where(x => x.HASH == id || x.HEIGHT == id) : query.Where(x => x.HEIGHT == id);
+                var idIsNumeric = long.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var idHeight);
+
+                if (id.Length == 64)
+                    query = idIsNumeric
+                        ? query.Where(x => x.HASH == id || x.HEIGHT == idHeight)
+                        : query.Where(x => x.HASH == id);
+                else
+                    query = idIsNumeric ? query.Where(x => x.HEIGHT == idHeight) : query.Where(_ => false);
             }
 
             if (!string.IsNullOrEmpty(hash))
@@ -177,8 +184,8 @@ public static class GetBlocks
             if (!string.IsNullOrEmpty(hash_partial))
                 query = query.Where(x => x.HASH.Contains(hash_partial));
 
-            if (!string.IsNullOrEmpty(height))
-                query = query.Where(x => x.HEIGHT == height);
+            if (parsedHeightFilter.HasValue)
+                query = query.Where(x => x.HEIGHT == parsedHeightFilter.Value);
 
             if (!string.IsNullOrEmpty(date_less))
                 query = query.Where(x => x.TIMESTAMP_UNIX_SECONDS <= UnixSeconds.FromString(date_less));
@@ -192,9 +199,6 @@ public static class GetBlocks
 
             #region ResultArray
 
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
-
             var blockQuery = query.Select(x => new BlockPageItem
             {
                 Id = x.ID,
@@ -203,7 +207,7 @@ public static class GetBlocks
                 {
                     ApiBlock = new Block
                     {
-                        height = x.HEIGHT,
+                        height = x.HEIGHT.ToString(CultureInfo.InvariantCulture),
                         hash = x.HASH,
                         previous_hash = x.PREVIOUS_HASH,
                         protocol = x.PROTOCOL,
@@ -219,7 +223,8 @@ public static class GetBlocks
                             {
                                 hash = t.HASH,
                                 block_hash = x.HASH,
-                                block_height = x.HEIGHT,
+                                block_height = x.HEIGHT.ToString(CultureInfo.InvariantCulture),
+                                chain = x.Chain.NAME.ToLower(),
                                 index = t.INDEX,
                                 date = t.TIMESTAMP_UNIX_SECONDS.ToString(),
                                 fee = t.FEE,
@@ -340,25 +345,14 @@ public static class GetBlocks
 
             BlockProjection[] blockProjections;
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(blockQuery, orderDefinition, sortDirection,
-                    cursorToken, x => x.Id);
-                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
-                    x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection,
-                    x => x.Id, limit);
-                blockProjections = page.Items.Select(x => x.Projection).ToArray();
-                nextCursor = page.NextCursor;
-            }
-            else
-            {
-                var orderedQuery = CursorPagination.ApplyOrdering(blockQuery, orderDefinition, sortDirection,
-                    x => x.Id);
-                var pageQuery = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                var items = await pageQuery.ToArrayAsync();
-                blockProjections = items.Select(x => x.Projection).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(blockQuery, orderDefinition, sortDirection,
+                cursorToken, x => x.Id);
+            var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection,
+                x => x.Id, limit);
+            blockProjections = page.Items.Select(x => x.Projection).ToArray();
+            nextCursor = page.NextCursor;
 
             var allEventProjections = blockProjections.SelectMany(b => b.TransactionProjections)
                 .SelectMany(t => t.EventProjections).ToArray();
@@ -414,7 +408,7 @@ public static class GetBlocks
 
         return new BlockResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             blocks = blockArray,
             next_cursor = nextCursor
         };

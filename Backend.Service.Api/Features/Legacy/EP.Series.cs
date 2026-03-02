@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -18,10 +19,11 @@ public static class GetSeries
     private sealed class SeriesPageItem
     {
         public int Id { get; init; }
+        public long CreatedUnixSeconds { get; init; }
         public string SeriesId { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
-        public Series ApiSeries { get; init; }
-        public JsonDocument Metadata { get; init; }
+        public required Series ApiSeries { get; init; }
+        public JsonDocument? Metadata { get; init; }
     }
 
     [ProducesResponseType(typeof(SeriesResult), (int)HttpStatusCode.OK)]
@@ -31,7 +33,6 @@ public static class GetSeries
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string id = "",
@@ -42,16 +43,13 @@ public static class GetSeries
         string chain = "main",
         string contract = "",
         string symbol = "",
-        string token_id = "",
-        int with_total = 0
+        string token_id = ""
     // ReSharper enable InconsistentNaming
     )
     {
         // Results of the query
-        long totalResults = 0;
         Series[] seriesArray;
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -60,9 +58,6 @@ public static class GetSeries
 
             if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
@@ -115,6 +110,14 @@ public static class GetSeries
                                 value => int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
                     },
                     {
+                        "created",
+                        new CursorOrderDefinition<SeriesPageItem>(
+                            "created",
+                            new CursorOrderSegment<SeriesPageItem, long>(
+                                x => x.CreatedUnixSeconds,
+                                value => long.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture)))
+                    },
+                    {
                         "series_id",
                         new CursorOrderDefinition<SeriesPageItem>(
                             "series_id",
@@ -134,8 +137,6 @@ public static class GetSeries
 
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
-
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
 
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
@@ -164,8 +165,25 @@ public static class GetSeries
                     EF.Functions.ILike(x.Contract.SYMBOL, $"%{qTrimmed}%"));
             }
 
-            if (!string.IsNullOrEmpty(id) && int.TryParse(id, out var parsedId))
+            if (!string.IsNullOrEmpty(id))
+            {
+                // `id` is a database row identifier (int). If the caller passes a very large numeric string
+                // (e.g. a chain series id), `int.TryParse` fails. Historically we would then ignore the filter
+                // and return the full list, which is both incorrect and expensive.
+                //
+                // Instead: treat out-of-range ids as "no match" and return an empty page immediately.
+                if (!int.TryParse(id, out var parsedId))
+                {
+                    return new SeriesResult
+                    {
+                        total_results = null,
+                        series = Array.Empty<Series>(),
+                        next_cursor = null
+                    };
+                }
+
                 query = query.Where(x => x.ID == parsedId);
+            }
 
             // Searching for series using SERIES_ID.
             if (!string.IsNullOrEmpty(series_id)) query = query.Where(x => x.SERIES_ID == series_id);
@@ -197,15 +215,12 @@ public static class GetSeries
 
             #endregion
 
-            // Count total number of results before adding order and limit parts of query.
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
-
             #region ResultArray
 
             var pageQuery = query.Select(x => new SeriesPageItem
             {
                 Id = x.ID,
+                CreatedUnixSeconds = x.SERIES_CREATED_UNIX_SECONDS,
                 SeriesId = x.SERIES_ID ?? string.Empty,
                 Name = x.NAME,
                 ApiSeries = new Series
@@ -213,6 +228,10 @@ public static class GetSeries
                     id = x.ID,
                     series_id = x.SERIES_ID ?? "",
                     creator = x.CreatorAddress != null ? x.CreatorAddress.ADDRESS : null,
+                    chain = x.Contract != null && x.Contract.Chain != null ? x.Contract.Chain.NAME : null,
+                    contract = x.Contract != null ? x.Contract.HASH : null,
+                    symbol = x.Contract != null ? x.Contract.SYMBOL : null,
+                    created_unix_seconds = null,
                     name = x.NAME,
                     description = x.DESCRIPTION,
                     image = x.IMAGE,
@@ -231,37 +250,24 @@ public static class GetSeries
                 Metadata = x.METADATA
             });
 
-            if (useCursor)
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery =
+                CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            foreach (var item in page.Items)
             {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                foreach (var item in page.Items)
+                if (item.ApiSeries != null)
                 {
-                    if (item.ApiSeries != null)
-                        item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
+                    item.ApiSeries.created_unix_seconds = item.CreatedUnixSeconds > 0
+                        ? item.CreatedUnixSeconds
+                        : null;
+                    item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
                 }
-
-                seriesArray = page.Items.Select(x => x.ApiSeries).ToArray();
-                nextCursor = page.NextCursor;
             }
-            else
-            {
-                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                var materializedPage = await pageItems.ToArrayAsync();
-
-                foreach (var item in materializedPage)
-                {
-                    if (item.ApiSeries != null)
-                        item.ApiSeries.metadata = MetadataMapper.FromSeries(item.Metadata, item.ApiSeries);
-                }
-
-                seriesArray = materializedPage.Select(x => x.ApiSeries).ToArray();
-            }
+            seriesArray = page.Items.Select(x => x.ApiSeries).ToArray();
+            nextCursor = page.NextCursor;
 
             #endregion
 
@@ -281,7 +287,7 @@ public static class GetSeries
 
         return new SeriesResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             series = seriesArray,
             next_cursor = nextCursor
         };

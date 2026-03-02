@@ -62,7 +62,8 @@ public static class NftMethods
 
 
     public static void ProcessOwnershipChange(MainDbContext databaseContext, Chain chain, Nft nft,
-        long timestampUnixSeconds, Address toAddress, bool saveChanges = true)
+        long timestampUnixSeconds, Address toAddress, bool saveChanges = true,
+        IDictionary<Nft, NftOwnership> ownershipCache = null)
     {
         // This is our original logic based on ownership change timestamp.
         // We update ownership only if event is newer,
@@ -72,11 +73,21 @@ public static class NftMethods
         var lockSting = OwnershipProcessingLock + chain.ID;
         lock (string.Intern(lockSting))
         {
-            //also check in cache
-            var ownership = databaseContext.NftOwnerships.Where(x => x.Nft == nft)
-                .OrderBy(x => x.LAST_CHANGE_UNIX_SECONDS).FirstOrDefault() ?? DbHelper
-                .GetTracked<NftOwnership>(databaseContext).Where(x => x.Nft == nft)
-                .MinBy(x => x.LAST_CHANGE_UNIX_SECONDS);
+            // Keep a per-block ownership cache in hot ingest paths to avoid
+            // repeating the same ownership query for the same NFT multiple times.
+            NftOwnership ownership = null;
+            if (ownershipCache == null || !ownershipCache.TryGetValue(nft, out ownership))
+            {
+                // Keep legacy ordering semantics: if duplicates exist, use the earliest
+                // ownership row as the mutable anchor for subsequent updates.
+                ownership = databaseContext.NftOwnerships.Where(x => x.Nft == nft)
+                    .OrderBy(x => x.LAST_CHANGE_UNIX_SECONDS).FirstOrDefault() ?? DbHelper
+                    .GetTracked<NftOwnership>(databaseContext).Where(x => x.Nft == nft)
+                    .MinBy(x => x.LAST_CHANGE_UNIX_SECONDS);
+
+                if (ownership != null && ownershipCache != null)
+                    ownershipCache[nft] = ownership;
+            }
 
             if (ownership == null)
             {
@@ -91,6 +102,8 @@ public static class NftMethods
                 };
 
                 databaseContext.NftOwnerships.Add(ownership);
+                if (ownershipCache != null)
+                    ownershipCache[nft] = ownership;
 
                 if (saveChanges) databaseContext.SaveChanges();
             }
@@ -100,6 +113,8 @@ public static class NftMethods
 
                 ownership.Address = toAddress;
                 ownership.LAST_CHANGE_UNIX_SECONDS = timestampUnixSeconds;
+                if (ownershipCache != null)
+                    ownershipCache[nft] = ownership;
 
                 if (saveChanges) databaseContext.SaveChanges();
             }

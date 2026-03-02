@@ -257,7 +257,7 @@ public partial class PhantasmaPlugin
         return Array.Empty<byte>();
     }
 
-    private static string NormalizeImageUrl(string? url)
+    private static string? NormalizeImageUrl(string? url)
     {
         if (string.IsNullOrWhiteSpace(url))
             return url;

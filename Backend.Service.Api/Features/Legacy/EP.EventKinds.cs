@@ -22,7 +22,7 @@ public static class GetEventKinds
         int offset = 0,
         int limit = 50,
         string event_kind = "",
-        string chain = "main",
+        string chain = "",
         int with_total = 0
     // ReSharper enable InconsistentNaming
     )

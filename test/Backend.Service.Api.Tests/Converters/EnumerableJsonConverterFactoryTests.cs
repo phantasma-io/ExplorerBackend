@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using Backend.Service.Api;
 using Backend.Service.Api.Converters;
 using Shouldly;
@@ -42,17 +43,17 @@ public class EnumerableJsonConverterFactoryTests
 
 
     [Theory]
-    [InlineData(typeof(IEnumerable<Nft>))]
-    [InlineData(typeof(IEnumerable<Event>))]
+    [InlineData(typeof(IEnumerable<int>))]
+    [InlineData(typeof(IEnumerable<long>))]
     public void CreateConverter_should_return_converter(Type type)
     {
         // Arrange
-        //var sut = new EnumerableJsonConverterFactory();
+        var sut = new EnumerableJsonConverterFactory();
 
         // Act
-        //var result = sut.CreateConverter(type, new JsonSerializerOptions());
+        var result = sut.CreateConverter(type, new JsonSerializerOptions());
 
         // Assert
-        //result.ShouldNotBeNull();
+        result.ShouldNotBeNull();
     }
 }

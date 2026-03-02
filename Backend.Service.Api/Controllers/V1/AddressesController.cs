@@ -14,7 +14,6 @@ public class AssetController : BaseControllerV1
     /// </remarks>
     /// <param name="order_by" example="id">accepted values are id, address or address_name</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="chain" example="main">Chain name</param>
@@ -27,7 +26,6 @@ public class AssetController : BaseControllerV1
     /// <param name="with_storage" example="0">returns data with <a href='#model-Backend.Service.Api.AddressStorage'>AddressStorage</a></param>
     /// <param name="with_stakes" example="0">returns data with <a href='#model-Backend.Service.Api.AddressStake'>AddressStake</a></param>
     /// <param name="with_balance" example="0">returns data with <a href='#model-Backend.Service.Api.AddressBalances'>AddressBalances</a></param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
@@ -37,7 +35,6 @@ public class AssetController : BaseControllerV1
         // ReSharper disable InconsistentNaming
         [FromQuery] string order_by = "id",
         [FromQuery] string order_direction = "asc",
-        [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string cursor = "",
         [FromQuery] string chain = "main",
@@ -49,15 +46,13 @@ public class AssetController : BaseControllerV1
         [FromQuery] string validator_kind = "",
         [FromQuery] int with_storage = 0,
         [FromQuery] int with_stakes = 0,
-        [FromQuery] int with_balance = 0,
-        [FromQuery] int with_total = 0
+        [FromQuery] int with_balance = 0
     // ReSharper enable InconsistentNaming
     )
     {
         return GetAddresses.Execute(
             order_by,
             order_direction,
-            offset,
             limit,
             cursor,
             chain,
@@ -69,7 +64,6 @@ public class AssetController : BaseControllerV1
             validator_kind,
             with_storage,
             with_stakes,
-            with_balance,
-            with_total);
+            with_balance);
     }
 }

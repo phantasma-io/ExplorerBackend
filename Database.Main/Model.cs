@@ -30,6 +30,8 @@ public class MainDbContext : DbContext
     public DbSet<Event> Events { get; set; }
     public DbSet<Token> Tokens { get; set; }
     public DbSet<TokenDailyPrice> TokenDailyPrices { get; set; }
+    public DbSet<StakingProgressDaily> StakingProgressDailies { get; set; }
+    public DbSet<SoulMastersMonthly> SoulMastersMonthlies { get; set; }
     public DbSet<NftOwnership> NftOwnerships { get; set; }
     public DbSet<Nft> Nfts { get; set; }
     public DbSet<SeriesMode> SeriesModes { get; set; }
@@ -41,24 +43,11 @@ public class MainDbContext : DbContext
     public DbSet<PlatformInterop> PlatformInterops { get; set; }
     public DbSet<External> Externals { get; set; }
     public DbSet<Organization> Organizations { get; set; }
-    public DbSet<OrganizationEvent> OrganizationEvents { get; set; }
-    public DbSet<StringEvent> StringEvents { get; set; }
-    public DbSet<TransactionSettleEvent> TransactionSettleEvents { get; set; }
-    public DbSet<HashEvent> HashEvents { get; set; }
-    public DbSet<GasEvent> GasEvents { get; set; }
-    public DbSet<SaleEvent> SaleEvents { get; set; }
-    public DbSet<SaleEventKind> SaleEventKinds { get; set; }
-    public DbSet<ChainEvent> ChainEvents { get; set; }
-    public DbSet<TokenEvent> TokenEvents { get; set; }
-    public DbSet<InfusionEvent> InfusionEvents { get; set; }
-    public DbSet<MarketEventKind> MarketEventKinds { get; set; }
-    public DbSet<MarketEvent> MarketEvents { get; set; }
     public DbSet<BlockOracle> BlockOracles { get; set; }
     public DbSet<Oracle> Oracles { get; set; }
     public DbSet<SignatureKind> SignatureKinds { get; set; }
     public DbSet<Signature> Signatures { get; set; }
     public DbSet<OrganizationAddress> OrganizationAddresses { get; set; }
-    public DbSet<MarketEventFiatPrice> MarketEventFiatPrices { get; set; }
     public DbSet<AddressTransaction> AddressTransactions { get; set; }
     public DbSet<AddressBalance> AddressBalances { get; set; }
     public DbSet<AddressValidatorKind> AddressValidatorKinds { get; set; }
@@ -288,6 +277,10 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => new { x.TIMESTAMP_UNIX_SECONDS });
 
+        // Canonical transactions order is timestamp + id; keep both keys indexed for stable pagination.
+        modelBuilder.Entity<Transaction>()
+            .HasIndex(x => new { x.TIMESTAMP_UNIX_SECONDS, x.ID });
+
         //////////////////////
         // EventKind
         //////////////////////
@@ -351,6 +344,9 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Address>()
             .HasIndex(x => new { x.ChainId, x.BALANCE_DIRTY_BLOCK });
 
+        modelBuilder.Entity<Address>()
+            .HasIndex(x => new { x.ChainId, x.FIRST_TX_UNIX_SECONDS });
+
         //////////////////////
         // Event
         //////////////////////
@@ -384,69 +380,9 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.AddressId);
 
         modelBuilder.Entity<Event>()
-            .HasOne(x => x.OrganizationEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<OrganizationEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.StringEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<StringEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
             .HasOne(x => x.TargetAddress)
             .WithMany(y => y.ValidatorEvents)
             .HasForeignKey(x => x.TargetAddressId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.TransactionSettleEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<TransactionSettleEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.HashEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<HashEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.GasEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<GasEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.SaleEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<SaleEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.ChainEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<ChainEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.TokenEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<TokenEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.InfusionEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<InfusionEvent>(x => x.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Event>()
-            .HasOne(x => x.MarketEvent)
-            .WithOne(y => y.Event)
-            .HasForeignKey<MarketEvent>(x => x.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Event>()
@@ -483,6 +419,9 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<Event>()
             .HasIndex(x => x.EventKindId);
+
+        modelBuilder.Entity<Event>()
+            .HasIndex(x => new { x.EventKindId, x.ID });
 
         modelBuilder.Entity<Event>()
             .HasIndex(x => new { x.ContractId, x.TOKEN_ID });
@@ -549,6 +488,42 @@ public class MainDbContext : DbContext
 
         modelBuilder.Entity<TokenDailyPrice>()
             .HasIndex(x => new { x.DATE_UNIX_SECONDS });
+
+        //////////////////////
+        // StakingProgressDaily
+        //////////////////////
+
+        // FKs
+
+        modelBuilder.Entity<StakingProgressDaily>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.StakingProgressDailies)
+            .HasForeignKey(x => x.ChainId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Indexes
+
+        modelBuilder.Entity<StakingProgressDaily>()
+            .HasIndex(x => new { x.ChainId, x.DATE_UNIX_SECONDS })
+            .IsUnique();
+
+        //////////////////////
+        // SoulMastersMonthly
+        //////////////////////
+
+        // FKs
+
+        modelBuilder.Entity<SoulMastersMonthly>()
+            .HasOne(x => x.Chain)
+            .WithMany(y => y.SoulMastersMonthlies)
+            .HasForeignKey(x => x.ChainId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Indexes
+
+        modelBuilder.Entity<SoulMastersMonthly>()
+            .HasIndex(x => new { x.ChainId, x.MONTH_UNIX_SECONDS })
+            .IsUnique();
 
         //////////////////////
         // NftOwnership
@@ -666,6 +641,9 @@ public class MainDbContext : DbContext
             .HasIndex(x => new { x.ContractId, x.SERIES_ID })
             .IsUnique();
 
+        modelBuilder.Entity<Series>()
+            .HasIndex(x => new { x.SERIES_CREATED_UNIX_SECONDS, x.ID });
+
 
         //////////////////////
         // Infusion
@@ -767,9 +745,6 @@ public class MainDbContext : DbContext
         //////////////////////
 
         // FKs
-        modelBuilder.Entity<Organization>()
-            .HasMany(x => x.Addresses)
-            .WithMany(y => y.Organizations);
 
         /*modelBuilder.Entity<Organization>()
             .HasOne(x => x.Address)
@@ -780,193 +755,6 @@ public class MainDbContext : DbContext
         modelBuilder.Entity<Organization>()
             .HasIndex(x => x.NAME)
             .IsUnique();
-
-
-        //////////////////////
-        // OrganizationEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<OrganizationEvent>()
-            .HasOne(x => x.Organization)
-            .WithMany(y => y.OrganizationEvents)
-            .HasForeignKey(x => x.OrganizationId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<OrganizationEvent>()
-            .HasOne(x => x.Address)
-            .WithMany(y => y.OrganizationEvents)
-            .HasForeignKey(x => x.AddressId);
-
-        // Indexes
-
-
-        //////////////////////
-        // StringEvent
-        //////////////////////
-
-        // FKs
-
-        // Indexes
-
-        //////////////////////
-        // TransactionSettleEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<TransactionSettleEvent>()
-            .HasOne(x => x.Platform)
-            .WithMany(y => y.TransactionSettleEvents)
-            .HasForeignKey(x => x.PlatformId);
-
-        // Indexes
-
-
-        //////////////////////
-        // HashEvent
-        //////////////////////
-
-        // FKs
-
-        // Indexes
-
-
-        //////////////////////
-        // GasEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<GasEvent>()
-            .HasOne(x => x.Address)
-            .WithMany(y => y.GasEvents)
-            .HasForeignKey(x => x.AddressId);
-
-        // Indexes
-
-
-        //////////////////////
-        // SaleEventKind
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<SaleEventKind>()
-            .HasOne(x => x.Chain)
-            .WithMany(y => y.SaleEventKinds)
-            .HasForeignKey(x => x.ChainId);
-
-        // Indexes
-        modelBuilder.Entity<SaleEventKind>()
-            .HasIndex(x => new { x.ChainId, x.NAME })
-            .IsUnique();
-
-        modelBuilder.Entity<SaleEventKind>()
-            .HasIndex(x => x.NAME);
-
-        //////////////////////
-        // SaleEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<SaleEvent>()
-            .HasOne(x => x.SaleEventKind)
-            .WithMany(y => y.SaleEvents)
-            .HasForeignKey(x => x.SaleEventKindId);
-
-        // Indexes
-
-
-        //////////////////////
-        // ChainEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<ChainEvent>()
-            .HasOne(x => x.Chain)
-            .WithMany(y => y.ChainEvents)
-            .HasForeignKey(x => x.ChainId);
-
-        // Indexes
-
-
-        //////////////////////
-        // TokenEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<TokenEvent>()
-            .HasOne(x => x.Token)
-            .WithMany(y => y.TokenEvents)
-            .HasForeignKey(x => x.TokenId);
-
-        // Indexes
-
-
-        //////////////////////
-        // InfusionEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<InfusionEvent>()
-            .HasOne(x => x.BaseToken)
-            .WithMany(y => y.BaseSymbolInfusionEvents)
-            .HasForeignKey(x => x.BaseTokenId);
-
-        modelBuilder.Entity<InfusionEvent>()
-            .HasOne(x => x.InfusedToken)
-            .WithMany(y => y.InfusedSymbolInfusionEvents)
-            .HasForeignKey(x => x.InfusedTokenId);
-
-        modelBuilder.Entity<InfusionEvent>()
-            .HasOne(x => x.Infusion)
-            .WithMany(y => y.InfusionEvents)
-            .HasForeignKey(x => x.InfusionId);
-
-
-        // Indexes
-        modelBuilder.Entity<InfusionEvent>()
-            .HasIndex(x => x.TOKEN_ID);
-
-
-        //////////////////////
-        // MarketEventKind
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<MarketEventKind>()
-            .HasOne(x => x.Chain)
-            .WithMany(y => y.MarketEventKinds)
-            .HasForeignKey(x => x.ChainId);
-
-        // Indexes
-        modelBuilder.Entity<MarketEventKind>()
-            .HasIndex(x => new { x.ChainId, x.NAME })
-            .IsUnique();
-
-        modelBuilder.Entity<MarketEventKind>()
-            .HasIndex(x => x.NAME);
-
-
-        //////////////////////
-        // MarketEvent
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<MarketEvent>()
-            .HasOne(x => x.MarketEventKind)
-            .WithMany(y => y.MarketEvents)
-            .HasForeignKey(x => x.MarketEventKindId);
-
-        modelBuilder.Entity<MarketEvent>()
-            .HasOne(x => x.BaseToken)
-            .WithMany(y => y.BaseSymbolMarketEvents)
-            .HasForeignKey(x => x.BaseTokenId);
-
-        modelBuilder.Entity<MarketEvent>()
-            .HasOne(x => x.QuoteToken)
-            .WithMany(y => y.QuoteSymbolMarketEvents)
-            .HasForeignKey(x => x.QuoteTokenId);
-
-        // Indexes
 
 
         //////////////////////
@@ -1038,22 +826,9 @@ public class MainDbContext : DbContext
             .HasForeignKey(x => x.OrganizationId);
 
         // Indexes
-
-
-        //////////////////////
-        // MarketEventFiatPrice
-        //////////////////////
-
-        // FKs
-        modelBuilder.Entity<MarketEventFiatPrice>()
-            .HasOne(x => x.MarketEvent)
-            .WithOne(y => y.MarketEventFiatPrice)
-            .HasForeignKey<MarketEventFiatPrice>(x => x.MarketEventId);
-
-        // Indexes
-
-        modelBuilder.Entity<MarketEventFiatPrice>()
-            .HasIndex(x => new { x.PRICE_END_USD, x.PRICE_USD });
+        modelBuilder.Entity<OrganizationAddress>()
+            .HasIndex(x => new { x.OrganizationId, x.AddressId })
+            .IsUnique();
 
         //////////////////////
         // AddressTransaction
@@ -1094,6 +869,9 @@ public class MainDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes
+        modelBuilder.Entity<AddressBalance>()
+            .HasIndex(x => new { x.AddressId, x.TokenId })
+            .IsUnique();
 
 
         //////////////////////
@@ -1178,20 +956,16 @@ public class Chain
 {
     public int ID { get; set; }
     public string NAME { get; set; }
-    public string CURRENT_HEIGHT { get; set; }
+    public long CURRENT_HEIGHT { get; set; }
     public virtual List<Nft> Nfts { get; set; }
     public virtual List<Contract> Contracts { get; set; }
     public virtual List<Token> Tokens { get; set; }
+    public virtual List<StakingProgressDaily> StakingProgressDailies { get; set; }
+    public virtual List<SoulMastersMonthly> SoulMastersMonthlies { get; set; }
     public virtual List<Block> Blocks { get; set; }
     public virtual List<Address> Addresses { get; set; }
     public virtual List<EventKind> EventKinds { get; set; }
     public virtual List<Event> Events { get; set; }
-    public virtual List<SaleEventKind> SaleEventKinds { get; set; }
-
-    public virtual List<ChainEvent> ChainEvents { get; set; }
-
-    //public virtual List<TokenEvent> TokenEvents { get; set; } currently not in use
-    public virtual List<MarketEventKind> MarketEventKinds { get; set; }
 }
 
 public class Contract
@@ -1224,7 +998,7 @@ public class Contract
 public class Block
 {
     public int ID { get; set; }
-    public string HEIGHT { get; set; }
+    public long HEIGHT { get; set; }
     public long TIMESTAMP_UNIX_SECONDS { get; set; }
     public int ChainId { get; set; }
     public virtual Chain Chain { get; set; }
@@ -1291,6 +1065,7 @@ public class Address
     public long NAME_LAST_UPDATED_UNIX_SECONDS { get; set; }
     public long BALANCE_DIRTY_BLOCK { get; set; }
     public long STAKE_TIMESTAMP { get; set; }
+    public long? FIRST_TX_UNIX_SECONDS { get; set; }
     public string STAKED_AMOUNT { get; set; }
     public string STAKED_AMOUNT_RAW { get; set; }
     public string UNCLAIMED_AMOUNT { get; set; }
@@ -1305,8 +1080,6 @@ public class Address
     public virtual List<Nft> Nfts { get; set; }
     public virtual List<NftOwnership> NftOwnerships { get; set; }
     public virtual List<Series> Serieses { get; set; }
-    public virtual List<GasEvent> GasEvents { get; set; }
-    public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<PlatformInterop> PlatformInterops { get; set; }
     public virtual List<Block> ChainAddressBlocks { get; set; }
     public virtual List<Block> ValidatorAddressBlocks { get; set; }
@@ -1320,7 +1093,6 @@ public class Address
     public virtual List<Contract> Contracts { get; set; }
     public int? OrganizationId { get; set; }
     public virtual Organization Organization { get; set; }
-    public virtual List<Organization> Organizations { get; set; }
     public virtual List<Transaction> SentTransactions { get; set; }
     public virtual List<Transaction> TransactionsWithThisGasPayer { get; set; }
     public virtual List<Transaction> TransactionsWithThisGasTarget { get; set; }
@@ -1357,19 +1129,9 @@ public class Event
     public virtual EventKind EventKind { get; set; }
     public int? NftId { get; set; }
     public virtual Nft Nft { get; set; }
-    public virtual OrganizationEvent OrganizationEvent { get; set; }
-    public virtual StringEvent StringEvent { get; set; }
     // Address which is used in election events
     public int? TargetAddressId { get; set; }
     public virtual Address TargetAddress { get; set; }
-    public virtual TransactionSettleEvent TransactionSettleEvent { get; set; }
-    public virtual HashEvent HashEvent { get; set; }
-    public virtual GasEvent GasEvent { get; set; }
-    public virtual SaleEvent SaleEvent { get; set; }
-    public virtual ChainEvent ChainEvent { get; set; }
-    public virtual TokenEvent TokenEvent { get; set; }
-    public virtual InfusionEvent InfusionEvent { get; set; }
-    public virtual MarketEvent MarketEvent { get; set; }
     public virtual Token CreateToken { get; set; }
     public virtual Platform CreatePlatform { get; set; }
     public virtual Contract CreateContract { get; set; }
@@ -1419,11 +1181,6 @@ public class Token
     public virtual List<TokenDailyPrice> TokenDailyPrices { get; set; }
     public virtual List<Infusion> Infusions { get; set; }
     public virtual List<External> Externals { get; set; }
-    public virtual List<TokenEvent> TokenEvents { get; set; }
-    public virtual List<InfusionEvent> BaseSymbolInfusionEvents { get; set; }
-    public virtual List<InfusionEvent> InfusedSymbolInfusionEvents { get; set; }
-    public virtual List<MarketEvent> BaseSymbolMarketEvents { get; set; }
-    public virtual List<MarketEvent> QuoteSymbolMarketEvents { get; set; }
     public virtual List<AddressBalance> AddressBalances { get; set; }
     public int? CreateEventId { get; set; }
     public virtual Event CreateEvent { get; set; }
@@ -1444,6 +1201,32 @@ public class TokenDailyPrice
         return
             $"Token daily price '{Token.SYMBOL}' for {UnixSeconds.Log(DATE_UNIX_SECONDS)}: USD: {PRICE_USD}";
     }
+}
+
+public class StakingProgressDaily
+{
+    public int ID { get; set; }
+    public long DATE_UNIX_SECONDS { get; set; }
+    public string STAKED_SOUL_RAW { get; set; }
+    public string SOUL_SUPPLY_RAW { get; set; }
+    public int STAKERS_COUNT { get; set; }
+    public int MASTERS_COUNT { get; set; }
+    public decimal STAKING_RATIO { get; set; }
+    public long CAPTURED_AT_UNIX_SECONDS { get; set; }
+    public string SOURCE { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
+}
+
+public class SoulMastersMonthly
+{
+    public int ID { get; set; }
+    public long MONTH_UNIX_SECONDS { get; set; }
+    public int MASTERS_COUNT { get; set; }
+    public long CAPTURED_AT_UNIX_SECONDS { get; set; }
+    public string SOURCE { get; set; }
+    public int ChainId { get; set; }
+    public virtual Chain Chain { get; set; }
 }
 
 public class NftOwnership
@@ -1519,6 +1302,7 @@ public class Series
     public int ContractId { get; set; }
     public virtual Contract Contract { get; set; }
     public string SERIES_ID { get; set; }
+    public long SERIES_CREATED_UNIX_SECONDS { get; set; }
     public int CURRENT_SUPPLY { get; set; }
     public int MAX_SUPPLY { get; set; }
     public int? SeriesModeId { get; set; }
@@ -1553,7 +1337,6 @@ public class Infusion
     public virtual Token Token { get; set; }
     public int NftId { get; set; }
     public virtual Nft Nft { get; set; }
-    public virtual List<InfusionEvent> InfusionEvents { get; set; }
 }
 
 public class FiatExchangeRate
@@ -1570,7 +1353,6 @@ public class Platform
     public string CHAIN { get; set; }
     public string FUEL { get; set; }
     public bool HIDDEN { get; set; }
-    public virtual List<TransactionSettleEvent> TransactionSettleEvents { get; set; }
     public virtual List<External> Externals { get; set; }
     public virtual List<PlatformInterop> PlatformInterops { get; set; }
     public virtual List<PlatformToken> PlatformTokens { get; set; }
@@ -1613,148 +1395,9 @@ public class Organization
     public string NAME { get; set; }
     public string ADDRESS_NAME { get; set; }
     public string ADDRESS { get; set; }
-    public virtual List<OrganizationEvent> OrganizationEvents { get; set; }
     public virtual List<OrganizationAddress> OrganizationAddresses { get; set; }
     public int? CreateEventId { get; set; }
     public virtual Event CreateEvent { get; set; }
-    public virtual List<Address> Addresses { get; set; }
-}
-
-public class OrganizationEvent
-{
-    public int ID { get; set; }
-    public int OrganizationId { get; set; }
-    public virtual Organization Organization { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-public class StringEvent
-{
-    public int ID { get; set; }
-    public string STRING_VALUE { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-public class TransactionSettleEvent
-{
-    public int ID { get; set; }
-    public string HASH { get; set; }
-    public int PlatformId { get; set; }
-
-    public virtual Platform Platform { get; set; }
-
-    //chain name should be in platform
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-//used for file events, atm
-public class HashEvent
-{
-    public int ID { get; set; }
-    public string HASH { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-public class GasEvent
-{
-    public int ID { get; set; }
-    public string PRICE { get; set; }
-    public string AMOUNT { get; set; }
-    public string FEE { get; set; }
-    public int AddressId { get; set; }
-    public virtual Address Address { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-public class SaleEventKind
-{
-    public int ID { get; set; }
-    public string NAME { get; set; }
-    public int ChainId { get; set; }
-    public virtual Chain Chain { get; set; }
-    public virtual List<SaleEvent> SaleEvents { get; set; }
-}
-
-public class SaleEvent
-{
-    public int ID { get; set; }
-    public string HASH { get; set; }
-    public int SaleEventKindId { get; set; }
-    public virtual SaleEventKind SaleEventKind { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-public class ChainEvent
-{
-    public int ID { get; set; }
-    public string NAME { get; set; }
-    public string VALUE { get; set; }
-    public int ChainId { get; set; }
-    public virtual Chain Chain { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-public class TokenEvent
-{
-    public int ID { get; set; }
-    public int TokenId { get; set; }
-    public virtual Token Token { get; set; }
-    public string VALUE { get; set; }
-    public string VALUE_RAW { get; set; }
-    public string CHAIN_NAME { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-}
-
-public class InfusionEvent
-{
-    public int ID { get; set; }
-    public string TOKEN_ID { get; set; }
-    public int BaseTokenId { get; set; }
-    public virtual Token BaseToken { get; set; }
-    public int InfusedTokenId { get; set; }
-    public virtual Token InfusedToken { get; set; }
-    public string INFUSED_VALUE { get; set; }
-    public string INFUSED_VALUE_RAW { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-    public int? InfusionId { get; set; }
-    public virtual Infusion Infusion { get; set; }
-}
-
-public class MarketEventKind
-{
-    public int ID { get; set; }
-    public string NAME { get; set; }
-    public int ChainId { get; set; }
-    public virtual Chain Chain { get; set; }
-    public virtual List<MarketEvent> MarketEvents { get; set; }
-}
-
-public class MarketEvent
-{
-    public int ID { get; set; }
-    public int BaseTokenId { get; set; }
-    public virtual Token BaseToken { get; set; }
-    public int QuoteTokenId { get; set; }
-    public virtual Token QuoteToken { get; set; }
-    public int MarketEventKindId { get; set; }
-    public virtual MarketEventKind MarketEventKind { get; set; }
-    public string MARKET_ID { get; set; }
-    public string PRICE { get; set; }
-    public string END_PRICE { get; set; }
-    public int EventId { get; set; }
-    public virtual Event Event { get; set; }
-    public virtual MarketEventFiatPrice MarketEventFiatPrice { get; set; }
 }
 
 //to avoid to double data, we create a table for oracle url and content, and just ref it here
@@ -1799,16 +1442,6 @@ public class OrganizationAddress
     public virtual Organization Organization { get; set; }
     public int AddressId { get; set; }
     public virtual Address Address { get; set; }
-}
-
-public class MarketEventFiatPrice
-{
-    public int ID { get; set; }
-    public decimal PRICE_USD { get; set; }
-    public decimal PRICE_END_USD { get; set; }
-    public string FIAT_NAME { get; set; }
-    public int MarketEventId { get; set; }
-    public virtual MarketEvent MarketEvent { get; set; }
 }
 
 public class AddressTransaction

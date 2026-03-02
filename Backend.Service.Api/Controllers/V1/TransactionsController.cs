@@ -12,9 +12,8 @@ public class TransactionsController : BaseControllerV1
     /// <remarks>
     ///     <a href='#model-Backend.Service.Api.TransactionResult'>TransactionResult</a>
     /// </remarks>
-    /// <param name="order_by" example="id">accepted values are id or hash</param>
+    /// <param name="order_by" example="date">accepted values are date, id, hash or index</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="hash"><a href='#model-Backend.Service.Api.Transaction'>Transaction</a> hash</param>
@@ -26,6 +25,7 @@ public class TransactionsController : BaseControllerV1
     /// <param name="block_hash"><a href='#model-Backend.Service.Api.Block'>Block</a> hash</param>
     /// <param name="block_height">height of the <a href='#model-Backend.Service.Api.Block'>Block</a></param>
     /// <param name="chain" example="main">Chain name</param>
+    /// <param name="state" example="halt">accepted values are halt, break or fault</param>
     /// <param name="with_nft" example="0">Return data with <a href='#model-Backend.Service.Api.NftMetadata'>nft metadata</a></param>
     /// <param name="with_events" example="0">Return event data of <a href='#model-Backend.Service.Api.EventsResult'>events</a></param>
     /// <param name="with_event_data" example="0">Return event data with more details, needs with_events to be set</param>
@@ -35,7 +35,6 @@ public class TransactionsController : BaseControllerV1
     /// </param>
     /// <param name="with_script" example="0">Return with script data</param>
     /// <param name="with_neighbors" example="0">Return hashes for previous/next transactions for navigation</param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
@@ -43,9 +42,8 @@ public class TransactionsController : BaseControllerV1
     [ApiInfo(typeof(TransactionResult), "Returns transactions available on the chain", cacheDuration: 5, cacheTag: "transactions")]
     public Task<TransactionResult> GetResults(
         // ReSharper disable InconsistentNaming
-        [FromQuery] string order_by = "id",
+        [FromQuery] string order_by = "date",
         [FromQuery] string order_direction = "asc",
-        [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string cursor = "",
         [FromQuery] string hash = "",
@@ -56,21 +54,20 @@ public class TransactionsController : BaseControllerV1
         [FromQuery] string date_greater = "",
         [FromQuery] string block_hash = "",
         [FromQuery] string block_height = "",
-        [FromQuery] string chain = "main",
+        [FromQuery] string chain = "",
+        [FromQuery] string state = "",
         [FromQuery] int with_nft = 0,
         [FromQuery] int with_events = 0,
         [FromQuery] int with_event_data = 0,
         [FromQuery] int with_fiat = 0,
         [FromQuery] int with_script = 0,
-        [FromQuery] int with_neighbors = 0,
-        [FromQuery] int with_total = 0
+        [FromQuery] int with_neighbors = 0
     // ReSharper enable InconsistentNaming
     )
     {
         return GetTransactions.Execute(
             order_by,
             order_direction,
-            offset,
             limit,
             cursor,
             hash,
@@ -82,12 +79,12 @@ public class TransactionsController : BaseControllerV1
             block_hash,
             block_height,
             chain,
+            state,
             with_nft,
             with_events,
             with_event_data,
             with_fiat,
             with_script,
-            with_neighbors,
-            with_total);
+            with_neighbors);
     }
 }

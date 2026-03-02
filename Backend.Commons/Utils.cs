@@ -1,9 +1,20 @@
+using System.Globalization;
 using System.Linq;
+using System.Numerics;
 
 namespace Backend.Commons;
 
 public static class Utils
 {
+    public static bool HasPositiveMaxSupply(string rawSupply)
+    {
+        if (string.IsNullOrWhiteSpace(rawSupply))
+            return false;
+
+        return BigInteger.TryParse(rawSupply, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) &&
+               parsed > 0;
+    }
+
     // TDOD fix implementation of UnitConversion.ToDecimal() in Phantasma's code
     public static string ToDecimal(string amount, int tokenDecimals)
     {

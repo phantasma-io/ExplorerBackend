@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -12,7 +13,7 @@ namespace Backend.Service.Api;
 
 internal static class MetadataMapper
 {
-    private static void AddIfMissing(IDictionary<string, string> target, string key, string value)
+    private static void AddIfMissing(IDictionary<string, string> target, string key, string? value)
     {
         if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
             return;
@@ -24,7 +25,7 @@ internal static class MetadataMapper
     }
 
 
-    private static Dictionary<string, string> Extract(JsonDocument metadata)
+    private static Dictionary<string, string> Extract(JsonDocument? metadata)
     {
         Dictionary<string, string> result = new(StringComparer.OrdinalIgnoreCase);
         if (metadata == null)
@@ -65,8 +66,8 @@ internal static class MetadataMapper
     }
 
 
-    private static Dictionary<string, string>? BuildNftMetadata(JsonDocument metadataDocument,
-        NftMetadata nftMetadata, string creatorAddress, string seriesId)
+    private static Dictionary<string, string>? BuildNftMetadata(JsonDocument? metadataDocument,
+        NftMetadata? nftMetadata, string? creatorAddress, string? seriesId)
     {
         var metadata = Extract(metadataDocument);
         metadata.Remove("_i");
@@ -117,7 +118,7 @@ internal static class MetadataMapper
     }
 
 
-    public static Dictionary<string, string>? FromNft(JsonDocument metadata, ApiNft apiNft)
+    public static Dictionary<string, string>? FromNft(JsonDocument? metadata, ApiNft apiNft)
     {
         if (apiNft == null)
             return null;
@@ -130,8 +131,8 @@ internal static class MetadataMapper
     }
 
 
-    public static Dictionary<string, string>? FromNft(JsonDocument metadata, NftMetadata nftMetadata,
-        string creatorAddress, string seriesId)
+    public static Dictionary<string, string>? FromNft(JsonDocument? metadata, NftMetadata nftMetadata,
+        string? creatorAddress, string? seriesId)
     {
         return BuildNftMetadata(metadata, nftMetadata, creatorAddress, seriesId);
     }
@@ -175,7 +176,7 @@ internal static class MetadataMapper
     }
 
 
-    public static Dictionary<string, string>? FromSeries(JsonDocument metadata, ApiSeries apiSeries)
+    public static Dictionary<string, string>? FromSeries(JsonDocument? metadata, ApiSeries apiSeries)
     {
         if (apiSeries == null)
             return null;

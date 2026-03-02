@@ -39,7 +39,7 @@ public static class EventKindMethods
         return query.Select(x => x.NAME).Distinct().OrderBy(x => x).ToListAsync();
     }
 
-    public static async Task<Dictionary<string, int>> GetAvailableEventKindIdsAsync(MainDbContext dbContext,
+    public static async Task<Dictionary<string, int[]>> GetAvailableEventKindIdsAsync(MainDbContext dbContext,
         int? chainId,
         bool onlyWithEvents = false)
     {
@@ -53,7 +53,12 @@ public static class EventKindMethods
 
         var eventKinds = await query.Select(x => new { x.NAME, x.ID }).ToListAsync();
 
-        return eventKinds.ToDictionary(x => x.NAME, x => x.ID, StringComparer.OrdinalIgnoreCase);
+        return eventKinds
+            .GroupBy(x => x.NAME, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                x => x.Key,
+                x => x.Select(y => y.ID).Distinct().ToArray(),
+                StringComparer.OrdinalIgnoreCase);
     }
 
     public static async Task UpsertAllAsync(MainDbContext dbContext, Chain chain)
@@ -95,6 +100,10 @@ public static class EventKindMethodsExtensions
 {
     public static int GetId(this Dictionary<EventKindMethods.ChainEventKindKey, int> eventKinds, int chainId, PhantasmaPhoenix.Protocol.EventKind kind)
     {
-        return eventKinds.Where(x => x.Key.ChainId == chainId && x.Key.Kind == kind).Select(x => x.Value).First();
+        var key = new EventKindMethods.ChainEventKindKey(chainId, kind);
+        if (eventKinds.TryGetValue(key, out var id))
+            return id;
+
+        throw new KeyNotFoundException($"Event kind id not found for chain={chainId}, kind={kind}");
     }
 }

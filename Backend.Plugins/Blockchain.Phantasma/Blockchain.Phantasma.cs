@@ -30,11 +30,24 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private BigInteger height = 0;
     private Dictionary<EventKindMethods.ChainEventKindKey, int> _eventKinds;
     private readonly ConcurrentDictionary<int, SyncLagState> _syncLagStates = new();
+    private readonly ConcurrentDictionary<int, bool> _lastPersistedCatchupReadyByChain = new();
+    // Reuse one client instance for height polling to avoid per-call socket churn.
+    private static readonly HttpClient BlockHeightHttpClient = CreateBlockHeightHttpClient();
 
     private sealed class SyncLagState
     {
         public long LastLag;
         public long LastUpdatedAtUnixSeconds;
+    }
+
+    private static HttpClient CreateBlockHeightHttpClient()
+    {
+        var httpClient = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan
+        };
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Other");
+        return httpClient;
     }
 
     public void Fetch()
@@ -51,6 +64,31 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var state = GetSyncLagState(chainId);
         Interlocked.Exchange(ref state.LastLag, lag);
         Interlocked.Exchange(ref state.LastUpdatedAtUnixSeconds, UnixSeconds.Now());
+        PersistCatchupReadyState(chainId, lag);
+    }
+
+    private void PersistCatchupReadyState(int chainId, long lag)
+    {
+        // Burn/price background jobs should run only when block sync is fully caught up.
+        var isCatchupReady = lag == 0;
+        if (_lastPersistedCatchupReadyByChain.TryGetValue(chainId, out var previousState) &&
+            previousState == isCatchupReady)
+        {
+            return;
+        }
+
+        try
+        {
+            using var databaseContext = new MainDbContext();
+            CatchupGateMethods.SetCatchupReady(databaseContext, chainId, isCatchupReady, saveChanges: false);
+            databaseContext.SaveChanges();
+            _lastPersistedCatchupReadyByChain[chainId] = isCatchupReady;
+        }
+        catch (Exception e)
+        {
+            Log.Warning("[{Name}] Failed to persist catch-up state for chainId {ChainId}: {Reason}",
+                Name, chainId, e.Message);
+        }
     }
 
     private static long ComputeLagValue(BigInteger chainHeight, BigInteger currentHeight)
@@ -71,21 +109,38 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var processedHeight = ChainMethods.GetLastProcessedBlock(databaseContext, chainName);
         var lag = ComputeLagValue(chainHeight, processedHeight);
         UpdateSyncLagState(chainId, lag);
+        UpdateBalanceSyncMode(chainId, chainName, lag);
     }
 
-    private bool IsBackgroundSyncAllowed(int chainId)
+    private bool TryGetRecentLag(int chainId, out long lag)
     {
         var state = GetSyncLagState(chainId);
         var lastUpdated = Interlocked.Read(ref state.LastUpdatedAtUnixSeconds);
         if (lastUpdated == 0)
+        {
+            lag = 0;
             return false;
+        }
 
         var now = UnixSeconds.Now();
+        // Treat old lag snapshot as invalid: background jobs should not make decisions
+        // from stale lag values after long pauses or transient loop stalls.
         var staleThreshold = Math.Max(1, Settings.Default.BlocksProcessingInterval * 2);
         if (now - lastUpdated > staleThreshold)
+        {
+            lag = 0;
+            return false;
+        }
+
+        lag = Interlocked.Read(ref state.LastLag);
+        return true;
+    }
+
+    private bool IsBackgroundSyncAllowed(int chainId)
+    {
+        if (!TryGetRecentLag(chainId, out var lag))
             return false;
 
-        var lag = Interlocked.Read(ref state.LastLag);
         return lag <= BalanceSyncLagThreshold;
     }
 
@@ -108,8 +163,26 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             {
                 InitChains();
 
-                _chainList = ChainMethods.GetChains(databaseContext).ToList();
-                ChainNames = ChainMethods.GetChainNames(databaseContext).ToArray();
+                var configuredChains = ChainMethods.GetChains(databaseContext).ToList();
+                _chainList = new List<Chain>();
+
+                // Historical/import-only chains can exist in DB but be unavailable on live RPC.
+                // Start background sync only for chains that can return block height right now.
+                foreach (var chain in configuredChains)
+                {
+                    if (CanStartBackgroundSyncForChain(chain.NAME))
+                    {
+                        _chainList.Add(chain);
+                    }
+                    else
+                    {
+                        Log.Warning(
+                            "[{Name}] Chain {ChainName} is present in DB but unavailable on current RPC. Skipping live background sync for this chain.",
+                            Name, chain.NAME);
+                    }
+                }
+
+                ChainNames = _chainList.Select(chain => chain.NAME).ToArray();
 
                 //init tokens once too, cause we might need them, to keep them update, thread them later
 
@@ -134,7 +207,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 StartupBlockSync(chain.NAME);
                 StartupBalanceSync(chain);
                 StartupRomRamSync(chain);
-                StartupSeriesSync(chain);
                 StartupContractSync(chain);
                 StartupContractMethodsSync(chain);
             }
@@ -188,61 +260,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     /// </summary>
     private void StartupBlockSync(string chainName)
     {
-        Thread blocksSyncThread = new(async () =>
-        {
-            var chainId = 0;
-            using (MainDbContext databaseContext = new())
-            {
-                chainId = ChainMethods.GetId(databaseContext, chainName);
-            }
-
-            while (_running)
-                try
-                {
-                    BigInteger currentHeight;
-                    using (MainDbContext databaseContext = new())
-                    {
-                        currentHeight = ChainMethods.GetLastProcessedBlock(databaseContext, chainName);
-                    }
-
-                    height = GetCurrentBlockHeight(chainName);
-                    Log.Information("[Blocks] Chain height: {Height}, explorer's height {explorerHeight}", height, currentHeight);
-
-                    if (currentHeight > height)
-                    {
-                        Log.Warning("[Blocks] RPC is out of sync, RPC: {Height}, explorer: {explorerHeight}", height, currentHeight);
-                        UpdateSyncLagState(chainId, long.MaxValue);
-                    }
-                    else if (Settings.Default.HeightLimit != 0 && currentHeight >= Settings.Default.HeightLimit)
-                    {
-                        Log.Warning("[Blocks] Height limit is reached {Height} >= {HeightLimit}", currentHeight, Settings.Default.HeightLimit);
-                        UpdateSyncLagState(chainId, 0);
-                    }
-                    else
-                    {
-                        var targetHeight = height;
-                        if (Settings.Default.HeightLimit != 0 && targetHeight >= Settings.Default.HeightLimit)
-                        {
-                            targetHeight = Settings.Default.HeightLimit;
-                        }
-
-                        var lag = ComputeLagValue(targetHeight, currentHeight);
-                        var allowBalanceSync = lag <= BalanceSyncLagThreshold;
-                        FetchBlocksRange(chainName, currentHeight, targetHeight, allowBalanceSync).Wait();
-                        UpdateSyncLagStateFromDb(chainId, chainName, targetHeight);
-                    }
-
-                    Thread.Sleep(Settings.Default.BlocksProcessingInterval *
-                                 1000); // We sync blocks every BlocksProcessingInterval seconds
-                }
-                catch (Exception e)
-                {
-                    LogEx.Exception("Block fetch", e);
-
-                    Thread.Sleep(Settings.Default.BlocksProcessingInterval * 1000);
-                }
-        });
-        blocksSyncThread.Start();
+        StartBlockPipeline(chainName);
     }
 
 
@@ -274,28 +292,6 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         romRamSyncThread.Start();
     }
 
-
-    private void StartupSeriesSync(Chain chain)
-    {
-        Thread seriesSyncThread = new(() =>
-        {
-            while (_running)
-                try
-                {
-                    NewSeriesLoad(chain.ID);
-
-                    Thread.Sleep(Settings.Default.SeriesProcessingInterval *
-                                 1000); // We check for new series every SeriesProcessingInterval seconds
-                }
-                catch (Exception e)
-                {
-                    LogEx.Exception("Series load", e);
-
-                    Thread.Sleep(Settings.Default.SeriesProcessingInterval * 1000);
-                }
-        });
-        seriesSyncThread.Start();
-    }
 
     private void StartupContractSync(Chain chain)
     {
@@ -431,14 +427,47 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
     public BigInteger GetCurrentBlockHeight(string chain)
     {
-        var url = $"{Settings.Default.GetRest()}/api/v1/getBlockHeight?chainInput=main";
+        if (string.IsNullOrWhiteSpace(chain))
+        {
+            throw new Exception("Chain name cannot be empty for getBlockHeight.");
+        }
 
-        HttpClient httpClient = new();
-        var response = httpClient.GetAsync(url).Result;
+        var encodedChain = Uri.EscapeDataString(chain);
+        var url = $"{Settings.Default.GetRest()}/api/v1/getBlockHeight?chainInput={encodedChain}";
+
+        using var response = BlockHeightHttpClient.GetAsync(url).GetAwaiter().GetResult();
         using var content = response.Content;
-        var reply = content.ReadAsStringAsync().Result;
-        Log.Information("[Blocks] Get heigt result: {Result}, url: {Url}", reply, url);
-        return BigInteger.Parse(reply.Replace("\"", ""));
+        var reply = content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception(
+                $"getBlockHeight failed for chain '{chain}': {(int)response.StatusCode} {response.ReasonPhrase}, body: {reply}");
+        }
+
+        var parsedValue = reply.Replace("\"", "").Trim();
+        if (!BigInteger.TryParse(parsedValue, out var result))
+        {
+            throw new Exception($"getBlockHeight returned non-numeric value for chain '{chain}': {reply}");
+        }
+
+        Log.Information("[Blocks] Get height result for chain {Chain}: {Result}, url: {Url}", chain, parsedValue, url);
+        return result;
+    }
+
+    private bool CanStartBackgroundSyncForChain(string chainName)
+    {
+        try
+        {
+            _ = GetCurrentBlockHeight(chainName);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Log.Warning("[{Name}] Chain {ChainName} cannot be synced from current RPC: {Reason}", Name, chainName,
+                e.Message);
+            return false;
+        }
     }
 
 

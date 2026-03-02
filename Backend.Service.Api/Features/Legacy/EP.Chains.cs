@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -52,7 +53,7 @@ public static class GetChains
             chainArray = await query.Skip(offset).Take(limit).Select(x => new Chain
             {
                 chain_name = x.NAME,
-                chain_height = x.CURRENT_HEIGHT
+                chain_height = x.CURRENT_HEIGHT.ToString(CultureInfo.InvariantCulture)
             }).ToArrayAsync();
 
             var responseTime = DateTime.Now - startTime;

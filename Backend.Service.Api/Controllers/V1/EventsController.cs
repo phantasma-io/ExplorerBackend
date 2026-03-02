@@ -14,7 +14,6 @@ public class EventsController : BaseControllerV1
     /// </remarks>
     /// <param name="order_by" example="id">accepted values are date, token_id or id</param>
     /// <param name="order_direction" example="asc">accepted values are asc or desc</param>
-    /// <param name="offset" example="0">positive numeric value, represents the value how many values should be skipped</param>
     /// <param name="limit" example="50">how many values will max be pulled</param>
     /// <param name="cursor" example="eyJvcmRlcl9ieSI6ImlkIi...">pagination cursor</param>
     /// <param name="chain" example="main">Chain name</param>
@@ -43,7 +42,6 @@ public class EventsController : BaseControllerV1
     /// </param>
     /// <param name="with_nsfw" example="0">Include Data that has been marked NSFW</param>
     /// <param name="with_blacklisted" example="0">Include Data that has been marked Blacklisted</param>
-    /// <param name="with_total" example="0">returns data with total_count (slower) or not (faster)</param>
     /// <response code="200">Success</response>
     /// <response code="400">Bad Request</response>
     /// <response code="500">Internal Server Error</response>
@@ -53,10 +51,9 @@ public class EventsController : BaseControllerV1
         // ReSharper disable InconsistentNaming
         [FromQuery] string order_by = "id",
         [FromQuery] string order_direction = "asc",
-        [FromQuery] int offset = 0,
         [FromQuery] int limit = 50,
         [FromQuery] string cursor = "",
-        [FromQuery] string chain = "main",
+        [FromQuery] string chain = "",
         [FromQuery] string contract = "",
         [FromQuery] string token_id = "",
         [FromQuery] string date_day = "",
@@ -78,15 +75,13 @@ public class EventsController : BaseControllerV1
         [FromQuery] int with_series = 0,
         [FromQuery] int with_fiat = 0,
         [FromQuery] int with_nsfw = 0,
-        [FromQuery] int with_blacklisted = 0,
-        [FromQuery] int with_total = 0
+        [FromQuery] int with_blacklisted = 0
     // ReSharper enable InconsistentNaming
     )
     {
         return GetEvents.Execute(
             order_by,
             order_direction,
-            offset,
             limit,
             cursor,
             chain,
@@ -111,7 +106,6 @@ public class EventsController : BaseControllerV1
             with_series,
             with_fiat,
             with_nsfw,
-            with_blacklisted,
-            with_total);
+            with_blacklisted);
     }
 }

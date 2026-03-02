@@ -9,6 +9,9 @@ using Backend.Commons;
 using Backend.PluginEngine;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
+using NpgsqlTypes;
 using PhantasmaPhoenix.Core.Extensions;
 using Serilog;
 
@@ -16,32 +19,93 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
-    private static void MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
+    private static Task MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
         long blockHeight)
+    {
+        return MarkAddressesDirty(databaseContext, chain, addresses, blockHeight, null);
+    }
+
+    private static async Task MarkAddressesDirty(MainDbContext databaseContext, Chain chain, List<string> addresses,
+        long blockHeight, IReadOnlyDictionary<string, Address> cachedAddressMap)
     {
         if (addresses == null || addresses.Count == 0)
             return;
 
-        var distinct = addresses.Distinct().ToList();
-        var addressMap = AddressMethods.InsertIfNotExists(databaseContext, chain, distinct);
-        if (addressMap == null)
-            return;
+        var distinct = addresses.Distinct(StringComparer.Ordinal).ToList();
+        var touchedAddresses = new Dictionary<string, Address>(StringComparer.Ordinal);
+        var missingAddresses = new List<string>();
 
-        foreach (var entry in addressMap.Values)
+        foreach (var addressValue in distinct)
+        {
+            if (cachedAddressMap != null && cachedAddressMap.TryGetValue(addressValue, out var cachedAddress))
+            {
+                touchedAddresses[addressValue] = cachedAddress;
+            }
+            else
+            {
+                missingAddresses.Add(addressValue);
+            }
+        }
+
+        // Fallback only for addresses not seen in the block-scoped cache.
+        // This keeps behavior complete while removing a redundant full second pass.
+        if (missingAddresses.Count > 0)
+        {
+            var inserted = AddressMethods.InsertIfNotExists(databaseContext, chain, missingAddresses);
+            if (inserted != null)
+            {
+                foreach (var (addressValue, addressEntry) in inserted)
+                    touchedAddresses[addressValue] = addressEntry;
+            }
+        }
+
+        var persistedAddressIds = new HashSet<int>();
+        foreach (var entry in touchedAddresses.Values)
         {
             if (entry == null)
                 continue;
 
+            if (entry.ID > 0)
+            {
+                persistedAddressIds.Add(entry.ID);
+                continue;
+            }
+
+            // Keep legacy behavior for newly added addresses that do not have DB ids yet:
+            // mark dirty on the tracked entity so the upcoming SaveChanges persists it.
             if (entry.BALANCE_DIRTY_BLOCK < blockHeight)
                 entry.BALANCE_DIRTY_BLOCK = blockHeight;
         }
+
+        if (persistedAddressIds.Count == 0)
+            return;
+
+        var addressIds = persistedAddressIds.ToArray();
+        var dirtyBlocks = Enumerable.Repeat(blockHeight, addressIds.Length).ToArray();
+
+        var dbConnection = (NpgsqlConnection)databaseContext.Database.GetDbConnection();
+        if (dbConnection.State != System.Data.ConnectionState.Open)
+            await dbConnection.OpenAsync();
+
+        var dbTransaction = databaseContext.Database.CurrentTransaction?.GetDbTransaction() as NpgsqlTransaction;
+        await using var cmd = new NpgsqlCommand(@"
+UPDATE ""Addresses"" AS address_row
+SET ""BALANCE_DIRTY_BLOCK"" = src.""DirtyBlock""
+FROM UNNEST(@address_ids, @dirty_blocks) AS src(""AddressId"", ""DirtyBlock"")
+WHERE address_row.""ID"" = src.""AddressId""
+  AND address_row.""BALANCE_DIRTY_BLOCK"" < src.""DirtyBlock"";
+", dbConnection, dbTransaction);
+
+        cmd.Parameters.Add("@address_ids", NpgsqlDbType.Array | NpgsqlDbType.Integer).Value = addressIds;
+        cmd.Parameters.Add("@dirty_blocks", NpgsqlDbType.Array | NpgsqlDbType.Bigint).Value = dirtyBlocks;
+        await cmd.ExecuteNonQueryAsync();
     }
 
     private static Task MarkAllBalancesDirtyAsync(MainDbContext databaseContext, int chainId)
     {
         return databaseContext.Database.ExecuteSqlRawAsync(@"
 UPDATE ""Addresses"" a
-SET ""BALANCE_DIRTY_BLOCK"" = CAST(c.""CURRENT_HEIGHT"" AS BIGINT)
+SET ""BALANCE_DIRTY_BLOCK"" = c.""CURRENT_HEIGHT""
 FROM ""Chains"" c
 WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
 ", chainId);
@@ -53,8 +117,17 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
 
         var processed = 0;
 
-        var addressesToUpdate = await databaseContext.Addresses.Where(x =>
-            x.Chain == chain && addresses.Contains(x.ADDRESS)).ToListAsync();
+        var chainId = chain.ID;
+        var normalizedAddresses = addresses
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var addressesToUpdate = await databaseContext.Addresses
+            .Where(x => x.ChainId == chainId && normalizedAddresses.Contains(x.ADDRESS))
+            .ToListAsync();
+        var addressesToUpdateByValue = addressesToUpdate
+            .ToDictionary(x => x.ADDRESS, x => x, StringComparer.Ordinal);
         Log.Verbose("[{Name}] got {Count} Addresses to check", Name, addressesToUpdate.Count);
 
         var soulDecimals = TokenMethods.GetSoulDecimals(databaseContext, chain);
@@ -101,14 +174,18 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
                 }
 
                 var accounts = response.RootElement.EnumerateArray().ToList();
+                var chunkBalancesByAddressId = new Dictionary<int, IReadOnlyList<(string Symbol, string AmountRaw)>>();
                 foreach (var account in accounts)
                 {
-                    var address =
-                        addressesToUpdate.FirstOrDefault(x => x.ADDRESS == account.GetProperty("address").GetString());
-                    if (address == null) continue;
+                    var accountAddress = account.GetProperty("address").GetString();
+                    if (string.IsNullOrWhiteSpace(accountAddress))
+                        continue;
+
+                    if (!addressesToUpdateByValue.TryGetValue(accountAddress, out var address))
+                        continue;
 
                     var name = account.GetProperty("name").GetString();
-                    if (name.ToLowerInvariant() == "anonymous")
+                    if (string.Equals(name, "anonymous", StringComparison.OrdinalIgnoreCase))
                     {
                         name = null;
                     }
@@ -132,20 +209,23 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
 
                     if (account.TryGetProperty("balances", out var balancesProperty))
                     {
-                        var balancesList0 = balancesProperty.EnumerateArray();
-
-                        if (balancesList0.Count() > 0)
+                        var parsedBalances = new List<(string Symbol, string AmountRaw)>();
+                        foreach (var balance in balancesProperty.EnumerateArray())
                         {
-                            var balancesList = balancesList0.Select(balance =>
-                                    new Tuple<string, string, string>(balance.GetProperty("chain").GetString(),
-                                        balance.GetProperty("symbol").GetString(),
-                                        balance.GetProperty("amount").GetString()))
-                                .ToList();
+                            var symbol = balance.GetProperty("symbol").GetString();
+                            var amountRaw = balance.GetProperty("amount").GetString();
+                            if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(amountRaw))
+                                continue;
 
-                            soulBalance = balancesList.Where(x => x.Item2 == "SOUL").Select(x => BigInteger.Parse(x.Item3)).FirstOrDefault();
-
-                            await AddressBalanceMethods.InsertOrUpdateList(databaseContext, address, balancesList);
+                            parsedBalances.Add((symbol, amountRaw));
+                            if (symbol == "SOUL")
+                                soulBalance = BigInteger.TryParse(amountRaw, out var parsedSoul) ? parsedSoul : BigInteger.Zero;
                         }
+
+                        // Persist even explicit empty balance arrays.
+                        // This lets AddressBalanceMethods interpret "account is present with no balances"
+                        // as authoritative state and delete stale DB rows for that address.
+                        chunkBalancesByAddressId[address.ID] = parsedBalances;
                     }
 
                     address.TOTAL_SOUL_AMOUNT = soulBalance + soulStakedBalance;
@@ -171,6 +251,10 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
 
                     processed++;
                 }
+
+                if (chunkBalancesByAddressId.Count > 0)
+                    await AddressBalanceMethods.InsertOrUpdateBatchAsync(databaseContext, chainId,
+                        chunkBalancesByAddressId);
             }
             catch
             {
@@ -222,7 +306,7 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
                 }
 
                 //do not process everything here, let the sync to that later, we just call it to make sure
-                string? name = "anonymous";
+                string name = "anonymous";
                 if (response.RootElement.TryGetProperty("name", out JsonElement jsonName))
                 {
                     name = jsonName.GetString();
@@ -239,8 +323,6 @@ WHERE a.""ChainId"" = c.""ID"" AND a.""ADDRESS"" <> 'NULL' AND c.""ID"" = {0};
             Log.Verbose("[{Name}] setting Organization {Organization} for Address {Address}", Name,
                 organization.ORGANIZATION_ID, addressEntry.ADDRESS);
             addressEntry.Organization = organization;
-            if (addressEntry.Organizations == null) addressEntry.Organizations = new List<Organization>();
-            addressEntry.Organizations.AddDistinct(organization);
             organization.ADDRESS_NAME = addressName;
             organization.ADDRESS = addressEntry.ADDRESS;
         }

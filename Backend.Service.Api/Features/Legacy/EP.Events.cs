@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -20,7 +21,7 @@ public static class GetEvents
         public int Id { get; init; }
         public long TimestampUnixSeconds { get; init; }
         public string TokenId { get; init; } = string.Empty;
-        public EventPayloadMapper.EventProjection Projection { get; init; }
+        public required EventPayloadMapper.EventProjection Projection { get; init; }
     }
 
     [ProducesResponseType(typeof(EventsResult), (int)HttpStatusCode.OK)]
@@ -30,10 +31,9 @@ public static class GetEvents
         // ReSharper disable InconsistentNaming
         string order_by = "id",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
-        string chain = "main",
+        string chain = "",
         string contract = "",
         string token_id = "",
         string date_day = "",
@@ -55,37 +55,24 @@ public static class GetEvents
         int with_series = 0,
         int with_fiat = 0,
         int with_nsfw = 0,
-        int with_blacklisted = 0,
-        int with_total = 0
+        int with_blacklisted = 0
     // ReSharper enable InconsistentNaming
     )
     {
         // Results of the query
-        long totalResults = 0;
         Event[] eventsArray;
         const string fiatCurrency = "USD";
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
-
-        //chain is not considered a filter atm
-        var filter = !string.IsNullOrEmpty(contract) || !string.IsNullOrEmpty(token_id) ||
-                     !string.IsNullOrEmpty(date_day) || !string.IsNullOrEmpty(date_less) ||
-                     !string.IsNullOrEmpty(date_greater) || !string.IsNullOrEmpty(event_kind) ||
-                     !string.IsNullOrEmpty(event_kind_partial) || !string.IsNullOrEmpty(nft_name_partial) ||
-                     !string.IsNullOrEmpty(nft_description_partial) || !string.IsNullOrEmpty(address_partial) ||
-                     !string.IsNullOrEmpty(block_hash) || !string.IsNullOrEmpty(block_height) ||
-                     !string.IsNullOrEmpty(transaction_hash) || !string.IsNullOrEmpty(qTrimmed);
+        var qIsAddress = !string.IsNullOrEmpty(qTrimmed) &&
+                         PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
 
         try
         {
             #region ArgValidation
 
-            if (!ArgValidation.CheckLimit(limit, filter))
+            if (!ArgValidation.CheckLimit(limit))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
@@ -127,9 +114,6 @@ public static class GetEvents
             if (!string.IsNullOrEmpty(address) && !ArgValidation.CheckAddress(address))
                 throw new ApiParameterException("Unsupported value for 'address' parameter.");
 
-            if (!string.IsNullOrEmpty(address) && string.IsNullOrEmpty(chain))
-                throw new ApiParameterException("Pass chain when using address filter.");
-
             if (!string.IsNullOrEmpty(address_partial) && !ArgValidation.CheckAddress(address_partial))
                 throw new ApiParameterException("Unsupported value for 'address_partial' parameter.");
 
@@ -153,6 +137,25 @@ public static class GetEvents
             var cursorToken = CursorPagination.ParseCursor(cursor);
             var sortDirection = CursorPagination.ParseSortDirection(order_direction);
             var orderBy = string.IsNullOrWhiteSpace(order_by) ? "id" : order_by;
+            var addressScopedRequest = !string.IsNullOrWhiteSpace(address) || qIsAddress;
+
+            if (addressScopedRequest && string.Equals(orderBy, "id", StringComparison.OrdinalIgnoreCase))
+            {
+                // Address timelines are consumed chronologically; id ordering adds unstable scans
+                // and conflicts with the frontend default that switches to date immediately after mount.
+                orderBy = "date";
+            }
+
+            long? parsedBlockHeightFilter = null;
+
+            if (!string.IsNullOrEmpty(block_height))
+            {
+                if (!long.TryParse(block_height, NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var blockHeightValue))
+                    throw new ApiParameterException("Unsupported value for 'block_height' parameter.");
+
+                parsedBlockHeightFilter = blockHeightValue;
+            }
 
             var orderDefinitions =
                 new Dictionary<string, CursorOrderDefinition<EventPageItem>>(StringComparer.OrdinalIgnoreCase)
@@ -186,8 +189,6 @@ public static class GetEvents
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
@@ -205,9 +206,9 @@ public static class GetEvents
                     throw new ApiParameterException("Unsupported value for 'chain' parameter.");
             }
 
-            Dictionary<string, int>? eventKindIds = null;
+            Dictionary<string, int[]>? eventKindIds = null;
 
-            if (!string.IsNullOrEmpty(qTrimmed) || !string.IsNullOrEmpty(event_kind))
+            if (!string.IsNullOrEmpty(event_kind))
                 eventKindIds = await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
 
             // Getting exchange rates in advance.
@@ -215,40 +216,179 @@ public static class GetEvents
 
             #region Filtering
             var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
-            var detectedEventKind = string.Empty;
-            int? detectedEventKindId = null;
 
-            if (!string.IsNullOrEmpty(qTrimmed))
-            {
-                eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
-
-                detectedEventKind = eventKindIds.Keys.FirstOrDefault(x =>
-                                          string.Equals(x, qTrimmed, StringComparison.OrdinalIgnoreCase)) ??
-                                      string.Empty;
-
-                if (!string.IsNullOrEmpty(detectedEventKind))
-                    detectedEventKindId = eventKindIds[detectedEventKind];
-            }
-
-            if (detectedEventKindId.HasValue)
-                query = query.Where(x => x.EventKindId == detectedEventKindId.Value);
-
-            if (string.IsNullOrEmpty(detectedEventKind) && !string.IsNullOrEmpty(qUpper))
+            if (!string.IsNullOrEmpty(qUpper))
             {
                 var isHex = ArgValidation.CheckBase16(qTrimmed);
                 var isFullHash = isHex && qUpper.Length >= 64;
                 var isNumber = ArgValidation.CheckNumber(qTrimmed);
-                var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
-                var isHexPartial = isHex && !isFullHash;
-                var matchEventKind = qTrimmed.Length >= 3;
+                var isAddress = qIsAddress;
+                var isHashFragment = isHex && !isFullHash && qUpper.Length >= 8;
+                var isTextSearch = qTrimmed.Length >= 3;
 
-                query = query.Where(x =>
-                    (matchEventKind && EF.Functions.ILike(x.EventKind.NAME, $"%{qTrimmed}%")) ||
-                    (isFullHash && (x.Transaction.HASH == qUpper || x.Transaction.Block.HASH == qUpper)) ||
-                    (isHexPartial && (x.Transaction.HASH.Contains(qUpper) || x.Transaction.Block.HASH.Contains(qUpper))) ||
-                    (isNumber && x.Transaction.Block.HEIGHT == qTrimmed) ||
-                    (isAddress && (x.Address.ADDRESS == qTrimmed ||
-                                     (x.TargetAddress != null && x.TargetAddress.ADDRESS == qTrimmed))));
+                // Use a single query strategy per input shape. This avoids the heavy OR predicate
+                // that mixes unrelated joins and prevents stable index usage on large event datasets.
+                if (isFullHash)
+                {
+                    var matchingTransactionIdsByHash = await databaseContext.Transactions
+                        .AsNoTracking()
+                        .Where(x => x.HASH == qUpper)
+                        .Select(x => x.ID)
+                        .ToArrayAsync();
+
+                    var matchingBlockIds = await databaseContext.Blocks
+                        .AsNoTracking()
+                        .Where(x => x.HASH == qUpper)
+                        .Select(x => x.ID)
+                        .ToArrayAsync();
+
+                    var matchingTransactionIdsByBlockHash = matchingBlockIds.Length == 0
+                        ? Array.Empty<int>()
+                        : await databaseContext.Transactions
+                            .AsNoTracking()
+                            .Where(x => matchingBlockIds.Contains(x.BlockId))
+                            .Select(x => x.ID)
+                            .ToArrayAsync();
+
+                    var matchingTransactionIds = matchingTransactionIdsByHash
+                        .Concat(matchingTransactionIdsByBlockHash)
+                        .Distinct()
+                        .ToArray();
+
+                    if (matchingTransactionIds.Length == 0)
+                    {
+                        return new EventsResult
+                        {
+                            total_results = null,
+                            events = Array.Empty<Event>(),
+                            next_cursor = null
+                        };
+                    }
+
+                    query = query.Where(x => matchingTransactionIds.Contains(x.TransactionId));
+                }
+                else if (isAddress)
+                {
+                    var resolvedAddressIdsQuery = databaseContext.Addresses
+                        .AsNoTracking()
+                        .Where(a => a.ADDRESS == qTrimmed);
+
+                    if (chainId.HasValue)
+                        resolvedAddressIdsQuery = resolvedAddressIdsQuery.Where(a => a.ChainId == chainId.Value);
+
+                    var resolvedAddressIds = await resolvedAddressIdsQuery
+                        .Select(a => a.ID)
+                        .ToArrayAsync();
+
+                    if (resolvedAddressIds.Length == 0)
+                    {
+                        return new EventsResult
+                        {
+                            total_results = null,
+                            events = Array.Empty<Event>(),
+                            next_cursor = null
+                        };
+                    }
+
+                    // Address q uses two indexed branches (AddressId and TargetAddressId) merged by ID.
+                    // This avoids a wide OR predicate that can degrade into PK scans for sparse addresses.
+                    var sourceEventIdsQuery = databaseContext.Events
+                        .AsNoTracking()
+                        .Where(x => resolvedAddressIds.Contains(x.AddressId))
+                        .Select(x => x.ID);
+
+                    var targetEventIdsQuery = databaseContext.Events
+                        .AsNoTracking()
+                        .Where(x => x.TargetAddressId.HasValue && resolvedAddressIds.Contains(x.TargetAddressId.Value))
+                        .Select(x => x.ID);
+
+                    if (chainId.HasValue)
+                    {
+                        sourceEventIdsQuery = databaseContext.Events
+                            .AsNoTracking()
+                            .Where(x => x.ChainId == chainId.Value && resolvedAddressIds.Contains(x.AddressId))
+                            .Select(x => x.ID);
+
+                        targetEventIdsQuery = databaseContext.Events
+                            .AsNoTracking()
+                            .Where(x => x.ChainId == chainId.Value && x.TargetAddressId.HasValue &&
+                                        resolvedAddressIds.Contains(x.TargetAddressId.Value))
+                            .Select(x => x.ID);
+                    }
+
+                    var matchingEventIds = sourceEventIdsQuery
+                        .Concat(targetEventIdsQuery)
+                        .Distinct();
+
+                    query = query.Where(x => matchingEventIds.Contains(x.ID));
+                }
+                else if (isNumber)
+                {
+                    if (!long.TryParse(qTrimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var qHeight))
+                        throw new ApiParameterException("Unsupported value for 'q' parameter.");
+
+                    var blockIdsByHeight = databaseContext.Blocks
+                        .AsNoTracking()
+                        .Where(x => x.HEIGHT == qHeight);
+
+                    if (chainId.HasValue)
+                        blockIdsByHeight = blockIdsByHeight.Where(x => x.ChainId == chainId.Value);
+
+                    var transactionIdsByHeight = databaseContext.Transactions
+                        .AsNoTracking()
+                        .Where(x => blockIdsByHeight.Select(b => b.ID).Contains(x.BlockId))
+                        .Select(x => x.ID);
+
+                    query = query.Where(x => transactionIdsByHeight.Contains(x.TransactionId));
+                }
+                else if (isHashFragment)
+                {
+                    // Partial hash lookup via q is intentionally disabled to avoid full-scan hash predicates.
+                    return new EventsResult
+                    {
+                        total_results = null,
+                        events = Array.Empty<Event>(),
+                        next_cursor = null
+                    };
+                }
+                else if (isTextSearch)
+                {
+                    eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
+
+                    if (eventKindIds.TryGetValue(qTrimmed, out var exactEventKindIds) && exactEventKindIds.Length > 0)
+                    {
+                        query = query.Where(x => exactEventKindIds.Contains(x.EventKindId));
+                    }
+                    else
+                    {
+                        var partialEventKindIds = eventKindIds
+                            .Where(x => x.Key.Contains(qTrimmed, StringComparison.OrdinalIgnoreCase))
+                            .SelectMany(x => x.Value)
+                            .Distinct()
+                            .ToArray();
+
+                        if (partialEventKindIds.Length == 0)
+                        {
+                            return new EventsResult
+                            {
+                                total_results = null,
+                                events = Array.Empty<Event>(),
+                                next_cursor = null
+                            };
+                        }
+
+                        query = query.Where(x => partialEventKindIds.Contains(x.EventKindId));
+                    }
+                }
+                else
+                {
+                    return new EventsResult
+                    {
+                        total_results = null,
+                        events = Array.Empty<Event>(),
+                        next_cursor = null
+                    };
+                }
             }
 
             if (with_nsfw == 0)
@@ -276,12 +416,12 @@ public static class GetEvents
             {
                 eventKindIds ??= await EventKindMethods.GetAvailableEventKindIdsAsync(databaseContext, chainId);
 
-                if (eventKindIds.TryGetValue(event_kind, out var eventKindId))
-                    query = query.Where(x => x.EventKindId == eventKindId);
+                if (eventKindIds.TryGetValue(event_kind, out var eventKindIdSet) && eventKindIdSet.Length > 0)
+                    query = query.Where(x => eventKindIdSet.Contains(x.EventKindId));
                 else
                     return new EventsResult
                     {
-                        total_results = !useCursor && with_total == 1 ? 0 : null,
+                        total_results = null,
                         events = Array.Empty<Event>(),
                         next_cursor = null
                     };
@@ -296,7 +436,35 @@ public static class GetEvents
             if (!string.IsNullOrEmpty(nft_description_partial))
                 query = query.Where(x => x.Nft.DESCRIPTION.Contains(nft_description_partial));
 
-            if (!string.IsNullOrEmpty(address)) query = query.Where(x => x.Address.ADDRESS == address);
+            if (!string.IsNullOrEmpty(address))
+            {
+                var isValidAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(address);
+
+                var resolvedAddressIdsQuery = databaseContext.Addresses
+                    .AsNoTracking()
+                    .Where(a => isValidAddress ? a.ADDRESS == address : a.ADDRESS_NAME == address);
+
+                if (chainId.HasValue)
+                    resolvedAddressIdsQuery = resolvedAddressIdsQuery.Where(a => a.ChainId == chainId.Value);
+
+                var resolvedAddressIds = await resolvedAddressIdsQuery
+                    .Select(a => a.ID)
+                    .ToArrayAsync();
+
+                if (resolvedAddressIds.Length == 0)
+                {
+                    return new EventsResult
+                    {
+                        total_results = null,
+                        events = Array.Empty<Event>(),
+                        next_cursor = null
+                    };
+                }
+
+                query = resolvedAddressIds.Length == 1
+                    ? query.Where(x => x.AddressId == resolvedAddressIds[0])
+                    : query.Where(x => resolvedAddressIds.Contains(x.AddressId));
+            }
 
             if (!string.IsNullOrEmpty(address_partial))
                 query = query.Where(x => x.Address.ADDRESS.Contains(address_partial) ||
@@ -306,8 +474,8 @@ public static class GetEvents
             if (!string.IsNullOrEmpty(block_hash))
                 query = query.Where(x => x.Transaction.Block.HASH == block_hash);
 
-            if (!string.IsNullOrEmpty(block_height))
-                query = query.Where(x => x.Transaction.Block.HEIGHT == block_height);
+            if (parsedBlockHeightFilter.HasValue)
+                query = query.Where(x => x.Transaction.Block.HEIGHT == parsedBlockHeightFilter.Value);
 
             if (!string.IsNullOrEmpty(transaction_hash))
                 query = query.Where(x => x.Transaction.HASH == transaction_hash);
@@ -316,9 +484,6 @@ public static class GetEvents
                 query = query.Where(x => x.ID == parsedEventId);
 
             #endregion
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             #region ResultArray
 
@@ -399,24 +564,14 @@ public static class GetEvents
 
             EventPayloadMapper.EventProjection[] eventProjections;
 
-            if (useCursor)
-            {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                eventProjections = page.Items.Select(x => x.Projection).ToArray();
-                nextCursor = page.NextCursor;
-            }
-            else
-            {
-                var orderedQuery =
-                    CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                eventProjections = (await pageItems.ToArrayAsync()).Select(x => x.Projection).ToArray();
-            }
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery =
+                CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection, x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            eventProjections = page.Items.Select(x => x.Projection).ToArray();
+            nextCursor = page.NextCursor;
 
             await EventPayloadMapper.ApplyAsync(databaseContext, eventProjections, with_event_data == 1,
                 with_fiat == 1, fiatCurrency, fiatPricesInUsd);
@@ -455,7 +610,7 @@ public static class GetEvents
 
         return new EventsResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             events = eventsArray,
             next_cursor = nextCursor
         };

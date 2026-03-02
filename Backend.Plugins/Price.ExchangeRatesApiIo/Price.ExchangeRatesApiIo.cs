@@ -13,8 +13,30 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
 {
     private static readonly Random rnd = new();
     private bool _running = true;
+    private bool _deferredDueCatchup = false;
 
     public override string Name => "Price.ExchangeRatesApiIo";
+
+    private bool ShouldDeferForCatchup()
+    {
+        // Price refresh is non-critical during initial catch-up and can compete on DB/CPU.
+        try
+        {
+            using MainDbContext databaseContext = new();
+            var chainId = ChainMethods.GetId(databaseContext, "main");
+            if (chainId <= 0)
+                return false;
+
+            return CatchupGateMethods.TryGetCatchupReady(databaseContext, chainId, out var isCatchupReady) &&
+                   !isCatchupReady;
+        }
+        catch (Exception e)
+        {
+            Log.Warning("[{Name}] plugin: Failed to check catch-up state, proceeding with price refresh: {Reason}",
+                Name, e.Message);
+            return false;
+        }
+    }
 
 
     public void Startup()
@@ -36,6 +58,28 @@ public class ExchangeRatesApiIo : Plugin, IDBAccessPlugin
             while (_running)
                 try
                 {
+                    if (ShouldDeferForCatchup())
+                    {
+                        if (!_deferredDueCatchup)
+                        {
+                            Log.Information(
+                                "{Name} plugin: Deferring price refresh while explorer catch-up is in progress",
+                                Name);
+                            _deferredDueCatchup = true;
+                        }
+
+                        Thread.Sleep((int)Settings.Default.RunInterval * 1000);
+                        continue;
+                    }
+
+                    if (_deferredDueCatchup)
+                    {
+                        Log.Information(
+                            "{Name} plugin: Resuming price refresh after explorer reached zero-lag",
+                            Name);
+                        _deferredDueCatchup = false;
+                    }
+
                     LoadPrices();
 
                     Thread.Sleep((int)Settings.Default.RunInterval *

@@ -99,18 +99,18 @@ public static class ContractMethods
     }
 
     public readonly record struct ChainHashKey(int ChainId, string Hash);
-    private static Dictionary<ChainHashKey, int> ChunkUpsert(NpgsqlConnection dbConnection, List<(string name, int chainId, string hash, string symbol)> chunk)
+    private static Dictionary<ChainHashKey, int> ChunkUpsert(NpgsqlConnection dbConnection,
+        List<(string name, int chainId, string hash, string symbol)> chunk,
+        NpgsqlTransaction dbTransaction = null)
     {
         Dictionary<ChainHashKey, int> result = [];
-
-        var now = UnixSeconds.Now();
 
         if (chunk.Count == 0)
         {
             return [];
         }
 
-        using var cmd = new NpgsqlCommand(null, dbConnection);
+        using var cmd = new NpgsqlCommand(null, dbConnection, dbTransaction);
 
         cmd.CommandText = $"insert into \"Contracts\" (\"ChainId\", \"HASH\", \"NAME\", \"SYMBOL\", \"LAST_UPDATED_UNIX_SECONDS\") values ";
 
@@ -134,8 +134,8 @@ public static class ContractMethods
             cmd.Parameters.Add(string.Format("@hash{0}", i), NpgsqlDbType.Text).Value = chunk.ElementAt(i).hash;
 
             // Others
-            cmd.Parameters.Add(string.Format("@name{0}", i), NpgsqlDbType.Text).Value = (object?)chunk.ElementAt(i).name ?? DBNull.Value;
-            cmd.Parameters.Add(string.Format("@symbol{0}", i), NpgsqlDbType.Text).Value = (object?)chunk.ElementAt(i).symbol ?? DBNull.Value;
+            cmd.Parameters.Add(string.Format("@name{0}", i), NpgsqlDbType.Text).Value = (object)chunk.ElementAt(i).name ?? DBNull.Value;
+            cmd.Parameters.Add(string.Format("@symbol{0}", i), NpgsqlDbType.Text).Value = (object)chunk.ElementAt(i).symbol ?? DBNull.Value;
         }
         cmd.Parameters.Add("@dm", NpgsqlDbType.Bigint).Value = UnixSeconds.Now();
 
@@ -152,7 +152,9 @@ public static class ContractMethods
         return result;
     }
 
-    public static Dictionary<ChainHashKey, int> BatchUpsert(NpgsqlConnection dbConnection, List<(string name, int chainId, string hash, string symbol)> contracts, int batchSize = 500)
+    public static Dictionary<ChainHashKey, int> BatchUpsert(NpgsqlConnection dbConnection,
+        List<(string name, int chainId, string hash, string symbol)> contracts, int batchSize = 500,
+        NpgsqlTransaction dbTransaction = null)
     {
         Dictionary<ChainHashKey, int> result = [];
 
@@ -164,8 +166,10 @@ public static class ContractMethods
         var chunks = contracts.DistinctBy(x => (x.chainId, x.hash)).Chunk(batchSize).ToList();
         foreach (var chunk in chunks)
         {
-            var chunkRes = ChunkUpsert(dbConnection, chunk.ToList());
-            result = result.Union(chunkRes).ToDictionary(k => k.Key, v => v.Value);
+            var chunkRes = ChunkUpsert(dbConnection, chunk.ToList(), dbTransaction);
+            // Merge chunk results in-place to avoid per-chunk dictionary reallocation.
+            foreach (var entry in chunkRes)
+                result[entry.Key] = entry.Value;
         }
 
         return result;
@@ -176,6 +180,10 @@ public static class ContractMethodsExtensions
 {
     public static int GetId(this Dictionary<ContractMethods.ChainHashKey, int> contracts, int chainId, string hash)
     {
-        return contracts.Where(x => x.Key.ChainId == chainId && x.Key.Hash == hash).Select(x => x.Value).First();
+        var key = new ContractMethods.ChainHashKey(chainId, hash);
+        if (contracts.TryGetValue(key, out var id))
+            return id;
+
+        throw new KeyNotFoundException($"Contract id not found for chain={chainId}, hash={hash}");
     }
 }

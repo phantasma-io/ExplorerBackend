@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Backend.PostgreSQLConnector</RootNamespace>
   </PropertyGroup>
 
@@ -14,9 +14,9 @@
     <Compile Remove="Publish\**" />
     <EmbeddedResource Remove="Publish\**" />
     <None Remove="Publish\**" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.11" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.11" />
-    <PackageReference Include="Npgsql" Version="9.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.3" />
+    <PackageReference Include="Npgsql" Version="10.0.1" />
     <ProjectReference Include="..\Backend.Commons\Backend.Commons.csproj" />
   </ItemGroup>
 </Project>

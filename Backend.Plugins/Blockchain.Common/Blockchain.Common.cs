@@ -9,6 +9,7 @@ namespace Backend.Blockchain;
 public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
 {
     private bool _running = true;
+    private bool _burnDeferredDueCatchup = false;
     public override string Name => "Blockchain.Common";
 
 
@@ -32,7 +33,6 @@ public partial class BlockchainCommonPlugin : Plugin, IDBAccessPlugin
                 try
                 {
                     MarkBurnedNfts();
-                    EventUsdPricesFill();
 
                     Thread.Sleep(Settings.Default.EventsProcessingInterval *
                                  1000); // We process events every EventsProcessingInterval seconds

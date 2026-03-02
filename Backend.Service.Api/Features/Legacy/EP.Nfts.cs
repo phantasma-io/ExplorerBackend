@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -15,13 +16,21 @@ namespace Backend.Service.Api;
 
 public static class GetNfts
 {
+    private static string EscapeLikePattern(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+    }
+
     private sealed class NftPageItem
     {
         public int Id { get; init; }
         public long MintDate { get; init; }
-        public Nft ApiNft { get; init; }
-        public JsonDocument NftMetadata { get; init; }
-        public JsonDocument SeriesMetadata { get; init; }
+        public required Nft ApiNft { get; init; }
+        public JsonDocument? NftMetadata { get; init; }
+        public JsonDocument? SeriesMetadata { get; init; }
     }
 
     [ProducesResponseType(typeof(NftsResult), (int)HttpStatusCode.OK)]
@@ -31,7 +40,6 @@ public static class GetNfts
         // ReSharper disable InconsistentNaming
         string order_by = "mint_date",
         string order_direction = "asc",
-        int offset = 0,
         int limit = 50,
         string cursor = "",
         string creator = "",
@@ -43,16 +51,13 @@ public static class GetNfts
         string symbol = "",
         string token_id = "",
         string series_id = "",
-        string status = "all",
-        int with_total = 0
+        string status = "all"
     // ReSharper enable InconsistentNaming
     )
     {
         // Results of the query
-        long totalResults = 0;
         Nft[] nftArray;
         string? nextCursor = null;
-        var useCursor = false;
         var qTrimmed = string.IsNullOrWhiteSpace(q) ? string.Empty : q.Trim();
 
         try
@@ -61,9 +66,6 @@ public static class GetNfts
 
             if (!ArgValidation.CheckLimit(limit, false))
                 throw new ApiParameterException("Unsupported value for 'limit' parameter.");
-
-            if (!ArgValidation.CheckOffset(offset))
-                throw new ApiParameterException("Unsupported value for 'offset' parameter.");
 
             if (!string.IsNullOrEmpty(order_by) && !ArgValidation.CheckFieldName(order_by))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
@@ -86,7 +88,7 @@ public static class GetNfts
             if (!string.IsNullOrEmpty(name) && !ArgValidation.CheckName(name))
                 throw new ApiParameterException("Unsupported value for 'name' parameter.");
 
-            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckGeneralSearch(qTrimmed))
+            if (!string.IsNullOrEmpty(qTrimmed) && !ArgValidation.CheckTextSearch(qTrimmed))
                 throw new ApiParameterException("Unsupported value for 'q' parameter.");
 
             if (!string.IsNullOrEmpty(chain) && !ArgValidation.CheckChain(chain))
@@ -134,8 +136,6 @@ public static class GetNfts
             if (!orderDefinitions.TryGetValue(orderBy, out var orderDefinition))
                 throw new ApiParameterException("Unsupported value for 'order_by' parameter.");
 
-            useCursor = CursorPagination.ShouldUseCursor(cursorToken, offset, with_total);
-
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var query = databaseContext.Nfts.AsQueryable().AsNoTracking();
@@ -145,26 +145,38 @@ public static class GetNfts
             query = query.Where(x =>
                 x.NSFW == false && (x.BURNED == null || x.BURNED == false) && x.BLACKLISTED == false);
 
-            var qUpper = string.IsNullOrEmpty(qTrimmed) ? string.Empty : qTrimmed.ToUpperInvariant();
-
-            if (!string.IsNullOrEmpty(qUpper))
+            if (!string.IsNullOrEmpty(qTrimmed))
             {
-                var isHex = ArgValidation.CheckBase16(qTrimmed);
-                var isAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(qTrimmed);
-                var isNumber = ArgValidation.CheckNumber(qTrimmed);
+                var searchTokens = qTrimmed
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
 
-                query = query.Where(x =>
-                    EF.Functions.ILike(x.NAME, $"%{qTrimmed}%") ||
-                    EF.Functions.ILike(x.DESCRIPTION, $"%{qTrimmed}%") ||
-                    EF.Functions.ILike(x.TOKEN_ID, $"%{qTrimmed}%") ||
-                    EF.Functions.ILike(x.Contract.SYMBOL, $"%{qTrimmed}%") ||
-                    (x.Series != null && EF.Functions.ILike(x.Series.SERIES_ID, $"%{qTrimmed}%")) ||
-                    (x.Series != null && EF.Functions.ILike(x.Series.NAME, $"%{qTrimmed}%")) ||
-                    (isHex && x.Contract.HASH.Contains(qUpper)) ||
-                    (isNumber && x.Series != null && x.Series.SERIES_ID == qTrimmed) ||
-                    (isAddress && (x.CreatorAddress.ADDRESS == qTrimmed ||
-                                     (x.NftOwnerships != null &&
-                                       x.NftOwnerships.Any(o => o.Address.ADDRESS == qTrimmed)))));
+                foreach (var token in searchTokens)
+                {
+                    var tokenEscaped = EscapeLikePattern(token);
+                    var tokenPattern = $"%{tokenEscaped}%";
+                    var tokenUpper = token.ToUpperInvariant();
+                    var tokenIsHex = ArgValidation.CheckBase16(token);
+                    var tokenIsAddress = PhantasmaPhoenix.Cryptography.Address.IsValidAddress(token);
+                    var tokenCanMatchContractHash = tokenIsHex && token.Length >= 6;
+
+                    // Require every token to be matched somewhere so mixed queries
+                    // like "Crown 2261" can match "Crown #2261".
+                    query = query.Where(x =>
+                        EF.Functions.ILike(x.NAME, tokenPattern, "\\") ||
+                        EF.Functions.ILike(x.DESCRIPTION, tokenPattern, "\\") ||
+                        x.TOKEN_ID == token ||
+                        EF.Functions.ILike(x.TOKEN_ID, tokenPattern, "\\") ||
+                        EF.Functions.ILike(x.Contract.SYMBOL, tokenPattern, "\\") ||
+                        (x.Series != null &&
+                         (EF.Functions.ILike(x.Series.SERIES_ID, tokenPattern, "\\") ||
+                          EF.Functions.ILike(x.Series.NAME, tokenPattern, "\\"))) ||
+                        (tokenCanMatchContractHash && x.Contract.HASH.Contains(tokenUpper)) ||
+                        (tokenIsAddress && (x.CreatorAddress.ADDRESS == token ||
+                                            (x.NftOwnerships != null &&
+                                             x.NftOwnerships.Any(o => o.Address.ADDRESS == token)))));
+                }
             }
 
             if (!string.IsNullOrEmpty(status))
@@ -198,9 +210,6 @@ public static class GetNfts
             }
 
             #endregion
-
-            if (!useCursor && with_total == 1)
-                totalResults = await query.CountAsync();
 
             #region ResultArray
 
@@ -289,47 +298,24 @@ public static class GetNfts
                 }
             });
 
-            if (useCursor)
+            var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
+                x => x.Id);
+            var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
+                x => x.Id);
+            var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
+                limit);
+            foreach (var item in page.Items)
             {
-                var cursorFiltered = CursorPagination.ApplyCursor(pageQuery, orderDefinition, sortDirection, cursorToken,
-                    x => x.Id);
-                var orderedQuery = CursorPagination.ApplyOrdering(cursorFiltered, orderDefinition, sortDirection,
-                    x => x.Id);
-                var page = await CursorPagination.ReadPageAsync(orderedQuery, orderDefinition, sortDirection, x => x.Id,
-                    limit);
-                foreach (var item in page.Items)
-                {
-                    if (item.ApiNft?.nft_metadata != null)
-                        item.ApiNft.nft_metadata.metadata =
-                            MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
+                if (item.ApiNft?.nft_metadata != null)
+                    item.ApiNft.nft_metadata.metadata =
+                        MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
 
-                    if (item.ApiNft?.series != null)
-                        item.ApiNft.series.metadata =
-                            MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
-                }
-
-                nftArray = page.Items.Select(x => x.ApiNft).ToArray();
-                nextCursor = page.NextCursor;
+                if (item.ApiNft?.series != null)
+                    item.ApiNft.series.metadata =
+                        MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
             }
-            else
-            {
-                var orderedQuery = CursorPagination.ApplyOrdering(pageQuery, orderDefinition, sortDirection, x => x.Id);
-                var pageItems = limit > 0 ? orderedQuery.Skip(offset).Take(limit) : orderedQuery;
-                var materializedPage = await pageItems.ToArrayAsync();
-
-                foreach (var item in materializedPage)
-                {
-                    if (item.ApiNft?.nft_metadata != null)
-                        item.ApiNft.nft_metadata.metadata =
-                            MetadataMapper.FromNft(item.NftMetadata, item.ApiNft);
-
-                    if (item.ApiNft?.series != null)
-                        item.ApiNft.series.metadata =
-                            MetadataMapper.FromSeries(item.SeriesMetadata, item.ApiNft.series);
-                }
-
-                nftArray = materializedPage.Select(x => x.ApiNft).ToArray();
-            }
+            nftArray = page.Items.Select(x => x.ApiNft).ToArray();
+            nextCursor = page.NextCursor;
 
             #endregion
 
@@ -349,7 +335,7 @@ public static class GetNfts
 
         return new NftsResult
         {
-            total_results = !useCursor && with_total == 1 ? totalResults : null,
+            total_results = null,
             nfts = nftArray,
             next_cursor = nextCursor
         };

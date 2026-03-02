@@ -8,6 +8,14 @@ namespace Database.Main;
 
 public static class ChainMethods
 {
+    private static long ToLongHeight(BigInteger height)
+    {
+        if (height > long.MaxValue || height < long.MinValue)
+            throw new($"Block height {height} is out of range for bigint storage.");
+
+        return (long)height;
+    }
+
     // Checks if "Chains" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
@@ -17,7 +25,7 @@ public static class ChainMethods
 
         if (chain != null) return chain;
 
-        chain = new Chain { NAME = name, CURRENT_HEIGHT = "0" };
+        chain = new Chain { NAME = name, CURRENT_HEIGHT = 0 };
 
         databaseContext.Chains.Add(chain);
 
@@ -52,7 +60,7 @@ public static class ChainMethods
 
     public static BigInteger GetLastProcessedBlock(MainDbContext databaseContext, string chainName)
     {
-        return BigInteger.Parse(Get(databaseContext, chainName).CURRENT_HEIGHT);
+        return new BigInteger(Get(databaseContext, chainName).CURRENT_HEIGHT);
     }
 
 
@@ -60,7 +68,7 @@ public static class ChainMethods
         bool saveChanges = true)
     {
         var chain = Get(databaseContext, chainName);
-        chain.CURRENT_HEIGHT = height.ToString();
+        chain.CURRENT_HEIGHT = ToLongHeight(height);
 
         if (saveChanges) databaseContext.SaveChanges();
     }
