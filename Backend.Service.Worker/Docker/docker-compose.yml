@@ -22,8 +22,8 @@ services:
         max-size: "20m"
 
 networks:
-   worker:
-      name: worker-${DEPLOY_ENV:-production}-network
-   postgresql:
-      name: postgresql-network
-      external: true
+  worker:
+    name: worker-${DEPLOY_ENV:-production}-network
+  postgresql:
+    name: postgresql-network
+    external: true
