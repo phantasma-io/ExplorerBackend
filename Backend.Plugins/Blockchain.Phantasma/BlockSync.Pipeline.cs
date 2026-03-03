@@ -126,7 +126,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                         Settings.Default.HeightLimit);
                     const long lag = 0;
                     UpdateSyncLagState(state.ChainId, lag);
-                    UpdateBalanceSyncMode(state.ChainId, state.ChainName, lag);
+                    var allowBalanceSyncAtHeightLimit = UpdateBalanceSyncMode(state.ChainId, state.ChainName, lag);
+                    if (allowBalanceSyncAtHeightLimit)
+                        RequestBalanceSync(state.ChainName);
                     await Task.Delay(Settings.Default.BlocksProcessingInterval * 1000);
                     continue;
                 }
