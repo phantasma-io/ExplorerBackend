@@ -15,7 +15,8 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin
 {
-    private const string StakeSnapshotCatchupSource = "balance-sync.catchup.v1";
+    private const string StakeSnapshotCatchupSource = "balance-sync.catchup.v2";
+    private const string StakeSnapshotLegacyCatchupSource = "balance-sync.catchup.v1";
     private const long SecondsPerDay = 86400;
 
     private static readonly HashSet<string> StakeSnapshotMarketEventKinds = new(StringComparer.Ordinal)
@@ -37,11 +38,27 @@ public partial class PhantasmaPlugin
     private sealed class SnapshotCatchupState
     {
         public readonly Dictionary<string, BigInteger> StakesByAddress = new(StringComparer.Ordinal);
-        public readonly HashSet<string> Stakers = new(StringComparer.Ordinal);
-        public readonly HashSet<string> Masters = new(StringComparer.Ordinal);
         public BigInteger TotalStakedRaw;
         public BigInteger SoulSupplyRaw;
+        public int StakersCount;
+        public int MastersCount;
     }
+
+    private sealed record SnapshotAnchorPoint(
+        long DateUnixSeconds,
+        BigInteger StakedSoulRaw,
+        BigInteger SoulSupplyRaw,
+        int StakersCount,
+        int MastersCount,
+        string Source
+    );
+
+    private sealed record SnapshotRebuildRange(
+        long AnchorDayUnixSeconds,
+        long RebuildFromDayUnixSeconds,
+        long RebuildToExclusiveDayUnixSeconds,
+        string Reason
+    );
 
     private sealed record SnapshotEventRow(
         int EventId,
@@ -68,82 +85,265 @@ public partial class PhantasmaPlugin
     private static async Task<SnapshotCatchupResult> BackfillMissingStakeSnapshotsAsync(MainDbContext databaseContext,
         Chain chain, long nowUnixSeconds, long currentDayUnixSeconds, long currentMonthUnixSeconds)
     {
+        var rebuildRange = await DetectSnapshotRebuildRangeAsync(databaseContext, chain.ID, currentDayUnixSeconds);
+
+        var dailyAffected = 0;
+        if (rebuildRange != null)
+        {
+            dailyAffected = await RebuildDailySnapshotsAsync(databaseContext, chain, rebuildRange, nowUnixSeconds);
+        }
+
+        var monthlyAffected = 0;
+        if (rebuildRange != null && dailyAffected > 0)
+        {
+            monthlyAffected += await RebuildMonthlySnapshotsForRebuiltRangeAsync(databaseContext, chain,
+                rebuildRange.RebuildFromDayUnixSeconds, rebuildRange.RebuildToExclusiveDayUnixSeconds,
+                currentMonthUnixSeconds);
+        }
+
+        monthlyAffected += await BackfillMissingMonthlySnapshotsFromDailyAsync(databaseContext, chain,
+            currentMonthUnixSeconds);
+
+        return new SnapshotCatchupResult(dailyAffected, monthlyAffected);
+    }
+
+    private static async Task<SnapshotRebuildRange> DetectSnapshotRebuildRangeAsync(MainDbContext databaseContext,
+        int chainId, long currentDayUnixSeconds)
+    {
+        // Legacy v1 catch-up rows are known to produce a damaged historical tail.
+        // If present, rebuild from the first such day to "today".
+        var firstLegacyCatchupDay = await databaseContext.StakingProgressDailies.AsNoTracking()
+            .Where(x => x.ChainId == chainId &&
+                        x.DATE_UNIX_SECONDS < currentDayUnixSeconds &&
+                        x.SOURCE == StakeSnapshotLegacyCatchupSource)
+            .OrderBy(x => x.DATE_UNIX_SECONDS)
+            .Select(x => (long?)x.DATE_UNIX_SECONDS)
+            .FirstOrDefaultAsync();
+
+        if (firstLegacyCatchupDay.HasValue)
+        {
+            var anchorDay = firstLegacyCatchupDay.Value - SecondsPerDay;
+            if (anchorDay < 0)
+            {
+                Log.Warning(
+                    "[{Name}][Balances] Cannot rebuild stake snapshot tail: invalid anchor before {FromDay}",
+                    nameof(PhantasmaPlugin), UnixSeconds.Log(firstLegacyCatchupDay.Value));
+                return null;
+            }
+
+            var anchorExists = await databaseContext.StakingProgressDailies.AsNoTracking()
+                .AnyAsync(x => x.ChainId == chainId && x.DATE_UNIX_SECONDS == anchorDay);
+
+            if (!anchorExists)
+            {
+                Log.Warning(
+                    "[{Name}][Balances] Cannot rebuild stake snapshot tail: anchor day {AnchorDay} is missing",
+                    nameof(PhantasmaPlugin), UnixSeconds.Log(anchorDay));
+                return null;
+            }
+
+            return new SnapshotRebuildRange(
+                AnchorDayUnixSeconds: anchorDay,
+                RebuildFromDayUnixSeconds: firstLegacyCatchupDay.Value,
+                RebuildToExclusiveDayUnixSeconds: currentDayUnixSeconds,
+                Reason: "legacy-catchup-tail");
+        }
+
+        // Normal mode: only fill genuine missing tail days.
         var previousDayUnixSeconds = await databaseContext.StakingProgressDailies.AsNoTracking()
-            .Where(x => x.ChainId == chain.ID && x.DATE_UNIX_SECONDS < currentDayUnixSeconds)
+            .Where(x => x.ChainId == chainId && x.DATE_UNIX_SECONDS < currentDayUnixSeconds)
             .Select(x => (long?)x.DATE_UNIX_SECONDS)
             .MaxAsync();
 
-        var dailyInserted = 0;
-        if (previousDayUnixSeconds.HasValue)
-        {
-            var missingFromDayUnixSeconds = previousDayUnixSeconds.Value + SecondsPerDay;
-            if (missingFromDayUnixSeconds < currentDayUnixSeconds)
-            {
-                dailyInserted = await BackfillMissingDailySnapshotsReverseAsync(databaseContext, chain,
-                    nowUnixSeconds, currentDayUnixSeconds, missingFromDayUnixSeconds);
-            }
-        }
+        if (!previousDayUnixSeconds.HasValue)
+            return null;
 
-        var monthlyInserted = await BackfillMissingMonthlySnapshotsFromDailyAsync(databaseContext, chain,
-            currentMonthUnixSeconds);
+        var missingFromDayUnixSeconds = previousDayUnixSeconds.Value + SecondsPerDay;
+        if (missingFromDayUnixSeconds >= currentDayUnixSeconds)
+            return null;
 
-        return new SnapshotCatchupResult(dailyInserted, monthlyInserted);
+        return new SnapshotRebuildRange(
+            AnchorDayUnixSeconds: previousDayUnixSeconds.Value,
+            RebuildFromDayUnixSeconds: missingFromDayUnixSeconds,
+            RebuildToExclusiveDayUnixSeconds: currentDayUnixSeconds,
+            Reason: "missing-tail");
     }
 
-    private static async Task<int> BackfillMissingDailySnapshotsReverseAsync(MainDbContext databaseContext, Chain chain,
-        long nowUnixSeconds, long currentDayUnixSeconds, long missingFromDayUnixSeconds)
+    private static async Task<int> RebuildDailySnapshotsAsync(MainDbContext databaseContext, Chain chain,
+        SnapshotRebuildRange rebuildRange, long nowUnixSeconds)
     {
         Log.Information(
-            "[{Name}][Balances] Starting stake snapshot catch-up for {Chain}: missing daily range {FromDay}..{ToDay}",
-            nameof(PhantasmaPlugin), chain.NAME, UnixSeconds.Log(missingFromDayUnixSeconds),
-            UnixSeconds.Log(currentDayUnixSeconds - SecondsPerDay));
+            "[{Name}][Balances] Rebuilding stake snapshots for {Chain}: {FromDay}..{ToDay} (anchor={AnchorDay}, reason={Reason})",
+            nameof(PhantasmaPlugin),
+            chain.NAME,
+            UnixSeconds.Log(rebuildRange.RebuildFromDayUnixSeconds),
+            UnixSeconds.Log(rebuildRange.RebuildToExclusiveDayUnixSeconds - SecondsPerDay),
+            UnixSeconds.Log(rebuildRange.AnchorDayUnixSeconds),
+            rebuildRange.Reason);
 
-        var state = await LoadCurrentSnapshotStateAsync(databaseContext, chain.ID);
-        var snapshots = await BuildMissingDailySnapshotsReverseAsync(chain.NAME, state, nowUnixSeconds,
-            currentDayUnixSeconds, missingFromDayUnixSeconds);
-
-        if (snapshots.Count == 0)
-            return 0;
-
-        var existingDays = await databaseContext.StakingProgressDailies.AsNoTracking()
-            .Where(x => x.ChainId == chain.ID
-                        && x.DATE_UNIX_SECONDS >= missingFromDayUnixSeconds
-                        && x.DATE_UNIX_SECONDS < currentDayUnixSeconds)
-            .Select(x => x.DATE_UNIX_SECONDS)
-            .ToHashSetAsync();
-
-        var inserted = 0;
-        foreach (var snapshot in snapshots)
+        var anchor = await LoadSnapshotAnchorPointAsync(databaseContext, chain.ID, rebuildRange.AnchorDayUnixSeconds);
+        if (anchor == null)
         {
-            if (existingDays.Contains(snapshot.DateUnixSeconds))
-                continue;
-
-            databaseContext.StakingProgressDailies.Add(new StakingProgressDaily
-            {
-                ChainId = chain.ID,
-                DATE_UNIX_SECONDS = snapshot.DateUnixSeconds,
-                STAKED_SOUL_RAW = snapshot.StakedSoulRaw,
-                SOUL_SUPPLY_RAW = snapshot.SoulSupplyRaw,
-                STAKERS_COUNT = snapshot.StakersCount,
-                MASTERS_COUNT = snapshot.MastersCount,
-                STAKING_RATIO = snapshot.StakingRatio,
-                CAPTURED_AT_UNIX_SECONDS = snapshot.CapturedAtUnixSeconds,
-                SOURCE = StakeSnapshotCatchupSource
-            });
-
-            inserted++;
+            Log.Warning(
+                "[{Name}][Balances] Stake snapshot rebuild skipped for {Chain}: missing anchor row on {AnchorDay}",
+                nameof(PhantasmaPlugin), chain.NAME, UnixSeconds.Log(rebuildRange.AnchorDayUnixSeconds));
+            return 0;
         }
 
-        if (inserted > 0)
-            await databaseContext.SaveChangesAsync();
+        var currentState = await LoadCurrentSnapshotStateAsync(databaseContext, chain.ID);
+        var eventRows = await LoadSnapshotEventsAsync(chain.NAME, rebuildRange.RebuildFromDayUnixSeconds, nowUnixSeconds);
 
-        Log.Information("[{Name}][Balances] Stake snapshot catch-up completed for {Chain}: inserted daily rows={Count}",
-            nameof(PhantasmaPlugin), chain.NAME, inserted);
-        return inserted;
+        try
+        {
+            ReplaySnapshotEventsReverse(currentState, eventRows);
+        }
+        catch (Exception exception)
+        {
+            Log.Warning(
+                "[{Name}][Balances] Stake snapshot rebuild skipped for {Chain}: reverse replay failed ({Reason})",
+                nameof(PhantasmaPlugin), chain.NAME, exception.Message);
+            return 0;
+        }
+
+        if (!MatchesSnapshotAnchor(currentState, anchor, out var mismatchReason))
+        {
+            // Legacy catch-up rows were produced by logic that is already known to be inconsistent
+            // around the gen2/gen3 bridge. For this branch we keep replay deltas and re-anchor
+            // aggregate counters to the trusted anchor row instead of abandoning the rebuild.
+            if (!string.Equals(rebuildRange.Reason, "legacy-catchup-tail", StringComparison.Ordinal) ||
+                !TryCalibrateSnapshotStateToAnchor(currentState, anchor, out var calibrationSummary))
+            {
+                Log.Warning(
+                    "[{Name}][Balances] Stake snapshot rebuild skipped for {Chain}: anchor mismatch ({Mismatch})",
+                    nameof(PhantasmaPlugin), chain.NAME, mismatchReason);
+                return 0;
+            }
+
+            Log.Warning(
+                "[{Name}][Balances] Stake snapshot rebuild for {Chain} continues with aggregate anchor calibration: {Mismatch}; {Calibration}",
+                nameof(PhantasmaPlugin), chain.NAME, mismatchReason, calibrationSummary);
+        }
+
+        List<SnapshotDailyPoint> rebuiltSnapshots;
+        try
+        {
+            rebuiltSnapshots = BuildDailySnapshotsForward(currentState, eventRows, rebuildRange.RebuildFromDayUnixSeconds,
+                rebuildRange.RebuildToExclusiveDayUnixSeconds);
+        }
+        catch (Exception exception)
+        {
+            Log.Warning(
+                "[{Name}][Balances] Stake snapshot rebuild skipped for {Chain}: forward replay failed ({Reason})",
+                nameof(PhantasmaPlugin), chain.NAME, exception.Message);
+            return 0;
+        }
+
+        if (rebuiltSnapshots.Count == 0)
+            return 0;
+
+        var upserted = await UpsertDailySnapshotsAsync(databaseContext, chain.ID, rebuiltSnapshots);
+        if (upserted > 0)
+        {
+            Log.Information(
+                "[{Name}][Balances] Stake snapshot rebuild completed for {Chain}: upserted daily rows={Count}",
+                nameof(PhantasmaPlugin), chain.NAME, upserted);
+        }
+
+        return upserted;
     }
 
-    private static async Task<List<SnapshotDailyPoint>> BuildMissingDailySnapshotsReverseAsync(string chainName,
-        SnapshotCatchupState state, long nowUnixSeconds, long currentDayUnixSeconds, long missingFromDayUnixSeconds)
+    private static async Task<SnapshotAnchorPoint> LoadSnapshotAnchorPointAsync(MainDbContext databaseContext,
+        int chainId, long anchorDayUnixSeconds)
+    {
+        var row = await databaseContext.StakingProgressDailies.AsNoTracking()
+            .Where(x => x.ChainId == chainId && x.DATE_UNIX_SECONDS == anchorDayUnixSeconds)
+            .Select(x => new
+            {
+                x.DATE_UNIX_SECONDS,
+                x.STAKED_SOUL_RAW,
+                x.SOUL_SUPPLY_RAW,
+                x.STAKERS_COUNT,
+                x.MASTERS_COUNT,
+                x.SOURCE
+            })
+            .FirstOrDefaultAsync();
+
+        if (row == null)
+            return null;
+
+        if (!BigInteger.TryParse(row.STAKED_SOUL_RAW, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                out var stakedRaw) ||
+            stakedRaw < 0)
+        {
+            throw new InvalidOperationException(
+                $"Stake snapshot anchor contains invalid staked raw on {UnixSeconds.Log(anchorDayUnixSeconds)}");
+        }
+
+        if (!BigInteger.TryParse(row.SOUL_SUPPLY_RAW, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                out var soulSupplyRaw) ||
+            soulSupplyRaw <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Stake snapshot anchor contains invalid supply raw on {UnixSeconds.Log(anchorDayUnixSeconds)}");
+        }
+
+        return new SnapshotAnchorPoint(
+            DateUnixSeconds: row.DATE_UNIX_SECONDS,
+            StakedSoulRaw: stakedRaw,
+            SoulSupplyRaw: soulSupplyRaw,
+            StakersCount: row.STAKERS_COUNT,
+            MastersCount: row.MASTERS_COUNT,
+            Source: row.SOURCE ?? string.Empty
+        );
+    }
+
+    private static async Task<SnapshotCatchupState> LoadCurrentSnapshotStateAsync(MainDbContext databaseContext,
+        int chainId)
+    {
+        var state = new SnapshotCatchupState();
+
+        var soulSupplyRawText = await databaseContext.Tokens.AsNoTracking()
+            .Where(x => x.ChainId == chainId && x.SYMBOL == "SOUL")
+            .Select(x => x.CURRENT_SUPPLY_RAW)
+            .FirstOrDefaultAsync();
+
+        if (!BigInteger.TryParse(soulSupplyRawText, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                out var soulSupplyRaw) ||
+            soulSupplyRaw <= 0)
+        {
+            throw new InvalidOperationException("Cannot load current SOUL supply for stake snapshot catch-up.");
+        }
+
+        state.SoulSupplyRaw = soulSupplyRaw;
+
+        var stakeRows = await databaseContext.Addresses.AsNoTracking()
+            .Where(x => x.ChainId == chainId &&
+                        x.ADDRESS != "NULL" &&
+                        !string.IsNullOrEmpty(x.STAKED_AMOUNT_RAW) &&
+                        x.STAKED_AMOUNT_RAW != "0")
+            .Select(x => new { x.ADDRESS, x.STAKED_AMOUNT_RAW })
+            .ToListAsync();
+
+        foreach (var stakeRow in stakeRows)
+        {
+            if (!BigInteger.TryParse(stakeRow.STAKED_AMOUNT_RAW, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                    out var stakeRaw) ||
+                stakeRaw <= 0)
+            {
+                continue;
+            }
+
+            state.StakesByAddress[stakeRow.ADDRESS] = stakeRaw;
+            state.TotalStakedRaw += stakeRaw;
+            state.StakersCount++;
+            if (stakeRaw >= MasterStakeThreshold)
+                state.MastersCount++;
+        }
+
+        return state;
+    }
+
+    private static async Task<List<SnapshotEventRow>> LoadSnapshotEventsAsync(string chainName, long fromTs, long toTs)
     {
         const string sql = """
             SELECT
@@ -169,29 +369,23 @@ public partial class PhantasmaPlugin
                     (
                         ek."NAME" IN ('TokenStake', 'TokenClaim', 'TokenMint', 'TokenBurn')
                         AND e."PAYLOAD_FORMAT" IN ('legacy.backfill.v1', 'live.v1')
-                        AND e."PAYLOAD_JSON"->'token_event'->>'token' = 'SOUL'
-                    )
-                    OR
-                    (
-                        ek."NAME" IN ('OrganizationAdd', 'OrganizationRemove')
-                        AND e."PAYLOAD_FORMAT" IN ('legacy.backfill.v1', 'live.v1')
+                        AND UPPER(COALESCE(e."PAYLOAD_JSON"->'token_event'->>'token', '')) = 'SOUL'
                     )
                     OR
                     (
                         ek."NAME" IN ('OrderCreated', 'OrderCancelled', 'OrderFilled', 'OrderClosed', 'OrderBid')
                         AND e."PAYLOAD_FORMAT" IN ('legacy.backfill.v1', 'live.v1')
                     )
-              )
+                  )
             ORDER BY
-                ts DESC,
-                block_height DESC,
-                tx_index DESC,
-                event_index DESC,
-                event_id DESC;
+                ts ASC,
+                block_height ASC,
+                tx_index ASC,
+                event_index ASC,
+                event_id ASC;
             """;
 
-        var snapshots = new SortedDictionary<long, SnapshotDailyPoint>();
-        var currentDay = currentDayUnixSeconds;
+        var rows = new List<SnapshotEventRow>(1024);
 
         var connectionString = MainDbContext.GetConnectionString();
         await using var connection = new NpgsqlConnection(connectionString);
@@ -200,110 +394,157 @@ public partial class PhantasmaPlugin
         await using var cmd = new NpgsqlCommand(sql, connection);
         cmd.CommandTimeout = 0;
         cmd.Parameters.AddWithValue("chainName", chainName);
-        cmd.Parameters.AddWithValue("fromTs", missingFromDayUnixSeconds);
-        cmd.Parameters.AddWithValue("toTs", nowUnixSeconds);
-
-        int? currentTxId = null;
-        var txRows = new List<SnapshotEventRow>(32);
+        cmd.Parameters.AddWithValue("fromTs", fromTs);
+        cmd.Parameters.AddWithValue("toTs", toTs);
 
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            var row = new SnapshotEventRow(
+            var payloadJson = reader.IsDBNull(8) ? string.Empty : reader.GetString(8);
+            var payloadIdentity = reader.IsDBNull(9)
+                ? payloadJson
+                : reader.GetString(9);
+
+            rows.Add(new SnapshotEventRow(
                 EventId: reader.GetInt32(0),
                 TxId: reader.GetInt32(1),
                 Kind: reader.GetString(2),
                 TimestampUnixSeconds: reader.GetInt64(3),
                 PayloadFormat: reader.IsDBNull(7) ? string.Empty : reader.GetString(7),
-                PayloadJson: reader.IsDBNull(8) ? string.Empty : reader.GetString(8),
-                PayloadIdentity: reader.IsDBNull(9) ? (reader.IsDBNull(8) ? string.Empty : reader.GetString(8)) : reader.GetString(9)
-            );
-
-            if (currentTxId.HasValue && currentTxId.Value != row.TxId)
-            {
-                currentDay = ProcessTransactionForSnapshotCatchupReverse(txRows, state, snapshots, currentDay,
-                    missingFromDayUnixSeconds);
-                txRows.Clear();
-            }
-
-            currentTxId = row.TxId;
-            txRows.Add(row);
+                PayloadJson: payloadJson,
+                PayloadIdentity: payloadIdentity));
         }
 
-        if (txRows.Count > 0)
-        {
-            currentDay = ProcessTransactionForSnapshotCatchupReverse(txRows, state, snapshots, currentDay,
-                missingFromDayUnixSeconds);
-        }
-
-        while (currentDay > missingFromDayUnixSeconds)
-        {
-            currentDay -= SecondsPerDay;
-            if (!snapshots.ContainsKey(currentDay))
-                snapshots[currentDay] = BuildSnapshotDailyPoint(currentDay, DayEnd(currentDay), state);
-        }
-
-        return snapshots.Values.OrderBy(x => x.DateUnixSeconds).ToList();
+        return rows;
     }
 
-    private static long ProcessTransactionForSnapshotCatchupReverse(List<SnapshotEventRow> txRows,
-        SnapshotCatchupState state, SortedDictionary<long, SnapshotDailyPoint> snapshots, long currentDay,
-        long missingFromDayUnixSeconds)
+    private static bool MatchesSnapshotAnchor(SnapshotCatchupState state, SnapshotAnchorPoint anchor,
+        out string reason)
     {
-        if (txRows.Count == 0)
-            return currentDay;
+        if (state.TotalStakedRaw != anchor.StakedSoulRaw)
+        {
+            reason =
+                $"staked raw mismatch: expected {anchor.StakedSoulRaw}, actual {state.TotalStakedRaw} at {UnixSeconds.Log(anchor.DateUnixSeconds)}";
+            return false;
+        }
 
+        if (state.SoulSupplyRaw != anchor.SoulSupplyRaw)
+        {
+            reason =
+                $"soul supply mismatch: expected {anchor.SoulSupplyRaw}, actual {state.SoulSupplyRaw} at {UnixSeconds.Log(anchor.DateUnixSeconds)}";
+            return false;
+        }
+
+        if (state.StakersCount != anchor.StakersCount)
+        {
+            reason =
+                $"stakers mismatch: expected {anchor.StakersCount}, actual {state.StakersCount} at {UnixSeconds.Log(anchor.DateUnixSeconds)}";
+            return false;
+        }
+
+        if (state.MastersCount != anchor.MastersCount)
+        {
+            reason =
+                $"masters mismatch: expected {anchor.MastersCount}, actual {state.MastersCount} at {UnixSeconds.Log(anchor.DateUnixSeconds)}";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
+    }
+
+    private static bool TryCalibrateSnapshotStateToAnchor(SnapshotCatchupState state, SnapshotAnchorPoint anchor,
+        out string summary)
+    {
+        if (anchor.SoulSupplyRaw <= 0 || anchor.StakedSoulRaw < 0 || anchor.StakersCount < 0 || anchor.MastersCount < 0)
+        {
+            summary = "anchor contains invalid values for calibration";
+            return false;
+        }
+
+        var stakedDelta = anchor.StakedSoulRaw - state.TotalStakedRaw;
+        var supplyDelta = anchor.SoulSupplyRaw - state.SoulSupplyRaw;
+        var stakersDelta = anchor.StakersCount - state.StakersCount;
+        var mastersDelta = anchor.MastersCount - state.MastersCount;
+
+        state.TotalStakedRaw = anchor.StakedSoulRaw;
+        state.SoulSupplyRaw = anchor.SoulSupplyRaw;
+        state.StakersCount = anchor.StakersCount;
+        state.MastersCount = anchor.MastersCount;
+
+        summary =
+            $"delta_staked_raw={stakedDelta}, delta_supply_raw={supplyDelta}, delta_stakers={stakersDelta}, delta_masters={mastersDelta}";
+        return true;
+    }
+
+    private static void ReplaySnapshotEventsReverse(SnapshotCatchupState state, List<SnapshotEventRow> rows)
+    {
+        for (var txGroupEnd = rows.Count - 1; txGroupEnd >= 0;)
+        {
+            var txId = rows[txGroupEnd].TxId;
+            var txGroupStart = txGroupEnd;
+            while (txGroupStart > 0 && rows[txGroupStart - 1].TxId == txId)
+                txGroupStart--;
+
+            var txRows = new List<SnapshotEventRow>(txGroupEnd - txGroupStart + 1);
+            for (var i = txGroupStart; i <= txGroupEnd; i++)
+                txRows.Add(rows[i]);
+
+            ApplySnapshotTransactionReverse(state, txRows);
+            txGroupEnd = txGroupStart - 1;
+        }
+    }
+
+    private static List<SnapshotDailyPoint> BuildDailySnapshotsForward(SnapshotCatchupState state, List<SnapshotEventRow> rows,
+        long rebuildFromDayUnixSeconds, long rebuildToExclusiveDayUnixSeconds)
+    {
+        var snapshots = new List<SnapshotDailyPoint>(
+            (int)((rebuildToExclusiveDayUnixSeconds - rebuildFromDayUnixSeconds) / SecondsPerDay));
+
+        var txGroupStart = 0;
+        var dayCursor = rebuildFromDayUnixSeconds;
+        while (dayCursor < rebuildToExclusiveDayUnixSeconds)
+        {
+            var dayEnd = DayEnd(dayCursor);
+
+            while (txGroupStart < rows.Count)
+            {
+                var txId = rows[txGroupStart].TxId;
+                var txGroupEnd = txGroupStart;
+                while (txGroupEnd + 1 < rows.Count && rows[txGroupEnd + 1].TxId == txId)
+                    txGroupEnd++;
+
+                var txTs = rows[txGroupStart].TimestampUnixSeconds;
+                if (txTs > dayEnd)
+                    break;
+
+                var txRows = new List<SnapshotEventRow>(txGroupEnd - txGroupStart + 1);
+                for (var i = txGroupStart; i <= txGroupEnd; i++)
+                    txRows.Add(rows[i]);
+
+                ApplySnapshotTransactionForward(state, txRows);
+                txGroupStart = txGroupEnd + 1;
+            }
+
+            snapshots.Add(BuildSnapshotDailyPoint(dayCursor, DayEnd(dayCursor), state));
+            dayCursor += SecondsPerDay;
+        }
+
+        return snapshots;
+    }
+
+    private static void ApplySnapshotTransactionReverse(SnapshotCatchupState state, List<SnapshotEventRow> txRows)
+    {
         var deduplicatedRows = DeduplicateSnapshotTxRows(txRows);
         var stakeClaimType = ClassifySnapshotStakeClaimType(deduplicatedRows);
 
-        var pendingStakerRemovals = new HashSet<string>(StringComparer.Ordinal);
-        var pendingMasterRemovals = new HashSet<string>(StringComparer.Ordinal);
-
         foreach (var row in deduplicatedRows)
         {
-            var eventDay = DayStart(row.TimestampUnixSeconds);
-            while (eventDay < currentDay && currentDay > missingFromDayUnixSeconds)
-            {
-                currentDay -= SecondsPerDay;
-                if (!snapshots.ContainsKey(currentDay))
-                    snapshots[currentDay] = BuildSnapshotDailyPoint(currentDay, DayEnd(currentDay), state);
-            }
-
-            if (row.Kind == "OrganizationAdd" || row.Kind == "OrganizationRemove")
-            {
-                if (!TryParseStructuredOrganizationPayload(row.PayloadJson, out var organization, out var memberAddress))
-                    continue;
-
-                if (!IsTargetOrganizationName(organization))
-                    continue;
-
-                if (string.Equals(organization, "stakers", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (row.Kind == "OrganizationAdd")
-                    {
-                        pendingStakerRemovals.Add(memberAddress);
-                    }
-                    else
-                    {
-                        state.Stakers.Add(memberAddress);
-                        if (!state.StakesByAddress.ContainsKey(memberAddress))
-                            state.StakesByAddress[memberAddress] = BigInteger.Zero;
-                    }
-                }
-                else
-                {
-                    if (row.Kind == "OrganizationAdd")
-                        pendingMasterRemovals.Add(memberAddress);
-                    else
-                        state.Masters.Add(memberAddress);
-                }
-
-                continue;
-            }
-
             if (row.Kind != "TokenStake" && row.Kind != "TokenClaim" && row.Kind != "TokenMint" &&
                 row.Kind != "TokenBurn")
+            {
                 continue;
+            }
 
             if (!TryParseStructuredTokenPayload(row.PayloadJson, out var tokenSymbol, out var valueRaw, out var address))
                 continue;
@@ -323,40 +564,77 @@ public partial class PhantasmaPlugin
             switch (row.Kind)
             {
                 case "TokenStake":
-                    if (string.IsNullOrWhiteSpace(address))
-                        continue;
-
-                    if (!state.Stakers.Contains(address) && !pendingStakerRemovals.Contains(address))
-                        continue;
-
-                    ApplyStakeDeltaReverseStrict(state, address, -valueRaw);
+                    ApplyStakeDeltaStrict(state, address, -valueRaw);
                     break;
-
                 case "TokenClaim":
-                    if (string.IsNullOrWhiteSpace(address))
-                        continue;
-
-                    if (!state.Stakers.Contains(address) && !pendingStakerRemovals.Contains(address))
-                        continue;
-
-                    ApplyStakeDeltaReverseStrict(state, address, valueRaw);
+                    ApplyStakeDeltaStrict(state, address, valueRaw);
                     break;
-
                 case "TokenMint":
                     state.SoulSupplyRaw -= valueRaw;
                     if (state.SoulSupplyRaw < 0)
+                    {
                         throw new InvalidOperationException(
-                            $"Stake snapshot catch-up produced negative SOUL supply at event {row.EventId}");
-                    break;
+                            $"Stake snapshot reverse replay produced negative SOUL supply at event {row.EventId}");
+                    }
 
+                    break;
                 case "TokenBurn":
                     state.SoulSupplyRaw += valueRaw;
                     break;
             }
         }
+    }
 
-        FlushSnapshotPendingOrgAddReversals(state, pendingStakerRemovals, pendingMasterRemovals);
-        return currentDay;
+    private static void ApplySnapshotTransactionForward(SnapshotCatchupState state, List<SnapshotEventRow> txRows)
+    {
+        var deduplicatedRows = DeduplicateSnapshotTxRows(txRows);
+        var stakeClaimType = ClassifySnapshotStakeClaimType(deduplicatedRows);
+
+        foreach (var row in deduplicatedRows)
+        {
+            if (row.Kind != "TokenStake" && row.Kind != "TokenClaim" && row.Kind != "TokenMint" &&
+                row.Kind != "TokenBurn")
+            {
+                continue;
+            }
+
+            if (!TryParseStructuredTokenPayload(row.PayloadJson, out var tokenSymbol, out var valueRaw, out var address))
+                continue;
+
+            if (!string.Equals(tokenSymbol, "SOUL", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (valueRaw <= 0)
+                continue;
+
+            if (stakeClaimType != SnapshotStakeClaimType.Normal &&
+                (row.Kind == "TokenStake" || row.Kind == "TokenClaim"))
+            {
+                continue;
+            }
+
+            switch (row.Kind)
+            {
+                case "TokenStake":
+                    ApplyStakeDeltaStrict(state, address, valueRaw);
+                    break;
+                case "TokenClaim":
+                    ApplyStakeDeltaStrict(state, address, -valueRaw);
+                    break;
+                case "TokenMint":
+                    state.SoulSupplyRaw += valueRaw;
+                    break;
+                case "TokenBurn":
+                    state.SoulSupplyRaw -= valueRaw;
+                    if (state.SoulSupplyRaw < 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Stake snapshot forward replay produced negative SOUL supply at event {row.EventId}");
+                    }
+
+                    break;
+            }
+        }
     }
 
     private static List<SnapshotEventRow> DeduplicateSnapshotTxRows(List<SnapshotEventRow> txRows)
@@ -400,6 +678,122 @@ public partial class PhantasmaPlugin
         return hasSoulMarketEvent ? SnapshotStakeClaimType.MarketEvent : SnapshotStakeClaimType.Normal;
     }
 
+    private static void ApplyStakeDeltaStrict(SnapshotCatchupState state, string address, BigInteger delta)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            throw new InvalidOperationException("Stake snapshot replay encountered empty address in token payload.");
+
+        state.StakesByAddress.TryGetValue(address, out var oldValue);
+        var newValue = oldValue + delta;
+        if (newValue < 0)
+        {
+            throw new InvalidOperationException(
+                $"Stake snapshot replay produced negative staked amount for {address}: old={oldValue}, delta={delta}, new={newValue}");
+        }
+
+        var wasStaker = oldValue > 0;
+        var isStaker = newValue > 0;
+        if (wasStaker != isStaker)
+            state.StakersCount += isStaker ? 1 : -1;
+
+        var wasMaster = oldValue >= MasterStakeThreshold;
+        var isMaster = newValue >= MasterStakeThreshold;
+        if (wasMaster != isMaster)
+            state.MastersCount += isMaster ? 1 : -1;
+
+        if (newValue == 0)
+            state.StakesByAddress.Remove(address);
+        else
+            state.StakesByAddress[address] = newValue;
+
+        state.TotalStakedRaw += newValue - oldValue;
+        if (state.TotalStakedRaw < 0)
+        {
+            throw new InvalidOperationException(
+                $"Stake snapshot replay produced negative total staked value: {state.TotalStakedRaw}");
+        }
+    }
+
+    private static SnapshotDailyPoint BuildSnapshotDailyPoint(long dateUnixSeconds, long capturedAtUnixSeconds,
+        SnapshotCatchupState state)
+    {
+        decimal stakingRatio = 0;
+        if (state.SoulSupplyRaw > 0)
+        {
+            try
+            {
+                stakingRatio = (decimal)state.TotalStakedRaw / (decimal)state.SoulSupplyRaw;
+            }
+            catch (OverflowException)
+            {
+                stakingRatio = 0;
+            }
+        }
+
+        return new SnapshotDailyPoint(
+            DateUnixSeconds: dateUnixSeconds,
+            StakedSoulRaw: state.TotalStakedRaw.ToString(CultureInfo.InvariantCulture),
+            SoulSupplyRaw: state.SoulSupplyRaw.ToString(CultureInfo.InvariantCulture),
+            StakersCount: state.StakersCount,
+            MastersCount: state.MastersCount,
+            StakingRatio: stakingRatio,
+            CapturedAtUnixSeconds: capturedAtUnixSeconds
+        );
+    }
+
+    private static async Task<int> UpsertDailySnapshotsAsync(MainDbContext databaseContext, int chainId,
+        List<SnapshotDailyPoint> snapshots)
+    {
+        if (snapshots.Count == 0)
+            return 0;
+
+        var fromDay = snapshots.Min(x => x.DateUnixSeconds);
+        var toDayExclusive = snapshots.Max(x => x.DateUnixSeconds) + SecondsPerDay;
+
+        var existingRows = await databaseContext.StakingProgressDailies
+            .Where(x => x.ChainId == chainId &&
+                        x.DATE_UNIX_SECONDS >= fromDay &&
+                        x.DATE_UNIX_SECONDS < toDayExclusive)
+            .ToDictionaryAsync(x => x.DATE_UNIX_SECONDS);
+
+        var affected = 0;
+        foreach (var snapshot in snapshots)
+        {
+            if (existingRows.TryGetValue(snapshot.DateUnixSeconds, out var row))
+            {
+                row.STAKED_SOUL_RAW = snapshot.StakedSoulRaw;
+                row.SOUL_SUPPLY_RAW = snapshot.SoulSupplyRaw;
+                row.STAKERS_COUNT = snapshot.StakersCount;
+                row.MASTERS_COUNT = snapshot.MastersCount;
+                row.STAKING_RATIO = snapshot.StakingRatio;
+                row.CAPTURED_AT_UNIX_SECONDS = snapshot.CapturedAtUnixSeconds;
+                row.SOURCE = StakeSnapshotCatchupSource;
+            }
+            else
+            {
+                databaseContext.StakingProgressDailies.Add(new StakingProgressDaily
+                {
+                    ChainId = chainId,
+                    DATE_UNIX_SECONDS = snapshot.DateUnixSeconds,
+                    STAKED_SOUL_RAW = snapshot.StakedSoulRaw,
+                    SOUL_SUPPLY_RAW = snapshot.SoulSupplyRaw,
+                    STAKERS_COUNT = snapshot.StakersCount,
+                    MASTERS_COUNT = snapshot.MastersCount,
+                    STAKING_RATIO = snapshot.StakingRatio,
+                    CAPTURED_AT_UNIX_SECONDS = snapshot.CapturedAtUnixSeconds,
+                    SOURCE = StakeSnapshotCatchupSource
+                });
+            }
+
+            affected++;
+        }
+
+        if (affected > 0)
+            await databaseContext.SaveChangesAsync();
+
+        return affected;
+    }
+
     private static bool TryParseStructuredTokenPayload(string payloadJson, out string tokenSymbol, out BigInteger valueRaw,
         out string address)
     {
@@ -420,6 +814,13 @@ public partial class PhantasmaPlugin
             if (root.TryGetProperty("address", out var addressElement) && addressElement.ValueKind == JsonValueKind.String)
                 address = addressElement.GetString() ?? string.Empty;
 
+            if (string.IsNullOrWhiteSpace(address) &&
+                tokenEvent.TryGetProperty("address", out var nestedAddressElement) &&
+                nestedAddressElement.ValueKind == JsonValueKind.String)
+            {
+                address = nestedAddressElement.GetString() ?? string.Empty;
+            }
+
             if (!tokenEvent.TryGetProperty("token", out var tokenElement) || tokenElement.ValueKind != JsonValueKind.String)
                 return false;
 
@@ -427,49 +828,22 @@ public partial class PhantasmaPlugin
             if (string.IsNullOrWhiteSpace(tokenSymbol))
                 return false;
 
-            if (!tokenEvent.TryGetProperty("value_raw", out var valueElement) || valueElement.ValueKind != JsonValueKind.String)
+            if (!tokenEvent.TryGetProperty("value_raw", out var valueElement))
                 return false;
 
-            var valueText = valueElement.GetString();
-            return BigInteger.TryParse(valueText, NumberStyles.Integer, CultureInfo.InvariantCulture, out valueRaw);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static bool TryParseStructuredOrganizationPayload(string payloadJson, out string organization,
-        out string memberAddress)
-    {
-        organization = string.Empty;
-        memberAddress = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(payloadJson))
-            return false;
-
-        try
-        {
-            using var doc = JsonDocument.Parse(payloadJson);
-            var root = doc.RootElement;
-            if (!root.TryGetProperty("organization_event", out var orgEvent) ||
-                orgEvent.ValueKind != JsonValueKind.Object)
+            if (valueElement.ValueKind == JsonValueKind.String)
             {
-                return false;
+                var valueText = valueElement.GetString();
+                return BigInteger.TryParse(valueText, NumberStyles.Integer, CultureInfo.InvariantCulture, out valueRaw);
             }
 
-            if (!orgEvent.TryGetProperty("organization", out var orgElement) ||
-                orgElement.ValueKind != JsonValueKind.String)
+            if (valueElement.ValueKind == JsonValueKind.Number && valueElement.TryGetInt64(out var valueNumber))
             {
-                return false;
+                valueRaw = new BigInteger(valueNumber);
+                return true;
             }
 
-            if (!orgEvent.TryGetProperty("address", out var memberElement) || memberElement.ValueKind != JsonValueKind.String)
-                return false;
-
-            organization = orgElement.GetString() ?? string.Empty;
-            memberAddress = memberElement.GetString() ?? string.Empty;
-            return !string.IsNullOrWhiteSpace(organization) && !string.IsNullOrWhiteSpace(memberAddress);
+            return false;
         }
         catch
         {
@@ -515,148 +889,56 @@ public partial class PhantasmaPlugin
         }
     }
 
-    private static bool IsTargetOrganizationName(string organization)
+    private static async Task<int> RebuildMonthlySnapshotsForRebuiltRangeAsync(MainDbContext databaseContext,
+        Chain chain, long rebuildFromDayUnixSeconds, long rebuildToExclusiveDayUnixSeconds, long currentMonthUnixSeconds)
     {
-        return string.Equals(organization, "stakers", StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(organization, "masters", StringComparison.OrdinalIgnoreCase);
-    }
+        var monthCursor = GetMonthStartUnixSeconds(rebuildFromDayUnixSeconds);
+        var lastRebuiltDay = rebuildToExclusiveDayUnixSeconds - SecondsPerDay;
+        var lastRebuiltMonth = GetMonthStartUnixSeconds(lastRebuiltDay);
 
-    private static void ApplyStakeDeltaReverseStrict(SnapshotCatchupState state, string address, BigInteger delta)
-    {
-        state.StakesByAddress.TryGetValue(address, out var oldValue);
-        var newValue = oldValue + delta;
-        if (newValue < 0)
+        if (monthCursor > lastRebuiltMonth)
+            return 0;
+
+        var affected = 0;
+        while (monthCursor <= lastRebuiltMonth && monthCursor < currentMonthUnixSeconds)
         {
-            throw new InvalidOperationException(
-                $"Stake snapshot catch-up produced negative staked amount for {address}: old={oldValue}, delta={delta}, new={newValue}");
-        }
+            var monthEndDayUnixSeconds = GetMonthEndDayUnixSeconds(monthCursor);
+            var mastersCount = await databaseContext.StakingProgressDailies.AsNoTracking()
+                .Where(x => x.ChainId == chain.ID && x.DATE_UNIX_SECONDS <= monthEndDayUnixSeconds)
+                .OrderByDescending(x => x.DATE_UNIX_SECONDS)
+                .Select(x => (int?)x.MASTERS_COUNT)
+                .FirstOrDefaultAsync();
 
-        state.StakesByAddress[address] = newValue;
-        state.TotalStakedRaw += newValue - oldValue;
-
-        if (state.TotalStakedRaw < 0)
-        {
-            throw new InvalidOperationException(
-                $"Stake snapshot catch-up produced negative total staked value: {state.TotalStakedRaw}");
-        }
-    }
-
-    private static void FlushSnapshotPendingOrgAddReversals(SnapshotCatchupState state,
-        HashSet<string> pendingStakerRemovals, HashSet<string> pendingMasterRemovals)
-    {
-        foreach (var address in pendingMasterRemovals)
-            state.Masters.Remove(address);
-
-        foreach (var address in pendingStakerRemovals)
-        {
-            if (!state.Stakers.Remove(address))
+            if (!mastersCount.HasValue)
+            {
+                monthCursor = GetNextMonthStartUnixSeconds(monthCursor);
                 continue;
+            }
 
-            if (state.StakesByAddress.TryGetValue(address, out var stakeValue))
+            var row = await databaseContext.SoulMastersMonthlies
+                .FirstOrDefaultAsync(x => x.ChainId == chain.ID && x.MONTH_UNIX_SECONDS == monthCursor);
+            if (row == null)
             {
-                state.TotalStakedRaw -= stakeValue;
-                if (state.TotalStakedRaw < 0)
+                row = new SoulMastersMonthly
                 {
-                    throw new InvalidOperationException(
-                        $"Stake snapshot catch-up produced negative total while reversing staker add for {address}");
-                }
+                    ChainId = chain.ID,
+                    MONTH_UNIX_SECONDS = monthCursor
+                };
+                databaseContext.SoulMastersMonthlies.Add(row);
+            }
 
-                state.StakesByAddress.Remove(address);
-            }
-        }
-    }
+            row.MASTERS_COUNT = mastersCount.Value;
+            row.CAPTURED_AT_UNIX_SECONDS = DayEnd(monthEndDayUnixSeconds);
+            row.SOURCE = StakeSnapshotCatchupSource;
+            affected++;
 
-    private static SnapshotDailyPoint BuildSnapshotDailyPoint(long dateUnixSeconds, long capturedAtUnixSeconds,
-        SnapshotCatchupState state)
-    {
-        decimal stakingRatio = 0;
-        if (state.SoulSupplyRaw > 0)
-        {
-            try
-            {
-                stakingRatio = (decimal)state.TotalStakedRaw / (decimal)state.SoulSupplyRaw;
-            }
-            catch (OverflowException)
-            {
-                stakingRatio = 0;
-            }
+            monthCursor = GetNextMonthStartUnixSeconds(monthCursor);
         }
 
-        return new SnapshotDailyPoint(
-            DateUnixSeconds: dateUnixSeconds,
-            StakedSoulRaw: state.TotalStakedRaw.ToString(CultureInfo.InvariantCulture),
-            SoulSupplyRaw: state.SoulSupplyRaw.ToString(CultureInfo.InvariantCulture),
-            StakersCount: state.Stakers.Count,
-            MastersCount: state.Masters.Count,
-            StakingRatio: stakingRatio,
-            CapturedAtUnixSeconds: capturedAtUnixSeconds
-        );
-    }
+        if (affected > 0)
+            await databaseContext.SaveChangesAsync();
 
-    private static async Task<SnapshotCatchupState> LoadCurrentSnapshotStateAsync(MainDbContext databaseContext,
-        int chainId)
-    {
-        var state = new SnapshotCatchupState();
-
-        var soulSupplyRawText = await databaseContext.Tokens.AsNoTracking()
-            .Where(x => x.ChainId == chainId && x.SYMBOL == "SOUL")
-            .Select(x => x.CURRENT_SUPPLY_RAW)
-            .FirstOrDefaultAsync();
-
-        if (!BigInteger.TryParse(soulSupplyRawText, out var soulSupplyRaw) || soulSupplyRaw <= 0)
-            throw new InvalidOperationException("Cannot load current SOUL supply for stake snapshot catch-up.");
-
-        state.SoulSupplyRaw = soulSupplyRaw;
-
-        var stakersOrgId = await databaseContext.Organizations.AsNoTracking()
-            .Where(x => x.NAME.ToLower() == "stakers")
-            .Select(x => (int?)x.ID)
-            .FirstOrDefaultAsync();
-
-        if (stakersOrgId.HasValue)
-        {
-            var stakerRows = await databaseContext.OrganizationAddresses.AsNoTracking()
-                .Where(x => x.OrganizationId == stakersOrgId.Value &&
-                            x.Address.ChainId == chainId &&
-                            x.Address.ADDRESS != "NULL")
-                .Select(x => new { x.Address.ADDRESS, x.Address.STAKED_AMOUNT_RAW })
-                .ToListAsync();
-
-            foreach (var stakerRow in stakerRows)
-            {
-                var stakeValue = BigInteger.Zero;
-                if (!string.IsNullOrWhiteSpace(stakerRow.STAKED_AMOUNT_RAW))
-                    BigInteger.TryParse(stakerRow.STAKED_AMOUNT_RAW, NumberStyles.Integer, CultureInfo.InvariantCulture,
-                        out stakeValue);
-
-                if (stakeValue < 0)
-                    stakeValue = BigInteger.Zero;
-
-                state.Stakers.Add(stakerRow.ADDRESS);
-                state.StakesByAddress[stakerRow.ADDRESS] = stakeValue;
-                state.TotalStakedRaw += stakeValue;
-            }
-        }
-
-        var mastersOrgId = await databaseContext.Organizations.AsNoTracking()
-            .Where(x => x.NAME.ToLower() == "masters")
-            .Select(x => (int?)x.ID)
-            .FirstOrDefaultAsync();
-
-        if (mastersOrgId.HasValue)
-        {
-            var masterAddresses = await databaseContext.OrganizationAddresses.AsNoTracking()
-                .Where(x => x.OrganizationId == mastersOrgId.Value &&
-                            x.Address.ChainId == chainId &&
-                            x.Address.ADDRESS != "NULL")
-                .Select(x => x.Address.ADDRESS)
-                .ToListAsync();
-
-            foreach (var masterAddress in masterAddresses)
-                state.Masters.Add(masterAddress);
-        }
-
-        return state;
+        return affected;
     }
 
     private static async Task<int> BackfillMissingMonthlySnapshotsFromDailyAsync(MainDbContext databaseContext,
