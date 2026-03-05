@@ -170,6 +170,16 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 // Start background sync only for chains that can return block height right now.
                 foreach (var chain in configuredChains)
                 {
+                    // Legacy generation namespaces are stored for historical/backfilled data only.
+                    // They must never be used for live background sync probing.
+                    if (chain.NAME.Contains("-generation-", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Log.Information(
+                            "[{Name}] Chain {ChainName} is a backfill-only generation namespace. Skipping live background sync by design.",
+                            Name, chain.NAME);
+                        continue;
+                    }
+
                     if (CanStartBackgroundSyncForChain(chain.NAME))
                     {
                         _chainList.Add(chain);
