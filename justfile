@@ -133,6 +133,14 @@ docker-prepare:
     mkdir -p Backend.Service.Api/Docker/config Backend.Service.Api/Docker/logs
     mkdir -p Backend.Service.Worker/Docker/config Backend.Service.Worker/Docker/logs
 
+[group('docker')]
+deploy:
+    just docker-deploy
+
+[group('docker')]
+d:
+    just deploy
+
 [group('podman')]
 podman-deploy:
     cd Backend.Service.Api/Docker && sh ./podman-deploy.sh
