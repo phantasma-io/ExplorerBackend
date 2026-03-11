@@ -18,6 +18,12 @@ public static class SeriesMethods
 
         if (series == null)
         {
+            series = DbHelper.GetTracked<Series>(databaseContext)
+                .FirstOrDefault(x => x.ContractId == contractId && x.SERIES_ID == seriesId);
+        }
+
+        if (series == null)
+        {
             series = new Series { ContractId = contractId, SERIES_ID = seriesId };
             // Do not flush here: block ingest controls transaction boundaries and
             // persists the full block atomically with a single commit point.
