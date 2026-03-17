@@ -21,6 +21,8 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
+    private const int BlockHeightRequestTimeoutSeconds = 30;
+    private const int RpcReliefRecoveryCommitThreshold = 4;
     private static List<Chain> _chainList;
 
     private readonly Queue<Tuple<string, string, long>> _methodQueue = new();
@@ -30,6 +32,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private BigInteger height = 0;
     private Dictionary<EventKindMethods.ChainEventKindKey, int> _eventKinds;
     private readonly ConcurrentDictionary<int, SyncLagState> _syncLagStates = new();
+    private readonly ConcurrentDictionary<int, RpcReliefModeState> _rpcReliefModeStates = new();
     private readonly ConcurrentDictionary<int, bool> _lastPersistedCatchupReadyByChain = new();
     private readonly ConcurrentDictionary<string, int> _activeLiveChains = new(StringComparer.OrdinalIgnoreCase);
     private int _noLiveChainsWarningShown;
@@ -40,6 +43,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         public long LastLag;
         public long LastUpdatedAtUnixSeconds;
+    }
+
+    private sealed class RpcReliefModeState
+    {
+        public int IsActive;
+        public int ConsecutiveCommittedBlocks;
+        public long LastModeChangedAtUnixSeconds;
     }
 
     private static HttpClient CreateBlockHeightHttpClient()
@@ -59,6 +69,63 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private SyncLagState GetSyncLagState(int chainId)
     {
         return _syncLagStates.GetOrAdd(chainId, _ => new SyncLagState());
+    }
+
+    private RpcReliefModeState GetRpcReliefModeState(int chainId)
+    {
+        return _rpcReliefModeStates.GetOrAdd(chainId, _ => new RpcReliefModeState());
+    }
+
+    private bool IsRpcReliefMode(int chainId)
+    {
+        var state = GetRpcReliefModeState(chainId);
+        return Volatile.Read(ref state.IsActive) == 1;
+    }
+
+    private void EnterRpcReliefMode(int chainId, string chainName, string reason)
+    {
+        var state = GetRpcReliefModeState(chainId);
+        Interlocked.Exchange(ref state.ConsecutiveCommittedBlocks, 0);
+        var previous = Interlocked.Exchange(ref state.IsActive, 1);
+        if (previous == 0)
+        {
+            Interlocked.Exchange(ref state.LastModeChangedAtUnixSeconds, UnixSeconds.Now());
+            Log.Warning(
+                "[{Name}][RPC relief] Entering load-shed mode for {Chain}: {Reason}",
+                Name,
+                chainName,
+                reason);
+        }
+    }
+
+    private void RegisterRpcReliefCommitSuccess(int chainId, string chainName, long queueDepth)
+    {
+        var state = GetRpcReliefModeState(chainId);
+        if (Volatile.Read(ref state.IsActive) == 0)
+            return;
+
+        // Return to normal mode only after a small streak of committed blocks and an empty queue.
+        // This keeps recovery conservative and avoids flapping on one transient success.
+        if (queueDepth > 0)
+        {
+            Interlocked.Exchange(ref state.ConsecutiveCommittedBlocks, 0);
+            return;
+        }
+
+        var committedBlocks = Interlocked.Increment(ref state.ConsecutiveCommittedBlocks);
+        if (committedBlocks < RpcReliefRecoveryCommitThreshold)
+            return;
+
+        if (Interlocked.Exchange(ref state.IsActive, 0) == 1)
+        {
+            Interlocked.Exchange(ref state.ConsecutiveCommittedBlocks, 0);
+            Interlocked.Exchange(ref state.LastModeChangedAtUnixSeconds, UnixSeconds.Now());
+            Log.Information(
+                "[{Name}][RPC relief] Returning {Chain} to normal mode after {CommittedBlocks} committed blocks.",
+                Name,
+                chainName,
+                committedBlocks);
+        }
     }
 
     private void UpdateSyncLagState(int chainId, long lag)
@@ -141,6 +208,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private bool IsBackgroundSyncAllowed(int chainId)
     {
         if (!TryGetRecentLag(chainId, out var lag))
+            return false;
+
+        if (IsRpcReliefMode(chainId))
             return false;
 
         return lag <= BalanceSyncLagThreshold;
@@ -360,6 +430,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             while (_running)
                 try
                 {
+                    if (!IsBackgroundSyncAllowed(chain.ID))
+                    {
+                        Thread.Sleep(Settings.Default.RomRamProcessingInterval * 1000);
+                        continue;
+                    }
+
                     NewNftsSetRomRam(chain.ID, chain.NAME);
 
                     Thread.Sleep(Settings.Default.RomRamProcessingInterval *
@@ -518,9 +594,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var encodedChain = Uri.EscapeDataString(chain);
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockHeight?chainInput={encodedChain}";
 
-        using var response = BlockHeightHttpClient.GetAsync(url).GetAwaiter().GetResult();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(BlockHeightRequestTimeoutSeconds));
+        using var response = BlockHeightHttpClient.GetAsync(url, cts.Token).GetAwaiter().GetResult();
         using var content = response.Content;
-        var reply = content.ReadAsStringAsync().GetAwaiter().GetResult();
+        var reply = content.ReadAsStringAsync(cts.Token).GetAwaiter().GetResult();
 
         if (!response.IsSuccessStatusCode)
         {

@@ -17,8 +17,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private const int BlockPipelineQueueCapacity = 500;
     private const int BlockPipelineEmptyQueueDelayMs = 100;
+    private const int BlockPipelineReliefQueueDelayMs = 500;
     private const int BlockPipelineErrorDelayMs = 1000;
-    private const int BlockFetchFailureBackoffMaxMs = 30000;
+    private const int BlockFetchFailureBackoffBaseMs = 30000;
+    private const int BlockFetchFailureBackoffMaxMs = 300000;
     private const string BalanceRefetchTimestampKey = "BALANCE_REFETCH_TIMESTAMP";
     private static readonly SemaphoreSlim BalanceRefetchInitLock = new(1, 1);
 
@@ -122,7 +124,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private static int ComputeFetchFailureDelayMs(int stallCount)
     {
         var exponent = Math.Min(Math.Max(0, stallCount - 1), 5);
-        var delay = BlockPipelineErrorDelayMs * (1 << exponent);
+        var delay = BlockFetchFailureBackoffBaseMs * (1 << exponent);
         return Math.Min(BlockFetchFailureBackoffMaxMs, delay);
     }
 
@@ -170,6 +172,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 var lagBeforeFetch = ComputeLagValue(targetHeight, currentHeight);
                 UpdateSyncLagState(state.ChainId, lagBeforeFetch);
                 var allowBalanceSync = UpdateBalanceSyncMode(state.ChainId, state.ChainName, lagBeforeFetch);
+                var queueDepthBeforeFetch = Math.Max(0,
+                    Interlocked.Read(ref state.EnqueuedBlocks) - Interlocked.Read(ref state.ProcessedBlocks));
+                var reliefMode = IsRpcReliefMode(state.ChainId);
 
                 if (Interlocked.CompareExchange(ref state.NextFetchInitialized, 1, 0) == 0)
                     state.NextFetchHeight = currentHeight + 1;
@@ -189,8 +194,19 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     continue;
                 }
 
+                // In relief mode keep fetch and commit tightly coupled: do not request more
+                // blocks while the process stage still has queued work.
+                if (reliefMode && queueDepthBeforeFetch > 0)
+                {
+                    await Task.Delay(BlockPipelineReliefQueueDelayMs);
+                    continue;
+                }
+
                 var fetchBatchStart = state.NextFetchHeight;
-                var fetchBatchSize = BigInteger.Min(FetchBlocksPerIterationMax, targetHeight - fetchBatchStart + 1);
+                var fetchBatchSize = reliefMode
+                    ? BigInteger.One
+                    : BigInteger.Min(FetchBlocksPerIterationMax, targetHeight - fetchBatchStart + 1);
+                var fetchConcurrency = reliefMode ? 1 : BlockFetchConcurrencyMax;
 
                 Log.Information(
                     "[{Name}][Blocks][Fetch] Fetching batch of {Count} blocks starting from {StartHeight} for chain {Chain}...",
@@ -204,13 +220,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     state.ChainName,
                     fetchBatchStart,
                     fetchBatchSize,
-                    BlockFetchConcurrencyMax);
+                    fetchConcurrency);
                 fetchStopwatch.Stop();
                 var blocks = fetchResult.Blocks;
 
                 if (blocks.Count == 0)
                 {
                     var stalledHeight = fetchResult.FailedHeight ?? fetchBatchStart;
+                    EnterRpcReliefMode(state.ChainId, state.ChainName, $"block {stalledHeight} is not retrievable");
                     var stallCount = RegisterFetchStall(state, stalledHeight);
                     var backoffDelayMs = ComputeFetchFailureDelayMs(stallCount);
                     var requestedRangeEnd = fetchBatchStart + fetchBatchSize - 1;
@@ -248,6 +265,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if (fetchResult.UsedFallback)
                 {
+                    EnterRpcReliefMode(state.ChainId, state.ChainName,
+                        $"partial prefix recovered around block {fetchBatchStart}");
                     var resolvedRangeEnd = fetchBatchStart + blocks.Count - 1;
                     Log.Warning(
                         "[{Name}][Blocks][Fetch] Recovered a contiguous prefix for chain {Chain}: {From}-{To} ({Count}/{Requested}) after fallback fetch mode. Next retry starts from {NextHeight}.",
@@ -275,8 +294,11 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             }
             catch (Exception e)
             {
+                EnterRpcReliefMode(state.ChainId, state.ChainName, e.Message);
                 LogEx.Exception("Block fetch", e);
-                await Task.Delay(BlockPipelineErrorDelayMs);
+                await Task.Delay(IsRpcReliefMode(state.ChainId)
+                    ? BlockFetchFailureBackoffBaseMs
+                    : BlockPipelineErrorDelayMs);
             }
         }
     }
@@ -317,6 +339,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 if (!IsBalanceCatchupMode(state.ChainId))
                     RequestBalanceSync(state.ChainName);
+
+                RegisterRpcReliefCommitSuccess(state.ChainId, state.ChainName, queueDepth);
 
                 if (queueDepth > 0 && processedBlocks % 100 == 0)
                 {

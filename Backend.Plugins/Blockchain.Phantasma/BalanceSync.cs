@@ -93,6 +93,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         if (!TryGetRecentLag(chainId, out var lag))
             return;
 
+        if (IsRpcReliefMode(chainId))
+            return;
+
         // During catch-up we intentionally do not process balances:
         // dirty rows accumulate and are drained once we return to normal mode.
         if (IsBalanceCatchupMode(chainId))
