@@ -18,6 +18,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private const int BlockPipelineQueueCapacity = 500;
     private const int BlockPipelineEmptyQueueDelayMs = 100;
     private const int BlockPipelineErrorDelayMs = 1000;
+    private const int BlockFetchFailureBackoffMaxMs = 30000;
     private const string BalanceRefetchTimestampKey = "BALANCE_REFETCH_TIMESTAMP";
     private static readonly SemaphoreSlim BalanceRefetchInitLock = new(1, 1);
 
@@ -34,6 +35,8 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         public long ProcessedBlocks;
         public int Started;
         public int InitialRefetchEnsured;
+        public BigInteger LastStalledHeight;
+        public int ConsecutiveStallCount;
     }
 
     private readonly ConcurrentDictionary<string, BlockPipelineState> _blockPipelines = new(StringComparer.OrdinalIgnoreCase);
@@ -91,6 +94,36 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             return Settings.Default.HeightLimit;
 
         return rpcHeight;
+    }
+
+    private static int RegisterFetchStall(BlockPipelineState state, BigInteger stalledHeight)
+    {
+        // Track repeated failure on the same next-missing height so we can back off
+        // specifically on a stuck window instead of hot-looping the same retry.
+        if (state.LastStalledHeight == stalledHeight)
+        {
+            state.ConsecutiveStallCount++;
+        }
+        else
+        {
+            state.LastStalledHeight = stalledHeight;
+            state.ConsecutiveStallCount = 1;
+        }
+
+        return state.ConsecutiveStallCount;
+    }
+
+    private static void ResetFetchStall(BlockPipelineState state)
+    {
+        state.LastStalledHeight = BigInteger.Zero;
+        state.ConsecutiveStallCount = 0;
+    }
+
+    private static int ComputeFetchFailureDelayMs(int stallCount)
+    {
+        var exponent = Math.Min(Math.Max(0, stallCount - 1), 5);
+        var delay = BlockPipelineErrorDelayMs * (1 << exponent);
+        return Math.Min(BlockFetchFailureBackoffMaxMs, delay);
     }
 
     private async Task BlockFetchLoopAsync(BlockPipelineState state)
@@ -167,8 +200,38 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     state.ChainName);
 
                 var fetchStopwatch = Stopwatch.StartNew();
-                var blocks = await GetBlockRange(state.ChainName, fetchBatchStart, fetchBatchSize);
+                var fetchResult = await GetContiguousBlockPrefix(
+                    state.ChainName,
+                    fetchBatchStart,
+                    fetchBatchSize,
+                    BlockFetchConcurrencyMax);
                 fetchStopwatch.Stop();
+                var blocks = fetchResult.Blocks;
+
+                if (blocks.Count == 0)
+                {
+                    var stalledHeight = fetchResult.FailedHeight ?? fetchBatchStart;
+                    var stallCount = RegisterFetchStall(state, stalledHeight);
+                    var backoffDelayMs = ComputeFetchFailureDelayMs(stallCount);
+                    var requestedRangeEnd = fetchBatchStart + fetchBatchSize - 1;
+
+                    Log.Warning(
+                        "[{Name}][Blocks][Fetch] No progress for chain {Chain}. Stalled at block {BlockHeight} while fetching {From}-{To}. Backing off {DelayMs} ms (failure #{FailureCount}).",
+                        Name,
+                        state.ChainName,
+                        stalledHeight,
+                        fetchBatchStart,
+                        requestedRangeEnd,
+                        backoffDelayMs,
+                        stallCount);
+
+                    await Task.Delay(backoffDelayMs);
+                    continue;
+                }
+
+                // Only successful contiguous prefix is allowed to move forward; any gap
+                // remains pending so process-stage ordering and CURRENT_HEIGHT semantics stay strict.
+                ResetFetchStall(state);
 
                 // BoundedChannel in Wait mode provides backpressure here when process
                 // stage is slower than RPC fetch stage.
@@ -182,6 +245,20 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 var fetchBps = fetchSeconds > 0 ? Math.Round(blocks.Count / fetchSeconds, 2) : 0;
                 var queueDepth = Math.Max(0,
                     Interlocked.Read(ref state.EnqueuedBlocks) - Interlocked.Read(ref state.ProcessedBlocks));
+
+                if (fetchResult.UsedFallback)
+                {
+                    var resolvedRangeEnd = fetchBatchStart + blocks.Count - 1;
+                    Log.Warning(
+                        "[{Name}][Blocks][Fetch] Recovered a contiguous prefix for chain {Chain}: {From}-{To} ({Count}/{Requested}) after fallback fetch mode. Next retry starts from {NextHeight}.",
+                        Name,
+                        state.ChainName,
+                        fetchBatchStart,
+                        resolvedRangeEnd,
+                        blocks.Count,
+                        fetchBatchSize,
+                        state.NextFetchHeight);
+                }
 
                 Log.Information(
                     "[{Name}][Blocks][Fetch] Enqueued {Count} blocks ({From}-{To}) in {FetchTime} sec, {BlocksPerSecond} bps, queue={QueueDepth}",

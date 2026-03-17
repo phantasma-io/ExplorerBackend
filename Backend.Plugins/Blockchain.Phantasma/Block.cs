@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 using Backend.Api;
 using Backend.Commons;
@@ -39,6 +40,12 @@ namespace Backend.Blockchain;
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
     private const int FetchBlocksPerIterationMax = 50;
+    private const int BlockFetchConcurrencyMin = 1;
+    private const int BlockFetchConcurrencyMax = 6;
+    private readonly record struct BlockRangePrefixResult(
+        IReadOnlyList<RpcBlockResult> Blocks,
+        BigInteger? FailedHeight,
+        bool UsedFallback);
     private readonly record struct TxExtendedEventCache(
         TokenCreateData? TokenCreate,
         TokenSeriesCreateData? TokenSeriesCreate,
@@ -470,13 +477,47 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     }
 
 
-    private async Task<List<RpcBlockResult>> GetBlockRange(string chainName, BigInteger fromHeight, BigInteger blockCount)
+    private static int GetBlockFetchConcurrency(int requestedConcurrency, int blockCount)
+    {
+        if (blockCount <= 0)
+            return 0;
+
+        // Keep block fetch fan-out bounded so a single lagging range does not open one
+        // in-flight RPC request per block height and amplify node distress.
+        var normalizedConcurrency = Math.Max(BlockFetchConcurrencyMin, requestedConcurrency);
+        normalizedConcurrency = Math.Min(BlockFetchConcurrencyMax, normalizedConcurrency);
+        return Math.Min(blockCount, normalizedConcurrency);
+    }
+
+    private async Task<List<RpcBlockResult>> GetBlockRange(
+        string chainName,
+        BigInteger fromHeight,
+        BigInteger blockCount,
+        int requestedConcurrency)
     {
         var count = (int)blockCount;
+        if (count <= 0)
+            return new List<RpcBlockResult>();
+
+        var fetchConcurrency = GetBlockFetchConcurrency(requestedConcurrency, count);
         var fetchTasks = new Task<RpcBlockResult>[count];
+        using var concurrencyGate = new SemaphoreSlim(fetchConcurrency, fetchConcurrency);
+
+        async Task<RpcBlockResult> FetchWithGateAsync(BigInteger height)
+        {
+            await concurrencyGate.WaitAsync();
+            try
+            {
+                return await GetBlockAsync(chainName, height);
+            }
+            finally
+            {
+                concurrencyGate.Release();
+            }
+        }
 
         for (var offset = 0; offset < count; offset++)
-            fetchTasks[offset] = GetBlockAsync(chainName, fromHeight + offset);
+            fetchTasks[offset] = FetchWithGateAsync(fromHeight + offset);
 
         var fetchedBlocks = await Task.WhenAll(fetchTasks);
         for (var index = 0; index < fetchedBlocks.Length; index++)
@@ -486,6 +527,57 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
 
         return fetchedBlocks.OrderBy(block => block.Height).ToList();
+    }
+
+    private async Task<BlockRangePrefixResult> GetContiguousBlockPrefix(
+        string chainName,
+        BigInteger fromHeight,
+        BigInteger blockCount,
+        int requestedConcurrency)
+    {
+        if (blockCount <= 0)
+            return new BlockRangePrefixResult(Array.Empty<RpcBlockResult>(), null, false);
+
+        try
+        {
+            var blocks = await GetBlockRange(chainName, fromHeight, blockCount, requestedConcurrency);
+            return new BlockRangePrefixResult(blocks, null, false);
+        }
+        catch (Exception exception)
+        {
+            if (blockCount == 1)
+            {
+                Log.Warning(
+                    "[{Name}][Blocks][Fetch] Failed to fetch block {BlockHeight} for chain {Chain} after retries: {Reason}",
+                    Name,
+                    fromHeight,
+                    chainName,
+                    exception.Message);
+                return new BlockRangePrefixResult(Array.Empty<RpcBlockResult>(), fromHeight, true);
+            }
+
+            // Preserve strict ordering but avoid replaying the full failed window forever:
+            // bisect the range until we isolate the first bad height and keep the
+            // largest contiguous success-prefix starting from fromHeight.
+            var leftCount = blockCount / 2;
+            var rightCount = blockCount - leftCount;
+
+            var leftResult = await GetContiguousBlockPrefix(chainName, fromHeight, leftCount, requestedConcurrency);
+            if (leftResult.Blocks.Count < (int)leftCount)
+                return new BlockRangePrefixResult(leftResult.Blocks, leftResult.FailedHeight, true);
+
+            var rightResult = await GetContiguousBlockPrefix(
+                chainName,
+                fromHeight + leftCount,
+                rightCount,
+                requestedConcurrency);
+
+            var combinedBlocks = new List<RpcBlockResult>(leftResult.Blocks.Count + rightResult.Blocks.Count);
+            combinedBlocks.AddRange(leftResult.Blocks);
+            combinedBlocks.AddRange(rightResult.Blocks);
+
+            return new BlockRangePrefixResult(combinedBlocks, rightResult.FailedHeight, true);
+        }
     }
 
     private void AddAddress(ref List<string> addresses, string address)
