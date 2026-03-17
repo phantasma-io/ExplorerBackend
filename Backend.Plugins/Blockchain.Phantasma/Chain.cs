@@ -58,6 +58,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 updatedChainsCount++;
             }
         }
+        else
+        {
+            Log.Warning(
+                "[{Name}] getChains returned no usable response from RPC {Url}. Chains refresh skipped for now.",
+                Name,
+                url);
+        }
 
         if (updatedChainsCount > 0)
         {
