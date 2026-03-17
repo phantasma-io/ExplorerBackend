@@ -452,7 +452,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockByHeight?chainInput={chainName}&height={blockHeight}";
 
         var startTime = DateTime.Now;
-        var (response, blockLength) = await Client.ApiRequestAsync<RpcBlockResult>(url, 10);
+        // Heavy devnet blocks can take much longer to serialize/transfer than ordinary blocks.
+        // Start at 30s and double the timeout on each retry before giving up.
+        var (response, blockLength) = await Client.ApiRequestAsync<RpcBlockResult>(
+            url,
+            timeoutInSeconds: 30,
+            doubleTimeoutEachAttempt: true);
         if (response == default)
         {
             throw new Exception($"getBlockByHeight call failed: {url}");

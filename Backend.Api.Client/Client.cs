@@ -197,7 +197,12 @@ public static class Client
         return false;
     }
 
-    public static async Task<(T, int)> ApiRequestAsync<T>(string url, int timeoutInSeconds = 0, string postString = null, RequestType requestType = RequestType.Get)
+    public static async Task<(T, int)> ApiRequestAsync<T>(
+        string url,
+        int timeoutInSeconds = 0,
+        string postString = null,
+        RequestType requestType = RequestType.Get,
+        bool doubleTimeoutEachAttempt = false)
     {
         Log.Debug("[API request]: url: " + url);
 
@@ -207,8 +212,12 @@ public static class Client
             {
                 string stringResponse;
 
+                var baseTimeoutSeconds = timeoutInSeconds > 0 ? timeoutInSeconds : 100;
+                var timeoutMultiplier = doubleTimeoutEachAttempt ? (1 << (i - 1)) : 1;
+                var effectiveTimeoutSeconds = baseTimeoutSeconds * timeoutMultiplier;
+
                 using var cts = new CancellationTokenSource();
-                cts.CancelAfter(TimeSpan.FromSeconds(timeoutInSeconds > 0 ? timeoutInSeconds : 100));
+                cts.CancelAfter(TimeSpan.FromSeconds(effectiveTimeoutSeconds));
 
                 DateTime startTime = DateTime.Now;
                 switch (requestType)
