@@ -604,6 +604,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var saveTailDurationMs = 0L;
 
         var eventsAddedCount = 0;
+        var failedTransactionsMissingDebugComment = new List<string>();
 
         // We cache NFTs by (contract, tokenId) so repeated events in the same block
         // reuse one tracked entity and avoid duplicate NFT lookups/upserts.
@@ -974,7 +975,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                 var transaction = await TransactionMethods.UpsertAsync(databaseContext, blockEntity, txIndex,
                     tx.Hash, tx.Timestamp,
-                    tx.Payload, tx.Script, tx.Result,
+                    tx.Payload, tx.Script, tx.Result, tx.DebugComment,
                     tx.Fee, tx.Expiration,
                     tx.GasPrice, tx.GasLimit,
                     tx.State.ToString(), tx.Sender,
@@ -991,6 +992,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 QueueAddressTransactionLink(senderAddress, transaction);
                 QueueAddressTransactionLink(gasPayerAddress, transaction);
                 QueueAddressTransactionLink(gasTargetAddress, transaction);
+
+                if (ShouldEnqueueDebugCommentRecovery(tx.State.ToString(), tx.DebugComment))
+                    failedTransactionsMissingDebugComment.Add(tx.Hash);
 
                 TokenSchemas? carbonSchemasForTx = null;
                 SeriesInfo? carbonSeriesInfo = null;
@@ -1969,6 +1973,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         await blockTransaction.CommitAsync();
         saveTailStopwatch.Stop();
         saveTailDurationMs = saveTailStopwatch.ElapsedMilliseconds;
+
+        foreach (var failedTxHash in failedTransactionsMissingDebugComment)
+            RequestFailedTransactionDebugCommentSync(chainName, failedTxHash,
+                UnixSeconds.Now() + FailedTxDebugCommentRetryIntervalSeconds);
 
         var processingTime = DateTime.Now - startTime;
         if (processingTime.TotalSeconds > 1) // Log only if processing of the block took > 1 second

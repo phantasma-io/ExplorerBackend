@@ -257,6 +257,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             StartupNexusSync(startupChain);
             StartupBlockSync(startupChain.NAME);
             StartupBalanceSync(startupChain);
+            StartupFailedTransactionDebugCommentSync(startupChain);
             StartupRomRamSync(startupChain);
             StartupContractSync(startupChain);
             StartupContractMethodsSync(startupChain);

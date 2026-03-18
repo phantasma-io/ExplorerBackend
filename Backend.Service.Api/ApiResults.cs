@@ -874,6 +874,11 @@ public class Transaction
     public string? result { get; set; }
 
     /// <summary>
+    ///     delayed debug comment returned by RPC for failed transactions
+    /// </summary>
+    public string? debug_comment { get; set; }
+
+    /// <summary>
     ///     payload of the transaction
     /// </summary>
     public string? payload { get; set; }

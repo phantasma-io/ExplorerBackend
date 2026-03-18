@@ -391,6 +391,7 @@ public static class GetTransactions
                         fee_raw = x.FEE_RAW,
                         script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
                         result = x.RESULT,
+                        debug_comment = x.DEBUG_COMMENT,
                         payload = x.PAYLOAD,
                         expiration = x.EXPIRATION.ToString(),
                         gas_price = x.GAS_PRICE,

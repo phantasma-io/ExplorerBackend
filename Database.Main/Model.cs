@@ -1025,6 +1025,7 @@ public class Transaction
     public string PAYLOAD { get; set; }
     public string SCRIPT_RAW { get; set; }
     public string RESULT { get; set; }
+    public string DEBUG_COMMENT { get; set; }
     public string FEE { get; set; }
     public string FEE_RAW { get; set; }
     public long EXPIRATION { get; set; }

@@ -231,6 +231,7 @@ public static class GetBlocks
                                 fee_raw = t.FEE_RAW,
                                 script_raw = t.SCRIPT_RAW,
                                 result = t.RESULT,
+                                debug_comment = t.DEBUG_COMMENT,
                                 payload = t.PAYLOAD,
                                 expiration = t.EXPIRATION.ToString(),
                                 gas_price = t.GAS_PRICE,
