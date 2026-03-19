@@ -21,7 +21,7 @@ public class StakingStatsController : BaseControllerV1
         [FromQuery] string chain = "main",
         [FromQuery] int daily_limit = 0,
         [FromQuery] int monthly_limit = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetStakingStats.Execute(chain, daily_limit, monthly_limit);

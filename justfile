@@ -30,9 +30,13 @@ TIMESTAMP := `date "+%Y%m%d%H%M"`
 b:
     dotnet build ExplorerBackend.sln
 
-[group('format')]
+[group('refactoring')]
 format:
-    dotnet format whitespace ExplorerBackend.sln
+    # Run C# whitespace formatting against every solution variant so the repository-local
+    # .editorconfig stays the single source of truth for formatting.
+    bash -lc 'for sln in ./*.sln; do dotnet format whitespace "$sln"; done'
+
+alias f := format
 
 [group('build')]
 c:

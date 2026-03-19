@@ -121,9 +121,9 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         return response;
     }
 
-	    private int HandleNftsRomRamBatch(int chainId, string chainName, MainDbContext databaseContext, DateTime startTime)
-	    {
-	        var updatedNftCount = 0;
+    private int HandleNftsRomRamBatch(int chainId, string chainName, MainDbContext databaseContext, DateTime startTime)
+    {
+        var updatedNftCount = 0;
 
         // We only hydrate metadata for "ghost" NFTs (ROM is null). This keeps the load bounded and avoids
         // repeatedly re-fetching metadata for already-hydrated NFTs.
@@ -134,63 +134,63 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             .Take(MaxRomRamUpdatesForOneSession)
             .ToList();
 
-	        if (nfts.Count == 0)
-	            return 0;
+        if (nfts.Count == 0)
+            return 0;
 
-	        // Some legacy rows contain TOKEN_ID values decoded as *signed* BigInteger (negative),
-	        // while the node RPC expects token IDs as unsigned 256-bit integers.
-	        // Normalize these IDs in-place to stop repeated "invalid ID" errors and allow hydration.
-	        //
-	        // TODO(legacy): Once all legacy rows are backfilled/normalized in DB, and upstream decoding stops producing
-	        // negative token IDs, remove this in-place normalization.
-	        //
-	        // Important: legacy DB may contain *both* the negative (signed) and normalized (unsigned) representations
-	        // of the same token id in separate rows. In that case, normalizing TOKEN_ID would violate the unique index
-	        // (ContractId, TOKEN_ID), so we merge the duplicate row into the canonical one and delete the duplicate.
-	        var removedNftIds = new HashSet<int>();
-	        foreach (var nft in nfts)
-	        {
-	            if (TryNormalizeTokenIdText(nft.TOKEN_ID, out var normalized))
-	            {
-	                var old = nft.TOKEN_ID;
-	                var contractId = nft.ContractId;
+        // Some legacy rows contain TOKEN_ID values decoded as *signed* BigInteger (negative),
+        // while the node RPC expects token IDs as unsigned 256-bit integers.
+        // Normalize these IDs in-place to stop repeated "invalid ID" errors and allow hydration.
+        //
+        // TODO(legacy): Once all legacy rows are backfilled/normalized in DB, and upstream decoding stops producing
+        // negative token IDs, remove this in-place normalization.
+        //
+        // Important: legacy DB may contain *both* the negative (signed) and normalized (unsigned) representations
+        // of the same token id in separate rows. In that case, normalizing TOKEN_ID would violate the unique index
+        // (ContractId, TOKEN_ID), so we merge the duplicate row into the canonical one and delete the duplicate.
+        var removedNftIds = new HashSet<int>();
+        foreach (var nft in nfts)
+        {
+            if (TryNormalizeTokenIdText(nft.TOKEN_ID, out var normalized))
+            {
+                var old = nft.TOKEN_ID;
+                var contractId = nft.ContractId;
 
-	                var canonicalNftId = databaseContext.Nfts
-	                    .Where(x => x.ContractId == contractId && x.TOKEN_ID == normalized)
-	                    .Select(x => x.ID)
-	                    .FirstOrDefault();
+                var canonicalNftId = databaseContext.Nfts
+                    .Where(x => x.ContractId == contractId && x.TOKEN_ID == normalized)
+                    .Select(x => x.ID)
+                    .FirstOrDefault();
 
-	                if (canonicalNftId > 0 && canonicalNftId != nft.ID)
-	                {
-	                    MergeDuplicateNftRow(databaseContext, duplicateNftId: nft.ID, canonicalNftId, oldTokenId: old,
-	                        canonicalTokenId: normalized);
-	                    databaseContext.Nfts.Remove(nft);
-	                    removedNftIds.Add(nft.ID);
-	                    Log.Warning(
-	                        "[{Name}] Removed duplicate NFT row after TOKEN_ID normalization conflict (symbol {Symbol}): duplicate NftDbId {DuplicateId} ({OldTokenId}) -> canonical NftDbId {CanonicalId} ({CanonicalTokenId})",
-	                        Name, nft.Contract?.SYMBOL, nft.ID, old, canonicalNftId, normalized);
-	                    continue;
-	                }
+                if (canonicalNftId > 0 && canonicalNftId != nft.ID)
+                {
+                    MergeDuplicateNftRow(databaseContext, duplicateNftId: nft.ID, canonicalNftId, oldTokenId: old,
+                        canonicalTokenId: normalized);
+                    databaseContext.Nfts.Remove(nft);
+                    removedNftIds.Add(nft.ID);
+                    Log.Warning(
+                        "[{Name}] Removed duplicate NFT row after TOKEN_ID normalization conflict (symbol {Symbol}): duplicate NftDbId {DuplicateId} ({OldTokenId}) -> canonical NftDbId {CanonicalId} ({CanonicalTokenId})",
+                        Name, nft.Contract?.SYMBOL, nft.ID, old, canonicalNftId, normalized);
+                    continue;
+                }
 
-	                nft.TOKEN_ID = normalized;
+                nft.TOKEN_ID = normalized;
 
-	                // Keep event filters consistent: update Events.TOKEN_ID where it references this NFT row.
-	                databaseContext.Database.ExecuteSqlInterpolated(
-	                    $@"UPDATE ""Events"" SET ""TOKEN_ID"" = {normalized} WHERE ""NftId"" = {nft.ID} AND ""TOKEN_ID"" = {old};");
+                // Keep event filters consistent: update Events.TOKEN_ID where it references this NFT row.
+                databaseContext.Database.ExecuteSqlInterpolated(
+                    $@"UPDATE ""Events"" SET ""TOKEN_ID"" = {normalized} WHERE ""NftId"" = {nft.ID} AND ""TOKEN_ID"" = {old};");
 
-	                Log.Warning(
-	                    "[{Name}] Normalized negative TOKEN_ID for {Symbol} NFT row {NftDbId}: {OldTokenId} -> {NewTokenId}",
-	                    Name, nft.Contract?.SYMBOL, nft.ID, old, normalized);
-	            }
-	        }
+                Log.Warning(
+                    "[{Name}] Normalized negative TOKEN_ID for {Symbol} NFT row {NftDbId}: {OldTokenId} -> {NewTokenId}",
+                    Name, nft.Contract?.SYMBOL, nft.ID, old, normalized);
+            }
+        }
 
-	        foreach (var symbolGroup in nfts
-	                     .Where(x => !removedNftIds.Contains(x.ID))
-	                     .Where(x => x.Contract != null && !string.IsNullOrWhiteSpace(x.Contract.SYMBOL))
-	                     .GroupBy(x => x.Contract.SYMBOL, StringComparer.OrdinalIgnoreCase))
-	        {
-	            var symbol = symbolGroup.Key;
-	            var nftsByTokenId = new Dictionary<string, Nft>(StringComparer.Ordinal);
+        foreach (var symbolGroup in nfts
+                     .Where(x => !removedNftIds.Contains(x.ID))
+                     .Where(x => x.Contract != null && !string.IsNullOrWhiteSpace(x.Contract.SYMBOL))
+                     .GroupBy(x => x.Contract.SYMBOL, StringComparer.OrdinalIgnoreCase))
+        {
+            var symbol = symbolGroup.Key;
+            var nftsByTokenId = new Dictionary<string, Nft>(StringComparer.Ordinal);
             foreach (var nft in symbolGroup)
             {
                 if (string.IsNullOrWhiteSpace(nft.TOKEN_ID))
@@ -237,30 +237,30 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                 Name, Math.Round(updateTime.TotalSeconds, 3), updatedNftCount);
         }
 
-	        return updatedNftCount;
-	    }
+        return updatedNftCount;
+    }
 
-	    private void MergeDuplicateNftRow(MainDbContext databaseContext, int duplicateNftId, int canonicalNftId,
-	        string oldTokenId, string canonicalTokenId)
-	    {
-	        if (duplicateNftId <= 0 || canonicalNftId <= 0 || duplicateNftId == canonicalNftId)
-	            return;
+    private void MergeDuplicateNftRow(MainDbContext databaseContext, int duplicateNftId, int canonicalNftId,
+        string oldTokenId, string canonicalTokenId)
+    {
+        if (duplicateNftId <= 0 || canonicalNftId <= 0 || duplicateNftId == canonicalNftId)
+            return;
 
-	        // Move references off the duplicate row so we can safely delete it.
-	        // We update both by NftId and by the legacy token_id string to catch cases where the relationship was not set.
-	        databaseContext.Database.ExecuteSqlInterpolated(
-	            $@"UPDATE ""Events"" SET ""NftId"" = {canonicalNftId}, ""TOKEN_ID"" = {canonicalTokenId} WHERE ""NftId"" = {duplicateNftId};");
-	        databaseContext.Database.ExecuteSqlInterpolated(
-	            $@"UPDATE ""Events"" SET ""NftId"" = {canonicalNftId}, ""TOKEN_ID"" = {canonicalTokenId} WHERE ""NftId"" IS NULL AND ""ContractId"" = (SELECT ""ContractId"" FROM ""Nfts"" WHERE ""ID"" = {canonicalNftId}) AND ""TOKEN_ID"" = {oldTokenId};");
+        // Move references off the duplicate row so we can safely delete it.
+        // We update both by NftId and by the legacy token_id string to catch cases where the relationship was not set.
+        databaseContext.Database.ExecuteSqlInterpolated(
+            $@"UPDATE ""Events"" SET ""NftId"" = {canonicalNftId}, ""TOKEN_ID"" = {canonicalTokenId} WHERE ""NftId"" = {duplicateNftId};");
+        databaseContext.Database.ExecuteSqlInterpolated(
+            $@"UPDATE ""Events"" SET ""NftId"" = {canonicalNftId}, ""TOKEN_ID"" = {canonicalTokenId} WHERE ""NftId"" IS NULL AND ""ContractId"" = (SELECT ""ContractId"" FROM ""Nfts"" WHERE ""ID"" = {canonicalNftId}) AND ""TOKEN_ID"" = {oldTokenId};");
 
-	        databaseContext.Database.ExecuteSqlInterpolated(
-	            $@"UPDATE ""Infusions"" SET ""NftId"" = {canonicalNftId} WHERE ""NftId"" = {duplicateNftId};");
-	        databaseContext.Database.ExecuteSqlInterpolated(
-	            $@"UPDATE ""Nfts"" SET ""InfusedIntoId"" = {canonicalNftId} WHERE ""InfusedIntoId"" = {duplicateNftId};");
+        databaseContext.Database.ExecuteSqlInterpolated(
+            $@"UPDATE ""Infusions"" SET ""NftId"" = {canonicalNftId} WHERE ""NftId"" = {duplicateNftId};");
+        databaseContext.Database.ExecuteSqlInterpolated(
+            $@"UPDATE ""Nfts"" SET ""InfusedIntoId"" = {canonicalNftId} WHERE ""InfusedIntoId"" = {duplicateNftId};");
 
-	        // NftOwnerships has a unique index on (AddressId, NftId); move rows when possible and drop redundant ones.
-	        databaseContext.Database.ExecuteSqlInterpolated(
-	            $@"
+        // NftOwnerships has a unique index on (AddressId, NftId); move rows when possible and drop redundant ones.
+        databaseContext.Database.ExecuteSqlInterpolated(
+            $@"
 UPDATE ""NftOwnerships"" o
 SET ""NftId"" = {canonicalNftId}
 WHERE ""NftId"" = {duplicateNftId}
@@ -268,9 +268,9 @@ WHERE ""NftId"" = {duplicateNftId}
     SELECT 1 FROM ""NftOwnerships"" o2
     WHERE o2.""AddressId"" = o.""AddressId"" AND o2.""NftId"" = {canonicalNftId}
   );");
-	        databaseContext.Database.ExecuteSqlInterpolated(
-	            $@"DELETE FROM ""NftOwnerships"" WHERE ""NftId"" = {duplicateNftId};");
-	    }
+        databaseContext.Database.ExecuteSqlInterpolated(
+            $@"DELETE FROM ""NftOwnerships"" WHERE ""NftId"" = {duplicateNftId};");
+    }
 
     private int UpdateNftChunk(MainDbContext databaseContext, int chainId, string symbol, List<string> tokenIds,
         Dictionary<string, Nft> nftsByTokenId)
