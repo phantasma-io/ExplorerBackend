@@ -135,6 +135,7 @@ public static class GetBlocks
 
             await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
+            var includeEventData = with_event_data == 1;
 
             //just need that since we build the model so it knows what we can use
             var query = databaseContext.Blocks.AsQueryable().AsNoTracking();
@@ -271,8 +272,8 @@ public static class GetBlocks
                                             date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
                                             transaction_hash = t.HASH,
                                             token_id = e.TOKEN_ID,
-                                            payload_json = e.PAYLOAD_JSON,
-                                            raw_data = e.RAW_DATA,
+                                            payload_json = includeEventData ? e.PAYLOAD_JSON : null,
+                                            raw_data = includeEventData ? e.RAW_DATA : null,
                                             event_kind = e.EventKind.NAME,
                                             address = e.Address.ADDRESS,
                                             address_name = e.Address.ADDRESS_NAME,
@@ -326,8 +327,8 @@ public static class GetBlocks
                                         },
                                         ChainId = e.ChainId,
                                         TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
-                                        PayloadJson = e.PAYLOAD_JSON,
-                                        RawData = e.RAW_DATA,
+                                        PayloadJson = includeEventData ? e.PAYLOAD_JSON : null,
+                                        RawData = includeEventData ? e.RAW_DATA : null,
                                         NftMetadata = e.Nft != null ? e.Nft.METADATA : null,
                                         SeriesMetadata = e.Nft != null && e.Nft.Series != null
                                                 ? e.Nft.Series.METADATA

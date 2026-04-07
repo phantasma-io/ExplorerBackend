@@ -560,8 +560,14 @@ internal static class EventPayloadMapper
         string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
-        if (!withEventData || projections == null || projections.Count == 0)
+        if (projections == null || projections.Count == 0)
         {
+            return;
+        }
+
+        if (!withEventData)
+        {
+            RedactRawPayloadFields(projections);
             return;
         }
 
@@ -637,6 +643,22 @@ internal static class EventPayloadMapper
                     raw_data = envelope.Projection.RawData
                 };
             }
+        }
+    }
+
+    internal static void RedactRawPayloadFields(IReadOnlyCollection<EventProjection> projections)
+    {
+        if (projections == null || projections.Count == 0)
+            return;
+
+        foreach (var projection in projections)
+        {
+            if (projection?.ApiEvent == null)
+                continue;
+
+            projection.ApiEvent.payload_json = null;
+            projection.ApiEvent.raw_data = null;
+            projection.ApiEvent.unknown_event = null;
         }
     }
 

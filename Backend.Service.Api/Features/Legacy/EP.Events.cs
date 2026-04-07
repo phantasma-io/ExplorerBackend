@@ -192,6 +192,7 @@ public static class GetEvents
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
+            var includeEventData = with_event_data == 1;
 
             int? chainId = null;
 
@@ -502,8 +503,8 @@ public static class GetEvents
                         block_hash = x.Transaction.Block.HASH,
                         transaction_hash = x.Transaction.HASH,
                         token_id = x.TOKEN_ID,
-                        payload_json = x.PAYLOAD_JSON,
-                        raw_data = x.RAW_DATA,
+                        payload_json = includeEventData ? x.PAYLOAD_JSON : null,
+                        raw_data = includeEventData ? x.RAW_DATA : null,
                         event_kind = x.EventKind.NAME,
                         address = x.Address.ADDRESS,
                         address_name = x.Address.ADDRESS_NAME,
@@ -554,8 +555,8 @@ public static class GetEvents
                     },
                     ChainId = x.ChainId,
                     TimestampUnixSeconds = x.TIMESTAMP_UNIX_SECONDS,
-                    PayloadJson = x.PAYLOAD_JSON,
-                    RawData = x.RAW_DATA,
+                    PayloadJson = includeEventData ? x.PAYLOAD_JSON : null,
+                    RawData = includeEventData ? x.RAW_DATA : null,
                     NftMetadata = x.Nft != null ? x.Nft.METADATA : null,
                     SeriesMetadata = x.Nft != null && x.Nft.Series != null ? x.Nft.Series.METADATA : null,
                     NftCreator = x.Nft != null && x.Nft.CreatorAddress != null ? x.Nft.CreatorAddress.ADDRESS : null
