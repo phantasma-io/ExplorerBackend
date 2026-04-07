@@ -186,6 +186,7 @@ public static class GetTransactions
             var startTime = DateTime.Now;
             await using MainDbContext databaseContext = new();
             var fiatPricesInUsd = FiatExchangeRateMethods.GetPrices(databaseContext);
+            var includeEventData = with_event_data == 1;
 
             var query = databaseContext.Transactions.AsQueryable().AsNoTracking();
 
@@ -391,6 +392,7 @@ public static class GetTransactions
                         fee_raw = x.FEE_RAW,
                         script_raw = with_script == 1 ? x.SCRIPT_RAW : null,
                         result = x.RESULT,
+                        debug_comment = x.DEBUG_COMMENT,
                         payload = x.PAYLOAD,
                         expiration = x.EXPIRATION.ToString(),
                         gas_price = x.GAS_PRICE,
@@ -430,8 +432,8 @@ public static class GetTransactions
                                 date = e.TIMESTAMP_UNIX_SECONDS.ToString(),
                                 transaction_hash = x.HASH,
                                 token_id = e.TOKEN_ID,
-                                payload_json = e.PAYLOAD_JSON,
-                                raw_data = e.RAW_DATA,
+                                payload_json = includeEventData ? e.PAYLOAD_JSON : null,
+                                raw_data = includeEventData ? e.RAW_DATA : null,
                                 event_kind = e.EventKind.NAME,
                                 address = e.Address.ADDRESS,
                                 address_name = e.Address.ADDRESS_NAME,
@@ -486,8 +488,8 @@ public static class GetTransactions
                             },
                             ChainId = e.ChainId,
                             TimestampUnixSeconds = e.TIMESTAMP_UNIX_SECONDS,
-                            PayloadJson = e.PAYLOAD_JSON,
-                            RawData = e.RAW_DATA,
+                            PayloadJson = includeEventData ? e.PAYLOAD_JSON : null,
+                            RawData = includeEventData ? e.RAW_DATA : null,
                             NftMetadata = e.Nft != null ? e.Nft.METADATA : null,
                             SeriesMetadata = e.Nft != null && e.Nft.Series != null
                                     ? e.Nft.Series.METADATA

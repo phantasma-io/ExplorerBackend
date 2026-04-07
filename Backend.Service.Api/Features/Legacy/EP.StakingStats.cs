@@ -31,7 +31,7 @@ public static class GetStakingStats
         string chain = "main",
         int daily_limit = 0,
         int monthly_limit = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         try

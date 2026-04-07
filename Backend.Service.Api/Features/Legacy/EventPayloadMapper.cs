@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 using Backend.Commons;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
+using PhantasmaPhoenix.Core;
+using PhantasmaPhoenix.Cryptography;
+using PhantasmaPhoenix.Protocol;
+using PhantasmaPhoenix.Protocol.ExtendedEvents;
 using CommonsUtils = Backend.Commons.Utils;
 using DbAddress = Database.Main.Address;
 using DbChain = Database.Main.Chain;
@@ -22,8 +26,24 @@ internal static class EventPayloadMapper
     {
         PropertyNameCaseInsensitive = true
     };
+    // Temporary Koinly/runtime fix: legacy history often has token-like events only in RAW_DATA.
+    // Keep this runtime hydration until the same semantics are materialized into DB payloads.
+    private static readonly HashSet<string> LegacyRawTokenEventKinds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "TokenMint",
+        "TokenClaim",
+        "TokenBurn",
+        "TokenSend",
+        "TokenReceive",
+        "TokenStake",
+        "CrownRewards",
+        "Inflation"
+    };
 
     private const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas sentinel
+    private static readonly BigInteger LegacyTokenIdModulus = BigInteger.One << 256;
+
+    internal readonly record struct LegacyTokenEventPayloadData(string Token, string ValueRaw, string ChainName);
 
     internal sealed class EventProjection
     {
@@ -56,6 +76,7 @@ internal static class EventPayloadMapper
         private readonly Dictionary<ChainAddressKey, DbAddress> _addresses;
         private readonly Dictionary<string, DbPlatform> _platforms;
         private readonly Dictionary<int, DbChain> _chains;
+        private readonly Dictionary<int, int> _canonicalTokenChainIds = new();
 
         public EventPayloadContext(
             IEnumerable<DbToken> tokens,
@@ -68,6 +89,19 @@ internal static class EventPayloadMapper
             _addresses = addresses.ToDictionary(x => new ChainAddressKey(x.ChainId, x.ADDRESS));
             _platforms = platforms.ToDictionary(x => x.NAME, StringComparer.OrdinalIgnoreCase);
             _chains = chains.ToDictionary(x => x.ID);
+            var chainIdsByName = _chains.Values
+                .GroupBy(x => x.NAME, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First().ID, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var chain in _chains.Values)
+            {
+                // Legacy generation chains reuse canonical token definitions from the base chain
+                // so runtime hydration can still resolve decimals and fungibility correctly.
+                var canonicalName = GetCanonicalTokenChainName(chain.NAME);
+                if (canonicalName == null) continue;
+                if (!chainIdsByName.TryGetValue(canonicalName, out var canonicalChainId)) continue;
+                _canonicalTokenChainIds[chain.ID] = canonicalChainId;
+            }
             TokenPrices = tokenPrices;
         }
 
@@ -75,9 +109,16 @@ internal static class EventPayloadMapper
 
         public DbToken GetToken(int chainId, string symbol)
         {
-            return string.IsNullOrEmpty(symbol)
-                ? null
-                : _tokens.GetValueOrDefault(new ChainSymbolKey(chainId, symbol));
+            if (string.IsNullOrEmpty(symbol))
+                return null;
+
+            var token = _tokens.GetValueOrDefault(new ChainSymbolKey(chainId, symbol));
+            if (token != null)
+                return token;
+
+            return _canonicalTokenChainIds.TryGetValue(chainId, out var canonicalChainId)
+                ? _tokens.GetValueOrDefault(new ChainSymbolKey(canonicalChainId, symbol))
+                : null;
         }
 
         public DbAddress GetAddress(int chainId, string address)
@@ -100,14 +141,14 @@ internal static class EventPayloadMapper
         public static async Task<EventPayloadContext> BuildAsync(MainDbContext databaseContext,
             IReadOnlyCollection<EventPayloadEnvelope> events, bool withFiat)
         {
-            var chainIds = new HashSet<int>();
+            var requestedChainIds = new HashSet<int>();
             var tokenKeys = new HashSet<ChainSymbolKey>();
             var addressKeys = new HashSet<ChainAddressKey>();
             var platformNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var envelope in events)
             {
-                chainIds.Add(envelope.Projection.ChainId);
+                requestedChainIds.Add(envelope.Projection.ChainId);
                 var payload = envelope.Payload;
                 if (payload == null) continue;
 
@@ -152,29 +193,54 @@ internal static class EventPayloadMapper
                     platformNames.Add(payload.TransactionSettleEvent.Platform);
             }
 
-            var chainIdList = chainIds.ToList();
+            var requestedChainIdList = requestedChainIds.ToList();
+            var chains = requestedChainIdList.Count == 0
+                ? new List<DbChain>()
+                : await databaseContext.Chains.Where(c => requestedChainIdList.Contains(c.ID)).ToListAsync();
+
+            var tokenLookupChainIds = new HashSet<int>(requestedChainIds);
+            var canonicalChainNames = chains
+                .Select(x => GetCanonicalTokenChainName(x.NAME))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (canonicalChainNames.Count > 0)
+            {
+                var canonicalChains = await databaseContext.Chains
+                    .Where(c => canonicalChainNames.Contains(c.NAME))
+                    .ToListAsync();
+
+                foreach (var canonicalChain in canonicalChains)
+                {
+                    tokenLookupChainIds.Add(canonicalChain.ID);
+                }
+
+                chains = chains
+                    .Concat(canonicalChains)
+                    .GroupBy(c => c.ID)
+                    .Select(g => g.First())
+                    .ToList();
+            }
+
             var symbolList = tokenKeys.Select(x => x.Symbol).Distinct().ToList();
             var addressList = addressKeys.Select(x => x.Address).Distinct().ToList();
 
             var tokens = tokenKeys.Count == 0
                 ? new List<DbToken>()
                 : await databaseContext.Tokens
-                    .Where(t => chainIds.Contains(t.ChainId) && symbolList.Contains(t.SYMBOL))
+                    .Where(t => tokenLookupChainIds.Contains(t.ChainId) && symbolList.Contains(t.SYMBOL))
                     .ToListAsync();
 
             var addresses = addressKeys.Count == 0
                 ? new List<DbAddress>()
                 : await databaseContext.Addresses
-                    .Where(a => chainIds.Contains(a.ChainId) && addressList.Contains(a.ADDRESS))
+                    .Where(a => requestedChainIds.Contains(a.ChainId) && addressList.Contains(a.ADDRESS))
                     .ToListAsync();
 
             var platforms = platformNames.Count == 0
                 ? new List<DbPlatform>()
                 : await databaseContext.Platforms.Where(p => platformNames.Contains(p.NAME)).ToListAsync();
-
-            var chains = chainIdList.Count == 0
-                ? new List<DbChain>()
-                : await databaseContext.Chains.Where(c => chainIdList.Contains(c.ID)).ToListAsync();
 
             var tokenPrices = withFiat ? TokenMethods.GetPrices(databaseContext, "USD") : Array.Empty<TokenMethods.TokenPrice>();
 
@@ -190,7 +256,20 @@ internal static class EventPayloadMapper
 
     internal static StringEvent ParseStringEvent(string payloadJson)
     {
-        return BuildStringEvent(ParsePayload(payloadJson));
+        EventPayload payload;
+        if (string.IsNullOrWhiteSpace(payloadJson))
+            return null;
+
+        try
+        {
+            payload = JsonSerializer.Deserialize<EventPayload>(payloadJson, PayloadJsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+
+        return BuildStringEvent(payload);
     }
 
     private sealed class EventPayload
@@ -481,15 +560,21 @@ internal static class EventPayloadMapper
         string fiatCurrency,
         Dictionary<string, decimal> fiatPricesInUsd)
     {
-        if (!withEventData || projections == null || projections.Count == 0)
+        if (projections == null || projections.Count == 0)
         {
+            return;
+        }
+
+        if (!withEventData)
+        {
+            RedactRawPayloadFields(projections);
             return;
         }
 
         var envelopes = projections.Select(p => new EventPayloadEnvelope
         {
             Projection = p,
-            Payload = ParsePayload(p.PayloadJson)
+            Payload = ParsePayload(p)
         })
             .ToArray();
 
@@ -527,6 +612,7 @@ internal static class EventPayloadMapper
             apiEvent.sale_event = BuildSaleEvent(payload);
             apiEvent.string_event = BuildStringEvent(payload);
             apiEvent.token_event = BuildTokenEvent(payload, context, envelope.Projection.ChainId);
+            apiEvent.token_id ??= payload.TokenId;
             apiEvent.token_create_event = BuildTokenCreateEvent(payload, context, envelope.Projection.ChainId);
             apiEvent.token_series_event = BuildTokenSeriesEvent(payload, context, envelope.Projection.ChainId);
             apiEvent.transaction_settle_event = BuildTransactionSettleEvent(payload, context);
@@ -560,21 +646,142 @@ internal static class EventPayloadMapper
         }
     }
 
-    private static EventPayload ParsePayload(string payloadJson)
+    internal static void RedactRawPayloadFields(IReadOnlyCollection<EventProjection> projections)
     {
+        if (projections == null || projections.Count == 0)
+            return;
+
+        foreach (var projection in projections)
+        {
+            if (projection?.ApiEvent == null)
+                continue;
+
+            projection.ApiEvent.payload_json = null;
+            projection.ApiEvent.raw_data = null;
+            projection.ApiEvent.unknown_event = null;
+        }
+    }
+
+    private static EventPayload ParsePayload(EventProjection projection)
+    {
+        EventPayload payload;
+
+        var payloadJson = projection.PayloadJson;
         if (string.IsNullOrWhiteSpace(payloadJson))
+        {
+            payload = new EventPayload();
+        }
+        else
+        {
+            try
+            {
+                payload = JsonSerializer.Deserialize<EventPayload>(payloadJson, PayloadJsonOptions);
+            }
+            catch
+            {
+                payload = new EventPayload();
+            }
+        }
+
+        payload.EventKind ??= projection.ApiEvent?.event_kind;
+        payload.Chain ??= projection.ApiEvent?.chain;
+        payload.Address ??= projection.ApiEvent?.address;
+        payload.TokenId ??= projection.ApiEvent?.token_id;
+
+        // Temporary Koinly/runtime fix: if PAYLOAD_JSON does not contain token_event, recover it
+        // from RAW_DATA so exports and event views can read historical token movements.
+        if (payload.TokenEvent == null &&
+            TryDecodeLegacyTokenEventPayload(payload.EventKind, projection.RawData, out var decoded))
+        {
+            payload.TokenEvent = new TokenEventPayload
+            {
+                Token = decoded.Token,
+                ValueRaw = decoded.ValueRaw,
+                ChainName = string.IsNullOrWhiteSpace(decoded.ChainName) ? payload.Chain : decoded.ChainName
+            };
+        }
+
+        var hasKnownPayload =
+            !string.IsNullOrWhiteSpace(payload.Address) ||
+            !string.IsNullOrWhiteSpace(payload.TokenId) ||
+            payload.AddressEvent != null ||
+            payload.ChainEvent != null ||
+            payload.GasEvent != null ||
+            payload.GovernanceGasConfigEvent != null ||
+            payload.GovernanceChainConfigEvent != null ||
+            payload.SpecialResolutionEvent != null ||
+            payload.HashEvent != null ||
+            payload.InfusionEvent != null ||
+            payload.MarketEvent != null ||
+            payload.OrganizationEvent != null ||
+            payload.SaleEvent != null ||
+            payload.StringEvent != null ||
+            payload.TokenEvent != null ||
+            payload.TokenCreateEvent != null ||
+            payload.TokenSeriesEvent != null ||
+            payload.TransactionSettleEvent != null;
+
+        if (!hasKnownPayload && string.IsNullOrWhiteSpace(payload.EventKind))
         {
             return null;
         }
 
+        return payload;
+    }
+
+    private static string GetCanonicalTokenChainName(string chainName)
+    {
+        if (string.IsNullOrWhiteSpace(chainName))
+            return null;
+
+        const string generationMarker = "-generation-";
+        var markerIndex = chainName.IndexOf(generationMarker, StringComparison.OrdinalIgnoreCase);
+        return markerIndex > 0 ? chainName[..markerIndex] : null;
+    }
+
+    internal static bool TryDecodeLegacyTokenEventPayload(string eventKind, string rawData,
+        out LegacyTokenEventPayloadData payloadData)
+    {
+        payloadData = default;
+
+        if (string.IsNullOrWhiteSpace(eventKind) || !LegacyRawTokenEventKinds.Contains(eventKind))
+            return false;
+
+        if (string.IsNullOrWhiteSpace(rawData))
+            return false;
+
         try
         {
-            return JsonSerializer.Deserialize<EventPayload>(payloadJson, PayloadJsonOptions);
+            var parsed = Serialization.Unserialize<TokenEventData>(Base16.Decode(rawData));
+            if (string.IsNullOrWhiteSpace(parsed.Symbol))
+                return false;
+
+            payloadData = new LegacyTokenEventPayloadData(
+                parsed.Symbol,
+                parsed.Value.ToString(),
+                parsed.ChainName ?? string.Empty
+            );
+            return true;
         }
         catch
         {
-            return null;
+            return false;
         }
+    }
+
+    internal static string NormalizeLegacyTokenIdText(string tokenIdText)
+    {
+        if (string.IsNullOrWhiteSpace(tokenIdText) || !BigInteger.TryParse(tokenIdText, out var parsed))
+            return tokenIdText;
+
+        if (parsed.Sign >= 0)
+            return parsed.ToString();
+
+        var normalized = parsed % LegacyTokenIdModulus;
+        if (normalized.Sign < 0)
+            normalized += LegacyTokenIdModulus;
+
+        return normalized.ToString();
     }
 
     private static string ExtractGovernanceValue(Dictionary<string, JsonElement> payload, params string[] keys)
@@ -889,9 +1096,24 @@ internal static class EventPayloadMapper
 
         var tokenEntry = context.GetToken(chainId, payload.TokenEvent.Token);
         var valueRaw = payload.TokenEvent.ValueRaw ?? payload.TokenEvent.Value;
-        var value = tokenEntry != null && tokenEntry.FUNGIBLE && !string.IsNullOrEmpty(valueRaw)
-            ? ApplyDecimals(valueRaw, tokenEntry.DECIMALS)
-            : payload.TokenEvent.Value ?? valueRaw;
+        string value;
+
+        if (tokenEntry != null && tokenEntry.FUNGIBLE && !string.IsNullOrEmpty(valueRaw))
+        {
+            value = ApplyDecimals(valueRaw, tokenEntry.DECIMALS);
+        }
+        else if (tokenEntry != null && !tokenEntry.FUNGIBLE && !string.IsNullOrWhiteSpace(valueRaw))
+        {
+            // Legacy pre-gen3 history can expose NFT token ids as signed text; normalize them
+            // so downstream export logic does not confuse token ids with broken numeric values.
+            var tokenId = NormalizeLegacyTokenIdText(valueRaw);
+            payload.TokenId ??= tokenId;
+            value = tokenId;
+        }
+        else
+        {
+            value = payload.TokenEvent.Value ?? valueRaw;
+        }
 
         return new TokenEvent
         {

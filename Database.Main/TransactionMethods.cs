@@ -10,11 +10,29 @@ namespace Database.Main;
 
 public static class TransactionMethods
 {
+    private static void RefreshMutableTransactionFields(Transaction entry, string result, string debugComment)
+    {
+        if (entry == null)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(result) &&
+            !string.Equals(entry.RESULT, result, System.StringComparison.Ordinal))
+        {
+            entry.RESULT = result;
+        }
+
+        if (!string.IsNullOrWhiteSpace(debugComment) &&
+            !string.Equals(entry.DEBUG_COMMENT, debugComment, System.StringComparison.Ordinal))
+        {
+            entry.DEBUG_COMMENT = debugComment;
+        }
+    }
+
     // Checks if "Transactions" table has entry with given name,
     // and adds new entry, if there's no entry available.
     // Returns new or existing entry's Id.
     public static async Task<Transaction> UpsertAsync(MainDbContext databaseContext, Block block, int txIndex, string hash,
-        ulong timestampUnixSeconds, string payload, string scriptRaw, string result, string fee, ulong expiration,
+        ulong timestampUnixSeconds, string payload, string scriptRaw, string result, string debugComment, string fee, ulong expiration,
         string gasPrice, string gasLimit, string state, string sender, string gasPayer, string gasTarget,
         byte? carbonTxType = null, string carbonTxData = null,
         Address senderAddress = null, Address gasPayerAddress = null, Address gasTargetAddress = null,
@@ -26,7 +44,10 @@ public static class TransactionMethods
         const string UnlimitedGasRaw = "18446744073709551615"; // TxMsg.NoMaxGas
 
         if (existingTransactionsByHash != null && existingTransactionsByHash.TryGetValue(hash, out var existingByHash))
+        {
+            RefreshMutableTransactionFields(existingByHash, result, debugComment);
             return existingByHash;
+        }
 
         var entry = DbHelper
             .GetTracked<Transaction>(databaseContext)
@@ -34,6 +55,7 @@ public static class TransactionMethods
 
         if (entry != null)
         {
+            RefreshMutableTransactionFields(entry, result, debugComment);
             existingTransactionsByHash?[hash] = entry;
             return entry;
         }
@@ -43,7 +65,10 @@ public static class TransactionMethods
             entry = await databaseContext.Transactions
                 .FirstOrDefaultAsync(x => x.Block == block && x.HASH == hash);
             if (entry != null)
+            {
+                RefreshMutableTransactionFields(entry, result, debugComment);
                 return entry;
+            }
         }
 
         var transactionState = TransactionStateMethods.Upsert(databaseContext, state, false);
@@ -74,6 +99,7 @@ public static class TransactionMethods
             PAYLOAD = payload,
             SCRIPT_RAW = scriptRaw,
             RESULT = result,
+            DEBUG_COMMENT = debugComment,
             FEE = feeFormatted,
             FEE_RAW = fee,
             EXPIRATION = (long)expiration,
@@ -165,6 +191,7 @@ FROM generate_series(1, @row_count);
         var payloads = new string[count];
         var scriptRaw = new string[count];
         var results = new string[count];
+        var debugComments = new string[count];
         var fee = new string[count];
         var feeRaw = new string[count];
         var expiration = new long[count];
@@ -193,6 +220,7 @@ FROM generate_series(1, @row_count);
             payloads[i] = tx.PAYLOAD;
             scriptRaw[i] = tx.SCRIPT_RAW;
             results[i] = tx.RESULT;
+            debugComments[i] = tx.DEBUG_COMMENT;
             fee[i] = tx.FEE;
             feeRaw[i] = tx.FEE_RAW;
             expiration[i] = tx.EXPIRATION;
@@ -228,6 +256,7 @@ INSERT INTO ""Transactions"" (
     ""PAYLOAD"",
     ""SCRIPT_RAW"",
     ""RESULT"",
+    ""DEBUG_COMMENT"",
     ""FEE"",
     ""FEE_RAW"",
     ""EXPIRATION"",
@@ -251,6 +280,7 @@ SELECT
     row.""PAYLOAD"",
     row.""SCRIPT_RAW"",
     row.""RESULT"",
+    row.""DEBUG_COMMENT"",
     row.""FEE"",
     row.""FEE_RAW"",
     row.""EXPIRATION"",
@@ -273,6 +303,7 @@ FROM UNNEST(
     @payloads,
     @script_raw,
     @results,
+    @debug_comments,
     @fee,
     @fee_raw,
     @expiration,
@@ -295,6 +326,7 @@ FROM UNNEST(
     ""PAYLOAD"",
     ""SCRIPT_RAW"",
     ""RESULT"",
+    ""DEBUG_COMMENT"",
     ""FEE"",
     ""FEE_RAW"",
     ""EXPIRATION"",
@@ -319,6 +351,7 @@ FROM UNNEST(
         cmd.Parameters.Add("@payloads", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = payloads;
         cmd.Parameters.Add("@script_raw", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = scriptRaw;
         cmd.Parameters.Add("@results", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = results;
+        cmd.Parameters.Add("@debug_comments", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = debugComments;
         cmd.Parameters.Add("@fee", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = fee;
         cmd.Parameters.Add("@fee_raw", NpgsqlDbType.Array | NpgsqlDbType.Text).Value = feeRaw;
         cmd.Parameters.Add("@expiration", NpgsqlDbType.Array | NpgsqlDbType.Bigint).Value = expiration;

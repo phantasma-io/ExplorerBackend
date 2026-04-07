@@ -21,6 +21,8 @@ namespace Backend.Blockchain;
 
 public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 {
+    private const int BlockHeightRequestTimeoutSeconds = 30;
+    private const int RpcReliefRecoveryCommitThreshold = 4;
     private static List<Chain> _chainList;
 
     private readonly Queue<Tuple<string, string, long>> _methodQueue = new();
@@ -30,7 +32,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private BigInteger height = 0;
     private Dictionary<EventKindMethods.ChainEventKindKey, int> _eventKinds;
     private readonly ConcurrentDictionary<int, SyncLagState> _syncLagStates = new();
+    private readonly ConcurrentDictionary<int, RpcReliefModeState> _rpcReliefModeStates = new();
     private readonly ConcurrentDictionary<int, bool> _lastPersistedCatchupReadyByChain = new();
+    private readonly ConcurrentDictionary<string, int> _activeLiveChains = new(StringComparer.OrdinalIgnoreCase);
+    private int _noLiveChainsWarningShown;
     // Reuse one client instance for height polling to avoid per-call socket churn.
     private static readonly HttpClient BlockHeightHttpClient = CreateBlockHeightHttpClient();
 
@@ -38,6 +43,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     {
         public long LastLag;
         public long LastUpdatedAtUnixSeconds;
+    }
+
+    private sealed class RpcReliefModeState
+    {
+        public int IsActive;
+        public int ConsecutiveCommittedBlocks;
+        public long LastModeChangedAtUnixSeconds;
     }
 
     private static HttpClient CreateBlockHeightHttpClient()
@@ -57,6 +69,63 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
     private SyncLagState GetSyncLagState(int chainId)
     {
         return _syncLagStates.GetOrAdd(chainId, _ => new SyncLagState());
+    }
+
+    private RpcReliefModeState GetRpcReliefModeState(int chainId)
+    {
+        return _rpcReliefModeStates.GetOrAdd(chainId, _ => new RpcReliefModeState());
+    }
+
+    private bool IsRpcReliefMode(int chainId)
+    {
+        var state = GetRpcReliefModeState(chainId);
+        return Volatile.Read(ref state.IsActive) == 1;
+    }
+
+    private void EnterRpcReliefMode(int chainId, string chainName, string reason)
+    {
+        var state = GetRpcReliefModeState(chainId);
+        Interlocked.Exchange(ref state.ConsecutiveCommittedBlocks, 0);
+        var previous = Interlocked.Exchange(ref state.IsActive, 1);
+        if (previous == 0)
+        {
+            Interlocked.Exchange(ref state.LastModeChangedAtUnixSeconds, UnixSeconds.Now());
+            Log.Warning(
+                "[{Name}][RPC relief] Entering load-shed mode for {Chain}: {Reason}",
+                Name,
+                chainName,
+                reason);
+        }
+    }
+
+    private void RegisterRpcReliefCommitSuccess(int chainId, string chainName, long queueDepth)
+    {
+        var state = GetRpcReliefModeState(chainId);
+        if (Volatile.Read(ref state.IsActive) == 0)
+            return;
+
+        // Return to normal mode only after a small streak of committed blocks and an empty queue.
+        // This keeps recovery conservative and avoids flapping on one transient success.
+        if (queueDepth > 0)
+        {
+            Interlocked.Exchange(ref state.ConsecutiveCommittedBlocks, 0);
+            return;
+        }
+
+        var committedBlocks = Interlocked.Increment(ref state.ConsecutiveCommittedBlocks);
+        if (committedBlocks < RpcReliefRecoveryCommitThreshold)
+            return;
+
+        if (Interlocked.Exchange(ref state.IsActive, 0) == 1)
+        {
+            Interlocked.Exchange(ref state.ConsecutiveCommittedBlocks, 0);
+            Interlocked.Exchange(ref state.LastModeChangedAtUnixSeconds, UnixSeconds.Now());
+            Log.Information(
+                "[{Name}][RPC relief] Returning {Chain} to normal mode after {CommittedBlocks} committed blocks.",
+                Name,
+                chainName,
+                committedBlocks);
+        }
     }
 
     private void UpdateSyncLagState(int chainId, long lag)
@@ -141,7 +210,145 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         if (!TryGetRecentLag(chainId, out var lag))
             return false;
 
+        if (IsRpcReliefMode(chainId))
+            return false;
+
         return lag <= BalanceSyncLagThreshold;
+    }
+
+    private void UpdateActiveChainSnapshot()
+    {
+        var activeChains = _activeLiveChains
+            .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(x => new Chain { ID = x.Value, NAME = x.Key })
+            .ToList();
+
+        _chainList = activeChains;
+        ChainNames = activeChains.Select(x => x.NAME).ToArray();
+
+        if (activeChains.Count > 0)
+            Interlocked.Exchange(ref _noLiveChainsWarningShown, 0);
+    }
+
+    private bool TryStartChainRuntime(Chain chain)
+    {
+        if (chain == null)
+            return false;
+
+        if (!_activeLiveChains.TryAdd(chain.NAME, chain.ID))
+            return false;
+
+        try
+        {
+            using var databaseContext = new MainDbContext();
+            var startupChain = ChainMethods.Get(databaseContext, chain.ID);
+
+            InitNexusData(startupChain.ID);
+            EventKindMethods.UpsertAllAsync(databaseContext, startupChain).Wait();
+            databaseContext.SaveChanges();
+            _eventKinds = EventKindMethods.GetAllAsync(databaseContext).Result;
+
+            UpdateActiveChainSnapshot();
+
+            Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name,
+                startupChain.NAME,
+                startupChain.ID);
+
+            StartupNexusSync(startupChain);
+            StartupBlockSync(startupChain.NAME);
+            StartupBalanceSync(startupChain);
+            StartupFailedTransactionDebugCommentSync(startupChain);
+            StartupRomRamSync(startupChain);
+            StartupContractSync(startupChain);
+            StartupContractMethodsSync(startupChain);
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            _activeLiveChains.TryRemove(chain.NAME, out _);
+            UpdateActiveChainSnapshot();
+            LogEx.Exception($"Chain activation {chain.NAME}", e);
+            return false;
+        }
+    }
+
+    private int TryStartAvailableChains(bool logUnavailableChains)
+    {
+        InitChains();
+
+        using var databaseContext = new MainDbContext();
+        var configuredChains = ChainMethods.GetChains(databaseContext).ToList();
+        var startedThisPass = 0;
+
+        foreach (var chain in configuredChains)
+        {
+            if (chain.NAME.Contains("-generation-", StringComparison.OrdinalIgnoreCase))
+            {
+                if (logUnavailableChains && !_activeLiveChains.ContainsKey(chain.NAME))
+                {
+                    Log.Information(
+                        "[{Name}] Chain {ChainName} is a backfill-only generation namespace. Skipping live background sync by design.",
+                        Name,
+                        chain.NAME);
+                }
+
+                continue;
+            }
+
+            if (_activeLiveChains.ContainsKey(chain.NAME))
+                continue;
+
+            if (!CanStartBackgroundSyncForChain(chain.NAME, logFailure: logUnavailableChains))
+            {
+                if (logUnavailableChains)
+                {
+                    Log.Warning(
+                        "[{Name}] Chain {ChainName} is present in DB but unavailable on current RPC. Skipping live background sync for this chain.",
+                        Name,
+                        chain.NAME);
+                }
+
+                continue;
+            }
+
+            if (TryStartChainRuntime(chain))
+                startedThisPass++;
+        }
+
+        UpdateActiveChainSnapshot();
+
+        if (_activeLiveChains.IsEmpty && Interlocked.Exchange(ref _noLiveChainsWarningShown, 1) == 0)
+        {
+            Log.Warning(
+                "[{Name}] No live chains are active. Will retry RPC/bootstrap in {RetryDelay} sec.",
+                Name,
+                Math.Max(1, Settings.Default.BlocksProcessingInterval));
+        }
+
+        return startedThisPass;
+    }
+
+    private void StartupChainActivationRetry()
+    {
+        Thread chainActivationThread = new(() =>
+        {
+            while (_running)
+            {
+                try
+                {
+                    if (_activeLiveChains.IsEmpty)
+                        TryStartAvailableChains(logUnavailableChains: false);
+                }
+                catch (Exception e)
+                {
+                    LogEx.Exception("Chain activation watchdog", e);
+                }
+
+                Thread.Sleep(Math.Max(1, Settings.Default.BlocksProcessingInterval) * 1000);
+            }
+        });
+        chainActivationThread.Start();
     }
 
 
@@ -159,77 +366,14 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
         try
         {
-            using (MainDbContext databaseContext = new())
-            {
-                InitChains();
-
-                var configuredChains = ChainMethods.GetChains(databaseContext).ToList();
-                _chainList = new List<Chain>();
-
-                // Historical/import-only chains can exist in DB but be unavailable on live RPC.
-                // Start background sync only for chains that can return block height right now.
-                foreach (var chain in configuredChains)
-                {
-                    // Legacy generation namespaces are stored for historical/backfilled data only.
-                    // They must never be used for live background sync probing.
-                    if (chain.NAME.Contains("-generation-", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Log.Information(
-                            "[{Name}] Chain {ChainName} is a backfill-only generation namespace. Skipping live background sync by design.",
-                            Name, chain.NAME);
-                        continue;
-                    }
-
-                    if (CanStartBackgroundSyncForChain(chain.NAME))
-                    {
-                        _chainList.Add(chain);
-                    }
-                    else
-                    {
-                        Log.Warning(
-                            "[{Name}] Chain {ChainName} is present in DB but unavailable on current RPC. Skipping live background sync for this chain.",
-                            Name, chain.NAME);
-                    }
-                }
-
-                ChainNames = _chainList.Select(chain => chain.NAME).ToArray();
-
-                //init tokens once too, cause we might need them, to keep them update, thread them later
-
-                foreach (var chain in _chainList)
-                {
-                    InitNexusData(chain.ID);
-                    EventKindMethods.UpsertAllAsync(databaseContext, chain).Wait();
-                    databaseContext.SaveChanges();
-                }
-
-                _eventKinds = EventKindMethods.GetAllAsync(databaseContext).Result;
-            }
-
-            Log.Verbose("[{Name}] got {ChainCount} Chains, get to work", Name, _chainList.Count);
-            foreach (var chain in _chainList)
-            {
-                Log.Information("[{Name}] starting with Chain {ChainName} and Internal Id {Id}", Name,
-                    chain.NAME,
-                    chain.ID);
-
-                StartupNexusSync(chain);
-                StartupBlockSync(chain.NAME);
-                StartupBalanceSync(chain);
-                StartupRomRamSync(chain);
-                StartupContractSync(chain);
-                StartupContractMethodsSync(chain);
-            }
-
-            // Initialization was successful
+            TryStartAvailableChains(logUnavailableChains: true);
         }
         catch (Exception e)
         {
             LogEx.Exception("Chains processing", e);
-
-            Thread.Sleep(Settings.Default.TokensProcessingInterval * 1000);
         }
 
+        StartupChainActivationRetry();
         Log.Information("{Name} plugin: Startup finished", Name);
     }
 
@@ -287,6 +431,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
             while (_running)
                 try
                 {
+                    if (!IsBackgroundSyncAllowed(chain.ID))
+                    {
+                        Thread.Sleep(Settings.Default.RomRamProcessingInterval * 1000);
+                        continue;
+                    }
+
                     NewNftsSetRomRam(chain.ID, chain.NAME);
 
                     Thread.Sleep(Settings.Default.RomRamProcessingInterval *
@@ -445,9 +595,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var encodedChain = Uri.EscapeDataString(chain);
         var url = $"{Settings.Default.GetRest()}/api/v1/getBlockHeight?chainInput={encodedChain}";
 
-        using var response = BlockHeightHttpClient.GetAsync(url).GetAwaiter().GetResult();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(BlockHeightRequestTimeoutSeconds));
+        using var response = BlockHeightHttpClient.GetAsync(url, cts.Token).GetAwaiter().GetResult();
         using var content = response.Content;
-        var reply = content.ReadAsStringAsync().GetAwaiter().GetResult();
+        var reply = content.ReadAsStringAsync(cts.Token).GetAwaiter().GetResult();
 
         if (!response.IsSuccessStatusCode)
         {
@@ -465,7 +616,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         return result;
     }
 
-    private bool CanStartBackgroundSyncForChain(string chainName)
+    private bool CanStartBackgroundSyncForChain(string chainName, bool logFailure = true)
     {
         try
         {
@@ -474,8 +625,13 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         }
         catch (Exception e)
         {
-            Log.Warning("[{Name}] Chain {ChainName} cannot be synced from current RPC: {Reason}", Name, chainName,
-                e.Message);
+            if (logFailure)
+            {
+                Log.Warning("[{Name}] Chain {ChainName} cannot be synced from current RPC: {Reason}", Name,
+                    chainName,
+                    e.Message);
+            }
+
             return false;
         }
     }

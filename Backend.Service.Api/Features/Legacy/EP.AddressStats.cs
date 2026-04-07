@@ -24,7 +24,7 @@ public static class GetAddressStats
         // ReSharper disable InconsistentNaming
         string chain = "main",
         int daily_limit = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         try

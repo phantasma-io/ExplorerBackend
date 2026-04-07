@@ -4,6 +4,7 @@ using System.Text.Json;
 using Database.Main;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Database.Main.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    partial class MainDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260309185154_Update34_NormalizeNumericEventKindNames")]
+    partial class Update34_NormalizeNumericEventKindNames
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1324,9 +1327,6 @@ namespace Database.Main.Migrations
 
                     b.Property<byte?>("CARBON_TX_TYPE")
                         .HasColumnType("smallint");
-
-                    b.Property<string>("DEBUG_COMMENT")
-                        .HasColumnType("text");
 
                     b.Property<long>("EXPIRATION")
                         .HasColumnType("bigint");

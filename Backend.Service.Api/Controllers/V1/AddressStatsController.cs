@@ -19,7 +19,7 @@ public class AddressStatsController : BaseControllerV1
         // ReSharper disable InconsistentNaming
         [FromQuery] string chain = "main",
         [FromQuery] int daily_limit = 0
-        // ReSharper enable InconsistentNaming
+    // ReSharper enable InconsistentNaming
     )
     {
         return GetAddressStats.Execute(chain, daily_limit);
