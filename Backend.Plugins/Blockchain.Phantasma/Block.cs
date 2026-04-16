@@ -621,6 +621,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
         var bufferedTransactions = new List<Database.Main.Transaction>();
         var bufferedEvents = new List<Database.Main.Event>();
         var tokenCreateEventLinks = new List<(Token Token, Database.Main.Event EventEntry)>();
+        var processedExtendedTokenCreates = new HashSet<(string TxHash, string Symbol)>();
         var platformCreateEventLinks = new List<(Database.Main.Platform Platform, Database.Main.Event EventEntry)>();
         var contractCreateEventLinks = new List<(Database.Main.Contract Contract, Database.Main.Event EventEntry)>();
         var organizationCreateEventLinks = new List<(Database.Main.Organization Organization, Database.Main.Event EventEntry)>();
@@ -869,7 +870,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                     addressesInThisBlock[entry.Key] = entry.Value;
             }
 
-            var contractHashes = block.GetContracts();
+            var contractHashes = block.GetContracts(tx =>
+                extendedEventDataByTxHash.TryGetValue(tx.Hash, out var txExtendedData)
+                    ? txExtendedData.TokenCreate?.Symbol
+                    : null);
             // Log.Verbose("[{Name}][Blocks] Contracts in block: " + string.Join(",", contractHashes));
 
             var contracts = ContractMethods.BatchUpsert(dbConnection,
@@ -1537,9 +1541,12 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                 var tokenEventData = eventNode.GetParsedData<TokenEventData>();
                                                 var tokenCreateDataNullable = txExtendedData.TokenCreate;
 
-                                                var symbol = !string.IsNullOrWhiteSpace(tokenEventData.Symbol)
-                                                    ? tokenEventData.Symbol
-                                                    : tokenCreateDataNullable?.Symbol;
+                                                var extendedTokenCreateSymbol = tokenCreateDataNullable?.Symbol;
+                                                var hasExtendedTokenCreate = !string.IsNullOrWhiteSpace(extendedTokenCreateSymbol);
+
+                                                var symbol = hasExtendedTokenCreate
+                                                    ? extendedTokenCreateSymbol
+                                                    : tokenEventData.Symbol;
 
                                                 if (string.IsNullOrWhiteSpace(symbol))
                                                 {
@@ -1547,9 +1554,17 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                     break;
                                                 }
 
-                                                if (tokenCreateDataNullable != null)
+                                                if (hasExtendedTokenCreate)
                                                 {
-                                                    var tokenCreateData = tokenCreateDataNullable.Value;
+                                                    if (!processedExtendedTokenCreates.Add((tx.Hash, symbol)))
+                                                    {
+                                                        Log.Debug(
+                                                            "[{Name}][Blocks] TokenCreate extended payload for tx {TxHash}, symbol {Symbol} was already applied",
+                                                            Name, tx.Hash, symbol);
+                                                        break;
+                                                    }
+
+                                                    var tokenCreateData = tokenCreateDataNullable.GetValueOrDefault();
                                                     var (flags, tokenNameFromMetadata) =
                                                         ParseTokenCreateFlags(tokenCreateData, !tokenCreateData.IsNonFungible);
 
@@ -1568,6 +1583,7 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
 
                                                     if (token != null && eventEntry != null)
                                                     {
+                                                        tokensBySymbol[symbol] = token;
                                                         tokenCreateEventLinks.Add((token, eventEntry));
                                                     }
 
