@@ -1574,8 +1574,10 @@ public partial class PhantasmaPlugin : Plugin, IBlockchainPlugin
                                                     var decimalsString = tokenCreateData.Decimals.ToString(CultureInfo.InvariantCulture);
                                                     var carbonTokenId = tokenCreateData.CarbonTokenId.ToString(CultureInfo.InvariantCulture);
 
+                                                    // TokenCreate is emitted by the token system contract, but the
+                                                    // created token contract is addressed by the token symbol.
                                                     var token = await TokenMethods.UpsertAsync(databaseContext, chainEntry,
-                                                        contract, tokenName, symbol, (int)tokenCreateData.Decimals,
+                                                        symbol, tokenName, symbol, (int)tokenCreateData.Decimals,
                                                         flags.fungible, flags.transferable, flags.finite, flags.divisible,
                                                         flags.fuel, flags.stakable, flags.fiat, flags.swappable, flags.burnable,
                                                         flags.mintable, addressString, addressString, "0",
