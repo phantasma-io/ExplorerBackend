@@ -9,8 +9,24 @@ namespace Backend.Commons;
 
 public static class LogEx
 {
+    private static bool IsPostgresServerError(Exception ex)
+    {
+        while (ex != null)
+        {
+            if (string.Equals(ex.GetType().FullName, "Npgsql.PostgresException", StringComparison.Ordinal))
+                return true;
+
+            ex = ex.InnerException;
+        }
+
+        return false;
+    }
+
     private static bool IsDatabaseConnectivityIssue(Exception ex)
     {
+        if (IsPostgresServerError(ex))
+            return false;
+
         while (ex != null)
         {
             var type = ex.GetType();
