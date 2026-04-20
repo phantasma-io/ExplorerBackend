@@ -35,6 +35,9 @@ public static class TokenMethods
 
         if (entry != null)
         {
+            if (contractEntry.ID > 0)
+                entry.ContractId = contractEntry.ID;
+            entry.Contract = contractEntry;
             entry.NAME = name;
             entry.DECIMALS = decimals;
             entry.FUNGIBLE = fungible;
@@ -63,6 +66,7 @@ public static class TokenMethods
             {
                 Chain = chain,
                 Contract = contractEntry,
+                ContractId = contractEntry.ID,
                 NAME = name,
                 SYMBOL = symbol,
                 DECIMALS = decimals,
@@ -290,9 +294,10 @@ public static class TokenMethods
     }
 
 
-    public static Task<Token> GetAsync(MainDbContext databaseContext, Chain chain, string symbol)
+    public static async Task<Token> GetAsync(MainDbContext databaseContext, Chain chain, string symbol)
     {
-        return databaseContext.Tokens.SingleOrDefaultAsync(x => x.Chain == chain && x.SYMBOL == symbol);
+        return await databaseContext.Tokens.SingleOrDefaultAsync(x => x.Chain == chain && x.SYMBOL == symbol) ??
+               DbHelper.GetTracked<Token>(databaseContext).FirstOrDefault(x => x.Chain == chain && x.SYMBOL == symbol);
     }
 
 

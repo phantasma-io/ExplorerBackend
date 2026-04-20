@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Backend.Service.Api\Backend.Service.Api.csproj" />
+    <ProjectReference Include="..\..\Backend.Plugins\Blockchain.Phantasma\Blockchain.Phantasma.csproj" />
   </ItemGroup>
 
 </Project>

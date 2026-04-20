@@ -158,12 +158,38 @@ public static class ContractMethods
     {
         Dictionary<ChainHashKey, int> result = [];
 
-        if (contracts.Count == 0)
+        if (contracts == null || contracts.Count == 0)
         {
             return [];
         }
 
-        var chunks = contracts.DistinctBy(x => (x.chainId, x.hash)).Chunk(batchSize).ToList();
+        // Contract HASH is a database key. Upstream RPC compatibility events can be
+        // malformed, but an empty hash must stop ingest before Npgsql parameters.
+        var invalidContracts = contracts
+            .Where(x => string.IsNullOrWhiteSpace(x.hash))
+            .ToList();
+        if (invalidContracts.Count > 0)
+        {
+            var samples = invalidContracts
+                .Take(5)
+                .Select(x => $"chainId={x.chainId}, name={x.name ?? "<null>"}, symbol={x.symbol ?? "<null>"}")
+                .ToArray();
+            throw new ArgumentException(
+                $"Contracts batch upsert received {invalidContracts.Count} empty HASH value(s). Samples: {string.Join("; ", samples)}",
+                nameof(contracts));
+        }
+
+        var validContracts = contracts
+            .Where(x => !string.IsNullOrWhiteSpace(x.hash))
+            .DistinctBy(x => (x.chainId, x.hash))
+            .ToList();
+
+        if (validContracts.Count == 0)
+        {
+            return [];
+        }
+
+        var chunks = validContracts.Chunk(batchSize).ToList();
         foreach (var chunk in chunks)
         {
             var chunkRes = ChunkUpsert(dbConnection, chunk.ToList(), dbTransaction);

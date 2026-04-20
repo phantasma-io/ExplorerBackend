@@ -38,9 +38,10 @@ internal static class RpcParsingExtensions
         block.Txs.ParseData(new BigInteger(block.Height));
     }
 
-    public static List<string> GetContracts(this BlockResult block)
+    public static List<string> GetContracts(this BlockResult block,
+        Func<TransactionResult, string> tokenCreateSymbolResolver = null)
     {
-        return block?.Txs?.GetContracts() ?? [];
+        return block?.Txs?.GetContracts(tokenCreateSymbolResolver) ?? [];
     }
 
     public static void ParseData(this ICollection<TransactionResult> transactionResults, BigInteger blockHeight)
@@ -146,7 +147,8 @@ internal static class RpcParsingExtensions
         return null;
     }
 
-    public static List<string> GetContracts(this ICollection<TransactionResult> transactionResults)
+    public static List<string> GetContracts(this ICollection<TransactionResult> transactionResults,
+        Func<TransactionResult, string> tokenCreateSymbolResolver = null)
     {
         if (transactionResults == null)
             return [];
@@ -154,13 +156,14 @@ internal static class RpcParsingExtensions
         List<string> result = [];
         foreach (var t in transactionResults)
         {
-            result.AddRange(t.GetContracts());
+            result.AddRange(t.GetContracts(tokenCreateSymbolResolver));
         }
 
-        return result.Distinct().ToList();
+        return result.Distinct(StringComparer.Ordinal).ToList();
     }
 
-    public static List<string> GetContracts(this TransactionResult transaction)
+    public static List<string> GetContracts(this TransactionResult transaction,
+        Func<TransactionResult, string> tokenCreateSymbolResolver = null)
     {
         if (transaction == null)
             return [];
@@ -172,35 +175,78 @@ internal static class RpcParsingExtensions
 
         foreach (var e in transaction.Events)
         {
-            result.Add(e.Contract);
+            var parsedKind = e.GetParsedKind();
+            var eventKindName = parsedKind?.ToString() ?? e.Kind ?? "unknown event";
+            AddContractHash(result, e.Contract, $"{eventKindName} contract", transaction.Hash);
+
+            if (parsedKind == null)
+                continue;
+
+            if (parsedKind.Value == EventKind.TokenCreate)
+            {
+                // Carbon TokenCreate semantics live in ExtendedEvents. Legacy EventResult
+                // payloads are only a compatibility envelope there and may be empty on
+                // old test-chain data, so use the extended symbol before falling back.
+                var extendedSymbol = tokenCreateSymbolResolver?.Invoke(transaction) ??
+                                     ExtendedEventParser.GetTokenCreateData(transaction.ExtendedEvents)?.Symbol;
+                if (!string.IsNullOrWhiteSpace(extendedSymbol))
+                {
+                    AddContractHash(result, extendedSymbol, $"{parsedKind.Value} extended symbol", transaction.Hash);
+                    continue;
+                }
+
+                if (e.GetParsedData() is TokenEventData legacyTokenCreateData)
+                    AddContractHash(result, legacyTokenCreateData.Symbol, $"{parsedKind.Value} legacy symbol",
+                        transaction.Hash);
+
+                continue;
+            }
 
             var parsed = e.GetParsedData();
             if (parsed == null) continue;
 
-            switch (e.GetParsedKind())
+            switch (parsedKind.Value)
             {
                 case EventKind.Infusion:
-                    result.Add(((InfusionEventData)parsed).BaseSymbol);
-                    result.Add(((InfusionEventData)parsed).InfusedSymbol);
+                    AddContractHash(result, ((InfusionEventData)parsed).BaseSymbol,
+                        $"{parsedKind.Value} base symbol", transaction.Hash);
+                    AddContractHash(result, ((InfusionEventData)parsed).InfusedSymbol,
+                        $"{parsedKind.Value} infused symbol", transaction.Hash);
                     break;
                 case EventKind.TokenMint or EventKind.TokenClaim or EventKind.TokenBurn
                     or EventKind.TokenSend or EventKind.TokenReceive or EventKind.TokenStake
-                    or EventKind.CrownRewards or EventKind.Inflation or EventKind.TokenCreate:
-                    result.Add(((TokenEventData)parsed).Symbol);
+                    or EventKind.CrownRewards or EventKind.Inflation:
+                    AddContractHash(result, ((TokenEventData)parsed).Symbol, $"{parsedKind.Value} token symbol",
+                        transaction.Hash);
                     break;
                 case EventKind.OrderCancelled or EventKind.OrderClosed or EventKind.OrderCreated
                     or EventKind.OrderFilled or EventKind.OrderBid:
-                    result.Add(((MarketEventData)parsed).BaseSymbol);
-                    result.Add(((MarketEventData)parsed).QuoteSymbol);
+                    AddContractHash(result, ((MarketEventData)parsed).BaseSymbol,
+                        $"{parsedKind.Value} base symbol", transaction.Hash);
+                    AddContractHash(result, ((MarketEventData)parsed).QuoteSymbol,
+                        $"{parsedKind.Value} quote symbol", transaction.Hash);
                     break;
                 case EventKind.ContractUpgrade:
                 case EventKind.ContractDeploy:
-                    result.Add((string)parsed);
+                    AddContractHash(result, (string)parsed, $"{parsedKind.Value} contract hash", transaction.Hash);
                     break;
             }
         }
 
-        return result.Distinct().ToList();
+        return result.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    private static void AddContractHash(List<string> result, string hash, string source, string txHash)
+    {
+        if (!string.IsNullOrWhiteSpace(hash))
+        {
+            result.Add(hash);
+            return;
+        }
+
+        var safeTxHash = string.IsNullOrWhiteSpace(txHash) ? "<unknown>" : txHash;
+        throw new InvalidOperationException(
+            $"Empty contract hash from {source} in tx {safeTxHash}. Block ingest cannot continue without a Contracts.HASH key.");
     }
 
     private static string SerializeToJson(object obj)
