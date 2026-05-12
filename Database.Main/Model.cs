@@ -25,6 +25,7 @@ public class MainDbContext : DbContext
     public DbSet<Contract> Contracts { get; set; }
     public DbSet<Block> Blocks { get; set; }
     public DbSet<Transaction> Transactions { get; set; }
+    public DbSet<RejectedTransactionCandidate> RejectedTransactionCandidates { get; set; }
     public DbSet<EventKind> EventKinds { get; set; }
     public DbSet<Address> Addresses { get; set; }
     public DbSet<Event> Events { get; set; }
@@ -280,6 +281,92 @@ public class MainDbContext : DbContext
         // Canonical transactions order is timestamp + id; keep both keys indexed for stable pagination.
         modelBuilder.Entity<Transaction>()
             .HasIndex(x => new { x.TIMESTAMP_UNIX_SECONDS, x.ID });
+
+        //////////////////////
+        // RejectedTransactionCandidate
+        //////////////////////
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .HasIndex(x => new { x.NEXUS, x.CHAIN, x.HASH })
+            .IsUnique();
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .HasIndex(x => x.HASH);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .HasIndex(x => new { x.CAPTURED_AT_UNIX_SECONDS });
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.HASH)
+            .IsRequired();
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.NEXUS)
+            .IsRequired();
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.CHAIN)
+            .IsRequired();
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.BLOCK_HASH)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.STATE)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.RESULT)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.DEBUG_COMMENT)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.PAYLOAD)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.SCRIPT_RAW)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.FEE_RAW)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.GAS_PRICE_RAW)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.GAS_LIMIT_RAW)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.SENDER)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.GAS_PAYER)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.GAS_TARGET)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.CANONICAL_STATUS)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.RPC_RESPONSE_JSON)
+            .IsRequired(false);
+
+        modelBuilder.Entity<RejectedTransactionCandidate>()
+            .Property(x => x.BLOCK_RESPONSE_JSON)
+            .IsRequired(false);
 
         //////////////////////
         // EventKind
@@ -1046,6 +1133,35 @@ public class Transaction
     public virtual List<Event> Events { get; set; }
     public virtual List<Signature> Signatures { get; set; }
     public virtual List<AddressTransaction> TransactionAddresses { get; set; }
+}
+
+public class RejectedTransactionCandidate
+{
+    public int ID { get; set; }
+    public string HASH { get; set; }
+    public string NEXUS { get; set; }
+    public string CHAIN { get; set; }
+    public long? BLOCK_HEIGHT { get; set; }
+    public string BLOCK_HASH { get; set; }
+    public long? TIMESTAMP_UNIX_SECONDS { get; set; }
+    public string STATE { get; set; }
+    public string RESULT { get; set; }
+    public string DEBUG_COMMENT { get; set; }
+    public string PAYLOAD { get; set; }
+    public string SCRIPT_RAW { get; set; }
+    public string FEE_RAW { get; set; }
+    public long? EXPIRATION { get; set; }
+    public string GAS_PRICE_RAW { get; set; }
+    public string GAS_LIMIT_RAW { get; set; }
+    public string SENDER { get; set; }
+    public string GAS_PAYER { get; set; }
+    public string GAS_TARGET { get; set; }
+    public string CANONICAL_STATUS { get; set; }
+    public string RPC_RESPONSE_JSON { get; set; }
+    public string BLOCK_RESPONSE_JSON { get; set; }
+    public long CAPTURED_AT_UNIX_SECONDS { get; set; }
+    public long UPDATED_AT_UNIX_SECONDS { get; set; }
+    public long LAST_SEEN_AT_UNIX_SECONDS { get; set; }
 }
 
 public class EventKind

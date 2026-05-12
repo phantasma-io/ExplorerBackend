@@ -951,6 +951,88 @@ public class TransactionResult : PaginatedResult
 }
 
 /// <summary>
+///     Rejected transaction candidate captured from recent RPC diagnostics.
+/// </summary>
+public class RejectedTransactionCandidate
+{
+    /// <summary>
+    ///     Hash of the rejected candidate transaction.
+    /// </summary>
+    public string? hash { get; set; }
+
+    /// <summary>
+    ///     Nexus where this diagnostic snapshot was captured.
+    /// </summary>
+    public string? nexus { get; set; }
+
+    /// <summary>
+    ///     Chain used for block verification.
+    /// </summary>
+    public string? chain { get; set; }
+
+    /// <summary>
+    ///     Block height reported by RPC recent diagnostics.
+    /// </summary>
+    public string? block_height { get; set; }
+
+    /// <summary>
+    ///     Canonical block hash at the reported height, if verification reached the block.
+    /// </summary>
+    public string? block_hash { get; set; }
+
+    /// <summary>
+    ///     unixseconds timestamp in UTC of the rejected candidate, as reported by RPC.
+    /// </summary>
+    public string? date { get; set; }
+
+    public string? state { get; set; }
+    public string? result { get; set; }
+    public string? debug_comment { get; set; }
+    public string? payload { get; set; }
+    public string? script_raw { get; set; }
+    public string? fee_raw { get; set; }
+    public string? expiration { get; set; }
+    public string? gas_price_raw { get; set; }
+    public string? gas_limit_raw { get; set; }
+    public string? sender { get; set; }
+    public string? gas_payer { get; set; }
+    public string? gas_target { get; set; }
+
+    /// <summary>
+    ///     Verification result relative to canonical block transactions.
+    /// </summary>
+    public string? canonical_status { get; set; }
+
+    /// <summary>
+    ///     unixseconds when Explorer first captured this diagnostic snapshot.
+    /// </summary>
+    public string? captured_at { get; set; }
+
+    /// <summary>
+    ///     unixseconds when Explorer last refreshed this diagnostic snapshot from RPC.
+    /// </summary>
+    public string? updated_at { get; set; }
+
+    /// <summary>
+    ///     Raw RPC GetTransaction response captured for diagnostics.
+    /// </summary>
+    public string? rpc_response_json { get; set; }
+
+    /// <summary>
+    ///     Raw RPC GetBlockByHeight response used for canonical verification.
+    /// </summary>
+    public string? block_response_json { get; set; }
+}
+
+/// <summary>
+///     Rejected Transaction Candidate Result
+/// </summary>
+public class RejectedTransactionCandidateResult
+{
+    public RejectedTransactionCandidate[]? rejected_transactions { get; set; }
+}
+
+/// <summary>
 ///     Contract Base Information
 /// </summary>
 public class Contract

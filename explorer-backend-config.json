@@ -18,6 +18,17 @@
     "ConnectRetryTimeout": 5000
   },
   "ApiServiceConfiguration": {
+    "RejectedTransactionCandidates": {
+      "CaptureEnabled": true,
+      "Nexus": "mainnet",
+      "DefaultChain": "main",
+      "RpcTimeoutSeconds": 8,
+      "RestNodes": [
+        "https://pharpc1.phantasma.info",
+        "https://pharpc2.phantasma.info",
+        "https://pharpc3.phantasma.info"
+      ]
+    },
     "PerformanceMetrics": {
       "CountsEnabled": false,
       "AveragesEnabled": false,
